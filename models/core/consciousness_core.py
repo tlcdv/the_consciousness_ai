@@ -4,7 +4,7 @@ emotional memory, and controlled adaptation for experience processing.
 """
 import logging
 import time
-from typing import Dict, Any, List, Optional
+from typing import Dict, Any, List, Optional, Tuple
 
 # --- Import Interfaces ---
 from ..perception.perception_interface import PerceptionInterface, Observation, PerceptionSummary
@@ -99,7 +99,7 @@ class AsimovComplianceFilter:
         # TODO: Implement complex prediction
         return False
 
-    def _conflicts_with_human_order(self, action: Action, state: State) -> tuple[bool, Optional[Dict]]:
+    def _conflicts_with_human_order(self, action: Action, state: State) -> Tuple[bool, Optional[Dict]]:
         logging.warning("Ethics Check: Order conflict check (_conflicts_with_human_order) is a placeholder. Returning False.")
         # TODO: Implement logic to access and compare against active, valid orders in state
         return False, None

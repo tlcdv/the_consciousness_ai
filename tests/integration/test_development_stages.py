@@ -15,6 +15,7 @@ Dependencies:
 """
 
 from typing import Dict, Optional
+from dataclasses import dataclass
 import unittest
 import torch
 

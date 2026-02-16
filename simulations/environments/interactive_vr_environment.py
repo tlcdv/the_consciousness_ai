@@ -1,6 +1,9 @@
 # simulations/enviroments/pavilion_vr_environment.py
 
-import unreal
+try:
+    import unreal
+except ImportError:
+    unreal = None
 import logging
 from typing import Dict, Any
 import numpy as np

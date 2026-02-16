@@ -13,7 +13,7 @@ import numpy as np
 from typing import Dict, Optional, Tuple, List
 from dataclasses import dataclass
 
-from models.predictive.dreamerv3_wrapper import DreamerV3
+from models.predictive.dreamerv3_wrapper import DreamerV3Wrapper as DreamerV3
 from models.emotion.tgnn.emotional_graph import EmotionalGraphNetwork
 from models.emotion.reward_shaping import EmotionalRewardShaper
 from models.memory.memory_core import MemoryCore

@@ -10,7 +10,7 @@ from models.evaluation.emotional_evaluation import EmotionalEvaluator
 from models.narrative.narrative_engine import NarrativeEngine
 from simulations.scenarios.consciousness_scenarios import ConsciousnessScenarioManager
 from simulations.api.simulation_manager import SimulationManager
-from simulations.enviroments.interactive_vr_environment import InteractiveVREnvironment
+from simulations.environments.interactive_vr_environment import InteractiveVREnvironment
 
 """
 Simulation Controller for the Artificial Consciousness Module (ACM)

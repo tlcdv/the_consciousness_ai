@@ -20,7 +20,10 @@ import cv2
 from typing import Dict, List, Optional, Any, Tuple
 from dataclasses import dataclass
 from models.memory.emotional_memory_core import EmotionalMemoryCore
-from models.core.consciousness_core import VisualProcessor
+try:
+    from models.core.consciousness_core import VisualProcessor
+except ImportError:
+    VisualProcessor = None
 from transformers import Blip2ForConditionalGeneration, Blip2Processor
 from torch.cuda.amp import autocast
 import logging

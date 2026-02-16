@@ -1,6 +1,9 @@
 import torch
 import numpy as np
-import pyphi
+try:
+    import pyphi
+except ImportError:
+    pyphi = None
 from typing import Optional, List, Dict, Any, Tuple
 import logging
 from collections import deque
@@ -26,8 +29,9 @@ class IITMetrics:
         self.state_history = deque(maxlen=self.history_len)
         
         # PyPhi config
-        pyphi.config.PROGRESS_BARS = False
-        pyphi.config.PARALLEL_CUTS = False 
+        if pyphi is not None:
+            pyphi.config.PROGRESS_BARS = False
+            pyphi.config.PARALLEL_CUTS = False
 
     def update_history(self, current_state: Tuple[int]) -> None:
         """Add the current binarized state to history."""
@@ -88,15 +92,13 @@ class IITMetrics:
         """
         Calculate Phi using PyPhi on the provided TPM.
         """
+        if pyphi is None:
+            return 0.0
         try:
             num_nodes = len(current_state)
             if num_nodes > 5:
-                # Truncate for performance if needed
                 return 0.0
 
-            # PyPhi Network
-            # Note: We must ensure TPM represents the correct Logic
-            # State-by-Node format is standard for simple systems.
             network = pyphi.Network(tpm)
             subsystem = pyphi.Subsystem(network, current_state)
             

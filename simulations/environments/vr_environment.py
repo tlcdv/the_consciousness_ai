@@ -5,7 +5,10 @@ Manages VR simulations using Unreal Engine.
 Handles environment initialization, state updates, and agent interactions.
 """
 
-import unreal
+try:
+    import unreal
+except ImportError:
+    unreal = None
 import logging
 import time
 

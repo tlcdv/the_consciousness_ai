@@ -53,7 +53,7 @@ class MockEmotionalMemoryCore:
         recent_arousal = np.mean([exp.get('emotion', {}).get('arousal', 0.0) for exp in self.experiences[-5:]])
         return {"valence": recent_valence, "arousal": recent_arousal}
 
-    def get_recent_experiences(self, limit: int = 5) -> List[Dict]:
+    def get_recent_experiences(self, limit: int = 5) -> list:
          """Retrieves the most recent experiences."""
          return self.experiences[-limit:]
 

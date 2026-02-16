@@ -26,7 +26,7 @@ from simulations.scenarios.consciousness_scenarios import ConsciousnessScenarioM
 from models.core.consciousness_core import ConsciousnessCore
 from models.evaluation.consciousness_monitor import ConsciousnessMonitor
 from configs.consciousness_development import DevelopmentConfig
-from models.emotion.tgnn.emotional_graph import EmotionalGraphNN
+from models.emotion.tgnn.emotional_graph import EmotionalGraphNetwork as EmotionalGraphNN
 
 class TestConsciousnessDevelopment(unittest.TestCase):
     """Test suite for validating consciousness development through stress-induced learning"""

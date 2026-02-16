@@ -9,6 +9,15 @@ from models.evaluation.iit_phi import IITMetrics
 from models.core.qualia_mapper import QualiaMapper
 
 @dataclass
+class WorkspaceMessage:
+    """A message broadcast into the global workspace by a specialist module."""
+    source: str
+    content: Any
+    priority: float = 0.5
+    timestamp: float = 0.0
+
+
+@dataclass
 class WorkspaceState:
     """Current state of the global workspace"""
     active_content: Dict[str, Any]

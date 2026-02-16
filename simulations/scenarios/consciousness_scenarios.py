@@ -166,7 +166,11 @@ class ConsciousnessScenarioGenerator:
         """Calculate recent improvement in performance"""
         if len(self.success_history) < 100:
             return 0.0
-            
+
         recent = np.mean(self.success_history[-50:])
         previous = np.mean(self.success_history[-100:-50])
         return recent - previous
+
+
+# Alias for backward compatibility with tests and other modules
+ConsciousnessScenarioManager = ConsciousnessScenarioGenerator

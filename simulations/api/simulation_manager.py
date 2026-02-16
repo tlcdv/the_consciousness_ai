@@ -12,8 +12,8 @@ from models.self_model.reinforcement_core import ReinforcementCore
 from models.emotion.tgnn.emotional_graph import EmotionalGraphNetwork
 from models.narrative.narrative_engine import NarrativeEngine
 from models.memory.memory_core import MemoryCore
-from models.predictive.dreamerv3_wrapper import DreamerV3
-from simulations.enviroments.vr_environment import VREnvironment
+from models.predictive.dreamerv3_wrapper import DreamerV3Wrapper as DreamerV3
+from simulations.environments.vr_environment import VREnvironment
 from models.cognitive.chain_of_thought import ChainOfThought
 from models.ace_core.ace_agent import ACEConsciousAgent
 from models.ace_core.ace_config import ACEConfig
