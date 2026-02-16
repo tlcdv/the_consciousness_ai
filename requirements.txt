@@ -1,3 +1,4 @@
+# pip requirements
 # -------------------------------------------------------
 # Deep Learning & AI Core
 # -------------------------------------------------------
@@ -17,7 +18,7 @@ networkx>=3.0
 # -------------------------------------------------------
 # Unity Integration
 # -------------------------------------------------------
-mlagents>=1.0.0       # Unity ML-Agents Python API
+mlagents==0.29.0       # Unity ML-Agents Python API
 mlagents-envs>=1.0.0
 grpcio>=1.60.0
 protobuf>=4.25.0
