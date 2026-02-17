@@ -76,10 +76,14 @@ class EmotionalMemoryCore(MemoryInterface):
     Stores experiences, facilitates RL, prediction, and evolutionary adaptation.
     Includes persistence and placeholders for advanced retrieval.
     """
-    def __init__(self, config: Dict):
+    def __init__(self, config=None):
+        if config is None:
+            config = {}
         super().__init__(config)
-        self.max_memory_size = config.get('max_memory_size', 10000)
-        self.persistence_path = config.get('persistence_path', 'memory_state.pkl')
+        # Support both dict and dataclass configs
+        _get = config.get if isinstance(config, dict) else lambda k, d=None: getattr(config, k, d)
+        self.max_memory_size = _get('max_memory_size', 10000)
+        self.persistence_path = _get('persistence_path', 'memory_state.pkl')
         self.memory_storage: deque[Tuple[float, MemoryData]] = deque(maxlen=self.max_memory_size)
         self._load_memory() # Load previous state if available
         logging.info(f"EmotionalMemoryCore initialized. Loaded {len(self.memory_storage)} memories from {self.persistence_path if os.path.exists(self.persistence_path) else 'new state'}. Max size: {self.max_memory_size}.")
@@ -115,7 +119,9 @@ class EmotionalMemoryCore(MemoryInterface):
         if self.persistence_path:
             try:
                 # Create directory if it doesn't exist
-                os.makedirs(os.path.dirname(self.persistence_path), exist_ok=True)
+                dir_name = os.path.dirname(self.persistence_path)
+                if dir_name:
+                    os.makedirs(dir_name, exist_ok=True)
                 with open(self.persistence_path, 'wb') as f:
                     pickle.dump(self.memory_storage, f)
                 logging.info(f"Successfully saved {len(self.memory_storage)} memories to {self.persistence_path}")

@@ -77,8 +77,8 @@ class TestConsciousnessPipeline(unittest.TestCase):
                 return {"dummy_output": 1}
         
         config = {"max_buffer_size": 4, "device": "cpu"}
-        self.video_llama3 = VideoLLaMA3Integration(config, DummyModel(), DummyProcessor())
-        self.core = ConsciousnessCore({}, self.video_llama3)
+        self.video_llama3 = VideoLLaMA3Integration(config)
+        self.core = ConsciousnessCore({})
 
     def test_end_to_end_consciousness_development(self):
         """Test complete consciousness development cycle"""

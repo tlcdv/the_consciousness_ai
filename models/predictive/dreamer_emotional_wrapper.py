@@ -48,12 +48,25 @@ class DreamerEmotionalWrapper:
         """Initialize emotional dreamer wrapper."""
         self.config = config
 
-        # Load DreamerV3 with matching config key.
-        self.dreamer = DreamerV3(config['dreamerV3'])
+        # Load DreamerV3 with matching config key (use full config as fallback).
+        dreamer_cfg = config.get('dreamerV3', config)
+        self.dreamer = DreamerV3(dreamer_cfg)
 
-        self.emotion_network = EmotionalGraphNetwork()
+        self.emotion_network = None  # Lazy init when EmotionalGraphNetwork is available
         self.reward_shaper = EmotionalRewardShaper(config)
-        self.memory = MemoryCore(config['memory_config'])
+
+        # Build MemoryConfig from dict if needed
+        from models.memory.memory_core import MemoryConfig
+        mem_cfg_dict = config.get('memory_config', config)
+        if isinstance(mem_cfg_dict, dict):
+            mem_config = MemoryConfig(
+                max_memories=mem_cfg_dict.get('max_memories', 10000),
+                vector_dim=mem_cfg_dict.get('vector_dim', 128),
+                attention_threshold=mem_cfg_dict.get('attention_threshold', 0.5),
+            )
+        else:
+            mem_config = mem_cfg_dict
+        self.memory = MemoryCore(mem_config)
         self.consciousness_metrics = ConsciousnessMetrics(config)
 
         self.dream_state = EmotionalDreamState()

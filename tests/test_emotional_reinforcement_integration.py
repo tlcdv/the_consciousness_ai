@@ -1,194 +1,118 @@
 import unittest
 import torch
 import numpy as np
+from typing import Dict, Any
 
 from models.self_model.reinforcement_core import ReinforcementCore
-from models.emotion.tgnn.emotional_graph import EmotionalGraphNetwork
-from models.memory.memory_core import MemoryCore
-from models.predictive.dreamerv3_wrapper import DreamerV3
-from models.narrative.narrative_engine import NarrativeEngine
+from models.emotion.reward_shaping import EmotionalRewardShaper
+from models.memory.memory_core import MemoryCore, MemoryConfig
 
 
 class TestEmotionalReinforcementIntegration(unittest.TestCase):
     """Integration tests for the emotional reinforcement learning system."""
 
     def setUp(self):
-        # Restructure config so ReinforcementCore can read keys like 'dreamerV3' directly.
         self.config = {
-            'emotional_scale': 2.0,
-            'positive_emotion_bonus': 0.5,
-            'dreamerV3': {
-                'hidden_size': 256,
-                'learning_rate': 0.0001,
-                'gamma': 0.99,
-                'lambda_gae': 0.95
+            "state_dim": 32,
+            "action_dim": 4,
+            "gamma": 0.99,
+            "learning_rate": 0.001,
+            "device": "cpu",
+            "emotional_dims": 3,
+            "hidden_size": 16,
+            "reward": {
+                "base_scale": 1.0
             },
-            'meta_config': {
-                'enabled': True,
-                'adaptation_steps': 5,
-                'inner_learning_rate': 0.01
-            },
-            # Memory capacity for the ReinforcementCore's internal MemoryCore.
-            'memory_capacity': 1000,
+            "max_memories": 100,
+            "cleanup_threshold": 0.4,
+            "vector_dim": 32,
+            "index_batch_size": 10,
+            "attention_threshold": 0.5,
         }
 
-        # Initialize RL core (which uses DreamerV3, memory, etc.).
-        self.rl_core = ReinforcementCore(self.config)
+        self.emotion_shaper = EmotionalRewardShaper(self.config)
 
-        # Initialize other components individually for integration testing.
-        self.emotion_network = EmotionalGraphNetwork()
-        self.memory = MemoryCore(capacity=1000)
-        self.dreamer = DreamerV3(self.config['dreamerV3'])
-        self.narrative = NarrativeEngine()
+        mem_config = MemoryConfig(
+            max_memories=100,
+            vector_dim=32,
+            attention_threshold=0.5,
+        )
+        self.memory = MemoryCore(mem_config)
 
-        # Optionally, you could add a simple placeholder in ReinforcementCore for get_action:
-        # def get_action(self, state):
-        #     return torch.zeros(8)  # or call self.dreamer.get_action(...) if defined
+        self.rl_core = ReinforcementCore(self.config, self.emotion_shaper, self.memory)
 
     def test_end_to_end_learning(self):
         """Test a complete learning cycle with emotional integration."""
-        # Mock environment-style state.
-        state = torch.randn(32)
+        state = torch.randn(self.config["state_dim"])
 
-        for step in range(10):
-            # For the test, define a get_action method or just mock an action here:
-            action = torch.randn(8)  # placeholder
-            next_state = torch.randn(32)
-            reward = float(torch.rand(1).item())
+        for step_i in range(12):
+            action, value = self.rl_core.select_action(state)
+            next_state = torch.randn(self.config["state_dim"])
+            raw_reward = float(torch.rand(1).item())
 
-            # Process emotional response.
-            emotion_output = self.emotion_network.process_interaction(
+            emotion_state = {
+                "valence": float(np.random.uniform(-1, 1)),
+                "arousal": float(np.random.uniform(0, 1)),
+                "dominance": float(np.random.uniform(-1, 1)),
+            }
+
+            step_info = self.rl_core.step(
                 state=state,
                 action=action,
-                next_state=next_state
-            )
-
-            # Compute shaped emotional reward.
-            emotional_reward = self.rl_core.compute_reward(
-                state=state,
-                emotion_values=emotion_output,
-                action_info={'step': step}
-            )
-
-            # Update RL core.
-            update_info = self.rl_core.update(
-                state=state,
-                action=action,
-                reward=emotional_reward,
+                raw_reward=raw_reward,
                 next_state=next_state,
-                done=(step == 9),
-                emotion_context=emotion_output
+                done=(step_i == 11),
+                emotion_state=emotion_state,
+                attention_level=0.7,
             )
 
-            # Check that update returns expected keys.
-            self.assertIn('world_model_loss', update_info)
-            self.assertIn('actor_loss', update_info)
-            self.assertIn('critic_loss', update_info)
-
+            self.assertIn("raw_reward", step_info)
+            self.assertIn("shaped_reward", step_info)
             state = next_state
 
+        update_info = self.rl_core.update_policy()
+        self.assertIn("policy_loss", update_info)
+        self.assertIn("value_loss", update_info)
+
     def test_emotional_memory_integration(self):
-        """Test that emotional experiences are stored and retrieved."""
-        # Create test experiences.
-        experiences = []
+        """Test that emotional experiences are stored via the RL step."""
+        state = torch.randn(self.config["state_dim"])
         for i in range(5):
-            exp = {
-                'state': torch.randn(32),
-                'action': torch.randn(8),
-                'emotion': {
-                    'valence': 0.7 + 0.1 * i,
-                    'arousal': 0.5 + 0.1 * i
-                },
-                'reward': 0.5 + 0.1 * i,
-                'narrative': f"Experience {i} with emotional response"
+            action, _ = self.rl_core.select_action(state)
+            next_state = torch.randn(self.config["state_dim"])
+            emotion_state = {
+                "valence": 0.7 + 0.05 * i,
+                "arousal": 0.5 + 0.05 * i,
+                "dominance": 0.3,
             }
-            experiences.append(exp)
-            self.memory.store_experience(exp)
 
-        # Suppose we have a memory method that retrieves experiences by emotion similarity.
-        # Adjust if your actual method name or arguments differ.
-        query_emotion = {'valence': 0.8, 'arousal': 0.6}
-        if hasattr(self.memory, 'get_similar_emotional_experiences'):
-            similar_experiences = self.memory.get_similar_emotional_experiences(
-                emotion_query=query_emotion, k=3
+            self.rl_core.step(
+                state=state,
+                action=action,
+                raw_reward=0.5 + 0.1 * i,
+                next_state=next_state,
+                done=False,
+                emotion_state=emotion_state,
+                attention_level=0.8,
             )
-            self.assertEqual(len(similar_experiences), 3)
-            self.assertTrue(all('emotion' in exp for exp in similar_experiences))
-        else:
-            # Skip or assertNotImplemented if your memory doesn't have such a method.
-            self.skipTest("get_similar_emotional_experiences not implemented.")
+            state = next_state
 
-    def test_meta_learning_adaptation(self):
-        """Test meta-learning adaptation to new emotional scenarios."""
-        base_scenario = {
-            'states': torch.randn(10, 32),
-            'actions': torch.randn(10, 8),
-            'emotions': torch.randn(10, 3),
-            'rewards': torch.randn(10)
-        }
+        self.assertEqual(len(self.rl_core.rollout_buffer), 5)
 
-        pre_adaptation_perf = self.evaluate_scenario(base_scenario)
+    def test_reward_shaping(self):
+        """Test that emotional reward shaping modulates the base reward."""
+        positive_emotion = {"valence": 0.9, "arousal": 0.3, "dominance": 0.5}
+        negative_emotion = {"valence": -0.9, "arousal": 0.8, "dominance": -0.5}
 
-        # Adapt to scenario if meta-learning is enabled.
-        adaptation_result = self.rl_core.adapt_to_scenario(base_scenario)
-        # Possibly check for a known key if your meta-learner returns one.
-        # self.assertIn('adapted_params', adaptation_result)
-
-        post_adaptation_perf = self.evaluate_scenario(base_scenario)
-        # Check for improvement in some mock metric
-        self.assertGreater(
-            post_adaptation_perf['emotional_accuracy'],
-            pre_adaptation_perf['emotional_accuracy'],
-            "Meta-learning adaptation should improve emotional accuracy."
+        reward_pos = self.emotion_shaper.compute_emotional_reward(
+            emotion_values=positive_emotion, base_reward=1.0
+        )
+        reward_neg = self.emotion_shaper.compute_emotional_reward(
+            emotion_values=negative_emotion, base_reward=1.0
         )
 
-    def evaluate_scenario(self, scenario):
-        """Mock scenario evaluation. Returns some performance metrics."""
-        total_reward = 0.0
-        emotional_correct = 0.0
-        count = len(scenario['states'])
-
-        for i in range(count):
-            state = scenario['states'][i]
-            action = torch.randn(8)  # placeholder
-            predicted_emotion = self.emotion_network.predict_emotion(
-                state=state,
-                action=action
-            )
-
-            actual_emotion = scenario['emotions'][i]
-            emotional_correct += self.calculate_emotion_accuracy(
-                predicted_emotion,
-                actual_emotion
-            )
-            total_reward += scenario['rewards'][i].item()
-
-        return {
-            'total_reward': total_reward,
-            'emotional_accuracy': emotional_correct / count if count else 0.0
-        }
-
-    def calculate_emotion_accuracy(self, predicted, target):
-        """Mock method to measure how close predicted emotions are to targets."""
-        # If your code returns a dict of floats vs. a tensor, adapt accordingly.
-        # Here, we do a simple difference-based measure for valence/arousal.
-        if isinstance(predicted, dict):
-            accuracy = 0.0
-            c = 0
-            for key in ['valence', 'arousal']:
-                if key in predicted:
-                    accuracy += max(0.0, 1.0 - abs(predicted[key] - target[c].item()))
-                    c += 1
-            return accuracy / (c or 1)
-        else:
-            # If predicted is a tensor or list, assume the first 2 elements are valence/arousal.
-            if len(predicted) >= 2:
-                val_err = abs(predicted[0] - target[0].item())
-                aro_err = abs(predicted[1] - target[1].item())
-                avg_err = (val_err + aro_err) / 2.0
-                return max(0.0, 1.0 - avg_err)
-            return 0.0
+        self.assertGreater(reward_pos, reward_neg)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()

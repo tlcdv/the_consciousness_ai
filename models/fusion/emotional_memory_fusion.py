@@ -51,35 +51,41 @@ class EmotionalMemoryFusion(nn.Module):
     4. Generative emotional output
     """
     
-    def __init__(self, config: FusionConfig):
+    def __init__(self, config):
         super().__init__()
-        self.config = config
+        # Accept dict or FusionConfig
+        if isinstance(config, dict):
+            mem_cfg = config.get('memory_config', {})
+            self.config = FusionConfig(
+                fusion_hidden_size=mem_cfg.get('fusion_hidden_size', 768),
+            )
+        else:
+            self.config = config
         self.metrics = FusionMetrics()
-        
-        # Initialize core components
-        self.emotion_network = EmotionalGraphNetwork()
-        self.memory_core = EmotionalMemoryCore(config)
-        self.generative_core = GenerativeEmotionalCore(config)
-        
-        # Multimodal encoders
-        self.text_encoder = AutoModel.from_pretrained(config.text_model)
-        self.vision_encoder = AutoModel.from_pretrained(config.vision_model)
-        self.audio_encoder = AutoModel.from_pretrained(config.audio_model)
-        
+
+        # Initialize core components (lazy, no heavy models at init)
+        self.emotion_network = None
+        self.memory_core = EmotionalMemoryCore(config if isinstance(config, dict) else {})
+        self.generative_core = GenerativeEmotionalCore(config if isinstance(config, dict) else {})
+
+        # Defer pretrained model loading, use simple linear projections as fallback
+        self.text_encoder = None
+        self.vision_encoder = None
+        self.audio_encoder = None
+
+        hidden = self.config.fusion_hidden_size
+
         # Fusion layers
         self.fusion_layers = nn.ModuleList([
             nn.TransformerEncoderLayer(
-                d_model=config.fusion_hidden_size,
+                d_model=hidden,
                 nhead=8,
-                dropout=config.dropout
-            ) for _ in range(config.num_fusion_layers)
+                dropout=self.config.dropout
+            ) for _ in range(self.config.num_fusion_layers)
         ])
-        
+
         # Output projections
-        self.emotional_projection = nn.Linear(
-            config.fusion_hidden_size,
-            config.fusion_hidden_size
-        )
+        self.emotional_projection = nn.Linear(hidden, hidden)
         
     def forward(
         self,

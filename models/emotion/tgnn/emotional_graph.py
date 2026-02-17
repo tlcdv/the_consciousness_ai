@@ -21,34 +21,41 @@ class EmotionalGraphState:
     adaptation_rate: float = 0.0
 
 class EmotionalGraphNetwork(nn.Module):
-    def __init__(self, config):
+    def __init__(self, config=None):
         """Initialize emotional graph network"""
         super().__init__()
+        if config is None:
+            config = {}
+
+        # Helper to read from dict or dataclass
+        def _g(key, default):
+            if isinstance(config, dict):
+                return config.get(key, default)
+            return getattr(config, key, default)
+
+        input_dims = _g('input_dims', 3)
+        hidden_dims = _g('hidden_dims', 64)
+        llama_hidden_size = _g('llama_hidden_size', 768)
+        pattern_dims = _g('pattern_dims', 32)
 
         # Core emotional processing
-        self.node_encoder = nn.Linear(
-            config.input_dims,
-            config.hidden_dims
-        )
-        
+        self.node_encoder = nn.Linear(input_dims, hidden_dims)
+
         # Integration with LLaMA narrator
-        self.narrative_projection = nn.Linear(
-            config.llama_hidden_size,
-            config.hidden_dims
-        )
-        
+        self.narrative_projection = nn.Linear(llama_hidden_size, hidden_dims)
+
         # Pattern detection
         self.pattern_detector = nn.Sequential(
-            nn.Linear(config.hidden_dims * 2, config.hidden_dims),
+            nn.Linear(hidden_dims * 2, hidden_dims),
             nn.GELU(),
-            nn.Linear(config.hidden_dims, config.pattern_dims)
+            nn.Linear(hidden_dims, pattern_dims)
         )
         
         # Memory gating mechanism
         self.memory_gate = nn.Sequential(
-            nn.Linear(config.hidden_dims * 2, config.hidden_dims),
+            nn.Linear(hidden_dims * 2, hidden_dims),
             nn.GELU(),
-            nn.Linear(config.hidden_dims, 1),
+            nn.Linear(hidden_dims, 1),
             nn.Sigmoid()
         )
         

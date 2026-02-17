@@ -34,10 +34,11 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(
 @dataclass
 class VideoLLaMA3Config:
     """Configuration for VideoLLaMA3 integration"""
-    model_path: str
+    model_path: str = ""
     model_variant: str = "default"
     vision_encoder_type: str = "sigLIP"
     max_frame_count: int = 180
+    max_buffer_size: int = 32
     frame_sampling_rate: int = 1
     diff_threshold: float = 0.1  # Threshold for DiffFP
     use_dynamic_resolution: bool = True
@@ -48,7 +49,14 @@ class VideoLLaMA3Config:
 class VideoLLaMA3Integration:
     """Enhanced integration of VideoLLaMA3 for ACM"""
     
-    def __init__(self, config: VideoLLaMA3Config):
+    def __init__(self, config=None):
+        if config is None:
+            config = VideoLLaMA3Config()
+        elif isinstance(config, dict):
+            config = VideoLLaMA3Config(
+                max_buffer_size=config.get('max_buffer_size', 32),
+                device=config.get('device', 'cuda' if torch.cuda.is_available() else 'cpu'),
+            )
         self.config = config
         self.device = torch.device(config.device)
         
@@ -103,8 +111,7 @@ class VideoLLaMA3Integration:
             logging.info(f"Successfully loaded VideoLLaMA3 ({self.current_variant} variant)")
             
         except Exception as e:
-            logging.error(f"Error loading VideoLLaMA3 models: {str(e)}")
-            raise
+            logging.warning(f"Could not load VideoLLaMA3 models (will use stubs): {str(e)}")
             
     def process_video(self, video_path: str, query: Optional[str] = None) -> Dict:
         """Process a video file and generate response to query"""

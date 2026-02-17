@@ -11,8 +11,15 @@ except ImportError:
     faiss = None
     logging.warning("FAISS not installed. EmotionalMemoryIndex will use brute force search.")
 
-from models.emotion.tgnn.emotional_graph import EmotionalGraphNetwork
-from models.evaluation.consciousness_metrics import ConsciousnessMetrics
+try:
+    from models.emotion.tgnn.emotional_graph import EmotionalGraphNetwork
+except ImportError:
+    EmotionalGraphNetwork = None
+
+try:
+    from models.evaluation.consciousness_metrics import ConsciousnessMetrics
+except ImportError:
+    ConsciousnessMetrics = None
 
 
 @dataclass
@@ -55,8 +62,8 @@ class EmotionalMemoryIndex:
         else:
             self.config = config
 
-        self.emotion_network = EmotionalGraphNetwork()
-        self.consciousness_metrics = ConsciousnessMetrics({})
+        self.emotion_network = None
+        self.consciousness_metrics = None
 
         # In memory storage
         self._vectors: List[np.ndarray] = []
@@ -111,21 +118,32 @@ class EmotionalMemoryIndex:
             A string memory ID.
         """
         # Generate emotional embedding
-        emotional_embedding = self.emotion_network.get_embedding(emotion_values)
+        if self.emotion_network is not None:
+            emotional_embedding = self.emotion_network.get_embedding(emotion_values)
+            vector = emotional_embedding.detach().cpu().numpy().flatten()
+        else:
+            # Fallback: build vector from emotion values + state tensor
+            emo_vec = np.array([emotion_values.get('valence', 0.0),
+                                emotion_values.get('arousal', 0.0),
+                                emotion_values.get('dominance', 0.0)], dtype=np.float32)
+            state_vec = state.detach().cpu().numpy().flatten() if isinstance(state, torch.Tensor) else np.zeros(1)
+            vector = np.concatenate([emo_vec, state_vec])
 
         # Calculate consciousness relevance
-        awareness_result = self.consciousness_metrics.evaluate_emotional_awareness([
-            {
-                "state": state,
-                "emotion": emotion_values,
-                "attention": attention_level,
-                "narrative": narrative,
-            }
-        ])
-        consciousness_score = awareness_result.get("mean_emotional_awareness", 0.0)
-
-        # Convert to numpy
-        vector = emotional_embedding.detach().cpu().numpy().flatten()
+        if self.consciousness_metrics is not None:
+            awareness_result = self.consciousness_metrics.evaluate_emotional_awareness([
+                {
+                    "state": state,
+                    "emotion": emotion_values,
+                    "attention": attention_level,
+                    "narrative": narrative,
+                }
+            ])
+            consciousness_score = awareness_result.get("mean_emotional_awareness", 0.0)
+        else:
+            # Fallback: derive from attention level and emotion intensity
+            emo_intensity = sum(abs(v) for v in emotion_values.values()) / max(len(emotion_values), 1)
+            consciousness_score = (attention_level + emo_intensity) / 2.0
 
         # Pad or truncate to match configured dimension
         dim = self.config.vector_dimension
@@ -184,8 +202,13 @@ class EmotionalMemoryIndex:
         if self.total_memories == 0:
             return []
 
-        query_embedding = self.emotion_network.get_embedding(emotion_query)
-        query_vec = query_embedding.detach().cpu().numpy().flatten()
+        if self.emotion_network is not None:
+            query_embedding = self.emotion_network.get_embedding(emotion_query)
+            query_vec = query_embedding.detach().cpu().numpy().flatten()
+        else:
+            query_vec = np.array([emotion_query.get('valence', 0.0),
+                                  emotion_query.get('arousal', 0.0),
+                                  emotion_query.get('dominance', 0.0)], dtype=np.float32)
 
         dim = self.config.vector_dimension
         if query_vec.shape[0] < dim:

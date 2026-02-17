@@ -92,11 +92,17 @@ class ConsciousnessMonitor:
     and practical metrics related to consciousness and self-awareness.
     Provides data for the evaluation dashboard and logs metrics using MetricsLogger.
     """
-    def __init__(self, consciousness_core, memory_system, config, experiment_name: str = "acm_default_run"):
-        self.core = consciousness_core # This 'core' might serve as or provide the 'acm_agent_interface'
+    def __init__(self, consciousness_core=None, memory_system=None, config=None, experiment_name: str = "acm_default_run"):
+        # Support single-arg call: ConsciousnessMonitor(config_dict)
+        if config is None and isinstance(consciousness_core, dict):
+            config = consciousness_core
+            consciousness_core = None
+        if config is None:
+            config = {}
+        self.core = consciousness_core
         self.memory = memory_system
         self.config = config
-        self.update_interval = config.get('monitor_update_interval', 1.0) # seconds for the original update method
+        self.update_interval = config.get('monitor_update_interval', 1.0) if isinstance(config, dict) else 1.0
 
         # Central Logger
         self.logger = MetricsLogger(experiment_name=experiment_name)

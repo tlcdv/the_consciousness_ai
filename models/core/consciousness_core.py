@@ -134,7 +134,7 @@ class ConsciousnessCore:
         Initializes the Consciousness Core and its sub-modules.
 
         Args:
-            config: Configuration dictionary containing sub-configs for each component.
+            config: Configuration dictionary or dataclass containing sub-configs for each component.
         """
         self.config = config
         self.current_internal_state: State = {} # Initialize internal state
@@ -149,8 +149,14 @@ class ConsciousnessCore:
         self.world_model: Optional[WorldModelInterface] = None
         self.ethics_filter: AsimovComplianceFilter # Defined above
 
+        # Helper to read from dict or dataclass config
+        def _cfg_get(key, default=None):
+            if isinstance(config, dict):
+                return config.get(key, default)
+            return getattr(config, key, default)
+
         # --- Instantiate Concrete Components ---
-        perception_config = config.get('perception_config', {})
+        perception_config = _cfg_get('perception_config', {})
         try:
             # Replace 'ConcretePerceptionClass' with your actual implementation
             # If no concrete class yet, keep self.perception = None or use a dummy
@@ -168,28 +174,28 @@ class ConsciousnessCore:
              self.perception = None # Fallback
 
         try:
-             self.memory = EmotionalMemoryCore(config.get('memory_config', {}))
+             self.memory = EmotionalMemoryCore(_cfg_get('memory_config', {}))
              logging.info("EmotionalMemoryCore component initialized.")
         except Exception as e:
              logging.error(f"Failed to initialize EmotionalMemoryCore: {e}", exc_info=True)
              self.memory = None
 
         try:
-             self.emotion_processor = EmotionalProcessingCore(config.get('emotion_config', {}))
+             self.emotion_processor = EmotionalProcessingCore(_cfg_get('emotion_config', {}))
              logging.info("EmotionalProcessingCore component initialized.")
         except Exception as e:
              logging.error(f"Failed to initialize EmotionalProcessingCore: {e}", exc_info=True)
              self.emotion_processor = None
 
         try:
-             self.self_model = SelfRepresentationCore(config.get('self_model_config', {}))
+             self.self_model = SelfRepresentationCore(_cfg_get('self_model_config', {}))
              logging.info("SelfRepresentationCore component initialized.")
         except Exception as e:
              logging.error(f"Failed to initialize SelfRepresentationCore: {e}", exc_info=True)
              self.self_model = None
 
         try:
-             self.world_model = DreamerEmotionalWrapper(config.get('world_model_config', {}))
+             self.world_model = DreamerEmotionalWrapper(_cfg_get('world_model_config', {}))
              logging.info("World Model (DreamerEmotionalWrapper) component initialized.")
         except Exception as e:
              logging.error(f"Failed to initialize World Model/Dreamer: {e}", exc_info=True)
@@ -197,7 +203,7 @@ class ConsciousnessCore:
 
         # Instantiate Ethical Filter
         try:
-            self.ethics_filter = AsimovComplianceFilter(config.get('ethics_config', {}))
+            self.ethics_filter = AsimovComplianceFilter(_cfg_get('ethics_config', {}))
         except Exception as e:
             logging.error(f"Failed to initialize AsimovComplianceFilter: {e}", exc_info=True)
             # Decide how to handle this - maybe raise the error?

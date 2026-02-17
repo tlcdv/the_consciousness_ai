@@ -59,8 +59,9 @@ class LevinConsciousnessEvaluator:
         if not gradients:
             return 0.0
             
-        # Calculate mean gradient as complexity measure
-        return sum(gradients) / len(gradients)
+        # Calculate mean gradient as complexity measure, normalized to [0, 1]
+        mean_gradient = sum(gradients) / len(gradients)
+        return float(min(1.0, mean_gradient / (mean_gradient + 1.0)))
         
     def evaluate_morphological_adaptation(
         self, 
@@ -94,8 +95,8 @@ class LevinConsciousnessEvaluator:
         if not changes:
             return 0.0
             
-        # Average change as adaptation score
-        return sum(changes) / len(changes)
+        # Average change as adaptation score, clamped to [0, 1]
+        return min(1.0, sum(changes) / len(changes))
         
     def evaluate_collective_intelligence(self, holonic_output: Dict) -> float:
         """
@@ -211,13 +212,16 @@ class LevinConsciousnessEvaluator:
         outcomes = outcomes or []
         component_states = component_states or {}
         
-        # Calculate individual metrics
-        bioelectric_complexity = self.evaluate_bioelectric_complexity(bioelectric_state)
-        morphological_adaptation = self.evaluate_morphological_adaptation(past_states, current_state)
-        collective_intelligence = self.evaluate_collective_intelligence(holonic_output)
-        goal_directed_behavior = self.evaluate_goal_directed_behavior(actions, goals, outcomes)
-        basal_cognition = self.evaluate_basal_cognition(component_states)
-        
+        # Calculate individual metrics, clamped to [0, 1]
+        def _clamp01(v):
+            return max(0.0, min(1.0, v))
+
+        bioelectric_complexity = _clamp01(self.evaluate_bioelectric_complexity(bioelectric_state))
+        morphological_adaptation = _clamp01(self.evaluate_morphological_adaptation(past_states, current_state))
+        collective_intelligence = _clamp01(self.evaluate_collective_intelligence(holonic_output))
+        goal_directed_behavior = _clamp01(self.evaluate_goal_directed_behavior(actions, goals, outcomes))
+        basal_cognition = _clamp01(self.evaluate_basal_cognition(component_states))
+
         # Create metrics object
         metrics = LevinConsciousnessMetrics(
             bioelectric_complexity=bioelectric_complexity,

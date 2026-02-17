@@ -18,11 +18,22 @@ import torch.nn as nn
 from typing import Dict, List, Optional, Tuple
 
 class FeatureNetwork(nn.Module):
-    def __init__(self, config: Dict):
+    def __init__(self, config=None):
         """Initialize feature extraction networks"""
         super().__init__()
+        if config is None:
+            config = {}
         self.config = config
-        
+
+        def _g(key, default):
+            if isinstance(config, dict):
+                return config.get(key, default)
+            return getattr(config, key, default)
+
+        emotion_dim = _g('emotion_dim', 3)
+        hidden_dim = _g('hidden_dim', 64)
+        feature_dim = _g('feature_dim', 128)
+
         # Core feature extractors
         self.visual_encoder = nn.Sequential(
             nn.Conv2d(3, 64, kernel_size=3, padding=1),
@@ -32,11 +43,11 @@ class FeatureNetwork(nn.Module):
             nn.ReLU(),
             nn.AdaptiveAvgPool2d((1, 1))
         )
-        
+
         self.emotional_encoder = nn.Sequential(
-            nn.Linear(config.emotion_dim, config.hidden_dim),
+            nn.Linear(emotion_dim, hidden_dim),
             nn.ReLU(),
-            nn.Linear(config.hidden_dim, config.feature_dim)
+            nn.Linear(hidden_dim, feature_dim)
         )
         
     def extract_features(

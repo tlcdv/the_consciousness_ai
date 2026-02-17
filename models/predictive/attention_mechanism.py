@@ -13,6 +13,7 @@ Dependencies:
 - models/memory/emotional_memory_core.py for context
 """
 
+import numpy as np
 import torch
 import torch.nn as nn
 from typing import Dict, List, Optional, Tuple
@@ -263,28 +264,36 @@ class ConsciousnessAttention(nn.Module):
         return float(1.0 / (1.0 + np.std(recent_attention)))
 
 class ConsciousnessAttention(nn.Module):
-    def __init__(self, config):
+    def __init__(self, config=None):
         """Initialize attention mechanism"""
         super().__init__()
-        
+        if config is None:
+            config = {}
+
+        def _g(key, default):
+            if isinstance(config, dict):
+                return config.get(key, default)
+            return getattr(config, key, default)
+
+        hidden_size = _g('hidden_size', 128)
+        attention_dims = _g('attention_dims', 64)
+        llama_hidden_size = _g('llama_hidden_size', 768)
+
         # Core attention components
-        self.query_net = nn.Linear(config.hidden_size, config.attention_dims)
-        self.key_net = nn.Linear(config.hidden_size, config.attention_dims)
-        self.value_net = nn.Linear(config.hidden_size, config.hidden_size)
-        
+        self.query_net = nn.Linear(hidden_size, attention_dims)
+        self.key_net = nn.Linear(hidden_size, attention_dims)
+        self.value_net = nn.Linear(hidden_size, hidden_size)
+
         # Meta-memory integration
         self.memory_gate = nn.Sequential(
-            nn.Linear(config.hidden_size * 2, config.hidden_size),
+            nn.Linear(hidden_size * 2, hidden_size),
             nn.GELU(),
-            nn.Linear(config.hidden_size, 1),
+            nn.Linear(hidden_size, 1),
             nn.Sigmoid()
         )
-        
+
         # Narrative integration
-        self.narrative_projection = nn.Linear(
-            config.llama_hidden_size,
-            config.hidden_size
-        )
+        self.narrative_projection = nn.Linear(llama_hidden_size, hidden_size)
         
         # State tracking
         self.state = AttentionState()

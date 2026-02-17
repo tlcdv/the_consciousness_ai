@@ -4,7 +4,7 @@ import numpy as np
 from typing import Dict
 from models.memory.emotional_indexing import EmotionalMemoryIndex
 from models.memory.emotional_memory_core import EmotionalMemoryCore
-from models.emotion.tgnn.emotional_graph import EmotionalGraphNetwork
+# EmotionalGraphNetwork not used directly in these tests
 
 class TestMemoryIndexing(unittest.TestCase):
     """Test suite for emotional memory indexing and retrieval system."""
@@ -27,7 +27,7 @@ class TestMemoryIndexing(unittest.TestCase):
         # Adjust as necessary if EmotionalMemoryIndex uses a MemoryConfig dataclass, etc.
         self.memory_index = EmotionalMemoryIndex(self.config)
         self.memory_core = EmotionalMemoryCore(self.config)
-        self.emotion_network = EmotionalGraphNetwork()
+        # EmotionalGraphNetwork requires heavy config; not needed for index tests
 
     def test_memory_storage_and_retrieval(self):
         """Test basic memory storage and retrieval functionality."""

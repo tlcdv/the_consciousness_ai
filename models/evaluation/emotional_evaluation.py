@@ -45,15 +45,29 @@ class EmotionalEvaluator:
     """
     Evaluates consciousness development through emotional learning metrics
     """
-    def __init__(self, config: Dict):
+    def __init__(self, config=None):
         """Initialize emotional evaluation system"""
+        if config is None:
+            config = {}
         self.config = config
         self.emotion_network = EmotionalGraphNetwork()
-        self.memory = MemoryCore(config['memory_config'])
+
+        # Build MemoryConfig from dict
+        from models.memory.memory_core import MemoryConfig
+        mem_dict = config.get('memory_config', config) if isinstance(config, dict) else {}
+        if isinstance(mem_dict, dict):
+            mem_cfg = MemoryConfig(
+                max_memories=mem_dict.get('max_memories', 10000),
+                vector_dim=mem_dict.get('vector_dim', 128),
+                attention_threshold=mem_dict.get('attention_threshold', 0.5),
+            )
+        else:
+            mem_cfg = mem_dict
+        self.memory = MemoryCore(mem_cfg)
         self.attention = ConsciousnessAttention(config)
-        
+
         # Initialize metrics
-        self.metrics = ConsciousnessMetrics()
+        self.metrics = ConsciousnessMetrics(config)
         self.emotional_metrics = EmotionalMetrics()
         self.experience_history = []
         self.history = []

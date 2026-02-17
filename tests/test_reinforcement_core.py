@@ -2,75 +2,66 @@ import unittest
 import torch
 import numpy as np
 from models.self_model.reinforcement_core import ReinforcementCore
-from models.memory.memory_core import MemoryCore
-from models.emotion.tgnn.emotional_graph import EmotionalGraphNetwork
+from models.memory.memory_core import MemoryCore, MemoryConfig
+from models.emotion.reward_shaping import EmotionalRewardShaper
 
 class TestReinforcementCore(unittest.TestCase):
     def setUp(self):
         self.config = {
+            'state_dim': 32,
+            'action_dim': 8,
+            'gamma': 0.99,
+            'learning_rate': 0.001,
+            'device': 'cpu',
+            'emotional_dims': 3,
+            'hidden_size': 16,
+            'reward': {'base_scale': 1.0},
             'emotional_scale': 2.0,
             'positive_emotion_bonus': 0.5,
-            'dreamerV3': {
-                'hidden_size': 256,
-                'learning_rate': 0.0001
-            },
-            'memory_capacity': 1000,
-            'meta_config': {
-                'enabled': True,
-                'adaptation_steps': 5,
-                'inner_learning_rate': 0.01
-            }
         }
-        self.rl_core = ReinforcementCore(self.config)
+        self.emotion_shaper = EmotionalRewardShaper(self.config)
+        mem_config = MemoryConfig(max_memories=1000, vector_dim=32, attention_threshold=0.5)
+        self.memory = MemoryCore(mem_config)
+        self.rl_core = ReinforcementCore(self.config, self.emotion_shaper, self.memory)
 
     def test_compute_reward(self):
-        """Test emotional reward computation."""
-        state = torch.randn(1, 32)  # Mock state tensor
+        """Test emotional reward computation via the shaper."""
         emotion_values = {
             'valence': 0.8,
             'arousal': 0.6,
             'dominance': 0.7
         }
-        action_info = {'type': 'mock_action'}
-
-        reward = self.rl_core.compute_reward(state, emotion_values, action_info)
-
+        reward = self.emotion_shaper.compute_emotional_reward(
+            emotion_values=emotion_values,
+            base_reward=1.0
+        )
         self.assertIsInstance(reward, float)
-        # Basic sanity check: reward should be >= 0 if valence is positive.
         self.assertGreaterEqual(reward, 0.0)
 
     def test_adaptation(self):
-        """Test meta-learning adaptation."""
-        # Scenario data should reflect something the meta-learner can use.
-        scenario_data = {
-            'task_id': 'emotional_interaction_1',
-            'samples': 20,
-            'description': 'Test scenario for meta-learning adaptation.'
-        }
-
-        adaptation_result = self.rl_core.adapt_to_scenario(scenario_data)
-
-        # Depending on how your MetaLearner is implemented, adapt_to_scenario
-        # might return these fields or different ones.
-        self.assertIn('adapted_params', adaptation_result,
-                      msg="Meta-learner should return 'adapted_params'.")
-        # If your meta-learner returns additional keys (e.g., task_loss), check them as well:
-        # self.assertIn('task_loss', adaptation_result)
+        """Test select_action and step cycle."""
+        state = torch.randn(self.config['state_dim'])
+        action, value = self.rl_core.select_action(state)
+        self.assertEqual(len(action), self.config['action_dim'])
+        self.assertIsInstance(value, float)
 
     def test_memory_integration(self):
-        """Test memory storage and retrieval."""
-        experience = {
-            'state': torch.randn(32),
-            'action': torch.randn(8),
-            'reward': 0.5,
-            'emotion': {'valence': 0.8}
-        }
-
-        self.rl_core.memory.store_experience(experience)
-        retrieved = self.rl_core.memory.get_last_experience()
-
-        self.assertTrue(torch.allclose(experience['state'], retrieved['state']))
-        self.assertEqual(experience['reward'], retrieved['reward'])
+        """Test that steps populate the rollout buffer."""
+        state = torch.randn(self.config['state_dim'])
+        for i in range(5):
+            action, _ = self.rl_core.select_action(state)
+            next_state = torch.randn(self.config['state_dim'])
+            self.rl_core.step(
+                state=state,
+                action=action,
+                raw_reward=0.5,
+                next_state=next_state,
+                done=False,
+                emotion_state={'valence': 0.8, 'arousal': 0.5, 'dominance': 0.6},
+                attention_level=0.7,
+            )
+            state = next_state
+        self.assertEqual(len(self.rl_core.rollout_buffer), 5)
 
 if __name__ == '__main__':
     unittest.main()

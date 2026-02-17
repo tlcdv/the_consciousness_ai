@@ -47,15 +47,15 @@ class EmotionalRewardShaper(nn.Module):
 
         # Core components.
 
-        self.emotion_encoder = nn.Linear(
-            config['emotional_dims'],
-            config['hidden_size']
-        )
+        emotional_dims = config.get('emotional_dims', 3)
+        hidden_size = config.get('hidden_size', 64)
+
+        self.emotion_encoder = nn.Linear(emotional_dims, hidden_size)
 
         self.memory_gate = nn.Sequential(
-            nn.Linear(config['hidden_size'] * 2, config['hidden_size']),
+            nn.Linear(hidden_size * 2, hidden_size),
             nn.GELU(),
-            nn.Linear(config['hidden_size'], 1),
+            nn.Linear(hidden_size, 1),
             nn.Sigmoid()
         )
 

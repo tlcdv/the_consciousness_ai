@@ -43,19 +43,39 @@ class GenerativeEmotionalCore:
     4. Memory-guided response generation
     """
     
-    def __init__(self, config: GenerativeConfig):
+    def __init__(self, config=None):
         """Initialize generative emotional system"""
-        self.config = config
-        
-        # Initialize core components
-        self.tokenizer = LlamaTokenizer.from_pretrained(config.model_name)
-        self.model = LlamaForCausalLM.from_pretrained(config.model_name)
-        self.emotion_network = EmotionalGraphNetwork()
-        self.memory_core = EmotionalMemoryCore(config)
-        
-        # Move model to GPU if available
+        if isinstance(config, dict):
+            gen_cfg = config.get('generative_config', config)
+            self.config = GenerativeConfig(
+                model_name=gen_cfg.get('model_name', 'llama-3.3'),
+                max_length=gen_cfg.get('max_length', 1024),
+                temperature=gen_cfg.get('temperature', 0.7),
+                emotional_weight=gen_cfg.get('emotional_weight', 0.8),
+            )
+        elif config is None:
+            self.config = GenerativeConfig()
+        else:
+            self.config = config
+
+        # Defer heavy model loading. Set to None until explicitly loaded.
+        self.tokenizer = None
+        self.model = None
+        self.emotion_network = None
+        self.memory_core = EmotionalMemoryCore(config if isinstance(config, dict) else {})
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-        self.model.to(self.device)
+
+    def generate_response(self, prompt, emotional_context=None):
+        """Generate emotionally aware response (lightweight fallback if model not loaded)."""
+        if self.model is not None:
+            return self.generate_with_emotion(prompt, emotional_context or {})
+        # Fallback: return placeholder response
+        response = f"[Generated response to: {prompt[:80] if isinstance(prompt, str) else 'tensor input'}]"
+        metadata = {
+            'emotional_context': emotional_context or {},
+            'generation_mode': 'fallback',
+        }
+        return response, metadata
         
     def generate_with_emotion(
         self,

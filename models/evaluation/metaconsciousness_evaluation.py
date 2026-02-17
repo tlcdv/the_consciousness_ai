@@ -202,3 +202,41 @@ class MetaconsciousnessEvaluator:
         
         # Check if system can project future states
         future_projection = self_model_state.get('future_projection_ability', 0.0)
+
+        return (temporal_continuity + learning_recognition + future_projection) / 3.0
+
+    def _evaluate_metacognitive_accuracy(self, prediction_history: List[Dict]) -> float:
+        """
+        Evaluate how accurately the system predicts its own performance.
+        """
+        if not prediction_history:
+            return 0.0
+
+        correct = 0
+        weighted_score = 0.0
+        for entry in prediction_history:
+            match = entry.get('prediction') == entry.get('outcome')
+            confidence = entry.get('confidence', 0.5)
+            if match:
+                correct += 1
+                weighted_score += confidence
+            else:
+                weighted_score += (1.0 - confidence)
+
+        accuracy = correct / len(prediction_history)
+        calibration = weighted_score / len(prediction_history)
+        return (accuracy + calibration) / 2.0
+
+    def _check_emotion_awareness(self, self_model_state: Dict) -> float:
+        """Check if the system can identify its current emotional state."""
+        if 'attention_focus' in self_model_state:
+            return min(1.0, sum(self_model_state['attention_focus'].values()))
+        return 0.0
+
+    def _check_knowledge_gap_awareness(self, introspection_results: Dict) -> float:
+        """Check if the system can identify its knowledge gaps."""
+        return introspection_results.get('knowledge_boundary_awareness', 0.0)
+
+    def _check_decision_explanation(self, introspection_results: Dict) -> float:
+        """Check if the system can explain its decision processes."""
+        return introspection_results.get('confidence_calibration', 0.0)

@@ -28,10 +28,19 @@ class ConsciousnessGate(nn.Module):
     def __init__(self, config):
         """Sets up gating parameters and neural networks."""
         super().__init__()
-        self.attention_threshold = config.gating.attention_threshold
-        self.stability_threshold = config.gating.stability_threshold
-        self.adaptation_rate = config.gating.base_adaptation_rate
-        self.hidden_size = config.hidden_size
+        # Support both dict and attribute-style config
+        if isinstance(config, dict):
+            gating = config.get('gating', {})
+            self.attention_threshold = gating.get('attention_threshold', 0.5)
+            self.stability_threshold = gating.get('stability_threshold', 0.6)
+            self.adaptation_rate = gating.get('base_adaptation_rate', 0.01)
+            self.hidden_size = config.get('hidden_size', 128)
+        else:
+            gating = getattr(config, 'gating', config)
+            self.attention_threshold = getattr(gating, 'attention_threshold', 0.5)
+            self.stability_threshold = getattr(gating, 'stability_threshold', 0.6)
+            self.adaptation_rate = getattr(gating, 'base_adaptation_rate', 0.01)
+            self.hidden_size = getattr(config, 'hidden_size', 128)
 
         # Attention gating.
         self.attention_net = nn.Sequential(

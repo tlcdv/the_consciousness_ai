@@ -15,6 +15,66 @@ import torch
 import torch.nn as nn
 from typing import Dict, List, Optional, Tuple
 from dataclasses import dataclass
+from models.core.consciousness_gating import ConsciousnessGate
+
+
+class EpisodicMemoryStore:
+    """Episodic memory storage"""
+    def __init__(self, config):
+        self.memories = []
+    def store(self, state, emotional, temporal, metadata=None):
+        self.memories.append({'state': state, 'emotional': emotional})
+    def search(self, query, emotional_query=None, k=5):
+        return self.memories[:k]
+
+
+class SemanticMemoryStore:
+    """Semantic memory storage"""
+    def __init__(self, config):
+        self.knowledge = {}
+    def update(self, features):
+        pass
+    def search(self, query, k=5):
+        return []
+
+
+class TemporalMemoryBuffer:
+    """Temporal memory buffer"""
+    def __init__(self, config):
+        self.buffer = []
+    def update(self, embedding):
+        self.buffer.append(embedding)
+
+
+class EmotionalContextNetwork(nn.Module):
+    """Encodes emotional context for memory"""
+    def __init__(self, config):
+        super().__init__()
+        dim = config.get('emotion_dim', 3) if isinstance(config, dict) else 3
+        hidden = config.get('hidden_dim', 64) if isinstance(config, dict) else 64
+        self.net = nn.Linear(dim, hidden)
+    def forward(self, x):
+        if isinstance(x, dict):
+            x = torch.tensor(list(x.values()))
+        return self.net(x)
+
+
+class SemanticAbstractionNetwork(nn.Module):
+    """Abstracts semantic features from experiences"""
+    def __init__(self, config):
+        super().__init__()
+        hidden = config.get('hidden_dim', 64) if isinstance(config, dict) else 64
+        self.net = nn.Linear(hidden, hidden)
+    def forward(self, state, emotional):
+        return self.net(state)
+
+
+class TemporalCoherenceProcessor(nn.Module):
+    """Processes temporal coherence"""
+    def __init__(self, config):
+        super().__init__()
+    def forward(self, x):
+        return x
 
 @dataclass
 class MemoryMetrics:
