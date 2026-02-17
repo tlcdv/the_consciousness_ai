@@ -36,5 +36,4 @@ jobs:
         flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
     - name: Run Unit Tests
       run: |
-        # Run only the lightweight tests for CI (skipping heavy model loading if marked)
-        pytest tests/envs/test_simple_visual_env.py
+        pytest tests/ -q --ignore=tests/envs/ -k "not test_load_model"
