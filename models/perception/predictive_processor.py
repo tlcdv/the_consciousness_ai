@@ -11,7 +11,17 @@ class PredictiveProcessor:
         predicted_state = self._generate_prediction(current_state)
         self.prediction_history.append(predicted_state)
         return predicted_state
-        
+
+    def _generate_prediction(self, current_state: Dict[str, Any]) -> Dict[str, Any]:
+        """Generate a predicted next state from the current state."""
+        predicted = {}
+        for key, value in current_state.items():
+            if isinstance(value, np.ndarray):
+                predicted[key] = value + np.random.normal(0, 0.01, value.shape)
+            else:
+                predicted[key] = value
+        return predicted
+
     def update_model(self, prediction: Dict[str, Any], actual: Dict[str, Any]):
         """Update internal model based on prediction accuracy"""
         prediction_error = self._compute_error(prediction, actual)

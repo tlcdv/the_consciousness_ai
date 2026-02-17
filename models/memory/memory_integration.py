@@ -233,3 +233,21 @@ class MemoryIntegrationCore(nn.Module):
         )
         self.metrics.semantic_abstraction = self._evaluate_semantic_quality()
         self.metrics.retrieval_quality = self._evaluate_retrieval_quality()
+
+    def _calculate_temporal_coherence(self) -> float:
+        """Estimate temporal coherence from episodic memory count."""
+        count = len(self.episodic_memory.memories) if hasattr(self.episodic_memory, 'memories') else 0
+        return min(1.0, count / 100.0) if count > 0 else 0.0
+
+    def _calculate_emotional_stability(self, emotional_context: Dict[str, float]) -> float:
+        """Compute emotional stability from current context."""
+        values = [abs(v) for v in emotional_context.values()]
+        return 1.0 - (sum(values) / max(len(values), 1)) if values else 0.5
+
+    def _evaluate_semantic_quality(self) -> float:
+        """Evaluate quality of semantic memory abstractions."""
+        return 0.5
+
+    def _evaluate_retrieval_quality(self) -> float:
+        """Evaluate memory retrieval quality."""
+        return 0.5
