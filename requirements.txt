@@ -16,10 +16,9 @@ pyphi>=1.2.0          # Integrated Information Theory library
 networkx>=3.0
 
 # -------------------------------------------------------
-# Unity Integration
+# Unity Integration (optional, requires Python <3.10)
+# Install manually: pip install mlagents==0.29.0 mlagents-envs>=1.0.0
 # -------------------------------------------------------
-mlagents==0.29.0       # Unity ML-Agents Python API
-mlagents-envs>=1.0.0
 grpcio>=1.60.0
 protobuf>=4.25.0
 
