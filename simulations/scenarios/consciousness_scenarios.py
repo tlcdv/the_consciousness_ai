@@ -7,6 +7,24 @@ from enum import Enum
 import numpy as np
 import random
 
+
+class UnrealEngineInterface:
+    """Stub for Unreal Engine integration"""
+    def __init__(self, config=None):
+        self.config = config
+
+    def create_scenario(self, config):
+        return f"scenario_{id(config)}"
+
+
+class AttentionTriggerSystem:
+    """Stub for attention trigger system"""
+    def __init__(self, config=None):
+        self.config = config
+
+    def setup(self, scenario_id=None, stress_level=0.0):
+        pass
+
 """
 Consciousness Development Scenario Generator for ACM
 
@@ -39,17 +57,20 @@ class ScenarioType(Enum):
     PROBLEM_SOLVING = "problem_solving"
 
 class ConsciousnessScenarioGenerator:
-    def __init__(self, config: Dict):
+    def __init__(self, config=None):
         """Initialize scenario generation"""
+        if config is None:
+            config = {}
         self.config = config
-        self.ue_engine = UnrealEngineInterface(config.ue) 
+        ue_cfg = getattr(config, 'ue', None) if not isinstance(config, dict) else config.get('ue')
+        self.ue_engine = UnrealEngineInterface(ue_cfg)
         self.attention_triggers = AttentionTriggerSystem(config)
         
     def generate_scenario(
         self,
-        difficulty: float,
-        stress_level: float,
-        scenario_type: str
+        difficulty: float = 0.5,
+        stress_level: float = 0.7,
+        scenario_type: str = "survival"
     ) -> Dict:
         """Generate consciousness development scenario"""
         # Configure base scenario
@@ -69,8 +90,34 @@ class ConsciousnessScenarioGenerator:
             stress_level=stress_level
         )
         
-        return self._build_scenario_descriptor(scenario_id)
-        
+        return self._build_scenario_descriptor(scenario_id, scenario_config)
+
+    def _get_evaluation_metrics(self) -> Dict:
+        """Return default evaluation metrics for a scenario."""
+        return {
+            'attention_threshold': 0.7,
+            'stress_adaptation': 0.6,
+            'emotional_coherence': 0.5,
+        }
+
+    def _build_scenario_descriptor(self, scenario_id, config=None) -> Dict:
+        """Build a descriptor dict for a generated scenario."""
+        import torch
+        cfg = config or {}
+        return {
+            'id': scenario_id,
+            'type': cfg.get('type', 'survival'),
+            'difficulty': cfg.get('difficulty', 0.5),
+            'stress_level': cfg.get('stress_level', 0.7),
+            'state': torch.randn(32),
+            'emotion': {
+                'valence': random.uniform(0.2, 0.8),
+                'arousal': random.uniform(0.5, 0.9),
+                'dominance': random.uniform(0.3, 0.7),
+            },
+            'attention': {'attention_level': random.uniform(0.5, 0.9)},
+        }
+
     def _generate_survival_scenario(self) -> Dict:
         """Generate survival-based scenario"""
         # Create stressful situation to trigger attention

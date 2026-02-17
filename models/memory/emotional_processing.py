@@ -15,7 +15,24 @@ import torch.nn as nn
 from typing import Dict, List, Optional, Tuple
 from dataclasses import dataclass
 
-@dataclass 
+class MetaEmotionalLearner(nn.Module):
+    """Meta-learning for emotional processing adaptation"""
+    def __init__(self, config):
+        super().__init__()
+        hidden = config.get('hidden_dim', 64)
+        embed = config.get('embedding_dim', 32)
+        self.net = nn.Linear(embed, embed)
+        self.progress = 0.0
+
+    def update(self, embedding, state):
+        self.progress = min(1.0, self.progress + 0.001)
+        return self.net(embedding)
+
+    def get_progress(self):
+        return self.progress
+
+
+@dataclass
 class EmotionalProcessingMetrics:
     """Tracks emotional processing performance"""
     emotional_stability: float = 0.0

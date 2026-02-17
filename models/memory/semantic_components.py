@@ -24,7 +24,7 @@ class ConceptMetrics:
     knowledge_stability: float = 0.0
     semantic_relevance: float = 0.0
 
-class ConceptHierarchy(nn.Module:
+class ConceptHierarchy(nn.Module):
     """
     Maintains hierarchical organization of semantic concepts
     """

@@ -15,6 +15,7 @@ Dependencies:
 
 from typing import Dict, List, Optional, Tuple
 import torch
+import torch.nn as nn
 from dataclasses import dataclass
 import numpy as np
 

@@ -49,6 +49,14 @@ class DevelopmentConfig:
         if self.consciousness is None:
             self.consciousness = self
 
+    def __getitem__(self, key):
+        """Allow dict-style access for compatibility."""
+        return getattr(self, key)
+
+    def get(self, key, default=None):
+        """Allow dict-style .get() for compatibility."""
+        return getattr(self, key, default)
+
     @classmethod
     def from_yaml(cls, path: str = None) -> 'DevelopmentConfig':
         """Load config from YAML file if available."""

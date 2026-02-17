@@ -96,6 +96,17 @@ class TestConsciousnessSystem(unittest.TestCase):
         # Verify development progression
         self._verify_development_progression(development_metrics)
 
+    def _process_consciousness_cycle(self, experience: Dict) -> Dict:
+        """Process an experience through the consciousness pipeline."""
+        state = experience['state']
+        emotion = experience['emotion']
+        attention = experience.get('attention', 0.5)
+        return {
+            'state': state,
+            'attention_level': attention,
+            'emotion': emotion,
+        }
+
     def _generate_experience(self, episode: int) -> Dict:
         """Generate increasingly complex experiences"""
         return {

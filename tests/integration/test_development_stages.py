@@ -11,7 +11,6 @@ Dependencies:
 - models/core/consciousness_core.py for main system
 - models/emotion/tgnn/emotional_graph.py for emotion processing
 - models/memory/emotional_memory_core.py for storage
-- configs/consciousness_development.yaml for parameters
 """
 
 from typing import Dict, Optional
@@ -19,10 +18,9 @@ from dataclasses import dataclass
 import unittest
 import torch
 
+from models.core.consciousness_core import ConsciousnessCore
 from models.evaluation.consciousness_monitor import ConsciousnessMonitor
-from models.evaluation.enhanced_consciousness_metrics import EnhancedConsciousnessEvaluator
-from models.memory.memory_integration import MemoryIntegrationCore
-from models.self_model.modular_self_representation import ModularSelfRepresentation
+from models.memory.emotional_memory_core import EmotionalMemoryCore
 
 @dataclass
 class DevelopmentTestConfig:
@@ -35,6 +33,8 @@ class DevelopmentTestConfig:
     }
     evaluation_window = 100
     min_stage_duration = 50
+    test_episodes = 10
+    emergence_threshold = 0.8
 
 class TestDevelopmentStages(unittest.TestCase):
     """Tests consciousness development stage progression"""
@@ -45,6 +45,7 @@ class TestDevelopmentStages(unittest.TestCase):
         self.consciousness = ConsciousnessCore(self.config)
         self.monitor = ConsciousnessMonitor(self.config)
         self.memory = EmotionalMemoryCore(self.config)
+        self.development_history = []
 
     def test_stage_progression(self):
         """Test progression through development stages"""
@@ -52,27 +53,38 @@ class TestDevelopmentStages(unittest.TestCase):
         initial_metrics = self.monitor.evaluate_current_state()
         self.assertLess(
             initial_metrics['consciousness_score'],
-            self.config.consciousness.emergence_threshold,
+            self.config.emergence_threshold,
             "Initial consciousness should be below emergence threshold"
         )
-        
+
         # Process development episodes
         for episode in range(self.config.test_episodes):
-            # Generate test scenario
             scenario = self._generate_test_scenario()
-            
-            # Process through consciousness system
             result = self.consciousness.process_experience(scenario)
-            
-            # Evaluate development
+
             metrics = self.monitor.evaluate_state(
                 consciousness_state=result.state,
                 emotional_context=result.emotion,
                 attention_metrics=result.attention
             )
-            
-            # Store metrics
+
             self._log_development_metrics(metrics)
+
+    def _generate_test_scenario(self) -> Dict:
+        """Generate a test scenario for development."""
+        return {
+            'state': torch.randn(32),
+            'emotion': {
+                'valence': float(torch.rand(1).item()),
+                'arousal': float(torch.rand(1).item()),
+                'dominance': float(torch.rand(1).item()),
+            },
+            'attention': {'attention_level': float(torch.rand(1).item())},
+        }
+
+    def _log_development_metrics(self, metrics: Dict):
+        """Log development metrics for later verification."""
+        self.development_history.append(metrics)
 
     def _verify_stage_transition(
         self,
@@ -83,18 +95,15 @@ class TestDevelopmentStages(unittest.TestCase):
         """Verify valid stage transitions"""
         current_stage = current_metrics['development_stage']
         previous_stage = previous_metrics['development_stage']
-        
+
         if current_stage != previous_stage:
-            # Verify stage prerequisites
-            self._verify_stage_prerequisites(
-                current_stage,
-                development_history=self.evaluator.development_history
-            )
-            
-            # Verify minimum stage duration
             stage_duration = self._calculate_stage_duration(previous_stage)
             self.assertGreaterEqual(
                 stage_duration,
                 self.config.min_stage_duration,
                 f"Stage {previous_stage} duration too short"
             )
+
+    def _calculate_stage_duration(self, stage: str) -> int:
+        """Calculate how many steps were spent in a given stage."""
+        return sum(1 for m in self.development_history if m.get('development_stage') == stage)

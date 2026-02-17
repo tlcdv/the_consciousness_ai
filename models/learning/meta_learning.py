@@ -16,6 +16,66 @@ Dependencies:
 import torch
 import torch.nn as nn
 from typing import Dict, List, Optional, Tuple
+from models.emotion.tgnn.emotional_graph import EmotionalGraphNetwork as EmotionalGraphNN
+from models.memory.emotional_memory_core import EmotionalMemoryCore
+
+
+class StateEncodingNetwork(nn.Module):
+    """Encodes meta-learning state"""
+    def __init__(self, config):
+        super().__init__()
+        self.net = nn.Linear(config.get('state_dim', 64), config.get('hidden_dim', 128))
+
+    def forward(self, x=None, **kwargs):
+        if x is not None:
+            return self.net(x)
+        return self.net(kwargs.get('emotional', kwargs.get('behavioral')))
+
+
+class UpdateGenerationNetwork(nn.Module):
+    """Generates parameter updates for meta-learning"""
+    def __init__(self, config):
+        super().__init__()
+        self.net = nn.Linear(config.get('hidden_dim', 128), config.get('update_dim', 64))
+
+    def forward(self, x=None, **kwargs):
+        if x is not None:
+            return self.net(x)
+        return self.net(kwargs.get('state_encoding'))
+
+
+class TemporalCoherenceNetwork(nn.Module):
+    """Ensures temporal coherence in meta-learning"""
+    def __init__(self, config):
+        super().__init__()
+        self.net = nn.Linear(config.get('hidden_dim', 128), 1)
+
+    def forward(self, x=None, **kwargs):
+        if x is not None:
+            return self.net(x)
+        return 0.5
+
+
+class SelfModelState:
+    """Represents current self-model state for meta-learning"""
+    def __init__(self, state_dict=None):
+        self.state = state_dict or {}
+
+
+class ExperienceBuffer:
+    """Buffer for storing meta-learning experiences"""
+    def __init__(self, capacity=1000):
+        self.buffer = []
+        self.capacity = capacity
+
+    def add(self, experience):
+        self.buffer.append(experience)
+        if len(self.buffer) > self.capacity:
+            self.buffer = self.buffer[-self.capacity:]
+
+    def get_recent(self, n=10):
+        return self.buffer[-n:]
+
 
 class MetaLearner:
     def __init__(self, config: Dict):

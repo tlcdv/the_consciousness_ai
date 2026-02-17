@@ -16,6 +16,7 @@ Dependencies:
 from typing import Dict, List, Optional, Tuple
 import torch
 from dataclasses import dataclass
+from models.emotion.tgnn.emotional_graph import EmotionalGraphNetwork as EmotionalGraphNN
 
 @dataclass
 class Intention:

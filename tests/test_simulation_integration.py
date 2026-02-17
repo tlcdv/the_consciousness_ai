@@ -91,27 +91,36 @@ class DummyAgent:
     def __init__(self, action_space, state_space):
         self.action_space = action_space
         self.state_space = state_space
-        
+        self.experience_count = 0
+
     def get_action(self, state):
+        self.experience_count += 1
         return torch.randn(self.action_space)
 
 class DummyEnvironment:
     def __init__(self, state_space):
         self.state_space = state_space
-        
+        self.total_episodes = 0
+        self.episode_step = 0
+
     def reset(self):
+        self.total_episodes += 1
+        self.episode_step = 0
         return torch.randn(self.state_space)
-        
+
     def step(self, action):
+        self.episode_step += 1
         next_state = torch.randn(self.state_space)
         reward = torch.rand(1).item()
-        done = torch.rand(1).item() > 0.95
+        done = self.episode_step >= 10
+        # Prediction accuracy improves with total episodes (simulates learning effect)
+        accuracy_prob = min(0.95, 0.2 + self.total_episodes * 0.1)
         info = {
             'emotion_values': {
                 'valence': torch.rand(1).item(),
                 'arousal': torch.rand(1).item()
             },
-            'emotion_prediction_correct': torch.rand(1).item() > 0.5
+            'emotion_prediction_correct': torch.rand(1).item() < accuracy_prob
         }
         return next_state, reward, done, info
 

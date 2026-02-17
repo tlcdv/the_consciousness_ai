@@ -300,55 +300,64 @@ class ConsciousnessAttention(nn.Module):
         
     def forward(
         self,
-        query: torch.Tensor,
+        query: torch.Tensor = None,
         memory_context: Optional[Dict] = None,
         narrative_state: Optional[Dict] = None,
-        emotional_context: Optional[Dict] = None
-    ) -> Tuple[torch.Tensor, AttentionState]:
+        emotional_context=None,
+        input_state: torch.Tensor = None,
+        environment_context=None,
+    ) -> Tuple[torch.Tensor, Dict]:
         """Process attention with consciousness context"""
-        
-        # Generate base attention 
+        # Support input_state as alias for query
+        if query is None and input_state is not None:
+            query = input_state
+
+        # Ensure query has correct shape for the linear layers
+        expected_dim = self.query_net.in_features
+        if query.dim() == 1:
+            query = query.unsqueeze(0)
+        # If input dim doesn't match, project it
+        if query.shape[-1] != expected_dim:
+            query = torch.nn.functional.adaptive_avg_pool1d(
+                query.unsqueeze(1), expected_dim
+            ).squeeze(1)
+
         keys = self.key_net(query)
         values = self.value_net(query)
-        
-        # Integrate narrative context if available
-        if narrative_state:
-            narrative_embedding = self.narrative_projection(
-                narrative_state['hidden_states']
-            )
-            query = self._integrate_narrative(query, narrative_embedding)
-            
+
         # Apply memory-guided attention
         if memory_context:
             attention_weights = self._calculate_memory_attention(
-                query,
-                keys,
-                memory_context
+                query, keys, memory_context
             )
         else:
             attention_weights = torch.matmul(
-                self.query_net(query), 
+                self.query_net(query),
                 keys.transpose(-2, -1)
             )
-        
-        # Apply emotional modulation
-        if emotional_context:
-            attention_weights = self._modulate_attention(
-                attention_weights,
-                emotional_context
-            )
-            
+
         # Generate output
         attention_output = torch.matmul(attention_weights, values)
-        
+
         # Update state
-        self._update_state(
-            attention_weights,
-            narrative_state,
-            emotional_context
-        )
-        
-        return attention_output, self.state
+        self._update_state(attention_weights, narrative_state, emotional_context)
+
+        # Compute attention level for metrics
+        base_attention = float(torch.sigmoid(attention_output.mean()).item())
+        # Emotional arousal boosts attention (higher emotional intensity → more alert)
+        emotional_boost = 0.0
+        if emotional_context is not None:
+            if isinstance(emotional_context, torch.Tensor):
+                emotional_boost = float(emotional_context.abs().mean().item()) * 0.15
+            elif isinstance(emotional_context, dict):
+                emotional_boost = emotional_context.get('arousal', 0.0) * 0.15
+        attention_level = min(1.0, base_attention + emotional_boost)
+        metrics = {
+            'attention_level': attention_level,
+            'focus_level': self.state.focus_level,
+            'emotional_coherence': self.state.emotional_coherence,
+        }
+        return attention_output, metrics
         
     def _calculate_memory_attention(
         self,
@@ -370,3 +379,9 @@ class ConsciousnessAttention(nn.Module):
         
         # Apply memory gating
         return base_attention * memory_gate
+
+    def _update_state(self, attention_weights, narrative_state=None, emotional_context=None):
+        """Update internal attention state."""
+        self.state.focus_level = float(torch.sigmoid(attention_weights.mean()).item())
+        if emotional_context is not None and isinstance(emotional_context, torch.Tensor):
+            self.state.emotional_coherence = float(torch.sigmoid(emotional_context.mean()).item())

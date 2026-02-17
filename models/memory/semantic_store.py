@@ -10,6 +10,8 @@ Implements semantic knowledge abstraction and storage following:
 Based on MANN (Modular Artificial Neural Networks) architecture.
 """
 
+import time
+
 import torch
 import torch.nn as nn
 from typing import Dict, List, Optional, Tuple

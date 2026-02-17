@@ -99,3 +99,74 @@ class EmotionalGraphNetwork(nn.Module):
         )
         
         return node_embedding, self.state
+
+    def process(self, input_data, emotional_context=None):
+        """Process input data and return emotional context dict.
+        Accepts dict or tensor input."""
+        if isinstance(input_data, dict):
+            # Build a tensor from the dict values we can use
+            vals = []
+            for k in ['valence', 'arousal', 'dominance']:
+                if k in input_data:
+                    vals.append(float(input_data[k]))
+            if vals:
+                tensor_input = torch.tensor(vals, dtype=torch.float32)
+            else:
+                tensor_input = torch.randn(self._get_input_dim())
+        elif isinstance(input_data, torch.Tensor):
+            tensor_input = input_data.float()
+        else:
+            tensor_input = torch.randn(self._get_input_dim())
+        # Pad or truncate to expected input dim
+        expected = self._get_input_dim()
+        if tensor_input.dim() == 0:
+            tensor_input = tensor_input.unsqueeze(0)
+        if tensor_input.numel() < expected:
+            tensor_input = torch.cat([tensor_input.flatten(), torch.zeros(expected - tensor_input.numel())])
+        tensor_input = tensor_input[:expected]
+        embedding, state = self.forward(tensor_input)
+        return {
+            'embedding': embedding.detach(),
+            'valence': float(embedding[0]) if embedding.numel() > 0 else 0.0,
+            'arousal': float(embedding[1]) if embedding.numel() > 1 else 0.0,
+            'dominance': float(embedding[2]) if embedding.numel() > 2 else 0.0,
+            'state': state,
+        }
+
+    def get_embedding(self, emotion_values):
+        """Get embedding tensor from emotion values dict."""
+        if isinstance(emotion_values, dict):
+            vals = [emotion_values.get('valence', 0.0),
+                    emotion_values.get('arousal', 0.0),
+                    emotion_values.get('dominance', 0.0)]
+            tensor_input = torch.tensor(vals, dtype=torch.float32)
+        elif isinstance(emotion_values, torch.Tensor):
+            tensor_input = emotion_values
+        else:
+            tensor_input = torch.zeros(self._get_input_dim())
+        expected = self._get_input_dim()
+        if tensor_input.numel() < expected:
+            tensor_input = torch.cat([tensor_input.flatten(), torch.zeros(expected - tensor_input.numel())])
+        tensor_input = tensor_input[:expected]
+        embedding, _ = self.forward(tensor_input)
+        return embedding.detach()
+
+    def _get_input_dim(self):
+        """Get expected input dimension from node encoder."""
+        for module in self.node_encoder.modules():
+            if isinstance(module, nn.Linear):
+                return module.in_features
+        return 3  # fallback
+
+    def _fuse_with_narrative(self, node_embedding, narrative_embedding):
+        """Fuse node embedding with narrative context."""
+        return node_embedding + narrative_embedding[:node_embedding.shape[-1]]
+
+    def _calculate_memory_gate(self, node_embedding, meta_memory):
+        """Calculate memory gating values."""
+        return torch.sigmoid(node_embedding)
+
+    def _update_state(self, node_embedding, meta_memory, narrative_state):
+        """Update internal emotional graph state."""
+        self.state.stability = float(torch.sigmoid(node_embedding.mean()))
+        self.state.coherence = float(torch.sigmoid(node_embedding.std()))

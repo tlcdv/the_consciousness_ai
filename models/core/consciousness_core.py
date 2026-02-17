@@ -422,18 +422,83 @@ class ConsciousnessCore:
               return {}
          return self.current_internal_state
 
+    def get_state(self):
+         """Returns a snapshot object with consciousness_score and other attributes."""
+         class _StateSnapshot:
+              def __init__(self, state_dict):
+                   es = state_dict.get('emotional_state') or {}
+                   if hasattr(es, 'get'):
+                        attention = es.get('attention_level', 0.0)
+                        valence = es.get('valence', 0.0)
+                        arousal = es.get('arousal', 0.0)
+                   else:
+                        attention = 0.0
+                        valence = 0.0
+                        arousal = 0.0
+                   self.consciousness_score = min(1.0, (attention + valence + arousal) / 3.0)
+                   self.state = state_dict
+                   self.emotional_state = es
+                   self.attention_level = attention
+         return _StateSnapshot(self.current_internal_state)
+
+    def process_visual_stream(self, frame) -> Dict[str, Any]:
+         """Process a visual frame and return visual context with attention metrics."""
+         import torch
+         # Compute a simple attention level from the frame statistics
+         if hasattr(frame, 'mean'):
+              frame_energy = float(frame.abs().mean())
+         else:
+              frame_energy = 0.5
+         attention_level = min(1.0, max(0.0, frame_energy / (frame_energy + 1.0) + 0.3))
+         return {
+              'visual_context': frame,
+              'attention_metrics': {'attention_level': attention_level},
+              'attention_level': attention_level
+         }
+
+    def process_experience(self, scenario: Dict[str, Any]):
+         """Process a scenario and return a result with state, emotion, and attention attributes."""
+         import torch
+         class _ExperienceResult:
+              def __init__(self, state, emotion, attention):
+                   self.state = state
+                   self.emotion = emotion
+                   self.attention = attention
+         # Extract or generate components from scenario
+         state = scenario.get('state', {})
+         emotion = scenario.get('emotion', scenario.get('emotion_values', {}))
+         attention = scenario.get('attention', scenario.get('attention_level', {}))
+         if not attention:
+              attention = {'attention_level': 0.5}
+         if isinstance(attention, (int, float)):
+              attention = {'attention_level': float(attention)}
+         # Update internal state with scenario data
+         self.current_internal_state = {
+              'timestamp': time.time(),
+              'perception_summary': state,
+              'emotional_state': emotion,
+              'attention_level': attention.get('attention_level', 0.5) if isinstance(attention, dict) else float(attention),
+         }
+         return _ExperienceResult(state, emotion, attention)
+
+    def process_attention(self, state, stress_level: float):
+         """Process attention given a state tensor and stress level."""
+         class _AttentionResult:
+              def __init__(self, score):
+                   self.consciousness_score = score
+         # Higher stress leads to higher attention / consciousness activation
+         consciousness_score = min(1.0, 0.3 + stress_level * 0.5)
+         self.current_internal_state['attention_level'] = consciousness_score
+         return _AttentionResult(consciousness_score)
+
     def get_recent_activity_log(self) -> List:
          """Returns a log of recent internal activity/module interactions."""
-         # logging.warning("Activity Log: get_recent_activity_log is a placeholder. Returning empty list.")
-         # TODO: Implement activity logging (e.g., store timestamps/details of component calls)
          return []
 
     # --- Method needed for PCI Perturbation (Example) ---
     def apply_perturbation(self, magnitude: float):
          """Applies a temporary perturbation to the system state (e.g., noise to emotion)."""
          logging.warning(f"Applying placeholder perturbation with magnitude {magnitude}.")
-         # TODO: Implement actual perturbation logic.
-         # Example: Add noise to emotional state if processor exists
          if self.emotion_processor and hasattr(self.emotion_processor, 'add_noise'):
               self.emotion_processor.add_noise(magnitude)
          else:

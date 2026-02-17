@@ -172,18 +172,22 @@ class SocialContextNetwork(nn.Module):
     
     def __init__(self, config: Dict):
         super().__init__()
-        
+        _get = config.get if isinstance(config, dict) else lambda k, d=None: getattr(config, k, d)
+        social_dim = _get('social_dim', 64)
+        social_hidden = _get('social_hidden', 64)
+        embedding_dim = _get('embedding_dim', 128)
+
         # Social context encoder
         self.context_encoder = nn.Sequential(
-            nn.Linear(config['social_dim'], config['social_hidden']),
-            nn.LayerNorm(config['social_hidden']),
+            nn.Linear(social_dim, social_hidden),
+            nn.LayerNorm(social_hidden),
             nn.GELU(),
-            nn.Linear(config['social_hidden'], config['embedding_dim'])
+            nn.Linear(social_hidden, embedding_dim)
         )
-        
+
         # Feedback integration
         self.feedback_gate = nn.Sequential(
-            nn.Linear(config['embedding_dim'] * 2, config['embedding_dim']),
+            nn.Linear(embedding_dim * 2, embedding_dim),
             nn.Sigmoid()
         )
 

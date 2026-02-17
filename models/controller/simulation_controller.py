@@ -1,9 +1,13 @@
 # models/controller/simulation_controller.py
 
+import numpy as np
 import torch
 import logging
 from typing import Dict, List, Optional, Tuple
 from dataclasses import dataclass
+from models.core.consciousness_core import ConsciousnessCore
+from models.evaluation.consciousness_monitor import ConsciousnessMonitor
+from models.memory.emotional_memory_core import EmotionalMemoryCore
 from models.predictive.dreamer_emotional_wrapper import DreamerEmotionalWrapper
 from models.fusion.emotional_memory_fusion import EmotionalMemoryFusion
 from models.evaluation.emotional_evaluation import EmotionalEvaluator

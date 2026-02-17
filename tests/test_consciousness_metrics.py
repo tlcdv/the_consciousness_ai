@@ -6,6 +6,7 @@ import numpy as np
 from models.evaluation.consciousness_metrics import ConsciousnessMetrics
 from models.evaluation.emotional_rl_metrics import EmotionalRLTracker
 from models.predictive.dreamer_emotional_wrapper import DreamerEmotionalWrapper
+from models.evaluation.consciousness_monitor import ConsciousnessMonitor
 
 """
 Unit tests for consciousness development metrics in ACM.
@@ -44,6 +45,7 @@ class TestConsciousnessMetrics(unittest.TestCase):
         self.metrics = ConsciousnessMetrics(self.config)
         self.rl_tracker = EmotionalRLTracker(self.config)
         self.dreamer = DreamerEmotionalWrapper(self.config)
+        self.monitor = ConsciousnessMonitor(self.config)
         
     def test_survival_learning(self):
         """Test learning through survival-based experiences"""

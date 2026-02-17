@@ -8,6 +8,7 @@ from models.memory.emotional_memory_core import EmotionalMemoryCore
 from models.fusion.emotional_memory_fusion import EmotionalMemoryFusion
 from models.generative.generative_emotional_core import GenerativeEmotionalCore
 from models.evaluation.emotional_evaluation import EmotionalEvaluator
+from models.emotion.tgnn.emotional_graph import EmotionalGraphNetwork as EmotionalGraphNN
 
 """
 Integration tests for emotional memory formation and retrieval in ACM.

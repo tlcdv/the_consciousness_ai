@@ -1,4 +1,5 @@
 import time
+import numpy as np
 # from simulations.api.simulation_manager import SimulationManager # For controlling stimuli
 # from models.communication.qualia_reporter import QualiaReporter # For getting ACM's report
 

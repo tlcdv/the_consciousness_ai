@@ -275,7 +275,13 @@ class MemoryCore:
         Create a combined memory vector by concatenating state, action,
         and emotional embedding.
         """
-        return torch.cat([state, action, emotional_embedding], dim=0)
+        parts = [state]
+        if action is not None:
+            parts.append(action)
+        else:
+            parts.append(torch.zeros(8))
+        parts.append(emotional_embedding)
+        return torch.cat(parts, dim=0)
 
     def _generate_memory_id(self) -> str:
         """Generate a unique ID for vector-based memory entries."""

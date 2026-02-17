@@ -122,12 +122,10 @@ class EmotionalMemoryIndex:
             emotional_embedding = self.emotion_network.get_embedding(emotion_values)
             vector = emotional_embedding.detach().cpu().numpy().flatten()
         else:
-            # Fallback: build vector from emotion values + state tensor
-            emo_vec = np.array([emotion_values.get('valence', 0.0),
-                                emotion_values.get('arousal', 0.0),
-                                emotion_values.get('dominance', 0.0)], dtype=np.float32)
-            state_vec = state.detach().cpu().numpy().flatten() if isinstance(state, torch.Tensor) else np.zeros(1)
-            vector = np.concatenate([emo_vec, state_vec])
+            # Fallback: build vector from emotion values only (matches retrieval query construction)
+            vector = np.array([emotion_values.get('valence', 0.0),
+                               emotion_values.get('arousal', 0.0),
+                               emotion_values.get('dominance', 0.0)], dtype=np.float32)
 
         # Calculate consciousness relevance
         if self.consciousness_metrics is not None:

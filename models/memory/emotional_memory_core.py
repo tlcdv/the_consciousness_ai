@@ -130,11 +130,31 @@ class EmotionalMemoryCore(MemoryInterface):
         else:
             logging.warning("Persistence path not set. Memory not saved.")
 
-    def store(self, timestamp: float, data: MemoryData):
+    def store(self, timestamp=None, data=None, input_data=None, emotional_context=None, attention_level=0.0, **kwargs):
         """
         Stores the experience data, ensuring essential fields for RL and context.
         Generates and stores text embeddings for relevant fields.
+        Supports both (timestamp, data) and (input_data=, emotional_context=, attention_level=) signatures.
         """
+        import time as _time
+        # Handle keyword-based call: store(input_data=..., emotional_context=..., attention_level=...)
+        if input_data is not None:
+            timestamp = _time.time()
+            data = {
+                'input_data': input_data,
+                'emotional_context': emotional_context,
+                'attention_level': attention_level,
+                'state_summary': str(input_data)[:200],
+            }
+            data.update(kwargs)
+            # Return a memory_id for the retrieve(memory_id) pattern
+            self.store(timestamp, data)
+            return len(self.memory_storage) - 1  # memory_id = index
+
+        if timestamp is None:
+            timestamp = _time.time()
+        if data is None:
+            data = {}
         if not isinstance(data, dict):
              logging.error(f"Memory store failed: Data must be a dictionary, got {type(data)}")
              return
@@ -158,10 +178,16 @@ class EmotionalMemoryCore(MemoryInterface):
         logging.debug(f"Storing memory at timestamp {timestamp} with embedding: {'Yes' if data['state_embedding'] else 'No'}")
         self.memory_storage.append((timestamp, data))
 
-    def retrieve(self, query_context: QueryContext, top_k: int = 5) -> List[RetrievedMemory]:
+    def retrieve(self, query_context=None, top_k: int = 5):
         """
-        Retrieves relevant memories using context (recency, semantic similarity, emotion).
+        Retrieves relevant memories. Accepts either a QueryContext dict or an integer memory_id.
         """
+        # Handle integer memory_id lookup
+        if isinstance(query_context, int):
+            idx = query_context
+            if 0 <= idx < len(self.memory_storage):
+                return self.memory_storage[idx][1]
+            return None
         logging.debug(f"Retrieving memories (top_k={top_k}) with context: {query_context}")
         if not self.memory_storage: return []
 
@@ -214,6 +240,56 @@ class EmotionalMemoryCore(MemoryInterface):
         retrieved: List[RetrievedMemory] = [mem_data for score, ts, mem_data in scored_memories[:top_k]]
         logging.debug(f"Retrieved {len(retrieved)} memories based on context.")
         return retrieved
+
+    def store_experience(self, state=None, emotion_values=None, attention_level=0.0, context=None, **kwargs) -> bool:
+        """Convenience wrapper: store an experience with emotional context.
+        Returns True on success."""
+        import time as _time
+        timestamp = _time.time()
+        data = {
+            'state_summary': str(state)[:200] if state is not None else '',
+            'state': state,
+            'emotion_values': emotion_values or {},
+            'emotional_state': emotion_values or {},
+            'attention_level': attention_level,
+            'context': context or {},
+        }
+        data.update(kwargs)
+        self.store(timestamp, data)
+        return True
+
+    def retrieve_similar_memories(self, emotion_query: Dict, k: int = 5) -> List:
+        """Retrieve memories most similar to the given emotion query.
+        Returns list of objects with .emotion_values attribute."""
+        if not self.memory_storage:
+            return []
+
+        class _MemoryItem:
+            def __init__(self, data):
+                self._data = data
+                self.emotion_values = data.get('emotion_values', data.get('emotional_state', {}))
+                self.attention_level = data.get('attention_level', 0.0)
+                self.state = data.get('state')
+                self.context = data.get('context', {})
+            def __getitem__(self, key):
+                return self._data.get(key)
+            def get(self, key, default=None):
+                return self._data.get(key, default)
+
+        scored = []
+        for timestamp, data in self.memory_storage:
+            mem_emotion = data.get('emotion_values', data.get('emotional_state', {}))
+            if not mem_emotion:
+                continue
+            distance = sum(
+                abs(emotion_query.get(k_e, 0) - mem_emotion.get(k_e, 0))
+                for k_e in set(list(emotion_query.keys()) + list(mem_emotion.keys()))
+            )
+            similarity = 1.0 / (1.0 + distance)
+            scored.append((similarity, timestamp, data))
+
+        scored.sort(key=lambda x: x[0], reverse=True)
+        return [_MemoryItem(d) for _, _, d in scored[:k]]
 
     def retrieve_batch_for_rl(self, batch_size: int) -> List[Tuple[float, MemoryData]]:
         """

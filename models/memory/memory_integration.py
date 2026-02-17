@@ -64,8 +64,13 @@ class SemanticAbstractionNetwork(nn.Module):
     def __init__(self, config):
         super().__init__()
         hidden = config.get('hidden_dim', 64) if isinstance(config, dict) else 64
+        self.hidden = hidden
         self.net = nn.Linear(hidden, hidden)
     def forward(self, state, emotional):
+        if isinstance(state, torch.Tensor) and state.shape[-1] != self.hidden:
+            state = torch.nn.functional.adaptive_avg_pool1d(
+                state.unsqueeze(0).unsqueeze(0), self.hidden
+            ).squeeze(0).squeeze(0)
         return self.net(state)
 
 
@@ -105,53 +110,61 @@ class MemoryIntegrationCore(nn.Module):
 
     def store_experience(
         self,
-        experience_data: Dict[str, torch.Tensor],
-        emotional_context: Dict[str, float],
-        consciousness_level: float,
+        experience_data=None,
+        emotional_context=None,
+        consciousness_level: float = 0.5,
         metadata: Optional[Dict] = None
     ) -> bool:
         """
-        Store experience with emotional context and consciousness gating
-        
-        Args:
-            experience_data: Raw experience data
-            emotional_context: Emotional state values
-            consciousness_level: Current consciousness level
-            metadata: Optional additional context
+        Store experience with emotional context and consciousness gating.
+        Accepts both dict and tensor experience_data.
         """
-        # Generate experience embeddings
+        if emotional_context is None:
+            emotional_context = {'valence': 0.5, 'arousal': 0.5, 'dominance': 0.5}
         emotional_embedding = self.emotional_encoder(emotional_context)
-        temporal_embedding = self.temporal_processor(experience_data['timestamp'])
-        
+
+        # Normalize experience_data to a dict
+        if isinstance(experience_data, dict):
+            state = experience_data.get('state', experience_data)
+            timestamp = experience_data.get('timestamp', torch.tensor(0.0))
+        else:
+            state = experience_data
+            timestamp = torch.tensor(0.0)
+
+        if isinstance(timestamp, (int, float)):
+            timestamp = torch.tensor(float(timestamp))
+        temporal_embedding = self.temporal_processor(timestamp)
+
         # Gate storage based on consciousness level
-        if self.consciousness_gate(consciousness_level):
-            # Store in episodic memory
+        if isinstance(consciousness_level, (int, float)):
+            gate_input = torch.full((1, self.consciousness_gate.hidden_size), consciousness_level)
+        elif isinstance(consciousness_level, torch.Tensor) and consciousness_level.dim() == 0:
+            gate_input = consciousness_level.unsqueeze(0).expand(1, self.consciousness_gate.hidden_size)
+        else:
+            gate_input = consciousness_level
+        gated_output, gate_state = self.consciousness_gate(gate_input)
+        if gate_state.attention_level >= self.consciousness_gate.attention_threshold:
             self.episodic_memory.store(
-                experience_data['state'],
+                state,
                 emotional_embedding,
                 temporal_embedding,
                 metadata
             )
-            
-            # Abstract semantic knowledge
+
             semantic_features = self.semantic_abstractor(
-                experience_data['state'],
+                state if isinstance(state, torch.Tensor) else torch.zeros(64),
                 emotional_embedding
             )
             self.semantic_memory.update(semantic_features)
-            
-            # Update temporal buffer
             self.temporal_memory.update(temporal_embedding)
-            
-            # Update metrics
+
             self._update_memory_metrics(
-                experience_data,
+                {'state': state},
                 emotional_context,
                 consciousness_level
             )
-            
             return True
-            
+
         return False
 
     def retrieve_memories(
@@ -184,6 +197,27 @@ class MemoryIntegrationCore(nn.Module):
             'episodic': episodic_results,
             'semantic': semantic_results,
             'metrics': self.get_metrics()
+        }
+
+    def get_state(self) -> Dict:
+        """Return current memory system state."""
+        return {
+            'episodic_count': len(self.episodic_memory.memories),
+            'metrics': {
+                'temporal_coherence': self.metrics.temporal_coherence,
+                'emotional_stability': self.metrics.emotional_stability,
+                'semantic_abstraction': self.metrics.semantic_abstraction,
+                'retrieval_quality': self.metrics.retrieval_quality,
+            }
+        }
+
+    def get_metrics(self) -> Dict:
+        """Return current memory metrics."""
+        return {
+            'temporal_coherence': self.metrics.temporal_coherence,
+            'emotional_stability': self.metrics.emotional_stability,
+            'semantic_abstraction': self.metrics.semantic_abstraction,
+            'retrieval_quality': self.metrics.retrieval_quality,
         }
 
     def _update_memory_metrics(

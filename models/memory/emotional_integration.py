@@ -1,5 +1,7 @@
 # models/memory/emotional_integration.py
 
+import time
+
 import torch
 import torch.nn as nn
 from typing import Dict, List, Optional, Tuple
@@ -179,6 +181,24 @@ class EmotionalMemoryIntegration(nn.Module):
             'stress_level': self.state.stress_level,
             'memory_coherence': self.state.memory_coherence
         }
+
+class EmotionalBuffer:
+    """Short-term emotional memory buffer"""
+    def __init__(self):
+        self.buffer = []
+
+    def add(self, item):
+        self.buffer.append(item)
+
+
+class EmotionalMemoryStore:
+    """Long-term emotional memory store"""
+    def __init__(self):
+        self.store = []
+
+    def store(self, item):
+        self.store.append(item)
+
 
 class EmotionalIntegrator:
     def __init__(self):

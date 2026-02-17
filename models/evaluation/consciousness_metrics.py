@@ -245,35 +245,81 @@ class ConsciousnessMetrics:
      """Groups the various consciousness metric calculators."""
      def __init__(self, config: dict, core_module: Optional[CoreModule] = None, memory_system: Optional[MemorySystem] = None):
           self.config = config
+          self._experience_store = []
           logging.info("Initializing ConsciousnessMetrics group...")
-          # Pass relevant sub-configs and potentially core modules if needed by calculators
           try:
                self.phi_calculator = IntegratedInformationCalculator(config.get('phi_config', {}))
           except Exception as e:
                logging.error(f"Failed to initialize IntegratedInformationCalculator: {e}", exc_info=True)
                self.phi_calculator = None
-
           try:
                self.gwt_tracker = GlobalWorkspaceTracker(config.get('gwt_config', {}))
           except Exception as e:
                logging.error(f"Failed to initialize GlobalWorkspaceTracker: {e}", exc_info=True)
                self.gwt_tracker = None
-
-          # PCI tester needs access to the core module
           try:
                self.pci_tester = PerturbationTester(config.get('pci_config', {}), core_module)
           except Exception as e:
                logging.error(f"Failed to initialize PerturbationTester: {e}", exc_info=True)
                self.pci_tester = None
-
-          # Self-awareness monitor might need core and memory
           try:
                self.self_awareness_monitor = SelfAwarenessMonitor(config.get('self_awareness_config', {}), core_module, memory_system)
           except Exception as e:
                logging.error(f"Failed to initialize SelfAwarenessMonitor: {e}", exc_info=True)
                self.self_awareness_monitor = None
-
           logging.info("ConsciousnessMetrics group initialization complete.")
+
+     def store_experience(self, experience: dict):
+          """Store an experience for later retrieval and evaluation."""
+          self._experience_store.append(experience)
+
+     def get_similar_emotional_experiences(self, emotion_query: dict, k: int = 5) -> List[dict]:
+          """Retrieve stored experiences most similar to the given emotion query."""
+          scored = []
+          for exp in self._experience_store:
+               exp_emotion = exp.get('emotion', exp.get('emotion_values', {}))
+               if not exp_emotion:
+                    continue
+               distance = sum(
+                    abs(emotion_query.get(key, 0) - exp_emotion.get(key, 0))
+                    for key in set(list(emotion_query.keys()) + list(exp_emotion.keys()))
+               )
+               similarity = 1.0 / (1.0 + distance)
+               scored.append((similarity, exp))
+          scored.sort(key=lambda x: x[0], reverse=True)
+          return [e for _, e in scored[:k]]
+
+     def evaluate_consciousness_development(self, interactions: List[dict]) -> dict:
+          """Evaluate consciousness development from a list of interactions."""
+          if not interactions:
+               return {'emotional_awareness': 0.0, 'memory_coherence': 0.0,
+                       'attention_level': 0.0, 'learning_progress': 0.0}
+          emotions = [i.get('emotion_values', i.get('emotion', {})) for i in interactions]
+          attentions = [i.get('attention_level', 0.5) for i in interactions]
+          rewards = [i.get('reward', 0.0) for i in interactions]
+          # Emotional awareness: stability of valence across interactions
+          valences = [e.get('valence', 0.5) for e in emotions]
+          if len(valences) > 1:
+               stability = 1.0 - float(np.std(valences))
+               emotional_awareness = max(0.0, min(1.0, stability))
+          else:
+               emotional_awareness = 0.5
+          # Memory coherence: based on number of stored experiences
+          memory_coherence = min(1.0, len(self._experience_store) / 20.0 + 0.3)
+          # Attention level: mean attention
+          attention_level = min(1.0, max(0.0, float(np.mean(attentions))))
+          # Learning progress: reward trend
+          if len(rewards) > 1:
+               diffs = np.diff(rewards)
+               learning_progress = min(1.0, max(0.0, float(np.mean(diffs)) + 0.5))
+          else:
+               learning_progress = 0.5
+          return {
+               'emotional_awareness': emotional_awareness,
+               'memory_coherence': memory_coherence,
+               'attention_level': attention_level,
+               'learning_progress': learning_progress,
+          }
 
      # Add helper methods to call sub-calculators safely
      def calculate_all_metrics(self, system_state: State, activity_log: List) -> Dict:

@@ -18,6 +18,15 @@ import torch
 from dataclasses import dataclass
 import numpy as np
 
+
+class MemoryOptimization:
+    """Memory storage optimization"""
+    def __init__(self, config):
+        self.config = config
+    def optimize_if_needed(self, storage):
+        pass
+
+
 @dataclass
 class MemoryEntry:
     """Memory entry containing experience data and metadata"""
@@ -78,6 +87,39 @@ from typing import Dict, List, Optional, Tuple
 from dataclasses import dataclass
 import time
 import numpy as np
+from models.core.consciousness_gating import ConsciousnessGate
+
+
+class PineconeVectorStore:
+    """Local vector store (replaces Pinecone)"""
+    def __init__(self, api_key=None, environment=None, index_name=None):
+        self.vectors = []
+    def store(self, vector=None, metadata=None):
+        self.vectors.append({'vector': vector, 'metadata': metadata})
+    def query(self, vector=None, filter=None, k=5):
+        return self.vectors[:k]
+
+
+class EmotionalContextNetwork(nn.Module):
+    """Encodes emotional context"""
+    def __init__(self, config):
+        super().__init__()
+        dim = config.get('emotion_dim', 3) if isinstance(config, dict) else 3
+        hidden = config.get('hidden_dim', 64) if isinstance(config, dict) else 64
+        self.net = nn.Linear(dim, hidden)
+    def forward(self, x):
+        if isinstance(x, dict):
+            x = torch.tensor(list(x.values()))
+        return self.net(x)
+
+
+class TemporalContextNetwork(nn.Module):
+    """Encodes temporal context"""
+    def __init__(self, config):
+        super().__init__()
+    def forward(self, x):
+        return x
+
 
 @dataclass
 class MemoryStats:
@@ -150,7 +192,7 @@ class EpisodicMemoryStore(nn.Module):
                 'emotional_context': emotional_context,
                 'consciousness_level': consciousness_level,
                 'timestamp': time.time(),
-                **metadata or {}
+                **(metadata or {})
             }
         )
         

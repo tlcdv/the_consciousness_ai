@@ -75,24 +75,17 @@ class EmotionalEvaluator:
     def evaluate_interaction(
         self,
         state: torch.Tensor,
-        action: torch.Tensor,
-        emotion_values: Dict[str, float],
-        attention_level: float,
-        narrative: str,
-        stress_level: float
+        emotion_values: Dict[str, float] = None,
+        attention_level: float = 0.5,
+        narrative: str = "",
+        stress_level: float = 0.5,
+        action: torch.Tensor = None,
+        **kwargs
     ) -> Dict:
         """Evaluate a single interaction for consciousness development"""
-        
-        # Process emotional response
-        emotional_embedding = self.emotion_network.get_embedding(emotion_values)
-        
-        # Get attention metrics
-        attention_metrics = self.attention.forward(
-            input_state=state,
-            emotional_context=emotional_embedding,
-            environment_context=None
-        )[1]  # Get metrics from tuple
-        
+        if emotion_values is None:
+            emotion_values = {}
+
         # Store experience
         self.store_experience({
             'state': state,
@@ -102,14 +95,17 @@ class EmotionalEvaluator:
             'narrative': narrative,
             'stress_level': stress_level
         })
-        
+
+        # Build attention metrics from attention_level
+        attention_metrics = {'attention_level': attention_level}
+
         # Update metrics
         self.update_metrics(
             emotion_values=emotion_values,
             attention_metrics=attention_metrics,
             stress_level=stress_level
         )
-        
+
         return self.get_evaluation_results()
         
     def update_metrics(
@@ -145,22 +141,31 @@ class EmotionalEvaluator:
         self.metrics.narrative_consistency = self._calculate_narrative_consistency()
         
     def _calculate_emotional_awareness(self, emotion_values: Dict[str, float]) -> float:
-        """Calculate emotional awareness score"""
-        if not self.experience_history:
-            return 0.0
-            
+        """Calculate emotional awareness score based on emotional history."""
+        if len(self.experience_history) < 2:
+            # With limited history, estimate from current emotional engagement
+            arousal = emotion_values.get('arousal', 0.5)
+            attention = self.experience_history[-1].get('attention', 0.5) if self.experience_history else 0.5
+            return (arousal + attention) / 2.0
+
         recent_emotions = [exp['emotion'] for exp in self.experience_history[-100:]]
-        
+
         # Calculate emotional stability
+        pairs = list(zip(recent_emotions[:-1], recent_emotions[1:]))
         stability = np.mean([
-            1 - abs(e1['valence'] - e2['valence'])
-            for e1, e2 in zip(recent_emotions[:-1], recent_emotions[1:])
+            1 - abs(e1.get('valence', 0) - e2.get('valence', 0))
+            for e1, e2 in pairs
         ])
-        
+
         # Calculate emotional range
-        emotional_range = np.std([e['valence'] for e in recent_emotions])
-        
-        return (stability + emotional_range) / 2
+        emotional_range = np.std([e.get('valence', 0) for e in recent_emotions])
+
+        # Incorporate current attention level
+        recent_attention = np.mean([
+            exp.get('attention', 0.5) for exp in self.experience_history[-10:]
+        ])
+
+        return float((stability + emotional_range + recent_attention) / 3.0)
         
     def _calculate_attention_stability(self, attention_metrics: Dict[str, float]) -> float:
         """Calculate attention stability score"""
@@ -192,16 +197,32 @@ class EmotionalEvaluator:
             
         return np.mean(coherence_scores)
         
+    def _calculate_narrative_similarity(self, narrative_a: str, narrative_b: str) -> float:
+        """Compute simple word overlap similarity between two narratives."""
+        if not narrative_a or not narrative_b:
+            return 0.0
+        words_a = set(str(narrative_a).lower().split())
+        words_b = set(str(narrative_b).lower().split())
+        if not words_a or not words_b:
+            return 0.0
+        intersection = words_a & words_b
+        return len(intersection) / max(len(words_a), len(words_b))
+
     def _calculate_survival_adaptation(self, stress_level: float) -> float:
         """Calculate survival adaptation score"""
-        if not self.experience_history:
-            return 0.0
-            
-        recent_stress = [exp['stress_level'] for exp in self.experience_history[-100:]]
-        
+        if len(self.experience_history) < 2:
+            return 0.5
+
+        recent_stress = [
+            exp.get('stress_level', 0.5) for exp in self.experience_history[-100:]
+        ]
+
         # Calculate stress reduction over time
-        stress_change = np.mean(np.diff(recent_stress))
-        
+        diffs = np.diff(recent_stress)
+        if len(diffs) == 0:
+            return 0.5
+        stress_change = np.mean(diffs)
+
         # Higher score for reducing stress levels
         return 1.0 / (1.0 + np.exp(stress_change))
         
@@ -224,9 +245,25 @@ class EmotionalEvaluator:
         
         return (emotional_engagement + attention_quality) / 2
         
+    def _calculate_narrative_consistency(self) -> float:
+        """Calculate narrative consistency across experiences."""
+        if len(self.experience_history) < 2:
+            return 0.0
+        recent = self.experience_history[-100:]
+        has_narrative = [1.0 for exp in recent if exp.get('narrative')]
+        return len(has_narrative) / len(recent)
+
     def store_experience(self, experience: Dict):
         """Store experience in memory"""
-        self.memory.store_experience(experience)
+        import torch as _torch
+        self.memory.store_experience(
+            state=experience.get('state', _torch.zeros(32)),
+            action=experience.get('action', _torch.zeros(8)),
+            reward=experience.get('reward', 0.0),
+            emotion_values=experience.get('emotion', {}),
+            attention_level=experience.get('attention', 0.5),
+            narrative=experience.get('narrative', ''),
+        )
         self.experience_history.append(experience)
         
     def get_evaluation_results(self) -> Dict:

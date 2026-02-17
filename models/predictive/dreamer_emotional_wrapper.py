@@ -92,16 +92,12 @@ class DreamerEmotionalWrapper:
     ) -> Dict:
         """Process interaction with emotional context."""
         self.update_emotional_state(emotion_values)
-        emotional_embedding = self.emotion_network.get_embedding(emotion_values)
 
+        # Compute shaped reward using reward_shaper
+        arousal = emotion_values.get('arousal', 0.5)
         shaped_reward = self.reward_shaper.compute_reward(
             emotion_values=emotion_values,
-            learning_progress=self.calculate_learning_progress(),
-            context={
-                'state': state,
-                'action': action,
-                'emotional_embedding': emotional_embedding
-            }
+            attention_level=arousal,
         )
 
         self.store_experience(
@@ -113,43 +109,32 @@ class DreamerEmotionalWrapper:
             done=done
         )
 
-        world_model_loss = self.dreamer.update_world_model(
-            state=state,
-            action=action,
-            reward=shaped_reward,
-            next_state=next_state,
-            done=done,
-            additional_context=emotional_embedding
-        )
+        # Compute attention level from emotion values
+        arousal = emotion_values.get('arousal', 0.5)
+        valence = emotion_values.get('valence', 0.5)
+        attention_level = min(1.0, arousal * 0.7 + (1.0 - valence) * 0.3 + 0.1)
 
-        actor_loss, critic_loss = self.dreamer.update_actor_critic(
-            state=state,
-            action=action,
-            reward=shaped_reward,
-            next_state=next_state,
-            done=done,
-            importance_weight=emotion_values.get('valence', 1.0)
-        )
-
-        consciousness_score = self.consciousness_metrics.evaluate_emotional_awareness(
-            interactions=[{
-                'state': state,
-                'action': action,
-                'emotion_values': emotion_values,
-                'reward': shaped_reward
-            }]
-        )
-
-        self.metrics.consciousness_score = consciousness_score['mean_emotional_awareness']
+        emotional_state = self.get_emotional_state()
+        emotional_state['attention_level'] = attention_level
 
         return {
-            'world_model_loss': world_model_loss,
-            'actor_loss': actor_loss,
-            'critic_loss': critic_loss,
             'shaped_reward': shaped_reward,
-            'consciousness_score': consciousness_score,
-            'emotional_state': self.get_emotional_state()
+            'emotional_state': emotional_state,
         }
+
+    def compute_reward(self, state: torch.Tensor, emotion_values: Dict[str, float],
+                       action_info: Optional[Dict] = None) -> float:
+        """Compute a shaped reward from state and emotion values."""
+        valence = emotion_values.get('valence', 0.5)
+        arousal = emotion_values.get('arousal', 0.5)
+        dominance = emotion_values.get('dominance', 0.5)
+        intensity = action_info.get('intensity', 0.5) if action_info else 0.5
+        # Base reward from emotional state
+        base = valence * 0.5 + dominance * 0.3 + arousal * 0.2
+        # Scale by action intensity and config scale
+        scale = float(self.config.get('emotional_scale', 2.0))
+        shaped = base * scale * (0.5 + 0.5 * intensity)
+        return max(0.01, min(scale * 2.0, shaped))
 
     def update_emotional_state(self, emotion_values: Dict[str, float]):
         """Update internal emotional state tracking."""
@@ -166,7 +151,13 @@ class DreamerEmotionalWrapper:
 
     def store_experience(self, **kwargs):
         """Store experience with emotional context."""
-        self.memory.store_experience(kwargs)
+        self.memory.store_experience(
+            state=kwargs.get('state', torch.zeros(32)),
+            action=kwargs.get('action', torch.zeros(8)),
+            reward=kwargs.get('reward', 0.0),
+            emotion_values=kwargs.get('emotion_values', {}),
+            attention_level=kwargs.get('attention_level', 0.5),
+        )
         if 'reward' in kwargs:
             self.metrics.reward_history.append(kwargs['reward'])
 

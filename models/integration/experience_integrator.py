@@ -23,6 +23,11 @@ from models.fusion.emotional_memory_fusion import EmotionalMemoryFusion
 from models.generative.generative_emotional_core import GenerativeEmotionalCore
 from models.evaluation.emotional_evaluation import EmotionalEvaluator
 from models.predictive.attention_mechanism import ConsciousnessAttention
+from models.emotion.tgnn.emotional_graph import EmotionalGraphNetwork as EmotionalGraphNN
+from models.memory.emotional_memory_core import EmotionalMemoryCore
+from models.evaluation.consciousness_monitor import ConsciousnessMonitor
+from models.self_model.self_representation_core import SelfRepresentationCore
+from models.integration.emotional_development_core import EmotionalDevelopmentCore
 import logging
 
 @dataclass

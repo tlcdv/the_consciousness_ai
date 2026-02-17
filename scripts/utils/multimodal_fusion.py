@@ -1,3 +1,12 @@
+from models.speech.whisper.whisper_integration import WhisperIntegration
+
+
+class PaLI2Integration:
+    """Stub for PaLI-2 vision-language model"""
+    def generate_caption(self, image):
+        return "placeholder caption"
+
+
 class MultimodalFusion:
     def __init__(self):
         self.vision_model = PaLI2Integration()
