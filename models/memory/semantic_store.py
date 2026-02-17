@@ -58,6 +58,33 @@ class ConceptEncodingNetwork(nn.Module):
         # Combine features
         return concept_features + emotional_features
 
+class HierarchicalEncodingNetwork(nn.Module):
+    """Encodes concepts into hierarchical representations"""
+    def __init__(self, config: Dict):
+        super().__init__()
+        hidden = config.get('hidden_size', 64) if isinstance(config, dict) else 64
+        self.net = nn.Linear(hidden, hidden)
+    def forward(self, x):
+        return self.net(x)
+
+class KnowledgeIntegrationNetwork(nn.Module):
+    """Integrates new knowledge with existing semantic memory"""
+    def __init__(self, config: Dict):
+        super().__init__()
+        hidden = config.get('hidden_size', 64) if isinstance(config, dict) else 64
+        self.net = nn.Linear(hidden, hidden)
+    def forward(self, x):
+        return self.net(x)
+
+class ConceptHierarchy:
+    """Organizes concepts into hierarchical structure"""
+    def __init__(self, config: Dict):
+        self.config = config
+        self.levels = {}
+    def update(self, concept, level=0):
+        self.levels.setdefault(level, []).append(concept)
+
+
 class SemanticGraph:
     """Maintains network of semantic concepts and relationships"""
     

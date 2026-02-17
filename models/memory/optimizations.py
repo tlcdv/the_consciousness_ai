@@ -26,6 +26,16 @@ class OptimizationMetrics:
     cache_hit_rate: float = 0.0
     retrieval_latency: float = 0.0
 
+class CacheManager:
+    def __init__(self, config): self.config = config
+
+class IndexBalancer:
+    def __init__(self, config): self.config = config
+
+class PartitionOptimizer:
+    def __init__(self, config): self.config = config
+
+
 class MemoryOptimizer:
     """
     Implements memory system optimizations for efficient retrieval and storage
