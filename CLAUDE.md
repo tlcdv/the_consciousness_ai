@@ -218,3 +218,52 @@ Priority order based on dependency and impact:
 
 ### 6. Python 3.10+ upgrade (OPTIONAL)
 - Currently on 3.8.3. Upgrading enables cleaner type hints and pattern matching.
+
+---
+
+### 2026-02-18: Theory vs. Implementation Audit + Research-Backed Design Decisions
+
+**What was done:**
+
+1. **Full theory/implementation audit** against the Functionalist Emergentism thesis:
+   - Created `docs/theory_implementation_review.md` with complete alignment analysis
+   - Identified 7 issues (2 HIGH, 3 MEDIUM, 2 LOW severity)
+   - Highest severity: IIT Phi measurement inputs are methodologically wrong (binarized bid values, not causal node states); visual embeddings unimplemented
+
+2. **Resolved three open design questions** via literature research:
+
+   **Q: Falsification criterion for strong emergence?**
+   - Answer: use Hoel's Effective Information (EI) framework (PNAS 2013)
+   - Measure EI at gate level and workspace level simultaneously during training
+   - Falsification: if EI(workspace) ≤ EI(gates) across training, strong emergence is not occurring
+   - Secondary model: the 2025 Nature adversarial IIT/GNW collaboration (n=256, fMRI+MEG+iEEG). Pre-register predictions before running any experiment.
+   - **To implement:** `effective_information()` function in `models/evaluation/`
+
+   **Q: Should Dominance be in the reward formula?**
+   - Answer: yes. The published formula `Rtotal = Rext + λ(Valence - Arousal)` is incomplete and incorrect on two counts: Arousal is not purely negative (curiosity raises arousal), and dropping Dominance removes the agent's sense of agency.
+   - Corrected formula: `Rtotal = Rext + λ1·ΔValence - λ2·(Arousal - Arousal_target)² + λ3·Dominance`
+   - Supported by: Mehrabian PAD model, Homeostatic RL (Keramati & Gutkin eLife 2014), "In Defense of Dominance" (ACL 2012)
+   - **To update:** `models/emotion/reward_shaping.py` + thesis page
+
+   **Q: Qwen2-VL or VideoLLaMA3 as primary visual backbone?**
+   - Answer: **Qwen2-VL is the primary backbone. VideoLLaMA3 should be removed.**
+   - Reasons: M-ROPE natively handles temporal/3D video positional encoding (needed for live sim frames); Qwen3-VL-Embedding provides the direct path to implement `get_visual_embeddings()`; native HuggingFace integration; documented 4-bit quantization; VideoLLaMA3 is optimized for offline video analysis, not streaming.
+   - **To do:** delete `models/integration/video_llama3_integration.py` and its failing test; implement `get_visual_embeddings()` in `qwen2_integration.py` using ViT hidden states
+
+---
+
+## Current State
+
+77 of 79 tests pass (97%). Phase 2-3 of 7.
+
+**Architectural decisions locked:**
+- Visual backbone: Qwen2-VL (VideoLLaMA3 deprecated)
+- Reward formula: extend to full PAD with homeostatic arousal term
+- Strong emergence falsification: EI at gate vs. workspace level (Hoel framework)
+- IIT input: must use causal gate states, not workspace bid values
+
+**What fails (1 test):**
+- `test_video_llama3_integration.py::test_load_model`. To be deleted when VideoLLaMA3 is removed.
+
+**What's skipped (1 test):**
+- `test_predictive_processing.py::test_prediction_generation`: async test needs pytest-asyncio

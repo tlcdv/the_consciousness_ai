@@ -11,7 +11,6 @@ from models.predictive.attention_mechanism import ConsciousnessAttention
 from models.evaluation.consciousness_monitor import ConsciousnessMonitor
 from simulations.scenarios.consciousness_scenarios import ConsciousnessScenarioManager
 from models.core.consciousness_core import ConsciousnessCore
-from models.integration.video_llama3_integration import VideoLLaMA3Integration
 
 """
 End-to-end tests for the Artificial Consciousness Module (ACM) development pipeline.
@@ -81,8 +80,6 @@ class TestConsciousnessPipeline(unittest.TestCase):
             def generate(self, **kwargs):
                 return {"dummy_output": 1}
         
-        config = {"max_buffer_size": 4, "device": "cpu"}
-        self.video_llama3 = VideoLLaMA3Integration(config)
         self.core = ConsciousnessCore({})
         self.attention = ConsciousnessAttention({})
         self.fusion = EmotionalMemoryFusion({})

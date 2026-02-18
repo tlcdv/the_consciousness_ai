@@ -4,7 +4,7 @@ try:
     import pyphi
 except ImportError:
     pyphi = None
-from typing import Optional, List, Dict, Any, Tuple
+from typing import Dict, Any, Tuple
 import logging
 from collections import deque
 
@@ -114,27 +114,74 @@ class IITMetrics:
 
     def compute_phi_proxy(self, global_workspace_state: torch.Tensor) -> float:
         """
-        Main entry point.
-        1. Extract Subsystem (Top K nodes).
-        2. Binarize State.
-        3. Update History.
-        4. Build Empirical TPM.
-        5. Calculate Phi.
+        Legacy entry point using workspace bid values.
+
+        NOTE: This method binarizes workspace bid scores (salience estimates),
+        not actual causal node states. Phi values from this method are not a valid
+        measure of integrated information. Use compute_phi_from_gate_state() instead,
+        which uses causally connected gate activations as the subsystem.
         """
         subsystem_data = self.extract_subsystem_state(global_workspace_state)
         if not subsystem_data:
             return 0.0
-            
+
         current_state = subsystem_data['state']
         num_nodes = len(current_state)
-        
-        # 1. Update History
+
         self.update_history(current_state)
-        
-        # 2. Build Empirical TPM (The "Causal Structure" of the agent's recent thoughts)
         tpm = self.build_empirical_tpm(num_nodes)
-        
-        # 3. Calculate Phi
+        return self.calculate_phi(tpm, current_state)
+
+    def update_from_gate_state(self, gate_state) -> None:
+        """
+        Record the current causal state from the consciousness gate.
+
+        The five gate values (attention, stability, adaptation, coherence, confidence)
+        are causally connected: attention drives stability, stability modulates
+        adaptation rate, coherence reflects meta-memory integration, and narrator
+        confidence feeds back into attention. This makes them a valid small subsystem
+        for PyPhi's Phi calculation.
+
+        Args:
+            gate_state: GatingState dataclass with fields:
+                attention_level, stability_score, adaptation_rate,
+                meta_memory_coherence, narrator_confidence
+        """
+        state_tuple = (
+            int(gate_state.attention_level > 0.5),
+            int(gate_state.stability_score > 0.5),
+            int(gate_state.adaptation_rate > 0.01),
+            int(gate_state.meta_memory_coherence > 0.5),
+            int(gate_state.narrator_confidence > 0.5),
+        )
+        self.update_history(state_tuple)
+
+    def compute_phi_from_gate_state(self, gate_state) -> float:
+        """
+        Compute Phi using causal gate states as the subsystem.
+
+        This is the methodologically correct entry point. Gate activations
+        are genuine functional nodes with causal dependencies, producing Phi
+        values that reflect actual information integration in the system.
+
+        Args:
+            gate_state: GatingState dataclass.
+
+        Returns:
+            Phi value (float). 0.0 if PyPhi is not installed or system is too small.
+        """
+        self.update_from_gate_state(gate_state)
+
+        num_nodes = 5
+        tpm = self.build_empirical_tpm(num_nodes)
+
+        current_state = (
+            int(gate_state.attention_level > 0.5),
+            int(gate_state.stability_score > 0.5),
+            int(gate_state.adaptation_rate > 0.01),
+            int(gate_state.meta_memory_coherence > 0.5),
+            int(gate_state.narrator_confidence > 0.5),
+        )
         return self.calculate_phi(tpm, current_state)
 
     def extract_subsystem_state(self, attention_weights: torch.Tensor, threshold: float = 0.1) -> Dict[str, Any]:

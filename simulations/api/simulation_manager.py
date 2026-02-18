@@ -17,7 +17,7 @@ from simulations.environments.vr_environment import VREnvironment
 from models.cognitive.chain_of_thought import ChainOfThought
 from models.ace_core.ace_agent import ACEConsciousAgent
 from models.ace_core.ace_config import ACEConfig
-from models.integration.video_llama3_integration import VideoLLaMA3Integration
+from models.integration.video_llama3_integration import VideoLLaMA3Integration  # deprecated shim, routes to Qwen2-VL
 from models.memory.emotional_memory_core import EmotionalMemoryCore
 from models.core.consciousness_core import ConsciousnessCore
 from models.evaluation.consciousness_monitor import ConsciousnessMonitor

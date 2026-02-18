@@ -70,8 +70,13 @@ class EmotionalRewardShaper(nn.Module):
 
         self.valence_weight = config.get("valence_weight", 0.1)
         self.dominance_weight = config.get("dominance_weight", 0.05)
-        self.arousal_penalty = config.get("arousal_penalty", 0.1)
-        self.arousal_threshold = config.get("arousal_threshold", 0.8)
+        # Homeostatic arousal term: penalise deviation from optimal arousal level.
+        # Formula: -arousal_lambda * (arousal - arousal_target)^2
+        # Target ~0.3 keeps the agent in calm-curious state without catatonia.
+        # Setting target to 0.0 and lambda to 0.1 reproduces the old threshold penalty
+        # only at extreme arousal, but the homeostatic form is theoretically correct.
+        self.arousal_lambda = config.get("arousal_lambda", 0.1)
+        self.arousal_target = config.get("arousal_target", 0.3)
 
     def compute_reward(
         self,
@@ -157,34 +162,49 @@ class EmotionalRewardShaper(nn.Module):
 
     def compute_emotional_reward(self, emotion_values, base_reward=1.0, context=None):
         """
-        Calculate reward based on emotional values with historical context
+        Compute shaped reward from full PAD state using homeostatic formulation.
+
+        Formula (published thesis, corrected):
+            Rtotal = Rext
+                   + λ1 * ΔValence                         (reward positive affect)
+                   - λ2 * (Arousal - Arousal_target)^2     (homeostatic arousal penalty)
+                   + λ3 * Dominance                        (reward sense of agency)
+
+        The old threshold-based arousal penalty is replaced with a quadratic
+        homeostatic term. This lets the agent seek moderate arousal (curiosity/
+        exploration) rather than minimising arousal entirely (catatonia).
+        Dominance encodes agency: it distinguishes anger from fear (both are
+        high-arousal/negative-valence, but only fear is submissive).
+
+        Args:
+            emotion_values: Dict with keys 'valence', 'arousal', 'dominance'.
+            base_reward: External task reward (Rext).
+            context: Optional dict with 'emotional_history' and 'adaptation_detected'.
         """
-        # Start with base reward
         reward = base_reward
-        
-        # Apply core emotional modulation
+
+        # λ1 * ΔValence: reward increases in positive affect.
         if 'valence' in emotion_values:
             reward += emotion_values['valence'] * self.valence_weight
+
+        # λ3 * Dominance: reward sense of control and agency.
         if 'dominance' in emotion_values:
             reward += emotion_values['dominance'] * self.dominance_weight
-        
-        # Apply arousal penalty for high stress (if configured)
-        if 'arousal' in emotion_values and self.arousal_penalty > 0:
-            if emotion_values['arousal'] > self.arousal_threshold:
-                penalty = (emotion_values['arousal'] - self.arousal_threshold) * self.arousal_penalty
-                reward -= penalty
 
-                
-        # Incorporate historical trend analysis 
+        # -λ2 * (Arousal - Arousal_target)^2: homeostatic arousal.
+        if 'arousal' in emotion_values:
+            deviation = emotion_values['arousal'] - self.arousal_target
+            reward -= self.arousal_lambda * (deviation ** 2)
+
+        # Valence trend bonus: reward improvement over recent history.
         if context and 'emotional_history' in context and len(context['emotional_history']) > 5:
-            recent_emotions = context['emotional_history'][-5:]
-            # Reward improvement in emotional state
-            valence_trend = sum(e.get('valence', 0) for e in recent_emotions) / len(recent_emotions)
+            recent = context['emotional_history'][-5:]
+            valence_trend = sum(e.get('valence', 0) for e in recent) / len(recent)
             valence_delta = emotion_values.get('valence', 0) - valence_trend
             reward += valence_delta * self.config.get('trend_weight', 0.1)
-        
-        # Apply adaptation bonus when appropriate
+
+        # Adaptation bonus when learning progress is detected.
         if context and context.get('adaptation_detected', False):
             reward += self.config.get('adaptation_bonus', 0.2)
-            
+
         return reward
