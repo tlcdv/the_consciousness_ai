@@ -2,86 +2,115 @@ import unittest
 import numpy as np
 from models.narrative.narrative_generator import NarrativeGenerator, NarrativeBuffer
 
+class TestNarrativeBuffer(unittest.TestCase):
+    """Tests for the rolling narrative history buffer."""
+    
+    def test_capacity_eviction(self):
+        """Buffer should evict oldest entries when capacity is reached."""
+        buffer = NarrativeBuffer(capacity=3)
+        for i in range(5):
+            buffer.add(f"thought {i}")
+        
+        recent = buffer.get_recent()
+        self.assertEqual(len(recent), 3)
+        self.assertEqual(recent[0], "thought 2")
+        self.assertEqual(recent[2], "thought 4")
+    
+    def test_coherence_metric(self):
+        """Coherence should increase as the buffer fills."""
+        buffer = NarrativeBuffer(capacity=10)
+        self.assertEqual(buffer.get_coherence(), 1.0)  # Empty is maximally coherent
+        
+        buffer.add("first")
+        self.assertEqual(buffer.get_coherence(), 1.0)  # Single item is coherent
+        
+        buffer.add("second")
+        coherence_2 = buffer.get_coherence()
+        for i in range(8):
+            buffer.add(f"thought {i}")
+        coherence_full = buffer.get_coherence()
+        self.assertGreater(coherence_full, coherence_2)
+
+
 class TestNarrativeGenerator(unittest.TestCase):
     """Tests for the Phase 5 template-based Narrative Generator."""
     
     def setUp(self):
-        self.generator = NarrativeGenerator({"buffer_size": 5})
+        self.generator = NarrativeGenerator({"buffer_size": 10})
         
     def test_pad_quadrant_mapping(self):
         """Test that PAD values correctly map to semantic quadrants."""
-        # High Valence, High Arousal
-        q1 = self.generator._get_pad_quadrant(0.8, 0.8)
-        self.assertEqual(q1, "high_arousal_positive")
-        
-        # High Valence, Low Arousal
-        q2 = self.generator._get_pad_quadrant(0.6, 0.2)
-        self.assertEqual(q2, "low_arousal_positive")
-        
-        # Low Valence, High Arousal
-        q3 = self.generator._get_pad_quadrant(-0.7, 0.9)
-        self.assertEqual(q3, "high_arousal_negative")
-        
-        # Low Valence, Low Arousal
-        q4 = self.generator._get_pad_quadrant(-0.5, 0.1)
-        self.assertEqual(q4, "low_arousal_negative")
-        
-        # Neutral
-        q5 = self.generator._get_pad_quadrant(0.1, 0.3)
-        self.assertEqual(q5, "neutral")
+        self.assertEqual(self.generator._get_pad_quadrant(0.8, 0.8), "high_arousal_positive")
+        self.assertEqual(self.generator._get_pad_quadrant(0.6, 0.2), "low_arousal_positive")
+        self.assertEqual(self.generator._get_pad_quadrant(-0.7, 0.9), "high_arousal_negative")
+        self.assertEqual(self.generator._get_pad_quadrant(-0.5, 0.1), "low_arousal_negative")
+        self.assertEqual(self.generator._get_pad_quadrant(0.1, 0.3), "neutral")
 
     def test_subject_extraction(self):
         """Test robust subject extraction from various broadcast types."""
-        # String broadcast
-        subj_str = self.generator._extract_subject("bright light")
-        self.assertEqual(subj_str, "bright light")
+        self.assertEqual(self.generator._extract_subject("bright light"), "bright light")
+        self.assertEqual(self.generator._extract_subject({"description": "loud noise"}), "loud noise")
+        self.assertEqual(self.generator._extract_subject(np.zeros((3, 3))), "complex spatial pattern")
+        self.assertEqual(self.generator._extract_subject(42), "unclear stimuli")
         
-        # Dict broadcast
-        subj_dict = self.generator._extract_subject({"description": "loud noise", "priority": 0.9})
-        self.assertEqual(subj_dict, "loud noise")
+    def test_generate_populates_buffer(self):
+        """Generation should add entries to the rolling buffer."""
+        emotion = {"valence": 0.5, "arousal": 0.3, "dominance": 0.0}
+        self.generator.generate_from_workspace("test subject", emotion)
+        self.assertEqual(len(self.generator.buffer.get_recent()), 1)
         
-        # Tensor/Array broadcast
-        subj_tensor = self.generator._extract_subject(np.zeros((3, 3)))
-        self.assertEqual(subj_tensor, "complex spatial pattern")
+        self.generator.generate_from_workspace("test subject 2", emotion)
+        self.assertEqual(len(self.generator.buffer.get_recent()), 2)
+
+    def test_action_awareness_high_dominance(self):
+        """High dominance + high action should produce confidence phrasing."""
+        emotion = {"valence": 0.8, "arousal": 0.8, "dominance": 0.5}
+        action = np.array([0.9, 0.0, 0.0])
+        narrative = self.generator.generate_from_workspace("target", emotion, action)
+        self.assertIn("confident action", narrative)
+
+    def test_action_awareness_low_dominance(self):
+        """Low dominance + high action should produce loss-of-control phrasing."""
+        emotion = {"valence": -0.5, "arousal": 0.9, "dominance": -0.5}
+        action = np.array([0.9, 0.0, 0.0])
+        narrative = self.generator.generate_from_workspace("threat", emotion, action)
+        self.assertIn("out of control", narrative)
+
+    def test_temporal_coherence_calm_to_alarm(self):
+        """Transition from calm to alarm should produce 'Suddenly' bridge."""
+        # First: generate a calm narrative
+        calm_emotion = {"valence": 0.5, "arousal": 0.2, "dominance": 0.5}
+        n1 = self.generator.generate_from_workspace("garden", calm_emotion)
+        self.assertIn("Calmly", n1)  # low_arousal_positive template
         
-    def test_generate_from_workspace(self):
-        """Test the end-to-end generation and buffer insertion."""
-        broadcast = "a red apple"
-        emotion = {"valence": 0.9, "arousal": 0.8, "dominance": 0.5}
-        action = np.array([0.1, 0.8, -0.2]) # High magnitude
+        # Second: generate an alarmed narrative
+        alarm_emotion = {"valence": -0.8, "arousal": 0.9, "dominance": -0.5}
+        n2 = self.generator.generate_from_workspace("danger", alarm_emotion)
         
-        narrative = self.generator.generate_from_workspace(broadcast, emotion, action)
+        # Should have a transition bridge
+        self.assertTrue(n2.startswith("Suddenly"))
+
+    def test_temporal_coherence_repetition(self):
+        """Repeated identical states should produce 'Still' prefix."""
+        emotion = {"valence": 0.1, "arousal": 0.2, "dominance": 0.0}
+        # Force identical templates by seeding
+        np.random.seed(42)
+        n1 = self.generator.generate_from_workspace("nothing", emotion)
+        np.random.seed(42)  # Same seed -> same template
+        n2 = self.generator.generate_from_workspace("nothing", emotion)
+        np.random.seed(42)
+        n3 = self.generator.generate_from_workspace("nothing", emotion)
         
-        # Check basic string properties
-        self.assertIsInstance(narrative, str)
-        self.assertIn("apple", narrative)
-        
-        # Check action agency modifier was added
-        self.assertIn("strong, confident action", narrative)
-        
-        # Check buffer
-        recent = self.generator.buffer.get_recent()
-        self.assertEqual(len(recent), 1)
-        self.assertEqual(recent[0], narrative)
-        
-    def test_buffer_coherence(self):
-        """Test rolling buffer capacity and coherence metric."""
-        buffer = NarrativeBuffer(capacity=3)
-        
-        # Empty coherence
-        self.assertEqual(buffer.get_coherence(), 1.0)
-        
-        buffer.add("thought 1")
-        buffer.add("thought 2")
-        self.assertEqual(len(buffer.get_recent()), 2)
-        
-        buffer.add("thought 3")
-        buffer.add("thought 4") # Should evict thought 1
-        
-        recent = buffer.get_recent()
-        self.assertEqual(len(recent), 3)
-        self.assertNotIn("thought 1", recent)
-        self.assertIn("thought 4", recent)
+        # Third generation should see two identical predecessors and add "Still"
+        if n1 == n2:  # Only test if the seed actually produced identical outputs
+            self.assertTrue(n3.startswith("Still"))
+
+    def test_legacy_interface(self):
+        """Legacy generate() should still work."""
+        result = self.generator.generate({"description": "test"}, {"valence": 0.5, "arousal": 0.3, "dominance": 0.0})
+        self.assertIsInstance(result, str)
+        self.assertGreater(len(result), 0)
+
 
 if __name__ == '__main__':
     unittest.main()

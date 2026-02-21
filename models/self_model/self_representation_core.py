@@ -104,13 +104,20 @@ class SelfRepresentationCore:
         timestamp: Optional[float] = None
     ) -> Dict[str, Any]:
         """
-        Update the self-model based on new experience and feedback
+        Update the self-model based on new experience and feedback.
+        This is the core integration point for Phase 5: every cognitive
+        cycle updates the agent's sense of self, its capabilities,
+        its interoceptive needs, and its temporal continuity.
         """
         if timestamp is None:
             timestamp = time.time()
             
         if emotional_state is None:
             emotional_state = {"valence": 0.0, "arousal": 0.0, "dominance": 0.0}
+        
+        # Sync emotional state into self-model
+        self.state.emotional_state = dict(emotional_state)
+        self.state.attention_focus = {"level": attention_level}
             
         # Direct experience learning (Capabilities)
         direct_update = self.direct_learner(
@@ -124,6 +131,10 @@ class SelfRepresentationCore:
             rpe=rpe,
             current_state=self.state
         )
+        
+        # Interoceptive homeostatic dynamics
+        # Energy depletes with action, fatigue accumulates, damage decays slowly
+        intero_update = self._update_interoceptive_state(action, emotional_state)
         
         # Social learning (if feedback provided)
         social_update = {}
@@ -141,18 +152,49 @@ class SelfRepresentationCore:
         if 'prediction_outcomes' in current_state:
             self._update_confidence_calibration(current_state['prediction_outcomes'])
         
-        # Store history
+        # Store history (deep copy so mutations don't corrupt history)
         self._store_state_history()
         
         # Return update results
         return {
             'direct_update': direct_update,
             'meta_update': meta_update,
+            'interoceptive_update': intero_update,
             'social_update': social_update,
             'epistemic_update': epistemic_update,
             'temporal_update': temp_update,
             'timestamp': timestamp
         }
+    
+    def _update_interoceptive_state(self, action: Optional[np.ndarray], emotional_state: Dict) -> Dict:
+        """
+        Simulate homeostatic drive dynamics per Q7 of the biological research.
+        Energy depletes with action magnitude. Fatigue accumulates.
+        Damage decays slowly (healing). These drives generate valence
+        independently of external stimuli — an agent with low energy
+        should feel negative valence even in a safe environment.
+        """
+        intero = self.state.interoceptive_state
+        
+        # Energy depletion from action
+        if action is not None:
+            action_cost = float(np.linalg.norm(action)) * 0.01
+        else:
+            action_cost = 0.001  # Basal metabolic cost
+        intero["energy"] = max(0.0, intero["energy"] - action_cost)
+        
+        # Passive energy recovery (slow)
+        intero["energy"] = min(1.0, intero["energy"] + 0.002)
+        
+        # Fatigue accumulates and decays
+        arousal = emotional_state.get("arousal", 0.0)
+        intero["fatigue"] = min(1.0, intero["fatigue"] + arousal * 0.005)
+        intero["fatigue"] = max(0.0, intero["fatigue"] - 0.002)  # Slow recovery
+        
+        # Damage heals slowly
+        intero["damage"] = max(0.0, intero["damage"] - 0.001)
+        
+        return dict(intero)
         
     def _integrate_social_feedback(self, social_embedding: torch.Tensor) -> Dict:
         """Integrate feedback from social interactions"""
@@ -195,8 +237,8 @@ class SelfRepresentationCore:
             last_state = self.state_history[-1]
             time_diff = timestamp - last_state.get('timestamp', timestamp)
             
-            # Calculate state similarity
-            similarity = self._calculate_state_similarity(self.state, last_state.get('state'))
+            # Calculate state similarity using the snapshot dict directly
+            similarity = self._calculate_state_similarity(self.state, last_state)
             
             # Update continuity score (higher for similar states close in time)
             prev_continuity = self.state.temporal_continuity
@@ -242,28 +284,65 @@ class SelfRepresentationCore:
             self.state.confidence_calibration = 1.0 - calibration_error
     
     def _store_state_history(self) -> None:
-        """Store current state in history"""
-        self.state_history.append({
-            'state': self.state,
+        """Store a snapshot of the current state in history.
+        We deep-copy the mutable fields so history entries don't mutate."""
+        snapshot = {
+            'emotional_state': dict(self.state.emotional_state),
+            'interoceptive_state': dict(self.state.interoceptive_state),
+            'capability_model': dict(self.state.capability_model),
+            'temporal_continuity': self.state.temporal_continuity,
+            'learning_recognition': self.state.learning_recognition,
             'timestamp': time.time()
-        })
+        }
+        self.state_history.append(snapshot)
         
         # Limit history size
         if len(self.state_history) > self.max_history:
             self.state_history = self.state_history[-self.max_history:]
     
-    def _calculate_state_similarity(self, current_state: SelfState, previous_state: Optional[SelfState]) -> float:
-        """Calculate similarity between current and previous states"""
-        if not previous_state:
+    def _calculate_state_similarity(self, current_state: SelfState, previous_snapshot: Optional[Dict]) -> float:
+        """
+        Calculate similarity between current state and a previous snapshot.
+        Uses emotional state cosine similarity as the primary metric.
+        This drives temporal continuity — a stable self should have
+        similar emotional signatures across adjacent timesteps.
+        """
+        if not previous_snapshot:
             return 0.0
-            
-        # Compare key aspects of state (emotional, attention, beliefs)
-        # Implementation depends on specific comparison metrics
-        # This is a placeholder
-        return 0.8
+        
+        # Compare emotional states (the most rapidly changing self-aspect)
+        curr_emo = current_state.emotional_state
+        prev_emo = previous_snapshot.get('emotional_state', {})
+        
+        if not curr_emo or not prev_emo:
+            return 0.5  # Neutral if data missing
+        
+        curr_vec = np.array([curr_emo.get("valence", 0.0), 
+                             curr_emo.get("arousal", 0.0), 
+                             curr_emo.get("dominance", 0.0)])
+        prev_vec = np.array([prev_emo.get("valence", 0.0), 
+                             prev_emo.get("arousal", 0.0), 
+                             prev_emo.get("dominance", 0.0)])
+        
+        # Cosine similarity mapped to [0, 1]
+        dot = np.dot(curr_vec, prev_vec)
+        norm_curr = np.linalg.norm(curr_vec) + 1e-8
+        norm_prev = np.linalg.norm(prev_vec) + 1e-8
+        cosine_sim = dot / (norm_curr * norm_prev)
+        
+        # Also compare interoceptive state
+        curr_intero = current_state.interoceptive_state
+        prev_intero = previous_snapshot.get('interoceptive_state', {})
+        intero_diff = 0.0
+        for key in ["energy", "fatigue", "damage"]:
+            intero_diff += abs(curr_intero.get(key, 0.0) - prev_intero.get(key, 0.0))
+        intero_sim = max(0.0, 1.0 - intero_diff / 3.0)
+        
+        # Weighted combination: 60% emotional, 40% interoceptive
+        return 0.6 * ((cosine_sim + 1.0) / 2.0) + 0.4 * intero_sim
     
     def get_current_state(self) -> Dict[str, Any]:
-        """Get the current self-model state"""
+        """Get the full current self-model state including Phase 5 biological fields."""
         return {
             'id': self.state.id,
             'name': self.state.name,
@@ -277,10 +356,22 @@ class SelfRepresentationCore:
             'intentions': self.state.intentions,
             'learning_recognition': self.state.learning_recognition,
             'stability': self.state.stability,
-            'confidence_calibration': self.state.confidence_calibration
+            'confidence_calibration': self.state.confidence_calibration,
+            # Phase 5 biological additions
+            'body_schema_shape': list(self.state.body_schema.shape),
+            'interoceptive_state': dict(self.state.interoceptive_state),
+            'capability_model': dict(self.state.capability_model),
         }
+    
+    def update_body_schema(self, proprioceptive_tensor: torch.Tensor) -> None:
+        """
+        Update the body schema from the ProprioceptiveProcessor output.
+        This connects the somatotopic map to the self-model,
+        bridging Q7's requirement for a persistent body representation.
+        """
+        self.state.body_schema = proprioceptive_tensor.detach().clone()
         
-# Real Implementations for Phase 5 Phase 5 Self-Model Learning
+# Phase 5 Self-Model Learning Components
 class DirectExperienceLearner:
     """
     Learns 'what I can do'. Maps recent actions to emotional outcomes,

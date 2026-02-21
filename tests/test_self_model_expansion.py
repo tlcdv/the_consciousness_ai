@@ -8,8 +8,94 @@ from models.self_model.self_representation_core import (
     MetaLearningModule
 )
 
-class TestSelfModelExpansion(unittest.TestCase):
-    """Tests for the Phase 5 Self-Model biological expansions."""
+class TestSelfStateInitialization(unittest.TestCase):
+    """Test that the Phase 5 biological structures initialize correctly."""
+    
+    def test_body_schema_shape(self):
+        state = SelfState()
+        self.assertIsInstance(state.body_schema, torch.Tensor)
+        self.assertEqual(state.body_schema.shape, (1, 10, 8))
+
+    def test_interoceptive_defaults(self):
+        state = SelfState()
+        self.assertEqual(state.interoceptive_state["energy"], 1.0)
+        self.assertEqual(state.interoceptive_state["damage"], 0.0)
+        self.assertEqual(state.interoceptive_state["fatigue"], 0.0)
+
+    def test_capability_model_empty(self):
+        state = SelfState()
+        self.assertIsInstance(state.capability_model, dict)
+        self.assertEqual(len(state.capability_model), 0)
+    
+    def test_emotional_state_has_pad(self):
+        state = SelfState()
+        self.assertIn("valence", state.emotional_state)
+        self.assertIn("arousal", state.emotional_state)
+        self.assertIn("dominance", state.emotional_state)
+
+
+class TestDirectExperienceLearner(unittest.TestCase):
+    """Test action → emotion capability EMA tracking."""
+    
+    def setUp(self):
+        self.learner = DirectExperienceLearner({"capability_lr": 0.5})
+        self.state = SelfState()
+    
+    def test_ema_update_positive(self):
+        """Positive valence should increase expected valence for the action type."""
+        action = np.array([1.0, 0.0, 0.0])
+        emotion = {"valence": 1.0}
+        
+        res = self.learner(action, emotion, self.state)
+        self.assertEqual(res["action_type"], "move_dim_0_pos")
+        self.assertAlmostEqual(self.state.capability_model["move_dim_0_pos_valence"], 0.5)
+        
+        # Second call: 0.5 + 0.5*(1.0 - 0.5) = 0.75
+        self.learner(action, emotion, self.state)
+        self.assertAlmostEqual(self.state.capability_model["move_dim_0_pos_valence"], 0.75)
+
+    def test_idle_action(self):
+        """Very small action magnitude should be classified as idle."""
+        action = np.array([0.05, 0.0, 0.0])
+        res = self.learner(action, {"valence": 0.0}, self.state)
+        self.assertEqual(res["action_type"], "idle")
+    
+    def test_none_action_returns_empty(self):
+        res = self.learner(None, {"valence": 0.5}, self.state)
+        self.assertEqual(res, {})
+
+
+class TestMetaLearningModule(unittest.TestCase):
+    """Test RPE variance-based learning velocity detection."""
+    
+    def setUp(self):
+        self.meta = MetaLearningModule({"rpe_window_size": 30})
+        self.state = SelfState()
+    
+    def test_insufficient_data(self):
+        """Should return 0 velocity until enough data collected."""
+        for i in range(5):
+            res = self.meta(0.5, self.state)
+        self.assertEqual(res["learning_velocity"], 0.0)
+        self.assertFalse(res["novelty_spike"])
+
+    def test_learning_convergence(self):
+        """When RPE variance drops, velocity should be positive."""
+        # Phase 1: chaotic RPEs (high variance)
+        for r in [1.0, -1.0, 0.8, -0.9, 1.2, -1.1, 0.7, -0.8, 1.0, -0.5]:
+            self.meta(r, self.state)
+            
+        # Phase 2: stable RPEs (learning)
+        for r in [0.1, 0.05, 0.08, 0.02, -0.01, 0.03, -0.02, 0.01, 0.0, 0.01]:
+            res = self.meta(r, self.state)
+            
+        self.assertGreater(res["learning_velocity"], 0)
+        self.assertFalse(res["novelty_spike"])
+        self.assertEqual(self.state.learning_recognition, res["learning_velocity"])
+
+
+class TestSelfRepresentationCore(unittest.TestCase):
+    """Integration tests for the full self-model update loop."""
     
     def setUp(self):
         self.config = {
@@ -19,96 +105,98 @@ class TestSelfModelExpansion(unittest.TestCase):
         }
         self.core = SelfRepresentationCore(self.config)
 
-    def test_self_state_initialization(self):
-        """Test that the Phase 5 biological structures initialize correctly."""
-        state = self.core.state
+    def test_interoceptive_dynamics(self):
+        """Energy should deplete with action over multiple steps."""
+        initial_energy = self.core.state.interoceptive_state["energy"]
         
-        # Check explicit interoceptive state
-        self.assertIn("energy", state.interoceptive_state)
-        self.assertEqual(state.interoceptive_state["energy"], 1.0)
-        self.assertEqual(state.interoceptive_state["fatigue"], 0.0)
+        action = np.array([1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0])
+        emotion = {"valence": 0.5, "arousal": 0.7, "dominance": 0.3}
         
-        # Check body schema (10 parts, 8 features each)
-        self.assertIsInstance(state.body_schema, torch.Tensor)
-        self.assertEqual(state.body_schema.shape, (1, 10, 8))
+        for _ in range(50):
+            self.core.update_self_model(
+                current_state={},
+                attention_level=0.5,
+                action=action,
+                emotional_state=emotion,
+                rpe=0.1
+            )
         
-        # Check empty capability model
-        self.assertIsInstance(state.capability_model, dict)
-        self.assertEqual(len(state.capability_model), 0)
-
-    def test_direct_experience_learner(self):
-        """Test that action->outcome mapping updates the capability model (EMA)."""
-        learner = DirectExperienceLearner({"capability_lr": 0.5})
-        state = SelfState()
+        final_energy = self.core.state.interoceptive_state["energy"]
+        # Energy should have depleted
+        self.assertLess(final_energy, initial_energy)
         
-        # 1. Action is High Magnitude Positive in dimension 0
-        action = np.array([1.0, 0.0, 0.0])
-        # Outcome is highly positive valence
-        emotion = {"valence": 1.0, "arousal": 0.5, "dominance": 0.5}
-        
-        res = learner(action, emotion, state)
-        self.assertEqual(res["action_type"], "move_dim_0_pos")
-        
-        # Expected valence should move halfway to 1.0 (LR is 0.5)
-        self.assertAlmostEqual(state.capability_model["move_dim_0_pos_valence"], 0.5)
-        
-        # 2. Do it again
-        res = learner(action, emotion, state)
-        # Expected valence should move halfway from 0.5 to 1.0 -> 0.75
-        self.assertAlmostEqual(state.capability_model["move_dim_0_pos_valence"], 0.75)
-        
-        # 3. Idle action
-        idle_action = np.array([0.05, 0.0, 0.0])
-        res_idle = learner(idle_action, {"valence": 0.0}, state)
-        self.assertEqual(res_idle["action_type"], "idle")
-        self.assertAlmostEqual(state.capability_model["idle_valence"], 0.0)
-
-    def test_meta_learning_velocity(self):
-        """Test that MetaLearningModule detects dropping variance as learning velocity."""
-        meta = MetaLearningModule({"rpe_window_size": 20})
-        state = SelfState()
-        
-        # Initial phase: not enough data
-        for i in range(5):
-            res = meta(0.5, state)
-        self.assertEqual(res["learning_velocity"], 0.0)
-        
-        # Provide highly variant RPEs indicating confusion/novelty
-        variant_rpes = [1.0, -1.0, 0.8, -0.9, 1.2, -1.1, 0.7, -0.8]
-        for r in variant_rpes:
-            meta(r, state)
-            
-        # Provide stable/converging RPEs indicating learning is succeeding
-        stable_rpes = [0.1, 0.05, 0.08, 0.02, -0.01, 0.03, -0.02, 0.01]
-        for r in stable_rpes:
-            res = meta(r, state)
-            
-        # Recent variance should be much lower than overall variance
-        self.assertTrue(res["learning_velocity"] > 0)
-        self.assertFalse(res["novelty_spike"])
-        self.assertEqual(state.learning_recognition, res["learning_velocity"])
-
-    def test_update_self_model_integration(self):
-        """Test the full update_self_model loop with action and RPE."""
-        action = np.array([0.5, -0.5, 0.0])
-        emotion = {"valence": 0.8, "arousal": 0.2, "dominance": 0.5}
-        rpe = 0.5
-        
-        res = self.core.update_self_model(
-            current_state={"prediction_outcomes": {}},
+        # Fatigue should have accumulated (high arousal)
+        self.assertGreater(self.core.state.interoceptive_state["fatigue"], 0.0)
+    
+    def test_emotional_state_synced(self):
+        """update_self_model should sync emotion into SelfState."""
+        emotion = {"valence": 0.9, "arousal": 0.1, "dominance": 0.7}
+        self.core.update_self_model(
+            current_state={},
             attention_level=0.5,
-            action=action,
-            emotional_state=emotion,
-            rpe=rpe
+            emotional_state=emotion
+        )
+        self.assertEqual(self.core.state.emotional_state["valence"], 0.9)
+        self.assertEqual(self.core.state.emotional_state["dominance"], 0.7)
+
+    def test_history_is_snapshot_not_reference(self):
+        """History should store snapshots, not references to the live state."""
+        emotion1 = {"valence": 0.5, "arousal": 0.3, "dominance": 0.5}
+        self.core.update_self_model(
+            current_state={}, attention_level=0.5, emotional_state=emotion1
         )
         
-        # Verify sub-components ran
+        # Change the state
+        emotion2 = {"valence": -0.9, "arousal": 0.9, "dominance": -0.5}
+        self.core.update_self_model(
+            current_state={}, attention_level=0.5, emotional_state=emotion2
+        )
+        
+        # The first history entry should still have the original values
+        first_snapshot = self.core.state_history[0]
+        self.assertAlmostEqual(first_snapshot["emotional_state"]["valence"], 0.5)
+        # The second should have the new values
+        second_snapshot = self.core.state_history[1]
+        self.assertAlmostEqual(second_snapshot["emotional_state"]["valence"], -0.9)
+
+    def test_temporal_continuity_updates(self):
+        """Temporal continuity should be non-zero after multiple updates."""
+        emotion = {"valence": 0.5, "arousal": 0.3, "dominance": 0.5}
+        for _ in range(5):
+            self.core.update_self_model(
+                current_state={}, attention_level=0.5, emotional_state=emotion
+            )
+        # Should have non-zero continuity after multiple consistent updates
+        self.assertGreater(self.core.state.temporal_continuity, 0.0)
+
+    def test_get_current_state_includes_phase5_fields(self):
+        """get_current_state() must expose body_schema, interoceptive, capability."""
+        state_dict = self.core.get_current_state()
+        self.assertIn("body_schema_shape", state_dict)
+        self.assertIn("interoceptive_state", state_dict)
+        self.assertIn("capability_model", state_dict)
+        self.assertEqual(state_dict["body_schema_shape"], [1, 10, 8])
+
+    def test_update_body_schema(self):
+        """update_body_schema should replace the body tensor."""
+        new_schema = torch.ones(1, 10, 8)
+        self.core.update_body_schema(new_schema)
+        self.assertTrue(torch.all(self.core.state.body_schema == 1.0))
+    
+    def test_full_update_returns_all_sections(self):
+        """Full update should return direct, meta, interoceptive, epistemic, temporal."""
+        action = np.array([0.5, -0.5])
+        emotion = {"valence": 0.8, "arousal": 0.2, "dominance": 0.5}
+        res = self.core.update_self_model(
+            current_state={}, attention_level=0.5,
+            action=action, emotional_state=emotion, rpe=0.3
+        )
         self.assertIn("direct_update", res)
         self.assertIn("meta_update", res)
-        self.assertIn("action_type", res["direct_update"])
-        
-        # Verify state history tracked it
-        self.assertEqual(len(self.core.state_history), 1)
+        self.assertIn("interoceptive_update", res)
+        self.assertIn("epistemic_update", res)
+        self.assertIn("temporal_update", res)
+
 
 if __name__ == '__main__':
     unittest.main()

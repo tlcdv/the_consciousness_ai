@@ -97,7 +97,11 @@ class NarrativeGenerator:
         emotional_state: Dict[str, float], 
         action: Optional[np.ndarray] = None
     ) -> str:
-        """Generate a stream-of-consciousness narrative segment."""
+        """
+        Generate a stream-of-consciousness narrative segment.
+        Uses the rolling buffer to maintain temporal coherence 
+        (noetic consciousness: awareness of what came before).
+        """
         
         valence = emotional_state.get("valence", 0.0)
         arousal = emotional_state.get("arousal", 0.0)
@@ -106,18 +110,30 @@ class NarrativeGenerator:
         quadrant = self._get_pad_quadrant(valence, arousal)
         subject_str = self._extract_subject(broadcast)
         
-        # Select a template randomly from the appropriate quadrant
+        # Select a template from the appropriate quadrant
         templates = self.templates.get(quadrant, self.templates["neutral"])
         selected_template = np.random.choice(templates)
         
         narrative = selected_template.format(subject=subject_str)
         
+        # --- Temporal Coherence (Noetic Consciousness) ---
+        # Bridge from previous thought to current thought.
+        # This is what makes it a "stream" rather than isolated snapshots.
+        recent = self.buffer.get_recent()
+        if recent:
+            prev = recent[-1]
+            # Detect emotional shift for continuity phrasing
+            if quadrant.startswith("high_arousal") and "Calmly" in prev:
+                narrative = "Suddenly \u2014 " + narrative
+            elif quadrant.startswith("low_arousal") and ("Alarmed" in prev or "Urgent" in prev):
+                narrative = "Settling down. " + narrative
+            elif len(recent) >= 2 and recent[-1] == recent[-2]:
+                narrative = "Still " + narrative.lower()
+        
         # Add action awareness
         if action is not None:
-            # Just a placeholder heuristic for describing action magnitude
             action_mag = np.linalg.norm(action)
             if action_mag > 0.5:
-                # Add agency/dominance modifier
                 if dominance > 0.3:
                     narrative += " Executing strong, confident action."
                 elif dominance < -0.3:
