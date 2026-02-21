@@ -3,7 +3,7 @@ import torch
 import numpy as np
 from typing import Dict, Any
 
-from models.self_model.reinforcement_core import ReinforcementCore
+from models.self_model.action_selection_core import ActionSelectionCore
 from models.emotion.reward_shaping import EmotionalRewardShaper
 from models.memory.memory_core import MemoryCore, MemoryConfig
 
@@ -13,7 +13,8 @@ class TestEmotionalReinforcementIntegration(unittest.TestCase):
 
     def setUp(self):
         self.config = {
-            "state_dim": 32,
+            "workspace_dim": 32,
+            "context_dim": 32,
             "action_dim": 4,
             "gamma": 0.99,
             "learning_rate": 0.001,
@@ -39,15 +40,15 @@ class TestEmotionalReinforcementIntegration(unittest.TestCase):
         )
         self.memory = MemoryCore(mem_config)
 
-        self.rl_core = ReinforcementCore(self.config, self.emotion_shaper, self.memory)
+        self.action_core = ActionSelectionCore(self.config, self.emotion_shaper, self.memory)
 
     def test_end_to_end_learning(self):
         """Test a complete learning cycle with emotional integration."""
-        state = torch.randn(self.config["state_dim"])
+        state = torch.randn(self.config["workspace_dim"])
 
         for step_i in range(12):
-            action, value = self.rl_core.select_action(state)
-            next_state = torch.randn(self.config["state_dim"])
+            action, value = self.action_core.select_action(state, emotion_arousal=0.5)
+            next_state = torch.randn(self.config["workspace_dim"])
             raw_reward = float(torch.rand(1).item())
 
             emotion_state = {
@@ -56,11 +57,11 @@ class TestEmotionalReinforcementIntegration(unittest.TestCase):
                 "dominance": float(np.random.uniform(-1, 1)),
             }
 
-            step_info = self.rl_core.step(
-                state=state,
+            step_info = self.action_core.step(
+                workspace_broadcast=state,
                 action=action,
                 raw_reward=raw_reward,
-                next_state=next_state,
+                next_broadcast=next_state,
                 done=(step_i == 11),
                 emotion_state=emotion_state,
                 attention_level=0.7,
@@ -70,34 +71,34 @@ class TestEmotionalReinforcementIntegration(unittest.TestCase):
             self.assertIn("shaped_reward", step_info)
             state = next_state
 
-        update_info = self.rl_core.update_policy()
+        update_info = self.action_core.update_policy()
         self.assertIn("policy_loss", update_info)
         self.assertIn("value_loss", update_info)
 
     def test_emotional_memory_integration(self):
         """Test that emotional experiences are stored via the RL step."""
-        state = torch.randn(self.config["state_dim"])
+        state = torch.randn(self.config["workspace_dim"])
         for i in range(5):
-            action, _ = self.rl_core.select_action(state)
-            next_state = torch.randn(self.config["state_dim"])
+            action, _ = self.action_core.select_action(state, emotion_arousal=0.5)
+            next_state = torch.randn(self.config["workspace_dim"])
             emotion_state = {
                 "valence": 0.7 + 0.05 * i,
                 "arousal": 0.5 + 0.05 * i,
                 "dominance": 0.3,
             }
 
-            self.rl_core.step(
-                state=state,
+            self.action_core.step(
+                workspace_broadcast=state,
                 action=action,
                 raw_reward=0.5 + 0.1 * i,
-                next_state=next_state,
+                next_broadcast=next_state,
                 done=False,
                 emotion_state=emotion_state,
                 attention_level=0.8,
             )
             state = next_state
 
-        self.assertEqual(len(self.rl_core.rollout_buffer), 5)
+        self.assertEqual(len(self.action_core.rollout_buffer), 5)
 
     def test_reward_shaping(self):
         """Test that emotional reward shaping modulates the base reward."""

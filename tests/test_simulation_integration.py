@@ -3,7 +3,6 @@
 import unittest
 import torch
 from simulations.api.simulation_manager import SimulationManager
-from models.self_model.reinforcement_core import ReinforcementCore
 from models.emotion.tgnn.emotional_graph import EmotionalGraphNetwork
 from simulations.api.simulation_manager import SimulationManager
 from simulations.scenarios.consciousness_scenarios import ConsciousnessScenarioManager

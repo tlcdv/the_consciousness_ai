@@ -7,7 +7,7 @@ from typing import Dict, Any, Tuple, Optional
 # Components
 from models.vision_language.qwen2.qwen2_integration import Qwen2VLIntegration
 from models.core.global_workspace import GlobalWorkspace
-from models.self_model.reinforcement_core import ReinforcementCore
+from models.self_model.action_selection_core import ActionSelectionCore
 from models.emotion.reward_shaping import EmotionalRewardShaper
 from models.memory.memory_core import MemoryCore
 
@@ -55,9 +55,10 @@ class ConsciousnessAgent:
         self.memory = MemoryCore(config.get("memory", {}))
         self.emotion_shaper = EmotionalRewardShaper(config.get("emotion", {}))
         
-        # 3. Drives & Action (The Policy)
-        self.rl_core = ReinforcementCore(
-            config.get("reinforcement", {}), 
+        # 6. Action Selection (Prefrontal Cortex & Basal Ganglia)
+        # Replaces generic RL with biological Go/No-Go pathways modulated by Dopamine
+        self.action_core = ActionSelectionCore(
+            config.get("action_selection", {}), 
             self.emotion_shaper, 
             self.memory
         )
@@ -163,17 +164,53 @@ class ConsciousnessAgent:
         is_conscious = self.global_workspace.state.is_conscious
         phi = self.global_workspace.state.phi_value
         
-        # --- 4. Action Selection ---
+        # --- 4. Action Selection (PFC & Basal Ganglia) ---
         # State Construction:
-        # We need to feed a vector to PPO. 
+        # We need to feed a vector to the PFC. 
         # If Conscious: Use the Broadcast Content (Integrated)
-        # If Zombie: Use the Raw Percept (Reflex)
+        # If Zombie: Use the Raw Percept (Reflex/Heuristic fallback)
         
-        active_text = str(broadcast_content) if is_conscious else visual_description
-        state_vector = self._encode_text_to_state(active_text)
+        # Currently, broadcast_content is a tensor [B, workspace_dim] from Sensory Tectum
+        if not is_conscious or not isinstance(broadcast_content, torch.Tensor):
+            # Fallback to a zero tensor if no active broadcast (Zombie mode or error)
+            workspace_dim = self.config.get("workspace", {}).get("workspace_dim", 256) # Corrected path for workspace_dim
+            broadcast_tensor = torch.zeros(1, workspace_dim, device=self.device)
+        else:
+            broadcast_tensor = broadcast_content
+            
+        # Add arousal to scale exploration in Basal Ganglia (Panicked vs Calm)
+        arousal = self.emotion_shaper.state.arousal # Use emotion_shaper
+        action, value = self.action_core.select_action(broadcast_tensor, emotion_arousal=arousal, rpe_cache=self.last_rpe)
         
-        # Get Action from PPO
-        action, value = self.rl_core.select_action(state_vector)
+        # Determine reward (Placeholder: in a real env, this comes from the step)
+        # We simulate a reward based on satisfying the homeostasis goal
+        distance_to_goal = torch.norm(goal_vector - torch.tensor([
+            self.emotion_shaper.state.valence, # Use emotion_shaper
+            self.emotion_shaper.state.arousal, # Use emotion_shaper
+            self.emotion_shaper.state.dominance # Use emotion_shaper
+        ], device=self.device))
+        
+        simulated_reward = -distance_to_goal.item()
+        
+        # Update Core Tracking
+        step_metrics = self.action_core.step(
+            workspace_broadcast=broadcast_tensor,
+            action=action,
+            raw_reward=simulated_reward,
+            next_broadcast=broadcast_tensor, # Placeholder until next loop
+            done=False,
+            emotion_state=self.current_emotion, # Use self.current_emotion as it's updated
+            attention_level=phi,
+            narrative=visual_description
+        )
+        
+        self.last_rpe = step_metrics.get("dopamine_rpe", 0.0)
+        
+        # Periodic Policy Update
+        if self.memory.episodic.size > 10:
+            training_metrics = self.action_core.update_policy()
+        else:
+            training_metrics = {}
         
         # --- 5. Return ---
         info = {

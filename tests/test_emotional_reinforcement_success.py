@@ -8,7 +8,7 @@ stores experiences correctly, and that the narrative engine integrates properly.
 import unittest
 import torch
 import numpy as np
-from models.self_model.reinforcement_core import ReinforcementCore
+from models.self_model.action_selection_core import ActionSelectionCore
 from models.emotion.reward_shaping import EmotionalRewardShaper
 from models.memory.memory_core import MemoryCore, MemoryConfig
 from models.narrative.narrative_engine import NarrativeEngine
@@ -32,7 +32,8 @@ class MockEmotion:
 class TestEmotionalReinforcementSuccess(unittest.TestCase):
     def setUp(self):
         self.config = {
-            'state_dim': 32,
+            'workspace_dim': 32,
+            'context_dim': 32,
             'action_dim': 8,
             'gamma': 0.99,
             'learning_rate': 0.001,
@@ -49,7 +50,7 @@ class TestEmotionalReinforcementSuccess(unittest.TestCase):
         self.emotion_shaper = EmotionalRewardShaper(self.config)
         mem_config = MemoryConfig(max_memories=1000, vector_dim=32, attention_threshold=0.5)
         self.memory = MemoryCore(mem_config)
-        self.rl_core = ReinforcementCore(self.config, self.emotion_shaper, self.memory)
+        self.action_core = ActionSelectionCore(self.config, self.emotion_shaper, self.memory)
 
         mock_model = MockModel()
         self.narrative = NarrativeEngine(
@@ -61,18 +62,19 @@ class TestEmotionalReinforcementSuccess(unittest.TestCase):
 
     def test_emotional_memory_formation(self):
         """Test if emotional experiences are stored via RL step"""
-        state = torch.randn(self.config['state_dim'])
+        state = torch.randn(self.config['workspace_dim'])
         for i in range(5):
-            action, _ = self.rl_core.select_action(state)
-            next_state = torch.randn(self.config['state_dim'])
-            self.rl_core.step(
-                state=state, action=action, raw_reward=0.5 + 0.1 * i,
-                next_state=next_state, done=False,
+            action, _ = self.action_core.select_action(state, emotion_arousal=0.5)
+            next_state = torch.randn(self.config['workspace_dim'])
+            self.action_core.step(
+                workspace_broadcast=state, action=action, raw_reward=0.5 + 0.1 * i,
+                next_broadcast=next_state, done=False,
                 emotion_state={'valence': 0.8, 'arousal': 0.6, 'dominance': 0.7},
                 attention_level=0.9,
+                narrative="Test"
             )
             state = next_state
-        self.assertEqual(len(self.rl_core.rollout_buffer), 5)
+        self.assertEqual(len(self.action_core.rollout_buffer), 5)
 
     def test_reward_shaping(self):
         """Test emotional reward shaping mechanism"""
@@ -85,30 +87,31 @@ class TestEmotionalReinforcementSuccess(unittest.TestCase):
 
     def test_learning_progression(self):
         """Test policy update after enough steps"""
-        state = torch.randn(self.config['state_dim'])
+        state = torch.randn(self.config['workspace_dim'])
         for i in range(15):
-            action, _ = self.rl_core.select_action(state)
-            next_state = torch.randn(self.config['state_dim'])
-            self.rl_core.step(
-                state=state, action=action,
+            action, _ = self.action_core.select_action(state, emotion_arousal=0.5)
+            next_state = torch.randn(self.config['workspace_dim'])
+            self.action_core.step(
+                workspace_broadcast=state, action=action,
                 raw_reward=float(np.random.uniform(0, 1)),
-                next_state=next_state, done=(i == 14),
+                next_broadcast=next_state, done=(i == 14),
                 emotion_state={
                     'valence': float(np.random.uniform(0, 1)),
                     'arousal': float(np.random.uniform(0, 1)),
                     'dominance': float(np.random.uniform(0, 1)),
                 },
                 attention_level=0.7,
+                narrative="Test loop"
             )
             state = next_state
 
-        result = self.rl_core.update_policy()
+        result = self.action_core.update_policy()
         self.assertIn('total_loss', result)
 
     def test_meta_adaptation(self):
         """Test that select_action returns valid actions"""
-        state = torch.randn(self.config['state_dim'])
-        action, value = self.rl_core.select_action(state)
+        state = torch.randn(self.config['workspace_dim'])
+        action, value = self.action_core.select_action(state, emotion_arousal=0.5)
         self.assertEqual(len(action), self.config['action_dim'])
         self.assertIsInstance(value, float)
 

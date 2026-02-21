@@ -8,7 +8,7 @@ import torch
 import logging
 import asyncio
 
-from models.self_model.reinforcement_core import ReinforcementCore
+from models.self_model.action_selection_core import ActionSelectionCore
 from models.emotion.tgnn.emotional_graph import EmotionalGraphNetwork
 from models.narrative.narrative_engine import NarrativeEngine
 from models.memory.memory_core import MemoryCore
