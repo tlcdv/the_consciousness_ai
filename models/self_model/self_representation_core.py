@@ -16,6 +16,7 @@ from typing import Dict, Optional, List, Tuple, Any
 from dataclasses import dataclass
 import numpy as np
 import time
+from collections import deque
 
 @dataclass
 class SelfState:
@@ -43,10 +44,15 @@ class SelfState:
     # Metacognitive metrics
     confidence_calibration: float = 0.0  # How well confidence predicts accuracy
     
+    # Biological Self components (Phase 5)
+    body_schema: torch.Tensor = None            # Spatial representation of the physical self
+    interoceptive_state: Dict[str, float] = None # Internal needs (energy, damage, fatigue)
+    capability_model: Dict[str, float] = None    # Action-to-outcome confidence mappings
+    
     def __post_init__(self):
         """Initialize empty containers"""
         if self.emotional_state is None:
-            self.emotional_state = {}
+            self.emotional_state = {"valence": 0.0, "arousal": 0.0, "dominance": 0.0}
         if self.attention_focus is None:
             self.attention_focus = {}
         if self.confidence_levels is None:
@@ -59,6 +65,12 @@ class SelfState:
             self.beliefs = {}
         if self.intentions is None:
             self.intentions = {}
+        if self.body_schema is None:
+            self.body_schema = torch.zeros(1, 10, 8) # Default 10 body parts, 8 features
+        if self.interoceptive_state is None:
+            self.interoceptive_state = {"energy": 1.0, "damage": 0.0, "fatigue": 0.0}
+        if self.capability_model is None:
+            self.capability_model = {}
 
 class SelfRepresentationCore:
     """
@@ -85,30 +97,31 @@ class SelfRepresentationCore:
         self,
         current_state: Dict[str, Any],
         attention_level: float,
+        action: Optional[np.ndarray] = None,
+        emotional_state: Optional[Dict] = None,
+        rpe: float = 0.0,
         social_feedback: Optional[Dict] = None,
         timestamp: Optional[float] = None
     ) -> Dict[str, Any]:
         """
         Update the self-model based on new experience and feedback
-        
-        Args:
-            current_state: Current perception state
-            attention_level: Current attention level (0-1)
-            social_feedback: Optional feedback from social interactions
-            timestamp: Optional timestamp (defaults to current time)
-            
-        Returns:
-            Dict containing update results
         """
         if timestamp is None:
             timestamp = time.time()
             
-        # Extract relevant features from current state
-        feature_embedding = self._extract_features(current_state)
-        
-        # Direct experience learning
+        if emotional_state is None:
+            emotional_state = {"valence": 0.0, "arousal": 0.0, "dominance": 0.0}
+            
+        # Direct experience learning (Capabilities)
         direct_update = self.direct_learner(
-            feature_embedding=feature_embedding,
+            action=action,
+            emotional_outcome=emotional_state,
+            current_state=self.state
+        )
+        
+        # Meta learning (Learning Velocity)
+        meta_update = self.meta_learner(
+            rpe=rpe,
             current_state=self.state
         )
         
@@ -134,17 +147,12 @@ class SelfRepresentationCore:
         # Return update results
         return {
             'direct_update': direct_update,
+            'meta_update': meta_update,
             'social_update': social_update,
             'epistemic_update': epistemic_update,
             'temporal_update': temp_update,
             'timestamp': timestamp
         }
-    
-    def _extract_features(self, current_state: Dict[str, Any]) -> torch.Tensor:
-        """Extract feature embedding from current state"""
-        # Implementation depends on specific feature extraction approach
-        # This could use a neural network encoder, for example
-        pass
         
     def _integrate_social_feedback(self, social_embedding: torch.Tensor) -> Dict:
         """Integrate feedback from social interactions"""
@@ -272,23 +280,84 @@ class SelfRepresentationCore:
             'confidence_calibration': self.state.confidence_calibration
         }
         
-# Additional components to implement (placeholders)
+# Real Implementations for Phase 5 Phase 5 Self-Model Learning
 class DirectExperienceLearner:
+    """
+    Learns 'what I can do'. Maps recent actions to emotional outcomes,
+    building a capability model of the agent's agency in the world.
+    """
     def __init__(self, config):
         self.config = config
+        self.learning_rate = config.get("capability_lr", 0.1)
         
-    def __call__(self, feature_embedding, current_state):
-        # Implement direct learning from experience
-        return {}
+    def __call__(self, action: Optional[np.ndarray], emotional_outcome: Dict[str, float], current_state: SelfState) -> Dict:
+        if action is None:
+            return {}
+            
+        # Simplified: We hash the action sector to create a discrete 'capability' bucket
+        # In a full neural architecture, this would be an MLP predicting Delta-Valence from Action
+        action_mag = np.linalg.norm(action)
+        if action_mag < 0.1:
+            action_type = "idle"
+        else:
+            main_dim = np.argmax(np.abs(action))
+            sign = "pos" if action[main_dim] > 0 else "neg"
+            action_type = f"move_dim_{main_dim}_{sign}"
+            
+        # Track expected emotional outcome of this action
+        current_valence_exp = current_state.capability_model.get(f"{action_type}_valence", 0.0)
+        actual_valence = emotional_outcome.get("valence", 0.0)
+        
+        # EMA update
+        new_valence_exp = current_valence_exp + self.learning_rate * (actual_valence - current_valence_exp)
+        current_state.capability_model[f"{action_type}_valence"] = new_valence_exp
+        
+        return {
+            "action_type": action_type,
+            "expected_valence_shift": new_valence_exp
+        }
 
 class SocialLearningNetwork:
+    """Stub for future multi-agent interaction."""
     def __init__(self, config):
         self.config = config
         
     def __call__(self, social_feedback):
-        # Implement learning from social feedback
-        return torch.zeros(128)  # Placeholder embedding
+        return torch.zeros(128)
         
 class MetaLearningModule:
+    """
+    Tracks learning velocity. If RPE variance is dropping, the agent is 
+    successfully learning. If RPE variance spikes, the agent is in a novel situation.
+    """
     def __init__(self, config):
         self.config = config
+        self.rpe_window_size = config.get("rpe_window_size", 50)
+        self.rpe_history = deque(maxlen=self.rpe_window_size)
+        self.learning_velocity = 0.0
+        
+    def __call__(self, rpe: float, current_state: SelfState) -> Dict:
+        self.rpe_history.append(rpe)
+        
+        if len(self.rpe_history) < 10:
+            return {"learning_velocity": 0.0, "novelty_spike": False}
+            
+        # Calculate recent variance vs older variance
+        recent_var = np.var(list(self.rpe_history)[-10:])
+        overall_var = np.var(list(self.rpe_history))
+        
+        # If recent variance is much lower than overall, we are converging (learning)
+        # If it's much higher, we hit something novel/confusing
+        variance_ratio = recent_var / (overall_var + 1e-8)
+        
+        novelty_spike = variance_ratio > 2.0
+        
+        # Velocity is positive when variance is dropping
+        self.learning_velocity = 1.0 - variance_ratio
+        current_state.learning_recognition = self.learning_velocity
+        
+        return {
+            "learning_velocity": self.learning_velocity,
+            "rpe_variance_ratio": variance_ratio,
+            "novelty_spike": novelty_spike
+        }

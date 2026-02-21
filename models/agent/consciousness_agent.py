@@ -10,6 +10,8 @@ from models.core.global_workspace import GlobalWorkspace
 from models.self_model.action_selection_core import ActionSelectionCore
 from models.emotion.reward_shaping import EmotionalRewardShaper
 from models.memory.memory_core import MemoryCore
+from models.narrative.narrative_generator import NarrativeGenerator
+from models.self_model.self_representation_core import SelfRepresentationCore
 
 logger = logging.getLogger(__name__)
 
@@ -65,6 +67,10 @@ class ConsciousnessAgent:
         
         # 4. Consciousness (The Workspace)
         self.global_workspace = GlobalWorkspace(config.get("workspace", {}))
+        
+        # 5. Self-Model & Narrative (Phase 5)
+        self.narrative_gen = NarrativeGenerator(config.get("narrative", {}))
+        self.self_model = SelfRepresentationCore(config.get("self_model", {}))
         
         # Internal State
         self.current_emotion = {"valence": 0.0, "arousal": 0.0, "dominance": 0.0}
@@ -198,6 +204,24 @@ class ConsciousnessAgent:
         # On first step, fall back to current broadcast
         prev_broadcast = self.previous_broadcast if self.previous_broadcast is not None else broadcast_tensor
         
+        # --- 4.5. Self-Model & Narrative (Phase 5) ---
+        # Generate conscious narrative from the active broadcast and emotional state
+        narrative_text = self.narrative_gen.generate_from_workspace(
+            broadcast=visual_description if not is_conscious else "Conscious of " + visual_description,  # Simplified for payload
+            emotional_state=self.current_emotion,
+            action=action
+        )
+        
+        # Update the autobiographical / capability self-model
+        self_update_info = self.self_model.update_self_model(
+            current_state={"prediction_outcomes": {}},  # Will be expanded with real prediction outcomes
+            attention_level=phi,
+            action=action,
+            emotional_state=self.current_emotion,
+            rpe=self.last_rpe,
+            social_feedback=None
+        )
+        
         # Update Core Tracking
         step_metrics = self.action_core.step(
             workspace_broadcast=prev_broadcast,
@@ -207,7 +231,7 @@ class ConsciousnessAgent:
             done=False,
             emotion_state=self.current_emotion,
             attention_level=phi,
-            narrative=visual_description
+            narrative=narrative_text
         )
         
         # Track for next iteration
@@ -223,12 +247,14 @@ class ConsciousnessAgent:
         # --- 5. Return ---
         info = {
             "description": visual_description,
+            "narrative": narrative_text,
             "emotion": self.current_emotion,
             "is_conscious": is_conscious,
             "phi": phi,
             "qualia": self.global_workspace.get_unity_metrics()[3], # Qualia Vector
             "action_value": value,
-            "latency": time.time() - start_time
+            "latency": time.time() - start_time,
+            "self_model_id": self.self_model.state.id
         }
         
         return action, info
