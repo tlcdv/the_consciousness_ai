@@ -133,21 +133,25 @@ class Qwen2VLIntegration:
         )
         return output_text[0]
 
-    def get_visual_embeddings(self, image_input: Any) -> torch.Tensor:
+    def get_visual_embeddings(self, image_input: Any, return_spatial_grid: bool = False) -> torch.Tensor:
         """
         Extract visual feature embeddings from the ViT encoder.
 
-        Passes the image through the Qwen2-VL vision tower (ViT) and returns
-        a mean-pooled embedding over all visual tokens. This is the same approach
-        used by Qwen3-VL-Embedding for visual retrieval.
+        By default, returns a mean-pooled embedding over all visual tokens (1D tensor).
+        If return_spatial_grid=True, reshapes the tokens into a 2D spatial grid [C, H, W]
+        for use in topographically-aware modules like the Sensory Tectum.
 
         Args:
             image_input: PIL Image, file path, URL, or base64-encoded image.
+            return_spatial_grid: If True, returns unpooled [C, H, W] tensor.
 
         Returns:
-            1D float tensor of shape (1536,). Zero tensor when model is not loaded.
+            Tensor of shape (1536,) or (1536, H, W). Zero tensor when model is not loaded.
         """
         if self.model is None or self.processor is None:
+            if return_spatial_grid:
+                # Stub grid shape, assume 14x14 patches as a fallback
+                return torch.zeros(_QWEN2_VIT_DIM, 14, 14)
             return torch.zeros(_QWEN2_VIT_DIM)
 
         messages = [
@@ -177,23 +181,41 @@ class Qwen2VLIntegration:
             image_grid_thw = inputs.get("image_grid_thw")
 
             if pixel_values is None:
-                return torch.zeros(_QWEN2_VIT_DIM)
+                 if return_spatial_grid:
+                    return torch.zeros(_QWEN2_VIT_DIM, 14, 14)
+                 return torch.zeros(_QWEN2_VIT_DIM)
 
             with torch.no_grad():
                 # Extract from the ViT encoder (visual tower) before the language head.
-                # model.model.visual is Qwen2VisionTransformerPretrainedModel.
                 # Output shape: (total_visual_tokens, hidden_size)
                 visual_features = self.model.model.visual(
                     pixel_values,
                     grid_thw=image_grid_thw,
                 )
-                # Mean pool across all visual tokens to get a fixed-size embedding.
-                embedding = visual_features.mean(dim=0)
-
-            return embedding.cpu().float()
+                
+                if return_spatial_grid and image_grid_thw is not None:
+                    # Qwen2-VL image_grid_thw format: [T, H, W] per image. 
+                    # Assuming single image, so T=1. We want features arranged as [C, H, W]
+                    thw = image_grid_thw[0] if image_grid_thw.dim() > 1 else image_grid_thw
+                    t, h, w = thw[0].item(), thw[1].item(), thw[2].item()
+                    
+                    # Each token in Qwen2-VL's ViT is actually a 2x2 patch on the original grid if using 
+                    # their specific patch merge architecture, but the final sequence length matches h*w.
+                    
+                    # Reshape to [H, W, C] then permute to [C, H, W]
+                    # We take the first h*w tokens in case there are multiple images, though here there's just 1
+                    tokens = visual_features[:h*w]
+                    grid = tokens.view(h, w, _QWEN2_VIT_DIM).permute(2, 0, 1)
+                    return grid.cpu().float()
+                else:
+                    # Mean pool across all visual tokens to get a fixed-size embedding.
+                    embedding = visual_features.mean(dim=0)
+                    return embedding.cpu().float()
 
         except Exception as e:
             logger.warning(f"Visual embedding extraction failed: {e}")
+            if return_spatial_grid:
+                return torch.zeros(_QWEN2_VIT_DIM, 14, 14)
             return torch.zeros(_QWEN2_VIT_DIM)
 
     # Alias kept for backward compatibility with code calling get_embeddings().

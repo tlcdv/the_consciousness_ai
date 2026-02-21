@@ -67,34 +67,51 @@ class GlobalWorkspace:
         self.iit_metrics = IITMetrics()
         self.qualia_mapper = QualiaMapper()
         
+        # New: AKOrN Oscillatory Binding System
+        # We start with 5 oscillators (vision, audio, memory, emotion, default)
+        from models.core.oscillatory_binding import WorkspaceBindingSystem
+        self.binding_system = WorkspaceBindingSystem(num_modules=5, iterations=5)
+        # Register the standard modules so they map to specific oscillator indices
+        self.binding_system.register_modules(['vision', 'audio', 'memory', 'emotion', 'body'])
+        
     def register_specialist(self, name: str, module: Any) -> None:
         """Register a specialist cognitive module"""
         self.specialist_modules[name] = module
     
-    def run_competition(self, inputs: Dict[str, Any], goal_vector: torch.Tensor) -> Tuple[Dict[str, Any], Dict[str, float]]:
+    def run_competition(self, 
+                        inputs: Dict[str, Any], 
+                        goal_vector: torch.Tensor, 
+                        bids: Optional[Dict[str, float]] = None, 
+                        payloads: Optional[Dict[str, Any]] = None) -> Tuple[Dict[str, Any], Dict[str, float]]:
         """
-        Run GNW competition with Non-linear Ignition and Reverberation.
+        Run GNW competition with Non-linear Ignition, Reverberation, and AKOrN Binding.
+        
+        Args:
+            inputs: Legacy payload dictionary
+            goal_vector: Homeostasis target
+            bids: Explicit scalar bid values to enter competition (replaces polling if provided)
+            payloads: The semantic content associated with the bids
         """
-        bids = {}
-        contents = {}
+        if bids is None or payloads is None:
+            # Legacy mode: Poll registered modules
+            bids = {}
+            payloads = {}
+            for name, module in self.specialist_modules.items():
+                if hasattr(module, 'evaluate_salience'):
+                    content, bid = module.evaluate_salience(inputs)
+                    bids[name] = bid
+                    payloads[name] = content
+                    
+        # Provide fallback content dict name for the rest of the function
+        contents = payloads
         
-        # 1. Collect Bids
-        for name, module in self.specialist_modules.items():
-            if hasattr(module, 'evaluate_salience'):
-                content, bid = module.evaluate_salience(inputs)
-                bids[name] = bid
-                contents[name] = content
+        # 2. Oscillatory Binding (AKOrN - ICLR 2025)
+        # Replaces the heuristic: If Vision and Audio > 0.5, multiply by 1.2
+        # Now uses Kuramoto oscillators. Modules that synchronize get boosted bids.
+        bound_bids, sync_order_parameter = self.binding_system.bind_bids(bids)
         
-        # 2. Synchrony Binding (Scientific Upgrade)
-        # If multiple modalities bid high simultaneously, boost them.
-        # Simple heuristic: If Vision and Audio both > 0.5, multiply by 1.5
-        # In a real neural net, this would be temporal coincidence detection.
-        if bids.get('vision', 0) > 0.5 and bids.get('audio', 0) > 0.5:
-            bids['vision'] *= 1.2
-            bids['audio'] *= 1.2
-        
-        # 3. Calculate Input Energy (Max Bid)
-        input_energy = max(bids.values()) if bids else 0.0
+        # 3. Calculate Input Energy (Max Bound Bid)
+        input_energy = max(bound_bids.values()) if bound_bids else 0.0
         
         # 4. Non-linear Ignition (Sigmoid)
         # S(x) = 1 / (1 + e^(-k(x - theta)))
@@ -108,7 +125,7 @@ class GlobalWorkspace:
                            ((1.0 - self.reverberation_alpha) * ignition_val)
         
         self.state.broadcast_strength = current_strength
-        self.state.competition_results = bids
+        self.state.competition_results = bound_bids
         
         # 6. Determine Consciousness (Threshold Check on Reverberated State)
         self.state.is_conscious = current_strength >= self.ignition_threshold
@@ -116,15 +133,20 @@ class GlobalWorkspace:
         # 7. Select Winners (If Conscious)
         winners = []
         if self.state.is_conscious:
-            winners = self._resolve_competition(bids)
+            winners = self._resolve_competition(bound_bids)
             
         # 8. IIT & Qualia Calculation (Only if Conscious)
         if self.state.is_conscious:
             # Create Abstract Activation Tensor
-            workspace_tensor = self._bids_to_tensor(bids)
+            workspace_tensor = self._bids_to_tensor(bound_bids)
             
             # Calculate Phi (Using Proxy for now, will upgrade to Empirical later)
             phi = self.iit_metrics.compute_phi_proxy(workspace_tensor)
+            
+            # Bonus: The binding itself increases information integration
+            # We add a fraction of the Kuramoto synchronization parameter to Phi
+            phi += (sync_order_parameter * 0.1)
+            
             self.state.phi_value = phi
             
             # Map to Qualia (Phenomenology)
@@ -137,7 +159,7 @@ class GlobalWorkspace:
                 broadcast_content.update(contents[winner])
             
             self.state.active_content = broadcast_content
-            self.state.focus_topic = f"Processing: {', '.join(winners)}"
+            self.state.focus_topic = f"Processing: {', '.join(winners)} (Sync: {sync_order_parameter:.2f})"
             
             # History
             self.state.access_history.append({

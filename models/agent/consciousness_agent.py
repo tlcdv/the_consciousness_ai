@@ -34,6 +34,23 @@ class ConsciousnessAgent:
         # We use Qwen2-VL to turn raw pixels into semantic descriptions.
         self.vision_system = Qwen2VLIntegration(config.get("vision", {}))
         
+        # Midbrain sensory integration (Fuses vision and spatial audio)
+        from models.core.sensory_tectum import SensoryTectum
+        self.sensory_tectum = SensoryTectum({
+            "tectum_feature_dim": 1536, # Matches Qwen2-VL ViT dim
+            "tectum_grid_size": 14,     # Default patch grid
+            "workspace_dim": 256
+        }).to(self.device)
+        
+        # Somatosensory Mapping (Body Schema & Proprioception)
+        from models.self_model.embodiment_core import ProprioceptiveProcessor
+        self.raw_state_dim = config.get("proprioception", {}).get("raw_dim", 40)
+        self.body_processor = ProprioceptiveProcessor(
+            raw_state_dim=self.raw_state_dim, 
+            num_parts=10, 
+            feature_per_part=8
+        ).to(self.device)
+        
         # 2. Memory & Emotion (The Self)
         self.memory = MemoryCore(config.get("memory", {}))
         self.emotion_shaper = EmotionalRewardShaper(config.get("emotion", {}))
@@ -71,14 +88,35 @@ class ConsciousnessAgent:
         start_time = time.time()
         
         # --- 1. Perception ---
-        # Analyze scene with Qwen2-VL
-        # For performance in "Dark Room", we might cache or skip frames in production.
+        # Analyze scene logically with Qwen2-VL (for broadcast payload)
         try:
             visual_description = self.vision_system.analyze_scene(observation, prompt="Describe the light level and safety.")
+            # Map raw pixel patches to a 2D grid for the Sensory Tectum
+            vision_grid = self.vision_system.get_visual_embeddings(observation, return_spatial_grid=True)
+            # Add batch dimension [1, C, H, W]
+            vision_grid = vision_grid.unsqueeze(0).to(self.device)
         except Exception as e:
             logger.error(f"Vision failure: {e}")
             visual_description = "darkness and uncertainty"
+            vision_grid = torch.zeros(1, 1536, 14, 14, device=self.device)
 
+        # Generate a dummy audio spatial vector for now (e.g., straight ahead)
+        audio_spatial = torch.zeros(1, 1536, 2, device=self.device)
+        
+        # Process through Sensory Tectum (RSSM) to get surprise-based bidding payload
+        tectum_content, vision_surprise_bid = self.sensory_tectum(vision_grid, audio_spatial)
+        
+        # --- 1b. Somatosensory Processing ---
+        # Extract proprioception from observation dict if available, else dummy
+        if isinstance(observation, dict) and 'proprioception' in observation:
+            raw_proprioception = observation['proprioception'].to(self.device)
+            collision_flags = observation.get('collisions', torch.zeros(1, 10)).to(self.device)
+        else:
+            raw_proprioception = torch.zeros(1, self.raw_state_dim, device=self.device)
+            collision_flags = torch.zeros(1, 10, device=self.device)
+            
+        body_schema, body_bid = self.body_processor(raw_proprioception, collision_flags)
+        
         # --- 2. Emotion (Fast Path) ---
         # Evaluate "Reflexive" emotional response to the percept
         # In "Dark Room", darkness = high arousal (anxiety)
@@ -86,19 +124,40 @@ class ConsciousnessAgent:
         reflex_emotion = self._evaluate_reflex_emotion(visual_description)
         self.current_emotion = reflex_emotion
         
+        # Ensure we have valid bids between 0.0 and 1.0
+        vision_bid = max(0.0, min(1.0, vision_surprise_bid))
+        emotion_bid = abs(reflex_emotion["arousal"]) # High arousal = high bid
+        
         # --- 3. Consciousness (Global Workspace) ---
-        # Submit bids to the workspace
-        inputs = {
+        # Submit bids and semantic payloads to the workspace
+        # Bids dict defines who gets access based on scalar values
+        bids = {
+            "vision": vision_bid,
+            "emotion": emotion_bid,
+            "memory": 0.1, # Low baseline bid
+            "audio": 0.0, # No pure audio semantic stream yet
+            "body": body_bid
+        }
+        
+        # Payloads are the complex tensors/strings broadcasted if that module wins
+        payloads = {
             "vision": visual_description,
             "emotion": reflex_emotion,
-            "memory": "No active recall" # Placeholder
+            "memory": "No active recall", # Placeholder
+            "body": "Physical state updated" # In reality, we'd pass the schema tensor, using string for logging prototype
         }
         
         # Calculate Goal Vector (Homeostasis) - Agent wants High Valence, Low Arousal
         goal_vector = torch.tensor([1.0, -1.0, 1.0], device=self.device) # Target: [Valence=1, Arousal=-1, Dominance=1]
         
         # Run GNW Competition
-        broadcast_content, bids = self.global_workspace.run_competition(inputs, goal_vector)
+        # Pass explicit bids and payloads (bypasses legacy evaluate_salience polling)
+        broadcast_content, winners = self.global_workspace.run_competition(
+            inputs={},  # Legacy param (unused when explicit bids provided)
+            goal_vector=goal_vector, 
+            bids=bids, 
+            payloads=payloads
+        )
         
         # Check Ignition
         is_conscious = self.global_workspace.state.is_conscious
