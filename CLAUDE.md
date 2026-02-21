@@ -252,13 +252,19 @@ Priority order based on dependency and impact:
 
 ---
 
-## Current State
+## Current State (2026-02-21)
 
-77 of 79 tests pass (97%). Phase 2-3 of 7.
+77 of 79 tests pass (97%). Architecture being redesigned based on deep biological research.
 
 **Architectural decisions locked:**
+- Oscillatory binding: **AKOrN** (ICLR 2025) replaces hardcoded synchrony multiplier
+- Spatial topographic maps: **V-JEPA / DreamerV3 RSSM** as tectum pathway alongside Qwen2-VL
+- Compositional hierarchy: **Capsule Networks** (over GNNs)
+- Reentrant processing: **5-10 adaptive cycles** with predictive coding convergence
+- Spiking validation: **Brian2/NEST** offline, AKOrN in production
+- Affective system: **Parallel modulator** (not competing with sensory modules)
 - Visual backbone: Qwen2-VL (VideoLLaMA3 deprecated)
-- Reward formula: extend to full PAD with homeostatic arousal term
+- Reward formula: Full PAD with homeostatic arousal term + Dominance
 - Strong emergence falsification: EI at gate vs. workspace level (Hoel framework)
 - IIT input: must use causal gate states, not workspace bid values
 
@@ -267,3 +273,101 @@ Priority order based on dependency and impact:
 
 **What's skipped (1 test):**
 - `test_predictive_processing.py::test_prediction_generation`: async test needs pytest-asyncio
+
+---
+
+## Roadmap (Revised 2026-02-21)
+
+Based on deep biological research (Feinberg & Mallatt's neural architecture of consciousness) and resolved design questions. Full research document: `docs/biological_neural_architecture_research.md`.
+
+### Tier 1: Core Architecture Changes
+
+1. **Implement AKOrN Oscillatory Binding** (HIGHEST PRIORITY)
+   - File: `models/core/oscillatory_binding.py` (NEW)
+   - Integrate AKOrN (Artificial Kuramoto Oscillatory Neurons) into workspace layers
+   - Replace the hardcoded `1.2` synchrony multiplier in `global_workspace.py`
+   - Tech: PyTorch native, available on GitHub
+
+2. **Implement Sensory Tectum with V-JEPA/RSSM**
+   - File: `models/core/sensory_tectum.py` (NEW)
+   - Add V-JEPA or DreamerV3 RSSM as spatial pathway (topographic mapping)
+   - Keep Qwen2-VL for semantic processing
+   - Create aligned multisensory maps in latent space
+
+3. **Add Reentrant Processing**
+   - File: `models/core/global_workspace.py` (MODIFY) + all specialist modules
+   - Add `receive_broadcast(context)` to every specialist module
+   - Implement adaptive 5-10 cycle convergence loop with prediction error delta early termination
+   - This replaces the single-pass workspace competition
+
+### Tier 2: Architecture Corrections
+
+4. **Redesign Affective System as Parallel Modulator**
+   - Remove emotion from workspace competition
+   - Implement valence field modulation on sensory bids
+   - Add global arousal -> ignition threshold coupling
+
+5. **Implement Phi-Binding Validation Test**
+   - File: `tests/test_phi_binding_correlation.py` (NEW)
+   - Three conditions: unbound, partially bound, fully bound
+   - Must validate before trusting ANY Phi measurements
+
+6. **Add Proprioceptive Self-Model**
+   - File: `models/self_model/self_representation_core.py` (MODIFY)
+   - Add body schema tensor, somatotopic map, interoceptive state
+   - Implement self-other boundary in shared coordinate frame
+
+### Tier 3: Compositional Deepening
+
+7. **Capsule Network Composition Layer**
+   - Add CapsNet between tectum outputs and workspace
+   - Part-whole routing via dynamic routing by agreement
+
+8. **Brian2 Validation Stack**
+   - Offline biological validation of AKOrN binding patterns
+   - Compare against biological gamma oscillation models
+
+### Previous Priorities (still relevant)
+- Wire up `get_visual_embeddings()` from Qwen2-VL
+- Implement ethics filter (AsimovComplianceFilter)
+- Full IIT Phi integration with PyPhi
+- Delete VideoLLaMA3 integration
+- Python 3.10+ upgrade
+
+---
+
+### 2026-02-21: Biological Neural Architecture Deep Research
+
+**What was done:**
+
+1. **Deep research on Feinberg & Mallatt's "The Ancient Origins of Consciousness"** via NotebookLM:
+   - Extracted the six special neurobiological features required for consciousness
+   - Mapped biological architecture to ACM implementation gaps
+   - Created `docs/biological_neural_architecture_research.md` (700+ lines)
+
+2. **Resolved all eight open research questions:**
+
+   **Q1: Topographic mapping** - Use V-JEPA/DreamerV3 world models for spatial structure preservation alongside Qwen2-VL semantic. World models encode spatial causality naturally.
+
+   **Q2: Discrete Kuramoto binding** - AKOrN (ICLR 2025 oral) already implements Kuramoto oscillatory neurons as drop-in PyTorch layers. PyTorch implementation on GitHub.
+
+   **Q3: Reentrant cycles** - 5-10 adaptive cycles with prediction error early termination. Matches biological cortical processing (~200ms, ~10ms per relay).
+
+   **Q4: Capsule Networks vs. GNNs** - Capsule Networks chosen. They natively implement nested compositional hierarchy (parts remain active while bound into wholes) via dynamic routing by agreement.
+
+   **Q5: Spiking subsystem** - Dual-stack: AKOrN (PyTorch native) for production + Brian2/NEST for offline biological validation.
+
+   **Q6: Phi-binding test** - Designed 3-condition controlled experiment (unbound/partial/full) with success criteria and red flags.
+
+   **Q7: Embodiment** - Extend self-model with spatial body schema, somatotopic map, interoceptive state, self-other boundary.
+
+   **Q8: Affective system** - Redesign as parallel modulator (valence field + arousal threshold), not competing with sensory modules.
+
+3. **Key biological findings from the book:**
+   - Consciousness requires 3-4+ hierarchical levels, not a flat pipeline
+   - Isomorphic (topographic) mapping is the mechanism for mental images/referral
+   - Oscillatory binding (gamma 30-100Hz) creates mental unity
+   - The optic tectum (midbrain) was the first seat of consciousness, not the cortex
+   - Affective consciousness (limbic system) evolved separately from sensory consciousness
+   - The four NSFCs: Referral, Mental Unity, Qualia, Mental Causation
+

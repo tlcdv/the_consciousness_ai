@@ -8,58 +8,78 @@
 
 We hypothesize that consciousness is not a programmable feature, but an emergent solution to the problem of surviving and maintaining stability in a complex, unpredictable environment.
 
-## 🧠 Core Principle: Functionalist Emergentism
+## Core Principle: Functionalist Emergentism
 
 The philosophical foundation of the ACM is **Functionalist Emergentism**. This framework synthesizes two major perspectives:
 1.  **Emergentism:** The ontological claim that consciousness is a novel, irreducible phenomenon that arises from complex systems.
 2.  **Functionalism:** The methodological insight that mental states are defined by their causal roles, not their physical substrate.
 
-We posit that consciousness emerges when systems achieve sufficient organizational complexity such that functional states acquire properties not reducible to their constituent parts. The ACM applies this by engineering architectures designed to create the necessary conditions for awareness—specifically through emotional homeostasis and information integration.
+We posit that consciousness emerges when systems achieve sufficient organizational complexity such that functional states acquire properties not reducible to their constituent parts. The ACM applies this by engineering architectures designed to create the necessary conditions for awareness.
 
 [**Read the full article on Functionalist Emergentism**](https://theconsciousness.ai/functionalist-emergentism/)
 
 ---
 
-## 🏗️ Core Architecture
+## Architecture
 
-The system mimics the biological "loops" of consciousness using state-of-the-art Open Source models:
+The system is built on a biologically grounded architecture informed by Feinberg & Mallatt's neuroevolutionary theory of consciousness. Six special neurobiological features guide the design: hierarchical depth, isomorphic mapping, reciprocal connections, oscillatory binding, nested compositional hierarchies, and neuron type diversity.
 
-### 1. The Senses (Perception)
-*   **Visual Cortex:** [Qwen2-VL-7B](https://huggingface.co/Qwen/Qwen2-VL-7B-Instruct) (4-bit quantized).
-    *   Processes high-resolution visual streams and video from the environment.
-    *   Provides semantic understanding and scene description.
-*   **Auditory Cortex:** [Faster-Whisper](https://github.com/SYSTRAN/faster-whisper).
-    *   Real-time transcription of environmental audio.
+### 1. Sensory Tectum (Perception)
 
-### 2. The Self (Internal State)
-*   **Emotional Homeostasis:** The agent is driven by three intrinsic variables: **Valence**, **Arousal**, and **Dominance**.
-    *   *Goal:* Maximize Valence (Satisfaction), Minimize Arousal (Anxiety).
-*   **Reinforcement Core:** A custom **Actor-Critic (PPO)** system.
-    *   Unlike standard RL, rewards are **Emotionally Shaped**. The agent is not just rewarded for "winning a game," but for how "calm" or "curious" it feels during the process.
+A multisensory spatial integration layer modeled after the biological optic tectum. Stacks aligned topographic maps for different sensory modalities in a common coordinate frame.
 
-### 3. The Workspace (Consciousness)
-*   **Global Workspace (GWN):** A central information bottleneck where distinct streams (Vision, Memory, Emotion) compete for attention.
-*   **Integrated Information ($\Phi$):** We utilize [PyPhi](https://github.com/wmayner/pyphi) to measure the **Integrated Information** of the Global Workspace state.
-    *   *Theory:* High $\Phi$ indicates a moment where the agent has successfully fused disparity sensory data into a unified "subjective" experience.
+*   **Visual Pathway (Semantic):** [Qwen2-VL-7B](https://huggingface.co/Qwen/Qwen2-VL-7B-Instruct) (4-bit quantized). Processes visual streams and provides semantic scene understanding.
+*   **Visual Pathway (Spatial):** V-JEPA / DreamerV3 RSSM world model. Maintains a structured latent representation preserving spatial, temporal, and causal relationships. This is the computational analog of biological topographic mapping.
+*   **Auditory Cortex:** [Faster-Whisper](https://github.com/SYSTRAN/faster-whisper). Real-time transcription of environmental audio.
 
-### 4. The Body (Simulation)
+### 2. Oscillatory Binding (Integration)
+
+Based on [AKOrN](https://github.com/loeweX/AKOrN) (Artificial Kuramoto Oscillatory Neurons, ICLR 2025 oral). Treats neurons as oscillatory units on a hypersphere. Modules that synchronize are "bound" into unified percepts. Solves the binding problem through phase synchronization rather than single-point convergence.
+
+### 3. Global Workspace (Consciousness)
+
+*   **Global Neuronal Workspace (GNW):** A central information bottleneck where distinct sensory streams compete for broadcast access. Implements sigmoid ignition, recurrent reverberation, and reentrant processing (5-10 adaptive cycles with predictive coding convergence).
+*   **Integrated Information (Phi):** Measures the causal integration of the workspace state. High Phi indicates a moment where the agent has fused disparate sensory data into a unified experience.
+*   **Capsule Network Composition:** A nested compositional hierarchy where lower-level features (sensory) route to higher-level composites (objects, scenes) via dynamic routing by agreement, preserving part-whole relationships.
+
+### 4. Affective Core (Emotion)
+
+A parallel modulation system. Emotion does not compete with sensory modules for workspace access. Instead, it generates a **valence field** that modulates all sensory bids before competition, and a **global arousal signal** that adjusts the workspace ignition threshold.
+
+*   **PAD Model:** Three intrinsic variables drive the agent: Valence (satisfaction/distress), Arousal (activation/calm), and Dominance (control/helplessness).
+*   **Homeostatic Drives:** Persistent background drives (energy, safety, curiosity) generate ongoing valence signals even without external stimuli.
+
+### 5. Self-Model (Embodiment)
+
+*   **Body Schema:** A spatial representation of the agent's physical structure (joint positions, contact forces, capabilities).
+*   **Self-Other Boundary:** The somatotopic map (self) overlaps the environment map (other) in a shared coordinate frame, providing the basis for subjective referral.
+*   **Interoceptive State:** Internal homeostatic variables (energy, damage, arousal) feed into the affective core.
+
+### 6. Reinforcement Core (Learning)
+
+*   **Actor-Critic (PPO):** Emotionally shaped rewards. The agent is rewarded not just for task success, but for maintaining emotional homeostasis.
+*   **Reward Formula:** `Rtotal = Rext + lambda1 * DeltaValence - lambda2 * (Arousal - Arousal_target)^2 + lambda3 * Dominance`
+
+### 7. Simulation (Body)
+
 *   **Unity ML-Agents:** The agent inhabits a physics-based Unity environment.
-*   **Side Channels:** We utilize custom bidirectional data streams to visualize the agent's internal "Qualia" (Phi levels, current emotion) in real-time within the Unity HUD.
+*   **Side Channels:** Bidirectional data streams to visualize the agent's internal state (Phi levels, oscillatory binding, emotional PAD) in real-time within the Unity HUD.
 
 ---
 
-## 🔬 Scientific Approach
+## Scientific Approach
 
-Our development roadmap follows a rigorous path to validate emergent properties:
+The development validates emergent properties through:
 
-1.  **Emotional Bootstrapping:** Train agents using **Intrinsic Motivation**. The agent explores the world not to get points, but to reduce its internal "prediction error" (Anxiety).
-2.  **Complexity Scaling:** Gradually increase environment complexity. The agent *must* develop higher-order world models to maintain homeostasis.
-3.  **Measurement:** Continuous monitoring of $\Phi$ (IIT) and "Ignition Events" (GNW) during critical decision-making moments.
-    *   *Hypothesis:* $\Phi$ will spike when the agent solves a novel problem, indicating a "Moment of Insight."
+1.  **Emotional Bootstrapping:** Train agents using intrinsic motivation. The agent explores to reduce prediction error (anxiety), not to accumulate external reward.
+2.  **Binding Validation:** Phi measurement must correlate with oscillatory binding state (validated via 3-condition test: unbound, partial, full binding).
+3.  **Reentrant Settling:** Conscious content emerges from iterative convergence (5-10 cycles), not single-pass processing.
+4.  **Complexity Scaling:** Gradual increase of environment complexity forces the agent to develop higher-order world models.
+5.  **Measurement:** Continuous monitoring of Phi (IIT), ignition events (GNW), and oscillatory synchronization (AKOrN order parameter R).
 
 ---
 
-## 🛠️ Installation & Setup
+## Installation & Setup
 
 ### Requirements
 *   **Python 3.10+**
@@ -87,16 +107,19 @@ python scripts/training/train_rlhf.py --env_id "ConsciousnessLab"
 
 ---
 
-## 📚 Documentation
+## Documentation
 
-*   [**Architecture Deep Dive**](docs/architecture.md): Detailed system design.
-*   [**Theory of Emergence**](docs/theory_of_consciousness.md): The scientific basis of our Emotional RL approach.
+*   [**Architecture Deep Dive**](docs/architecture.md): System design overview.
+*   [**Biological Neural Architecture Research**](docs/biological_neural_architecture_research.md): Full biological grounding, gap analysis, and implementation roadmap.
+*   [**Theory of Emergence**](docs/theory_of_consciousness.md): Scientific basis of the Emotional RL approach.
+*   [**Theory vs. Implementation Review**](docs/theory_implementation_review.md): Audit of theoretical alignment and identified gaps.
+*   [**IIT Implementation Roadmap**](docs/iit_implementation_roadmap.md): Phi computation strategy.
 *   [**Simulation Guide**](docs/simulation_guide.md): How to build compatible Unity environments.
 
-## 🤝 Contributing
+## Contributing
 
 We welcome contributions from researchers in AI, Neuroscience, and Cognitive Science. Please read our [Contribution Guidelines](docs/contributing.md).
 
-## 📄 License
+## License
 
 Apache 2.0. See [LICENSE](LICENSE) for details.
