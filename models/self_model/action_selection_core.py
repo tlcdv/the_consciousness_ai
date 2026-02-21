@@ -42,12 +42,18 @@ class PrefrontalCortex(nn.Module):
 
 class BasalGanglia(nn.Module):
     """
-    Biological Counterpart: Basal Ganglia (Striatum, GPi/SNr, GPe, STN)
+    Biological Counterpart: Basal Ganglia (Striatum, GPi/SNr, GPe, STN, Thalamus)
     
     The brain's reinforcement learning engine. Evaluates the PFC's proposed state, 
     calculates expected value (Critic), and uses Go/No-Go pathways for action selection.
     
     The Reward Prediction Error (RPE) acts as simulated Dopamine to modulate the pathways.
+    
+    Includes:
+    - Direct Pathway (Go): D1 receptors, excited by dopamine. Facilitates action.
+    - Indirect Pathway (No-Go): D2 receptors, inhibited by dopamine. Suppresses action.
+    - Hyperdirect Pathway (STN): Global inhibition. Emergency brake for uncertain states.
+    - Thalamic Relay: Final output gating before motor execution.
     """
     def __init__(self, context_dim: int, action_dim: int):
         super().__init__()
@@ -78,9 +84,30 @@ class BasalGanglia(nn.Module):
             nn.Sigmoid() # Gating/Inhibition strength [0, 1]
         )
         
+        # Hyperdirect Pathway (STN - Subthalamic Nucleus)
+        # Global emergency brake. Fires broadly to suppress ALL actions 
+        # when the state is novel or highly uncertain. This gives the system 
+        # time to evaluate before committing. Biologically, this is the 
+        # "stop and think" signal that overrides both Go and No-Go.
+        self.stn_pathway = nn.Sequential(
+            nn.Linear(context_dim, 64),
+            nn.GELU(),
+            nn.Linear(64, 1),
+            nn.Sigmoid() # Global inhibition strength [0, 1]
+        )
+        
+        # Thalamic Relay (final output gate)
+        # In the brain, the thalamus relays BG output to motor cortex.
+        # This adds a learned transformation so the raw Go/No-Go competition 
+        # maps properly to the motor action space.
+        self.thalamic_relay = nn.Sequential(
+            nn.Linear(action_dim, action_dim),
+            nn.Tanh()
+        )
+        
     def forward(self, pfc_state: torch.Tensor, dopamine_rpe: float = 0.0) -> Tuple[torch.Tensor, torch.Tensor]:
         """
-        Generates actions by comparing Go vs No-Go signals.
+        Generates actions by comparing Go vs No-Go signals, with STN global inhibition.
         
         Args:
             pfc_state: [B, context_dim] from Prefrontal Cortex
@@ -93,23 +120,30 @@ class BasalGanglia(nn.Module):
         # 1. Critic evaluates state
         value = self.critic(pfc_state)
         
-        # 2. Both pathways propose/evaluate actions
+        # 2. All three pathways evaluate simultaneously
         go_signal = self.direct_pathway(pfc_state)        # [-1, 1]
         no_go_signal = self.indirect_pathway(pfc_state)    # [0, 1]
+        stn_brake = self.stn_pathway(pfc_state)            # [0, 1] global inhibition
         
         # 3. Dopaminergic Modulation
-        # High dopamine strengthens 'Go' and weakens 'No-Go'
+        # High dopamine strengthens 'Go' (D1) and weakens 'No-Go' (D2)
         # Low dopamine weakens 'Go' and strengthens 'No-Go'
-        # rpe is typially centered around 0. We clamp to prevent explosive gradients.
-        da_boost = torch.clamp(torch.tensor(dopamine_rpe, device=pfc_state.device), -1.0, 1.0)
+        # STN is NOT modulated by dopamine (it operates independently)
+        da_boost = torch.clamp(
+            torch.tensor(dopamine_rpe, dtype=pfc_state.dtype, device=pfc_state.device), 
+            -1.0, 1.0
+        )
         
         modulated_go = go_signal * (1.0 + 0.5 * da_boost)
         modulated_nogo = no_go_signal * (1.0 - 0.5 * da_boost)
         
-        # 4. Thalamic Release (Action execution)
-        # Action is executed if Go overcomes No-Go inhibition
-        # We model this as a gated mechanism: The strength of action is reduced by inhibition
-        action_mean = modulated_go * (1.0 - modulated_nogo)
+        # 4. Action gating: Go must overcome both No-Go AND STN inhibition
+        # STN provides a global brake (same scalar applied to all action dims)
+        global_release = 1.0 - stn_brake  # [B, 1] broadcast across action dims
+        raw_action = modulated_go * (1.0 - modulated_nogo) * global_release
+        
+        # 5. Thalamic relay transforms to motor space
+        action_mean = self.thalamic_relay(raw_action)
         
         # Ensure action bounds
         action_mean = torch.clamp(action_mean, -1.0, 1.0)
@@ -319,7 +353,17 @@ class ActionSelectionCore:
         target_nogo = target_nogo.expand_as(no_go_signal)
         nogo_loss = nn.BCELoss()(no_go_signal, target_nogo.detach())
         
-        actor_loss = go_loss + nogo_loss
+        # STN Loss: Global brake should activate when advantage magnitude is high
+        # (uncertain about whether action is good or bad = should pause)
+        # and deactivate when advantage is near zero (well-predicted states)
+        stn_output = self.bg.stn_pathway(pfc_states)
+        # Target: high brake for high |advantage| (uncertainty), low brake for low |advantage|
+        advantage_magnitude = torch.abs(advantage).detach()
+        # Normalize to [0, 1] range using tanh
+        stn_target = torch.tanh(advantage_magnitude)
+        stn_loss = nn.MSELoss()(stn_output, stn_target)
+        
+        actor_loss = go_loss + nogo_loss + 0.3 * stn_loss
         
         total_loss = actor_loss + 0.5 * value_loss
         

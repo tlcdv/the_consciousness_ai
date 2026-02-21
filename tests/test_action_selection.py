@@ -5,7 +5,108 @@ from models.self_model.action_selection_core import ActionSelectionCore, Prefron
 from models.memory.memory_core import MemoryCore, MemoryConfig
 from models.emotion.reward_shaping import EmotionalRewardShaper
 
-class TestActionSelection(unittest.TestCase):
+class TestPrefrontalCortex(unittest.TestCase):
+    """Tests for PFC Working Memory stabilization."""
+    
+    def setUp(self):
+        self.workspace_dim = 32
+        self.context_dim = 32
+        self.pfc = PrefrontalCortex(self.workspace_dim, self.context_dim)
+    
+    def test_working_memory_persistence(self):
+        """PFC should stabilize rapidly changing inputs into a slowly-evolving context."""
+        hidden = torch.zeros(1, self.context_dim)
+        
+        # Feed the same broadcast repeatedly, hidden should converge
+        broadcast = torch.randn(1, self.workspace_dim)
+        states = []
+        for _ in range(10):
+            state, hidden = self.pfc(broadcast, hidden)
+            states.append(state.clone())
+        
+        # Later states should be more similar to each other than early states
+        # (working memory settling)
+        early_diff = torch.norm(states[1] - states[0]).item()
+        late_diff = torch.norm(states[-1] - states[-2]).item()
+        self.assertLess(late_diff, early_diff + 0.01)  # Allow tiny tolerance
+    
+    def test_output_shape(self):
+        """PFC output should match context_dim."""
+        hidden = torch.zeros(1, self.context_dim)
+        broadcast = torch.randn(1, self.workspace_dim)
+        state, new_hidden = self.pfc(broadcast, hidden)
+        self.assertEqual(state.shape, (1, self.context_dim))
+        self.assertEqual(new_hidden.shape, (1, self.context_dim))
+
+
+class TestBasalGanglia(unittest.TestCase):
+    """Tests for BG Go/No-Go/STN pathway logic."""
+    
+    def setUp(self):
+        self.context_dim = 32
+        self.action_dim = 8
+        self.bg = BasalGanglia(self.context_dim, self.action_dim)
+    
+    def test_go_nogo_dopamine_modulation(self):
+        """High dopamine should produce larger action magnitudes than low dopamine."""
+        pfc_state = torch.randn(1, self.context_dim)
+        
+        # Positive RPE (high dopamine) strengthens Go, weakens No-Go
+        action_high_da, val_high = self.bg(pfc_state, dopamine_rpe=1.0)
+        
+        # Negative RPE (low dopamine) weakens Go, strengthens No-Go
+        action_low_da, val_low = self.bg(pfc_state, dopamine_rpe=-1.0)
+        
+        # Value should be the same (critic doesn't depend on dopamine)
+        self.assertAlmostEqual(val_high.item(), val_low.item(), places=5)
+        
+        # High dopamine should generally produce larger absolute action magnitudes
+        # (Go pathway is boosted, No-Go is suppressed)
+        mag_high = torch.abs(action_high_da).mean().item()
+        mag_low = torch.abs(action_low_da).mean().item()
+        # Run multiple random seeds to confirm statistically
+        wins = 0
+        for _ in range(20):
+            pfc_state = torch.randn(1, self.context_dim)
+            a_high, _ = self.bg(pfc_state, dopamine_rpe=1.0)
+            a_low, _ = self.bg(pfc_state, dopamine_rpe=-1.0)
+            if torch.abs(a_high).mean() > torch.abs(a_low).mean():
+                wins += 1
+        # High dopamine should win the majority of the time
+        self.assertGreater(wins, 10, 
+            f"High dopamine should produce larger actions more often. Won {wins}/20.")
+    
+    def test_stn_global_inhibition(self):
+        """STN output should be a scalar that gates all action dimensions."""
+        pfc_state = torch.randn(1, self.context_dim)
+        stn_output = self.bg.stn_pathway(pfc_state)
+        
+        # STN should produce a single scalar per batch element
+        self.assertEqual(stn_output.shape, (1, 1))
+        # Should be in [0, 1] range (sigmoid)
+        self.assertGreaterEqual(stn_output.item(), 0.0)
+        self.assertLessEqual(stn_output.item(), 1.0)
+    
+    def test_thalamic_relay_shape(self):
+        """Thalamic relay should preserve action dimensionality."""
+        raw_action = torch.randn(1, self.action_dim)
+        output = self.bg.thalamic_relay(raw_action)
+        self.assertEqual(output.shape, (1, self.action_dim))
+    
+    def test_output_shapes(self):
+        """Final output should be [B, action_dim] for action and [B, 1] for value."""
+        pfc_state = torch.randn(1, self.context_dim)
+        action, value = self.bg(pfc_state)
+        self.assertEqual(action.shape, (1, self.action_dim))
+        self.assertEqual(value.shape, (1, 1))
+        # Actions should be bounded in [-1, 1]
+        self.assertTrue(torch.all(action >= -1.0))
+        self.assertTrue(torch.all(action <= 1.0))
+
+
+class TestActionSelectionCore(unittest.TestCase):
+    """Integration tests for the full Action Selection pipeline."""
+    
     def setUp(self):
         self.config = {
             'workspace_dim': 32,
@@ -25,31 +126,17 @@ class TestActionSelection(unittest.TestCase):
         self.memory = MemoryCore(mem_config)
         self.action_core = ActionSelectionCore(self.config, self.emotion_shaper, self.memory)
 
-    def test_basal_ganglia_gating(self):
-        """Test the Go/No-Go pathway gating logic controlled by RPE (dopamine)."""
-        bg = self.action_core.bg
-        pfc_state = torch.randn(1, self.config['context_dim'])
-        
-        # Test with high dopamine (positive RPE)
-        action_high_da, val_high = bg(pfc_state, dopamine_rpe=1.0)
-        
-        # Test with low dopamine (negative RPE)
-        action_low_da, val_low = bg(pfc_state, dopamine_rpe=-1.0)
-        
-        # They should evaluate the same state value internally
-        self.assertEqual(val_high.item(), val_low.item())
-        
-        # But the action pathways should diverge because dopamine strengthens 'Go' and weakens 'No-Go'
-        # We can't guarantee exact magnitude strictly without checking internals,
-        # but we can verify the output shape and type
-        self.assertEqual(action_high_da.shape, (1, self.config['action_dim']))
-        self.assertEqual(action_low_da.shape, (1, self.config['action_dim']))
+    def test_select_action_shape(self):
+        """select_action should return a 1D numpy array with shape (action_dim,)."""
+        state = torch.randn(self.config['workspace_dim'])  # No batch dim
+        action, value = self.action_core.select_action(state)
+        self.assertEqual(action.shape, (self.config['action_dim'],))
+        self.assertIsInstance(value, float)
 
     def test_emotional_modulation(self):
-        """Test that emotional arousal scales exploration noise."""
+        """Emotional arousal should scale exploration noise variance."""
         state = torch.randn(1, self.config['workspace_dim'])
         
-        # We run multiple samples to capture variance/noise effects
         actions_calm = []
         actions_panic = []
         for _ in range(50):
@@ -64,13 +151,33 @@ class TestActionSelection(unittest.TestCase):
         # Panicked state (high arousal) should have higher variance
         self.assertGreater(std_panic, std_calm)
 
-    def test_memory_integration(self):
-        """Test that steps populate the rollout buffer with RPE calculations."""
+    def test_rpe_calculation(self):
+        """Step should return a dopamine RPE value."""
+        state = torch.randn(1, self.config['workspace_dim'])
+        action, _ = self.action_core.select_action(state)
+        next_state = torch.randn(1, self.config['workspace_dim'])
+        
+        metrics = self.action_core.step(
+            workspace_broadcast=state,
+            action=action,
+            raw_reward=1.0,
+            next_broadcast=next_state,
+            done=False,
+            emotion_state={'valence': 0.5, 'arousal': 0.3, 'dominance': 0.5},
+            attention_level=0.7,
+        )
+        
+        self.assertIn("dopamine_rpe", metrics)
+        self.assertIn("shaped_reward", metrics)
+        self.assertIsInstance(metrics["dopamine_rpe"], float)
+
+    def test_rollout_buffer_population(self):
+        """Steps should populate the rollout buffer for training."""
         state = torch.randn(1, self.config['workspace_dim'])
         for i in range(5):
             action, _ = self.action_core.select_action(state)
             next_state = torch.randn(1, self.config['workspace_dim'])
-            metrics = self.action_core.step(
+            self.action_core.step(
                 workspace_broadcast=state,
                 action=action,
                 raw_reward=0.5,
@@ -81,10 +188,58 @@ class TestActionSelection(unittest.TestCase):
             )
             state = next_state
             
-            # Ensure dopamine RPE is calculated and returned
-            self.assertIn("dopamine_rpe", metrics)
-            
         self.assertEqual(len(self.action_core.rollout_buffer), 5)
+
+    def test_update_policy_trains(self):
+        """update_policy should compute losses and update weights when buffer is full."""
+        state = torch.randn(1, self.config['workspace_dim'])
+        # Fill buffer with 12 steps (> 10 minimum)
+        for _ in range(12):
+            action, _ = self.action_core.select_action(state)
+            next_state = torch.randn(1, self.config['workspace_dim'])
+            self.action_core.step(
+                workspace_broadcast=state,
+                action=action,
+                raw_reward=np.random.uniform(-1, 1),
+                next_broadcast=next_state,
+                done=False,
+                emotion_state={'valence': 0.5, 'arousal': 0.5, 'dominance': 0.5},
+                attention_level=0.5,
+            )
+            state = next_state
+        
+        # Capture weights before update
+        go_weight_before = self.action_core.bg.direct_pathway[0].weight.data.clone()
+        
+        metrics = self.action_core.update_policy()
+        
+        self.assertIn("policy_loss", metrics)
+        self.assertIn("value_loss", metrics)
+        self.assertIn("total_loss", metrics)
+        
+        # Weights should have changed
+        go_weight_after = self.action_core.bg.direct_pathway[0].weight.data
+        self.assertFalse(torch.allclose(go_weight_before, go_weight_after),
+            "Go pathway weights should change after update_policy")
+        
+        # Buffer should be cleared
+        self.assertEqual(len(self.action_core.rollout_buffer), 0)
+
+    def test_reset_state(self):
+        """reset_state should zero out PFC hidden memory."""
+        # Run a few actions to populate hidden state
+        state = torch.randn(1, self.config['workspace_dim'])
+        self.action_core.select_action(state)
+        self.action_core.select_action(state)
+        
+        # Hidden should be non-zero
+        self.assertFalse(torch.all(self.action_core.pfc_hidden == 0))
+        
+        # Reset
+        self.action_core.reset_state()
+        self.assertTrue(torch.all(self.action_core.pfc_hidden == 0))
+        self.assertEqual(self.action_core.last_value, 0.0)
+
 
 if __name__ == '__main__':
     unittest.main()

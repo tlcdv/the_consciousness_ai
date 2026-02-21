@@ -70,6 +70,8 @@ class ConsciousnessAgent:
         self.current_emotion = {"valence": 0.0, "arousal": 0.0, "dominance": 0.0}
         self.anxiety_level = 0.0
         self.step_count = 0
+        self.last_rpe = 0.0  # Dopamine RPE from previous step, fed back into BG
+        self.previous_broadcast = None  # Track previous workspace broadcast for temporal differentiation
         
         # Simple Text Encoder for PPO State (Placeholder for a better semantic encoder)
         # Maps text descriptions to the state_dim expected by PPO
@@ -192,18 +194,24 @@ class ConsciousnessAgent:
         
         simulated_reward = -distance_to_goal.item()
         
+        # Use previous broadcast for temporal difference (RPE = r + gamma*V(s') - V(s))
+        # On first step, fall back to current broadcast
+        prev_broadcast = self.previous_broadcast if self.previous_broadcast is not None else broadcast_tensor
+        
         # Update Core Tracking
         step_metrics = self.action_core.step(
-            workspace_broadcast=broadcast_tensor,
+            workspace_broadcast=prev_broadcast,
             action=action,
             raw_reward=simulated_reward,
-            next_broadcast=broadcast_tensor, # Placeholder until next loop
+            next_broadcast=broadcast_tensor,  # Current is the "next" relative to previous
             done=False,
-            emotion_state=self.current_emotion, # Use self.current_emotion as it's updated
+            emotion_state=self.current_emotion,
             attention_level=phi,
             narrative=visual_description
         )
         
+        # Track for next iteration
+        self.previous_broadcast = broadcast_tensor.detach().clone()
         self.last_rpe = step_metrics.get("dopamine_rpe", 0.0)
         
         # Periodic Policy Update
