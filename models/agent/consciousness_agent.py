@@ -7,6 +7,7 @@ from typing import Dict, Any, Tuple, Optional
 # Components
 from models.vision_language.qwen2.qwen2_integration import Qwen2VLIntegration
 from models.core.global_workspace import GlobalWorkspace
+from models.core.reentrant_processor import ReentrantProcessor
 from models.self_model.action_selection_core import ActionSelectionCore
 from models.emotion.reward_shaping import EmotionalRewardShaper
 from models.memory.memory_core import MemoryCore
@@ -67,6 +68,10 @@ class ConsciousnessAgent:
         
         # 4. Consciousness (The Workspace)
         self.global_workspace = GlobalWorkspace(config.get("workspace", {}))
+        
+        # 6. Reentrant Processing (Phase 6)
+        # Wraps the single-pass workspace competition in an adaptive convergence loop
+        self.reentrant = ReentrantProcessor(config.get("reentrant", {}))
         
         # 5. Self-Model & Narrative (Phase 5)
         self.narrative_gen = NarrativeGenerator(config.get("narrative", {}))
@@ -159,18 +164,29 @@ class ConsciousnessAgent:
         # Calculate Goal Vector (Homeostasis) - Agent wants High Valence, Low Arousal
         goal_vector = torch.tensor([1.0, -1.0, 1.0], device=self.device) # Target: [Valence=1, Arousal=-1, Dominance=1]
         
-        # Run GNW Competition
-        # Pass explicit bids and payloads (bypasses legacy evaluate_salience polling)
-        broadcast_content, winners = self.global_workspace.run_competition(
-            inputs={},  # Legacy param (unused when explicit bids provided)
-            goal_vector=goal_vector, 
-            bids=bids, 
-            payloads=payloads
+        # --- 3b. Reentrant Convergence Loop (Phase 6) ---
+        # Instead of a single-pass GNW competition, we run an adaptive
+        # 2-10 cycle predictive coding loop. Specialists receive the broadcast
+        # and update their bids based on top-down context.
+        specialists = {
+            "vision": self.sensory_tectum,
+            "body": self.body_processor,
+            # "emotion" and "memory" don't have receive_broadcast yet
+        }
+        
+        settle_result = self.reentrant.settle(
+            workspace=self.global_workspace,
+            specialists=specialists,
+            initial_bids=bids,
+            payloads=payloads,
+            goal_vector=goal_vector
         )
         
+        broadcast_content = settle_result.broadcast_content
+        
         # Check Ignition
-        is_conscious = self.global_workspace.state.is_conscious
-        phi = self.global_workspace.state.phi_value
+        is_conscious = settle_result.is_conscious
+        phi = settle_result.phi
         
         # --- 4. Action Selection (PFC & Basal Ganglia) ---
         # State Construction:
@@ -254,7 +270,11 @@ class ConsciousnessAgent:
             "qualia": self.global_workspace.get_unity_metrics()[3], # Qualia Vector
             "action_value": value,
             "latency": time.time() - start_time,
-            "self_model_id": self.self_model.state.id
+            "self_model_id": self.self_model.state.id,
+            # Phase 6: Reentrant convergence metrics
+            "reentrant_cycles": settle_result.cycles_used,
+            "reentrant_converged": settle_result.converged,
+            "reentrant_prediction_errors": settle_result.prediction_errors,
         }
         
         return action, info

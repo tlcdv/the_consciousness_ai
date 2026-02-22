@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from typing import Dict, Tuple, Optional
+from typing import Dict, Tuple, Optional, Any
 
 class TopographicMap(nn.Module):
     """
@@ -170,6 +170,10 @@ class SensoryTectum(nn.Module):
         self.register_buffer('h_state', None)
         self.register_buffer('z_state', None)
         
+        # Cache for reentrant feedback (Phase 6)
+        self._last_content = None
+        self._last_raw_bid = 0.0
+        
     def reset_state(self, batch_size: int = 1):
         device = next(self.parameters()).device
         self.h_state = torch.zeros(batch_size, self.feature_dim, self.grid_size, self.grid_size, device=device)
@@ -215,4 +219,45 @@ class SensoryTectum(nn.Module):
         pooled = self.global_pool(state_tensor).view(B, -1)
         workspace_content = self.workspace_proj(pooled)
         
+        # Cache for reentrant feedback
+        self._last_content = workspace_content.detach()
+        self._last_raw_bid = bid
+        
         return workspace_content, bid
+    
+    def receive_broadcast(self, broadcast_content: Any, current_bid: float) -> float:
+        """
+        Receive top-down feedback from the workspace (Phase 6 Reentrant Processing).
+        
+        If the broadcast matches our own content closely (low PE), we are already 
+        aligned with consciousness and can lower our bid slightly (settled).
+        If the broadcast is far from our content (high PE), we should increase 
+        our bid to compete harder in the next cycle.
+        
+        Args:
+            broadcast_content: The current workspace broadcast (tensor or dict)
+            current_bid: Our current bid value
+            
+        Returns:
+            Updated bid value incorporating top-down context
+        """
+        if not isinstance(broadcast_content, torch.Tensor) or self._last_content is None:
+            # If broadcast is not a tensor (subconscious/empty), maintain baseline
+            return current_bid * 0.95  # Slight decay
+        
+        # Compute prediction error: how different is the broadcast from what we sent?
+        with torch.no_grad():
+            diff = torch.norm(broadcast_content - self._last_content)
+            magnitude = torch.norm(self._last_content) + 1e-8
+            pe = (diff / magnitude).item()
+        
+        # High PE = broadcast diverges from our content = need to push harder
+        # Low PE = we're already in the broadcast = can relax slightly
+        if pe > 0.3:
+            # We're not in the spotlight. Increase bid.
+            updated_bid = min(1.0, current_bid + pe * 0.1)
+        else:
+            # We're recognized. Settle slightly.
+            updated_bid = current_bid * (1.0 - pe * 0.1)
+        
+        return max(0.0, min(1.0, updated_bid))

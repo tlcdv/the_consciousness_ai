@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from typing import Dict, Tuple
+from typing import Dict, Tuple, Any
 
 class SomatotopicMap(nn.Module):
     """
@@ -153,5 +153,45 @@ class ProprioceptiveProcessor(nn.Module):
         base_bid = bid_tensor.mean().item()
         if collision_flags is not None and collision_flags.max() > 0.1:
             base_bid = max(base_bid, 0.85) # Pain forces its way into consciousness
+        
+        # Cache for reentrant feedback
+        self._last_bid = base_bid
             
         return body_schema, base_bid
+    
+    def receive_broadcast(self, broadcast_content: Any, current_bid: float) -> float:
+        """
+        Receive top-down feedback from the workspace (Phase 6 Reentrant Processing).
+        
+        Body awareness increases when the broadcast contains body-relevant 
+        content (e.g., pain or collision keywords). Otherwise body salience 
+        decays slightly during reentrant cycles (the brain doesn't constantly 
+        attend to the body unless something is wrong).
+        
+        Args:
+            broadcast_content: The current workspace broadcast
+            current_bid: Our current bid value
+            
+        Returns:
+            Updated bid value
+        """
+        # Check if broadcast content relates to the body
+        body_relevant = False
+        if isinstance(broadcast_content, dict):
+            body_relevant = any(
+                k in broadcast_content for k in ['body', 'collision', 'pain', 'Physical']
+            )
+            # Also check string values
+            for v in broadcast_content.values():
+                if isinstance(v, str) and any(kw in v.lower() for kw in ['body', 'pain', 'physical', 'collision']):
+                    body_relevant = True
+                    break
+        elif isinstance(broadcast_content, str):
+            body_relevant = any(kw in broadcast_content.lower() for kw in ['body', 'pain', 'physical'])
+        
+        if body_relevant:
+            # Body is in the spotlight. Maintain or boost bid.
+            return min(1.0, current_bid * 1.05)
+        else:
+            # Body not in focus. Slight decay (background awareness).
+            return max(0.05, current_bid * 0.9)  # Never fully zero (always some body awareness)
