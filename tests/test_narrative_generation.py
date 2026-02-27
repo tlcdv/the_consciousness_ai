@@ -78,16 +78,21 @@ class TestNarrativeGenerator(unittest.TestCase):
 
     def test_temporal_coherence_calm_to_alarm(self):
         """Transition from calm to alarm should produce 'Suddenly' bridge."""
-        # First: generate a calm narrative
+        # First: generate a calm narrative (low_arousal_positive quadrant)
         calm_emotion = {"valence": 0.5, "arousal": 0.2, "dominance": 0.5}
         n1 = self.generator.generate_from_workspace("garden", calm_emotion)
-        self.assertIn("Calmly", n1)  # low_arousal_positive template
+        # Should match one of the low_arousal_positive templates
+        valid_calm = ["Calmly", "Feeling at peace", "Everything is stable"]
+        self.assertTrue(
+            any(phrase in n1 for phrase in valid_calm),
+            f"Expected low_arousal_positive template, got: {n1}"
+        )
         
-        # Second: generate an alarmed narrative
+        # Second: generate an alarmed narrative (high_arousal_negative quadrant)
         alarm_emotion = {"valence": -0.8, "arousal": 0.9, "dominance": -0.5}
         n2 = self.generator.generate_from_workspace("danger", alarm_emotion)
         
-        # Should have a transition bridge
+        # Should have a transition bridge (now based on quadrant history, not text)
         self.assertTrue(n2.startswith("Suddenly"))
 
     def test_temporal_coherence_repetition(self):

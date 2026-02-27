@@ -38,6 +38,7 @@ class NarrativeGenerator:
         self.config = config or {}
         buffer_size = self.config.get("buffer_size", 10)
         self.buffer = NarrativeBuffer(capacity=buffer_size)
+        self._quadrant_history: deque = deque(maxlen=buffer_size)
         
         # Quadrant templates: (Valence, Arousal)
         self.templates = {
@@ -120,14 +121,15 @@ class NarrativeGenerator:
         # Bridge from previous thought to current thought.
         # This is what makes it a "stream" rather than isolated snapshots.
         recent = self.buffer.get_recent()
-        if recent:
-            prev = recent[-1]
+        qhist = list(self._quadrant_history)
+        if recent and qhist:
+            prev_quadrant = qhist[-1]
             # Detect emotional shift for continuity phrasing
-            if quadrant.startswith("high_arousal") and "Calmly" in prev:
+            if quadrant.startswith("high_arousal") and prev_quadrant.startswith("low_arousal"):
                 narrative = "Suddenly \u2014 " + narrative
-            elif quadrant.startswith("low_arousal") and ("Alarmed" in prev or "Urgent" in prev):
+            elif quadrant.startswith("low_arousal") and prev_quadrant.startswith("high_arousal"):
                 narrative = "Settling down. " + narrative
-            elif len(recent) >= 2 and recent[-1] == recent[-2]:
+            elif len(qhist) >= 2 and qhist[-1] == qhist[-2] and qhist[-1] == quadrant:
                 narrative = "Still " + narrative.lower()
         
         # Add action awareness
@@ -141,6 +143,7 @@ class NarrativeGenerator:
                 else:
                     narrative += " Taking significant action."
         
+        self._quadrant_history.append(quadrant)
         self.buffer.add(narrative)
         return narrative
 
