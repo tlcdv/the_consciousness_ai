@@ -109,6 +109,7 @@ python scripts/training/train_rlhf.py --env_id "ConsciousnessLab"
 
 ## Documentation
 
+*   [**Feinberg-Mallatt Approach**](docs/feinberg_mallatt_approach.md): How we translate Feinberg & Mallatt's neuroevolutionary theory into our artificial consciousness architecture.
 *   [**Architecture Deep Dive**](docs/architecture.md): System design overview.
 *   [**Biological Neural Architecture Research**](docs/biological_neural_architecture_research.md): Full biological grounding, gap analysis, and implementation roadmap.
 *   [**Theory of Emergence**](docs/theory_of_consciousness.md): Scientific basis of the Emotional RL approach.
