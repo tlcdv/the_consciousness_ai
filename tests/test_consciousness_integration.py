@@ -1,5 +1,5 @@
 """
-Integration tests for ACM system components.
+Integration tests for system components.
 
 Tests the integration between:
 1. Consciousness core and emotional processing

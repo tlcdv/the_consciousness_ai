@@ -11,7 +11,7 @@ from models.evaluation.emotional_evaluation import EmotionalEvaluator
 from models.emotion.tgnn.emotional_graph import EmotionalGraphNetwork as EmotionalGraphNN
 
 """
-Integration tests for emotional memory formation and retrieval in ACM.
+Integration tests for emotional memory formation and retrieval.
 
 Tests the integration between:
 1. Emotional state detection

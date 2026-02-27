@@ -1,5 +1,5 @@
 """
-Consciousness Development Monitoring System for ACM
+Consciousness Development Monitoring System
 
 This module implements:
 1. Tracking of consciousness development metrics
@@ -88,11 +88,11 @@ except ImportError as e:
 
 class ConsciousnessMonitor:
     """
-    Continuously monitors the ACM's state and calculates various theoretical
+    Continuously monitors the system's state and calculates various theoretical
     and practical metrics related to consciousness and self-awareness.
     Provides data for the evaluation dashboard and logs metrics using MetricsLogger.
     """
-    def __init__(self, consciousness_core=None, memory_system=None, config=None, experiment_name: str = "acm_default_run"):
+    def __init__(self, consciousness_core=None, memory_system=None, config=None, experiment_name: str = "consciousness_default_run"):
         # Support single-arg call: ConsciousnessMonitor(config_dict)
         if config is None and isinstance(consciousness_core, dict):
             config = consciousness_core
@@ -142,7 +142,7 @@ class ConsciousnessMonitor:
         capability_tester_config = config.get('capability_tester_config', {})
         try:
             self.capability_tester = ConsciousnessCapabilityTester(
-                acm_agent_interface=self.core, # Assuming self.core is or provides the interface
+                agent_interface=self.core, # Assuming self.core is or provides the interface
                 config=capability_tester_config,
                 logger=self.logger # Pass the main logger, or it can create its own
             )
@@ -201,44 +201,44 @@ class ConsciousnessMonitor:
                         self.logger.log_scalar_data(f"periodic_{key}_{sub_key}", self.step_count, sub_value, {"source": "periodic_update"})
             # Add more sophisticated logging for complex structures if needed
 
-    def update_step_metrics(self, acm_step_data: dict):
+    def update_step_metrics(self, step_data: dict):
         """
-        Called with data from a specific step of the ACM's operation.
+        Called with data from a specific step of the system's operation.
         This method orchestrates metric calculation using IITMetrics and GNWMetrics.
 
         Args:
-            acm_step_data (dict): Contains current data for metric calculation, e.g.
+            step_data (dict): Contains current data for metric calculation, e.g.
                                   'gnw_activations', 'system_hidden_states_t', etc.
         """
         self.step_count += 1
 
-        if 'gnw_activations' in acm_step_data:
+        if 'gnw_activations' in step_data:
             self.gnw_evaluator.update_activations(
-                current_activations=acm_step_data['gnw_activations'],
+                current_activations=step_data['gnw_activations'],
                 step=self.step_count
             )
-        if 'sensory_event_id' in acm_step_data:
-            self.gnw_evaluator.log_sensory_event_start(acm_step_data['sensory_event_id'])
-        if 'event_reuse_info' in acm_step_data:
-            info = acm_step_data['event_reuse_info']
+        if 'sensory_event_id' in step_data:
+            self.gnw_evaluator.log_sensory_event_start(step_data['sensory_event_id'])
+        if 'event_reuse_info' in step_data:
+            info = step_data['event_reuse_info']
             self.gnw_evaluator.log_event_reuse(
                 event_id=info['event_id'],
                 module_name=info['module_name'],
                 step=self.step_count
             )
 
-        if 'system_hidden_states_t' in acm_step_data and \
-           'system_hidden_states_t_minus_1' in acm_step_data and \
-           'iit_partition_P' in acm_step_data:
+        if 'system_hidden_states_t' in step_data and \
+           'system_hidden_states_t_minus_1' in step_data and \
+           'iit_partition_P' in step_data:
             self.iit_evaluator.calculate_phi_star_mismatched_decoding(
-                z_t=acm_step_data['system_hidden_states_t'],
-                z_t_minus_1=acm_step_data['system_hidden_states_t_minus_1'],
-                partition_P=acm_step_data['iit_partition_P'],
+                z_t=step_data['system_hidden_states_t'],
+                z_t_minus_1=step_data['system_hidden_states_t_minus_1'],
+                partition_P=step_data['iit_partition_P'],
                 step=self.step_count
             )
         
         # Placeholder for calling other specific metric evaluators that operate on step data
-        # e.g., self.some_other_capability_tester.evaluate_at_step(acm_step_data, self.step_count)
+        # e.g., self.some_other_capability_tester.evaluate_at_step(step_data, self.step_count)
 
         # Optionally, run capability tests periodically or based on certain conditions
         # For example, run every N steps:
@@ -253,12 +253,12 @@ class ConsciousnessMonitor:
             self.last_summary_log_time = current_time
 
     def log_summary(self):
-        """Logs a periodic summary of the ACM's state or key metrics."""
+        """Logs a periodic summary of the system's state or key metrics."""
         summary_data = { "total_steps_processed": self.step_count }
         self.logger.log_scalar_data("monitor_operational_summary", self.step_count, summary_data, {"source": "ConsciousnessMonitor"})
         print(f"Step {self.step_count}: ConsciousnessMonitor summary logged.")
 
-    def run_capability_tests(self, step: int, acm_agent_interface_override=None):
+    def run_capability_tests(self, step: int, agent_interface_override=None):
         """
         Runs the suite of consciousness capability tests.
         The results are logged internally by ConsciousnessCapabilityTester.
@@ -267,7 +267,7 @@ class ConsciousnessMonitor:
             print(f"Step {step}: ConsciousnessMonitor triggering capability tests.")
             try:
                 # If the interface provided at init was not sufficient, or a specific one is needed now
-                interface_to_use = acm_agent_interface_override if acm_agent_interface_override else self.capability_tester.agent_interface
+                interface_to_use = agent_interface_override if agent_interface_override else self.capability_tester.agent_interface
                 if not interface_to_use: # Fallback if self.core wasn't a good interface and no override
                     print(f"Step {step}: Cannot run capability tests, agent interface not available.")
                     return {}

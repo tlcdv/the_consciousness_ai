@@ -1,5 +1,5 @@
 """
-Attention Mechanism for ACM's Predictive Processing
+Attention Mechanism for Predictive Processing
 
 This module implements:
 1. Attention modulation for predictive processing

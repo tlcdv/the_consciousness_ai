@@ -1,5 +1,5 @@
 """
-Memory Optimization Components for ACM
+Memory Optimization Components
 
 This module implements:
 1. Memory cleanup and consolidation algorithms

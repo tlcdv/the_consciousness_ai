@@ -1,6 +1,6 @@
 """
 Consciousness gating mechanism that controls information flow and adaptation
-in the ACM system. Controls learning rates and meta-memory stability.
+in the consciousness system. Controls learning rates and meta-memory stability.
 
 Key components:
 - Attention-based gating for information flow

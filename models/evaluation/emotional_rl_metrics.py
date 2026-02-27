@@ -1,5 +1,5 @@
 """
-Reinforcement Learning Metrics for Emotional Development in ACM
+Reinforcement Learning Metrics for Emotional Development
 
 Tracks:
 1. Emotional learning curves

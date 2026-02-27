@@ -2,7 +2,7 @@
 
 ## 1. Purpose and Role
 
-The `EmotionalMemoryCore` is a crucial component of the Artificial Consciousness Model (ACM). It serves as the agent's long-term storage for experiences, playing a vital role in:
+The `EmotionalMemoryCore` is a crucial component of the The Consciousness AI. It serves as the agent's long-term storage for experiences, playing a vital role in:
 
 *   **Learning:** Providing data for Reinforcement Learning (RL) algorithms (like Dreamer).
 *   **Contextual Decision Making:** Retrieving relevant past experiences to inform current actions and predictions ("thought process").

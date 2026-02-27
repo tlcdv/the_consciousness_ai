@@ -1,5 +1,5 @@
 """
-Meta-Learning System for the ACM
+Meta-Learning System
 
 This module implements:
 1. Meta-learning for rapid adaptation

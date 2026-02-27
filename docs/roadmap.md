@@ -1,6 +1,6 @@
-# ACM Development Roadmap
+# Development Roadmap
 
-This roadmap outlines the planned development phases for the Artificial Consciousness Module (ACM).
+This roadmap outlines the planned development phases for the The Consciousness AI.
 
 ## Guiding Principles
 
@@ -74,7 +74,7 @@ This roadmap outlines the planned development phases for the Artificial Consciou
 
 - **Goal:** Explore inter-agent awareness and conduct comprehensive system validation.
 - **Deliverables:**
-  - **Peer-Consciousness Probes:** Scenarios where two ACM agents interact and attempt to model/estimate each other's (simulated) internal states. (Corresponds to Sprint S-6 from Watanabe notes)
+  - **Peer-Consciousness Probes:** Scenarios where two consciousness agents interact and attempt to model/estimate each other's (simulated) internal states. (Corresponds to Sprint S-6 from Watanabe notes)
   - Comprehensive ethical review and safety testing.
   - Long-term stability and learning assessments.
 
@@ -84,5 +84,5 @@ This roadmap outlines the planned development phases for the Artificial Consciou
 - Subjective-report alignment processes (e.g., RLHF) so the agent’s language faithfully mirrors internal states.
 - Exploration of more advanced AI consciousness theories and their computational correlates.
 - Continuous refinement of the `AsimovComplianceFilter` and ethical governance.
-- Development of `ACM-Consciousness-Metric.md` as a living spec for external contributors.
+- Development of `Consciousness-Metric.md` as a living spec for external contributors.
 - Discussion on licensing for any developed datasets (e.g., indicator-property dataset).

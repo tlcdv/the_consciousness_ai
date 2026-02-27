@@ -1,5 +1,5 @@
 """
-Memory Consolidation System for ACM
+Memory Consolidation System
 
 This module implements:
 1. Memory optimization and cleanup

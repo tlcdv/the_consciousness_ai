@@ -1,5 +1,5 @@
 """
-Causal Emergence Metrics for ACM.
+Causal Emergence Metrics.
 
 Implements Effective Information (EI) following Hoel et al. (2013), adapted
 to the state-by-node TPM format used by IITMetrics.build_empirical_tpm().

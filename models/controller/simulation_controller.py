@@ -17,7 +17,7 @@ from simulations.api.simulation_manager import SimulationManager
 from simulations.environments.interactive_vr_environment import InteractiveVREnvironment
 
 """
-Simulation Controller for the Artificial Consciousness Module (ACM)
+Simulation Controller for The Consciousness AI
 
 This module manages the simulation environment and consciousness development by:
 1. Coordinating interactions between agents and environment

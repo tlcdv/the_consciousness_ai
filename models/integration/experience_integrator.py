@@ -1,5 +1,5 @@
 """
-Experience Integration Module for ACM
+Experience Integration Module
 
 This module implements:
 1. Integration of multimodal experiences

@@ -1,5 +1,5 @@
 """
-Temporal Coherence Management for Memory Formation in ACM
+Temporal Coherence Management for Memory Formation
 
 This module implements:
 1. Temporal sequence tracking in memory formation

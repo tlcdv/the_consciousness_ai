@@ -52,14 +52,14 @@ class SimulationManager:
     through emotional learning.
     """
 
-    def __init__(self, acm_system=None, config=None):
+    def __init__(self, consciousness_system=None, config=None):
         # Support single-arg call: SimulationManager(config_dict)
-        if config is None and isinstance(acm_system, dict):
-            config = acm_system
-            acm_system = None
+        if config is None and isinstance(consciousness_system, dict):
+            config = consciousness_system
+            consciousness_system = None
         if config is None:
             config = {}
-        self.acm = acm_system
+        self.core = consciousness_system
         self.config = config
         self.lock = Lock()
         logging.info("Simulation Manager initialized with config: %s", config)
@@ -81,7 +81,7 @@ class SimulationManager:
         self.consciousness_core = None
 
         try:
-            self.consciousness_monitor = ConsciousnessMonitor(acm_system, None, config)
+            self.consciousness_monitor = ConsciousnessMonitor(consciousness_system, None, config)
         except Exception as e:
             logging.warning("Could not initialize ConsciousnessMonitor: %s", e)
 
@@ -251,7 +251,7 @@ class SimulationManager:
             await self.visual_processor.initialize()
         
     async def simulation_step(self, visual_input, audio_input=None, context=None):
-        # Update ACE and ACM integration
+        # Update ACE and consciousness core integration
         perception = {}
         if hasattr(self, 'visual_processor') and self.visual_processor is not None:
             perception = await self.visual_processor.process_input(

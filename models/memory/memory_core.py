@@ -1,5 +1,5 @@
 """
-Core Memory Management System for ACM
+Core Memory Management System
 
 Implements:
 1. Base memory management functionality
@@ -83,7 +83,7 @@ class MemoryConfig:
     # Extend to hold Pinecone and other fields if needed.
     pinecone_api_key: str = ""
     pinecone_environment: str = ""
-    index_name: str = "acm_memory_index"
+    index_name: str = "consciousness_memory_index"
     attention_threshold: float = 0.7
 
 
@@ -99,7 +99,7 @@ class MemoryMetrics:
 
 class MemoryCore:
     """
-    Advanced memory system for ACM that integrates:
+    Advanced memory system that integrates:
     1. Emotional context embedding
     2. Temporal coherence tracking
     3. Consciousness-relevant memory formation

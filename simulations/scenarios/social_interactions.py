@@ -2,7 +2,7 @@
 
 # File: /simulations/scenarios/social_interactions.py
 """
-Social Interactions Module for ACM Project
+Social Interactions Module
 
 Simulates complex social scenarios to teach agents empathy, negotiation, and collaboration.
 Includes predefined interaction scripts and dynamic multimodal inputs.

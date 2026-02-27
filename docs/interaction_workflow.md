@@ -1,6 +1,6 @@
-# Interaction Workflow for AI Agent in ACM
+# Interaction Workflow for AI Agent
 
-This document outlines how the AI agent interacts with the simulation environment using the Artificial Consciousness Module (ACM).
+This document outlines how the AI agent interacts with the simulation environment using the The Consciousness AI.
 
 ## Workflow
 

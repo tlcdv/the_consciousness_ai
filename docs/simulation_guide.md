@@ -1,8 +1,8 @@
-# ACM Simulation Guide: Unity ML-Agents
+# Simulation Guide: Unity ML-Agents
 
 ## Overview
 
-This guide explains how to build and configure Unity environments for the Artificial Consciousness Module (ACM). Unlike standard RL environments where the goal is just "score points," ACM environments must be designed to challenge the agent's **Emotional Homeostasis**.
+This guide explains how to build and configure Unity environments for the The Consciousness AI. Unlike standard RL environments where the goal is just "score points," simulation environments must be designed to challenge the agent's **Emotional Homeostasis**.
 
 The goal is to create scenarios that induce **Prediction Error (Anxiety)** and offer opportunities for **Integration (Insight/Valence)**.
 
@@ -13,13 +13,13 @@ The goal is to create scenarios that induce **Prediction Error (Anxiety)** and o
 ### 1. Prerequisites
 *   Unity 2022.3 (LTS) or later.
 *   **ML-Agents Package:** Install via Window > Package Manager > Unity Registry.
-*   **ACM Side Channels:** You must include the C# scripts from `unity_scripts/` in your project.
+*   **Side Channels:** You must include the C# scripts from `unity_scripts/` in your project.
 
 ### 2. The Agent Prefab
 Your agent GameObject must have the following components:
 1.  **Behavior Parameters:** Set `Behavior Name` to match your Python config (e.g., `ConsciousnessAgent`).
 2.  **Agent Script:** A custom C# script inheriting from `Agent`.
-3.  **AgentManager.cs:** The ACM script that handles Side Channels.
+3.  **AgentManager.cs:** The system script that handles Side Channels.
 
 ---
 
@@ -53,7 +53,7 @@ To test for emergent consciousness, scenarios should follow the **PAD (Problem-A
 
 ## 📡 Data Communication (Side Channels)
 
-The ACM uses **Side Channels** to visualize internal states.
+The system uses **Side Channels** to visualize internal states.
 
 ### Receiving Data (Python $\rightarrow$ Unity)
 The `ConsciousnessChannel` sends:
@@ -74,7 +74,7 @@ Use `AgentManager.cs` to map these values to visual cues:
 2.  **Server Build:** Check "Server Build" if running headless training on a cluster.
 3.  **Environment Path:** Save the built executable to `simulations/builds/`.
 
-### Running with ACM
+### Running the System
 ```bash
 python scripts/training/train_rlhf.py --env_path "simulations/builds/MyEnvironment.exe"
 ```

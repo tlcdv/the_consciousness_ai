@@ -4,7 +4,7 @@
 
 ### Overview
 
-VideoLLaMA3 is a multimodal foundation model for image and video understanding. It is integrated into the ACM project to enhance the AI agent's ability to interpret and learn from multimodal environments.
+VideoLLaMA3 is a multimodal foundation model for image and video understanding. It is integrated into the system project to enhance the AI agent's ability to interpret and learn from multimodal environments.
 
 ### Setup
 

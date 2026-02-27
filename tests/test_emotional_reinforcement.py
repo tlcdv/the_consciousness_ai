@@ -1,5 +1,5 @@
 """
-Test suite for emotional reinforcement learning integration in ACM.
+Test suite for emotional reinforcement learning integration.
 
 Validates:
 1. Emotional reward shaping based on attention and arousal

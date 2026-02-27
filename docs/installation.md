@@ -2,7 +2,7 @@
 
 ## 🖥️ Hardware Requirements
 
-The ACM is a high-performance research framework. It runs "Deep Learning heavy" workloads, fusing Vision Transformers (Qwen2-VL) with Reinforcement Learning in real-time.
+The system is a high-performance research framework. It runs "Deep Learning heavy" workloads, fusing Vision Transformers (Qwen2-VL) with Reinforcement Learning in real-time.
 
 ### **Recommended Workstation**
 *   **GPU:** NVIDIA RTX 4090 (24GB VRAM).

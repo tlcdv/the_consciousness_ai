@@ -1,5 +1,5 @@
 """
-Generative Emotional Core for ACM
+Generative Emotional Core
 
 This module implements:
 1. Emotion-aware text generation

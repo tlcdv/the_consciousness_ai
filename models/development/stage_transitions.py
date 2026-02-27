@@ -1,5 +1,5 @@
 """
-Development Stage Transition Manager for ACM
+Development Stage Transition Manager
 
 This module implements:
 1. Consciousness development stage tracking

@@ -1,6 +1,6 @@
-# ACM Processing Pipeline
+# Processing Pipeline
 
-This document outlines the typical flow of information and processing within the Artificial Consciousness Module during a single perception-action cycle.
+This document outlines the typical flow of information and processing within The Consciousness AI during a single perception-action cycle.
 
 ## Core Loop
 

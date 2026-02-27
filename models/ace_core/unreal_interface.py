@@ -29,7 +29,7 @@ class UnrealACEInterface:
             return False
     
     async def update_character_state(self, visual_input: Dict[str, Any], audio_input: bytes = None):
-        """Update character state based on ACM/ACE processing"""
+        """Update character state based on consciousness core/ACE processing"""
         try:
             # Process input through ACE agent
             consciousness_state = await self.ace_agent.process_multimodal_input(

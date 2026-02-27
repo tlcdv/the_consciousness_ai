@@ -20,7 +20,7 @@ class ACEConfig:
         self.a2f_endpoint = "http://a2f-service:52000"
         self.animation_graph_endpoint = "http://ace-controller:50051"
         
-        # ACM Integration settings
+        # Consciousness Core Integration settings
         self.consciousness_params = {
             'attention_threshold': 0.7,
             'emotional_coherence': 0.8,

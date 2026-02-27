@@ -1,5 +1,5 @@
 """
-PDF to Text Converter for the ACM project
+PDF to Text Converter for The Consciousness AI project
 
 This script handles:
 1. Conversion of research papers from PDF to text format

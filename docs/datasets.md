@@ -1,6 +1,6 @@
-# Datasets Used in Artificial Consciousness Module (ACM)
+# Datasets Used in The Consciousness AI
 
-This document provides a detailed overview of the datasets used in the ACM project, their applications, and licensing details.
+This document provides a detailed overview of the datasets used in the system project, their applications, and licensing details.
 
 ---
 
@@ -71,14 +71,14 @@ This document provides a detailed overview of the datasets used in the ACM proje
 ## Usage Guidelines
 
 1. Ensure compliance with the licensing terms of each dataset when integrating into the project.
-2. Preprocess datasets according to the requirements of the ACM's training and testing pipelines.
+2. Preprocess datasets according to the requirements of the system's training and testing pipelines.
 3. Document the preprocessing steps in `/docs/preprocessing.md`.
 
 ---
 
 ## Suggestions for New Datasets
 
-If you discover a dataset that could improve the ACM's capabilities, please follow the contribution process outlined in the [CONTRIBUTING.md](../CONTRIBUTING.md) file.
+If you discover a dataset that could improve the system's capabilities, please follow the contribution process outlined in the [CONTRIBUTING.md](../CONTRIBUTING.md) file.
 
 We welcome:
 
@@ -92,4 +92,4 @@ We welcome:
 
 Dataset origins are noted in their respective sections. Community suggestions and integrations are welcome via the contribution process.
 
-Thank you for supporting the growth of the ACM!
+Thank you for supporting the growth of the system!

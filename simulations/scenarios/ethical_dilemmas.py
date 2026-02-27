@@ -2,7 +2,7 @@
 
 # File: /simulations/scenarios/ethical_dilemmas.py
 """
-Ethical Dilemmas Module for ACM Project
+Ethical Dilemmas Module
 
 Simulates moral decision-making scenarios to help agents learn how to 
 navigate complex ethical challenges. Includes predefined dilemmas 

@@ -4,7 +4,7 @@
 
 ## Overview
 
-The ACM project integrates NVIDIA's Avatar Cloud Engine (ACE) to enable realistic avatar animations driven by the AI's emotional and conscious states.
+The system project integrates NVIDIA's Avatar Cloud Engine (ACE) to enable realistic avatar animations driven by the AI's emotional and conscious states.
 
 ## Components
 

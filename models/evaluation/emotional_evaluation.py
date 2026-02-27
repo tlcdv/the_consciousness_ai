@@ -1,5 +1,5 @@
 """
-Emotional Evaluation System for ACM
+Emotional Evaluation System
 
 This module implements:
 1. Evaluation of emotional responses

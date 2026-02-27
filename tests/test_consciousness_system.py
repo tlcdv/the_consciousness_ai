@@ -1,5 +1,5 @@
 """
-System-wide integration tests for the Artificial Consciousness Module (ACM).
+System-wide integration tests for The Consciousness AI.
 
 Tests the integration between core components:
 1. Consciousness development through stress response

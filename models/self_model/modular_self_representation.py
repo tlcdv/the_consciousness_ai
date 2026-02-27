@@ -1,5 +1,5 @@
 """
-Modular Self Representation System for ACM
+Modular Self Representation System
 
 This module implements:
 1. Core self-model representation and updating

@@ -1,5 +1,5 @@
 """
-Emotional Memory Fusion Module for ACM
+Emotional Memory Fusion Module
 
 This module implements:
 1. Fusion of emotional features across modalities

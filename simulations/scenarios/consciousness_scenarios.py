@@ -26,7 +26,7 @@ class AttentionTriggerSystem:
         pass
 
 """
-Consciousness Development Scenario Generator for ACM
+Consciousness Development Scenario Generator
 
 This module handles:
 1. Generation of consciousness development scenarios

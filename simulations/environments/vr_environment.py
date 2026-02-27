@@ -1,5 +1,5 @@
 """
-VR Environment Module for ACM Project
+VR Environment Module
 
 Manages VR simulations using Unreal Engine.
 Handles environment initialization, state updates, and agent interactions.

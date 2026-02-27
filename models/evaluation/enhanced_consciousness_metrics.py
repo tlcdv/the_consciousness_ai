@@ -1,5 +1,5 @@
 """
-Enhanced Consciousness Metrics System for ACM
+Enhanced Consciousness Metrics System
 
 This module implements:
 1. Advanced consciousness development tracking

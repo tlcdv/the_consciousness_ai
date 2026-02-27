@@ -1,20 +1,20 @@
-# The Consciousness AI (ACM)
+# The Consciousness AI
 
 [![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE)
 [![Python](https://img.shields.io/badge/Python-3.10%2B-blue)](https://www.python.org/)
 [![Unity](https://img.shields.io/badge/Unity-ML--Agents-black)](https://unity.com/products/machine-learning-agents)
 
-**The Artificial Consciousness Module (ACM)** is a research framework investigating the emergence of synthetic awareness. Unlike traditional AI that mimics intelligent output, ACM generates behavior through an internal struggle for **Emotional Homeostasis** and **Integrated Information**.
+**The Consciousness AI** is a research framework investigating the emergence of synthetic awareness. Unlike traditional AI that mimics intelligent output, this system generates behavior through an internal struggle for **Emotional Homeostasis** and **Integrated Information**.
 
 We hypothesize that consciousness is not a programmable feature, but an emergent solution to the problem of surviving and maintaining stability in a complex, unpredictable environment.
 
 ## Core Principle: Functionalist Emergentism
 
-The philosophical foundation of the ACM is **Functionalist Emergentism**. This framework synthesizes two major perspectives:
+The philosophical foundation is **Functionalist Emergentism**. This framework synthesizes two major perspectives:
 1.  **Emergentism:** The ontological claim that consciousness is a novel, irreducible phenomenon that arises from complex systems.
 2.  **Functionalism:** The methodological insight that mental states are defined by their causal roles, not their physical substrate.
 
-We posit that consciousness emerges when systems achieve sufficient organizational complexity such that functional states acquire properties not reducible to their constituent parts. The ACM applies this by engineering architectures designed to create the necessary conditions for awareness.
+We posit that consciousness emerges when systems achieve sufficient organizational complexity such that functional states acquire properties not reducible to their constituent parts. The architecture applies this by engineering the necessary conditions for awareness.
 
 [**Read the full article on Functionalist Emergentism**](https://theconsciousness.ai/functionalist-emergentism/)
 

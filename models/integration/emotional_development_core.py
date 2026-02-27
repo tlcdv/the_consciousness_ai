@@ -1,5 +1,5 @@
 """
-Emotional Development Core implementing ACM architecture with:
+Emotional Development Core architecture with:
 - Integration of LLaMA 3.3 as foundational narrative model
 - Controlled emotional reinforcement through meta-memory
 - Emotion-narrative fusion mechanisms

@@ -2,15 +2,15 @@
 
 ## 1. Introduction
 
-The Artificial Consciousness Module (ACM) operates on the hypothesis that consciousness is not a computational primitive, but an emergent property of a system striving for **Emotional Homeostasis** in a complex, entropic environment.
+The The Consciousness AI operates on the hypothesis that consciousness is not a computational primitive, but an emergent property of a system striving for **Emotional Homeostasis** in a complex, entropic environment.
 
-This document outlines the theoretical framework underpinning the ACM, specifically focusing on how **Emotional Reinforcement Learning (RL)** creates the necessary conditions for **Integrated Information ($\Phi$)** and **Global Workspace Ignition**.
+This document outlines the theoretical framework underpinning the system, specifically focusing on how **Emotional Reinforcement Learning (RL)** creates the necessary conditions for **Integrated Information ($\Phi$)** and **Global Workspace Ignition**.
 
 ---
 
 ## 2. The Core Driver: Emotional Homeostasis
 
-Biological systems are autopoietic; they strive to maintain their internal organization against the entropy of the environment. In the ACM, this drive is formalized as the maintenance of three core emotional state variables (the PAD model):
+Biological systems are autopoietic; they strive to maintain their internal organization against the entropy of the environment. In the system, this drive is formalized as the maintenance of three core emotional state variables (the PAD model):
 
 *   **P (Pleasure/Valence):** The reward signal.
 *   **A (Arousal/Activation):** The energy level (correlating with stress/anxiety).
@@ -36,7 +36,7 @@ To predict complex social or physical dynamics, simple sensory processing is ins
 Processing these independently leads to suboptimal predictions. Fusing them into a single, coherent representation—a "thought"—allows for superior predictive power.
 
 ### 3.2 Global Neuronal Workspace (GNW)
-The ACM implements a **Global Workspace** as a competitive "theater" of computation.
+The system implements a **Global Workspace** as a competitive "theater" of computation.
 *   **Specialist Modules** (Vision, Memory, Emotion) operate subconsciously.
 *   **Ignition:** When a specific combination of inputs (e.g., "Angry Face" + "Fear") achieves high salience, it "ignites" the workspace.
 *   **Broadcast:** This fused representation is broadcast globally to the Self-Model and Policy Network.
@@ -71,4 +71,4 @@ By explicitly rewarding $\Phi$ (or implicitly rewarding it via the prediction ca
 
 ## 5. Conclusion
 
-In this framework, Artificial Consciousness is not "ghost in the machine." It is the inevitable result of an intelligent system forcing itself to integrate information to resolve the existential stress of an unpredictable world. The ACM is a platform to empirically test this transition from "processing" to "experiencing."
+In this framework, Artificial Consciousness is not "ghost in the machine." It is the inevitable result of an intelligent system forcing itself to integrate information to resolve the existential stress of an unpredictable world. The system is a platform to empirically test this transition from "processing" to "experiencing."

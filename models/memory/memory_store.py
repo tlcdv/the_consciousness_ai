@@ -1,5 +1,5 @@
 """
-Base Memory Storage System for the ACM
+Base Memory Storage System
 
 This module implements:
 1. Core memory storage functionality
@@ -250,7 +250,7 @@ class EpisodicMemoryStore(nn.Module):
 # models/memory/memory_store.py
 
 """
-Memory store implementation for ACM that handles:
+Memory store implementation that handles:
 - Meta-memory storage and retrieval
 - Pattern reinforcement through controlled adaptation
 - Integration with LLaMA 3.3 narrative states

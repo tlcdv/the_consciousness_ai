@@ -2,7 +2,7 @@
 
 # File: /simulations/scenarios/simple_tasks.py
 """
-Simple Tasks Module for ACM Project
+Simple Tasks Module
 
 Provides a framework for basic tasks in VR simulations to help agents 
 develop fundamental skills like navigation, object manipulation, and 

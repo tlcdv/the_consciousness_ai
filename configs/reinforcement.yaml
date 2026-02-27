@@ -33,7 +33,7 @@ reinforcement:
     meta_batch_size: 16
     context_length: 32
 
-# Configuration for ACM reinforcement learning and adaptation
+# Configuration for the system reinforcement learning and adaptation
 narrator_model:
   name: "llama-3.3"
   weights_path: "/models/language/llama-3.3"

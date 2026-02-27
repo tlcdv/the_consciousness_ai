@@ -1,5 +1,5 @@
 pipeline:
-  name: "ACM_Audio2Face"
+  name: "TCA_Audio2Face"
   stages:
     - name: "audio_parser"
       config:

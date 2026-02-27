@@ -1,5 +1,5 @@
 """
-DreamerV3 Integration Wrapper for ACM
+DreamerV3 Integration Wrapper
 
 Implements:
 1. Integration with DreamerV3 world model

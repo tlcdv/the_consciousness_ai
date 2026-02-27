@@ -1,5 +1,5 @@
 """
-Memory Optimization System for ACM
+Memory Optimization System
 
 This module implements:
 1. Memory storage optimization strategies

@@ -230,7 +230,7 @@ The following documents in the repository provide deeper technical detail:
 |----------|-------------|
 | [`docs/biological_neural_architecture_research.md`](biological_neural_architecture_research.md) | The full 700+ line internal research document. Contains the complete gap analysis, all 8 resolved research questions, technology evaluations, and implementation priorities. This is the primary source for all architecture decisions. |
 | [`docs/theory_implementation_review.md`](theory_implementation_review.md) | Audit of how well the codebase aligns with the theoretical framework (Functionalist Emergentism). Highlights critical flaws and structural gaps. |
-| [`docs/architecture.md`](architecture.md) | System design overview of the full ACM architecture. |
+| [`docs/architecture.md`](architecture.md) | System design overview of the full architecture. |
 | [`docs/theory_of_consciousness.md`](theory_of_consciousness.md) | The scientific basis of the Emotional RL approach — why emotional homeostasis drives consciousness development. |
 | [`docs/iit_implementation_roadmap.md`](iit_implementation_roadmap.md) | Strategy for computing IIT Phi, including the decision to use causal gate states rather than workspace bid values. |
 | [`CLAUDE.md`](../CLAUDE.md) | The project's living development log. Contains session-by-session implementation history, current state (156/157 tests passing), and the full revised roadmap. |

@@ -1,5 +1,5 @@
 """
-Temporal Context Management for Memory Formation in ACM
+Temporal Context Management for Memory Formation
 
 This module implements:
 1. Temporal sequence tracking and organization

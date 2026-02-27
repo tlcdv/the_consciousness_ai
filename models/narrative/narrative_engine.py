@@ -1,5 +1,5 @@
 """
-Narrative Engine for the Artificial Consciousness Module (ACM)
+Narrative Engine for The Consciousness AI
 
 This module handles narrative generation and coherent story construction by:
 1. Integrating with LLaMA 3.3 for narrative generation

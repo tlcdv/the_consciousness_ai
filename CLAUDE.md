@@ -322,9 +322,29 @@ Priority order based on dependency and impact:
 
 ---
 
-## Current State (2026-02-27)
+### 2026-02-28: Flaky CI Test Fix + ACM Terminology Removal
 
-156 of 157 tests pass (99.4%). Tier 1 and Tier 2 architecture changes complete.
+**What was done:**
+
+1. **Fixed flaky CI test** (`tests/test_action_selection.py::test_go_nogo_dopamine_modulation`):
+   - Root cause: borderline statistical result, 10/20 wins fails `assertGreater(wins, 10)`
+   - Fix: `torch.manual_seed(42)` for reproducibility, increased trials from 20 to 50, threshold from 10 to 25
+   - CI was otherwise passing 153/154 tests
+
+2. **Removed all "ACM" / "Artificial Consciousness Module" terminology** across 90+ files:
+   - Updated README.md, workflow name, all Python docstrings/comments, docs, configs, simulation files
+   - Variable renames: `acm_system` to `consciousness_system`, `self.acm` to `self.core`, `MockACMAgentInterface` to `MockAgentInterface`, `acm_step_data` to `step_data`, `acm_report` to `agent_report`
+   - String constants: `"ACM-1"` to `"TCA-1"`, `"acm_memory_index"` to `"consciousness_memory_index"`, `"acm_default_run"` to `"consciousness_default_run"`
+   - Project now consistently uses "The Consciousness AI" branding, matching the website (theconsciousness.ai)
+   - Only remaining "ACM" references: CLAUDE.md session history (this file) and external paper citations (llama3_herd.md refers to Association for Computing Machinery)
+
+**Test results:** 153 passed, 0 failed, 1 skipped.
+
+---
+
+## Current State (2026-02-28)
+
+153 of 154 tests pass (99.4%). Tier 1 and Tier 2 architecture changes complete. ACM terminology removed.
 
 **Architectural decisions locked and implemented:**
 - Oscillatory binding: **AKOrN** (ICLR 2025) integrated into GNW

@@ -1,5 +1,5 @@
 """
-Test suite for consciousness development stages in ACM.
+Test suite for consciousness development stages.
 
 This module validates:
 1. Consciousness emergence through attention mechanisms

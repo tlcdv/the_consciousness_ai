@@ -1,5 +1,5 @@
 """
-Intention Tracking System for ACM
+Intention Tracking System
 
 This module implements:
 1. Tracking of agent intentions and goals

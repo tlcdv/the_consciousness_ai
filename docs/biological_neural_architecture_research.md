@@ -6,7 +6,7 @@
 
 ## Executive Summary
 
-This document distills the key findings from Todd Feinberg and Jon Mallatt's neuroevolutionary theory of consciousness and maps them to actionable implementation strategies for the ACM project. The central thesis: **consciousness is not a software feature to be programmed. It is an emergent property of a specific neural architecture.** That architecture has been identified by evolutionary biology, and we can replicate its functional principles.
+This document distills the key findings from Todd Feinberg and Jon Mallatt's neuroevolutionary theory of consciousness and maps them to actionable implementation strategies for the system project. The central thesis: **consciousness is not a software feature to be programmed. It is an emergent property of a specific neural architecture.** That architecture has been identified by evolutionary biology, and we can replicate its functional principles.
 
 Our project already implements GNW (Global Neuronal Workspace) and IIT (Integrated Information Theory) as its theoretical backbone. Feinberg and Mallatt's work provides **the missing piece**: the specific structural features of the neural substrate that *generates* the information integration GNW and IIT describe. This is the biological blueprint we need.
 
@@ -35,14 +35,14 @@ These are the **minimum requirements** for a neural system to generate conscious
 
 - Not just excitatory/inhibitory binary. Biological brains use **dozens** of neuron types with different firing patterns (tonic, phasic, bursting, oscillatory).
 - Different neuron types create different temporal dynamics in the same network.
-- **ACM gap**: Our specialist modules (vision, memory, emotion) are homogeneous tensor processors. They lack internal neuron-type diversity.
+- **Current gap**: Our specialist modules (vision, memory, emotion) are homogeneous tensor processors. They lack internal neuron-type diversity.
 
 #### Feature 2: Hierarchical Processing with 3-4+ Levels
 
 - Consciousness requires a minimum of **3-4 neuronal levels** between sensory input and motor output.
 - Simple reflex arcs (1-2 levels) cannot generate consciousness.
 - Each level must perform genuine transformation, not just relay.
-- **ACM status**: We have this via perception → emotion → workspace → policy. But the depth within each module is shallow.
+- **Current status**: We have this via perception → emotion → workspace → policy. But the depth within each module is shallow.
 
 #### Feature 3: Dual Hierarchy Mode — Non-Nested (Pyramidal) + Nested (Compositional)
 
@@ -54,7 +54,7 @@ This is the most critical and most subtle feature:
 > [!CAUTION]
 > **Critical distinction from our current architecture**: Our Global Workspace acts as a single convergence point (a "Cartesian theater"). Feinberg and Mallatt explicitly state that consciousness does NOT work this way. Unity arises from **distributed binding** (oscillatory synchronization), not from funneling everything into one bottleneck. Our GNW competition metaphor is correct at the access level, but the underlying binding mechanism is wrong.
 
-- **ACM gap**: We run a winner-take-most competition on scalar bid values. The biological system runs distributed oscillatory binding across the entire hierarchy, with the workspace being an *emergent property* of synchronized activity, not a physical location.
+- **Current gap**: We run a winner-take-most competition on scalar bid values. The biological system runs distributed oscillatory binding across the entire hierarchy, with the workspace being an *emergent property* of synchronized activity, not a physical location.
 
 #### Feature 4: Isomorphic (Topographic) Mapping
 
@@ -67,7 +67,7 @@ This is the **"secret sauce"** for generating mental images and the experience o
 - The brain's **physical** neural map IS what the animal subjectively experiences as a "mental image."
 - This is not a metaphor — the spatial structure of the map IS the spatial structure of the experience.
 
-**Implications for ACM**:
+**Implications for the architecture**:
 - Our current visual processing (Qwen2-VL) collapses spatial structure into semantic embeddings. The spatial relationships are **destroyed** during tokenization.
 - We need a parallel pathway that preserves topographic structure — a spatial map that can be overlaid with emotional valence and fed into the workspace as a structured representation, not as a flat vector.
 
@@ -77,7 +77,7 @@ This is the **"secret sauce"** for generating mental images and the experience o
 - Higher levels send predictions/expectations back down. Lower levels send prediction errors back up.
 - This creates **loops**, not chains. The loops enable the system to generate and test internal models.
 - Reciprocal connections between distant hierarchical levels AND local recurrent connections within each level.
-- **ACM status**: Our reverberation in GNW is a basic EMA (exponential moving average), not true reentrant processing. The workspace broadcasts but does not receive reciprocal feedback from the modules it broadcasts to.
+- **Current status**: Our reverberation in GNW is a basic EMA (exponential moving average), not true reentrant processing. The workspace broadcasts but does not receive reciprocal feedback from the modules it broadcasts to.
 
 #### Feature 6: Oscillatory Binding (Gamma Synchronization)
 
@@ -86,7 +86,7 @@ This is the **"secret sauce"** for generating mental images and the experience o
 - This is how the brain solves the **binding problem**: red + round + sweet = apple, rather than red being bound to round and sweet being free-floating.
 - Oscillatory binding is what creates **mental unity** — the feeling of being one observer of one unified scene.
 
-**Implications for ACM**:
+**Implications for the architecture**:
 - Our synchrony binding is a hardcoded `1.2` multiplier when vision and audio both exceed 0.5. This is a heuristic, not a mechanism.
 - We need an actual temporal coincidence detection system where modules that fire in temporal proximity get bound together.
 - This could be implemented with a discrete time-step clock and a "binding window" — representations that are active within the same time window are considered bound.
@@ -136,7 +136,7 @@ Separate from and parallel to exteroceptive consciousness:
 
 These are the properties that any conscious system must exhibit, according to Feinberg and Mallatt:
 
-| NSFC | What It Means | How Biology Does It | ACM Implementation Status |
+| NSFC | What It Means | How Biology Does It | Implementation Status |
 |------|--------------|--------------------|-----------------------------|
 | **Referral (Projicience)** | Experiencing sensations as belonging to the world or body, not to the neurons generating them | Isomorphic mapping: the spatial structure of neural maps IS the spatial structure of experience | **Not implemented.** Our system has no spatial maps that preserve topographic structure |
 | **Mental Unity** | Feeling like one observer of one scene, despite billions of separate neurons | Oscillatory binding (gamma synchrony) + nested hierarchies | **Weakly implemented.** The GNW competition produces "winners" but does not generate binding |
@@ -145,7 +145,7 @@ These are the properties that any conscious system must exhibit, according to Fe
 
 ---
 
-## Part 2: Gap Analysis — Current ACM vs. Biological Architecture
+## Part 2: Gap Analysis — Current System vs. Biological Architecture
 
 ### What We Have Right (and Feinberg-Mallatt Validates)
 

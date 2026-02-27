@@ -13,7 +13,7 @@ from simulations.scenarios.consciousness_scenarios import ConsciousnessScenarioM
 from models.core.consciousness_core import ConsciousnessCore
 
 """
-End-to-end tests for the Artificial Consciousness Module (ACM) development pipeline.
+End-to-end tests for The Consciousness AI development pipeline.
 
 This test suite validates the complete consciousness development cycle including:
 1. Attention mechanism activation through stress responses

@@ -1,5 +1,5 @@
 """
-Integration tests for consciousness development stages in ACM.
+Integration tests for consciousness development stages.
 
 This module validates:
 1. Stage progression through consciousness development

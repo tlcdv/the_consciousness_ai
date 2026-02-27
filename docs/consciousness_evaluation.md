@@ -1,6 +1,6 @@
 # Consciousness Evaluation
 
-This document outlines the metrics and procedures for evaluating consciousness in the ACM, drawing from contemporary AI research and computational theories of consciousness (e.g., GNW, IIT, Higher-Order Theories). Metrics are primarily logged by the [`ConsciousnessMonitor`](../models/evaluation/consciousness_monitor.py) which calls specialized modules. A `metrics_logger.py` (planned for `scripts/logging/`) will be crucial for capturing necessary hidden-state tensors.
+This document outlines the metrics and procedures for evaluating consciousness in the system, drawing from contemporary AI research and computational theories of consciousness (e.g., GNW, IIT, Higher-Order Theories). Metrics are primarily logged by the [`ConsciousnessMonitor`](../models/evaluation/consciousness_monitor.py) which calls specialized modules. A `metrics_logger.py` (planned for `scripts/logging/`) will be crucial for capturing necessary hidden-state tensors.
 
 ## Quantitative Metrics (Levels of Consciousness)
 
@@ -67,7 +67,7 @@ This document outlines the metrics and procedures for evaluating consciousness i
     * **Description:** A suite of (e.g., 14) concrete behavioral tests derived from established indicator properties for AI consciousness. These can serve as unit/integration tests for specific conscious-like capabilities.
     * **Output:** Pass/fail or scores for each indicator.
 
-Refer to [models/evaluation/consciousness_monitor.py](../models/evaluation/consciousness_monitor.py) for implementation details. The `ConsciousnessMonitor` class is responsible for orchestrating the calculation and tracking of these (and potentially other) metrics to provide an ongoing assessment of the ACM's state and emerging functional awareness.
+Refer to [models/evaluation/consciousness_monitor.py](../models/evaluation/consciousness_monitor.py) for implementation details. The `ConsciousnessMonitor` class is responsible for orchestrating the calculation and tracking of these (and potentially other) metrics to provide an ongoing assessment of the system's state and emerging functional awareness.
 
 ### Addressing Evaluation Challenges
 

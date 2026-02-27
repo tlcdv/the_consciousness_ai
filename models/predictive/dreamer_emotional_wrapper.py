@@ -1,5 +1,5 @@
 """
-DreamerV3 Integration Wrapper for Emotional Processing in ACM
+DreamerV3 Integration Wrapper for Emotional Processing
 
 Implements:
 1. Emotional context integration with DreamerV3
@@ -41,7 +41,7 @@ class EmotionalDreamState:
 
 class DreamerEmotionalWrapper:
     """
-    Integrates DreamerV3 with emotional learning for ACM.
+    Integrates DreamerV3 with emotional learning.
     """
 
     def __init__(self, config: Dict):

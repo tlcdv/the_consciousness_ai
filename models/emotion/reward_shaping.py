@@ -1,5 +1,5 @@
 """
-Emotional reward shaping for ACM consciousness development.
+Emotional reward shaping for consciousness development.
 Integrates with LLaMA 3.3 narrative states and meta-memory system.
 
 Key features:

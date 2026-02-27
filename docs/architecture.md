@@ -1,8 +1,8 @@
-# Architecture of the Artificial Consciousness Module (ACM)
+# Architecture of the The Consciousness AI
 
 ## 🏗️ System Overview
 
-The ACM architecture is designed to foster **emergent consciousness** through the synergistic orchestration of specialized AI components. We do not program "awareness" directly. Instead, we create a system where awareness emerges as the optimal strategy for maintaining **Emotional Homeostasis** in a complex environment.
+The system architecture is designed to foster **emergent consciousness** through the synergistic orchestration of specialized AI components. We do not program "awareness" directly. Instead, we create a system where awareness emerges as the optimal strategy for maintaining **Emotional Homeostasis** in a complex environment.
 
 ### Core Architectural Pillars
 

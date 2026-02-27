@@ -25,7 +25,7 @@ class SelfAwarenessMetrics:
     temporal_coherence: float = 0.0
 
 class SelfAwarenessEvaluator:
-    """Evaluates the development of self-awareness in the ACM
+    """Evaluates the development of self-awareness in the system
     
     Measures:
     1. Emotional recognition - ability to identify own emotional states

@@ -1,7 +1,7 @@
 import time
 import numpy as np
 # from simulations.api.simulation_manager import SimulationManager # For controlling stimuli
-# from models.communication.qualia_reporter import QualiaReporter # For getting ACM's report
+# from models.communication.qualia_reporter import QualiaReporter # For getting the system's report
 
 class SubjectiveTestingSuite:
     def __init__(self, simulation_manager_ref, qualia_reporter_ref, logger=None):
@@ -18,7 +18,7 @@ class SubjectiveTestingSuite:
         Runs a specific illusion test.
         1. Instructs simulation_manager to present the stimulus.
         2. Waits for a period or a trigger.
-        3. Gets the ACM's "report" via qualia_reporter.
+        3. Gets the system's "report" via qualia_reporter.
         4. (Optionally) Logs human tester's input for comparison.
         """
         print(f"Step {step}: Running illusion test: {illusion_type} with params {stimulus_params}")
@@ -30,25 +30,25 @@ class SubjectiveTestingSuite:
         # self.sim_manager.present_stimulus(illusion_type, stimulus_params)
         print(f"  Action: Would instruct sim_manager to present {illusion_type}")
         
-        # --- 2. Wait for ACM processing / perception ---
+        # --- 2. Wait for processing / perception ---
         # This duration might be fixed or adaptive
-        time.sleep(0.5) # Placeholder for ACM processing time
+        time.sleep(0.5) # Placeholder for processing time
 
-        # --- 3. Get ACM's Report ---
-        # acm_report = self.reporter.get_current_percept_report(context=illusion_type)
-        acm_report = {"percept": f"acm_perceived_{illusion_type}_variant_A", "confidence": 0.8} # Placeholder
-        print(f"  ACM Report (placeholder): {acm_report}")
+        # --- 3. Get System Report ---
+        # agent_report = self.reporter.get_current_percept_report(context=illusion_type)
+        agent_report = {"percept": f"perceived_{illusion_type}_variant_A", "confidence": 0.8} # Placeholder
+        print(f"  System Report (placeholder): {acm_report}")
 
         # --- 4. (External) Get Human Report ---
         # This would typically be logged separately by a human tester interface
         human_report_example = {"percept": f"human_perceived_{illusion_type}_variant_A"} # Placeholder
         
         # --- 5. Compare and Log ---
-        congruence = (acm_report.get("percept") == human_report_example.get("percept"))
+        congruence = (agent_report.get("percept") == human_report_example.get("percept"))
         result = {
             "illusion_type": illusion_type,
             "stimulus_params": stimulus_params,
-            "acm_report": acm_report,
+            "agent_report": agent_report,
             "human_report_example": human_report_example, # For illustration
             "congruent_with_example_human": congruence,
             "timestamp": time.time()
@@ -82,7 +82,7 @@ if __name__ == '__main__':
     class MockSimManager:
         def present_stimulus(self, illusion, params): print(f"SIM: Presenting {illusion} with {params}")
     class MockQualiaReporter:
-        def get_current_percept_report(self, context): return {"percept": f"mock_acm_saw_{context}", "confidence": np.random.rand()}
+        def get_current_percept_report(self, context): return {"percept": f"mock_saw_{context}", "confidence": np.random.rand()}
     class MockLogger:
         def log_metrics_data(self, *args, **kwargs): print(f"LogMetrics: {args}, {kwargs}")
 

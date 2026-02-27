@@ -1,6 +1,6 @@
-# Contributing to Artificial Consciousness Module (ACM)
+# Contributing to The Consciousness AI
 
-Thank you for your interest in contributing to the **Artificial Consciousness Module (ACM)**! This document provides guidelines to help you get started and make meaningful contributions.
+Thank you for your interest in contributing to the **The Consciousness AI**! This document provides guidelines to help you get started and make meaningful contributions.
 
 ## How You Can Contribute
 
@@ -12,11 +12,11 @@ We welcome contributions of all types, including but not limited to:
 - Enhancing performance
 - Writing tests
 - Reporting issues or suggesting enhancements
-- **Recommending new datasets for improving the ACM**
+- **Recommending new datasets for improving the system**
 
 ### Dataset Contributions
 
-We are always looking to enhance the quality of the ACM by integrating high-quality datasets. If you find a dataset that could be valuable for improving AI performance, particularly in areas like emotion recognition, simulation interaction, or narrative generation, follow these steps:
+We are always looking to enhance the quality of the system by integrating high-quality datasets. If you find a dataset that could be valuable for improving AI performance, particularly in areas like emotion recognition, simulation interaction, or narrative generation, follow these steps:
 
 1. Open an issue on our GitHub repository titled `Dataset Suggestion: [Dataset Name]`.
 2. Include the following information:
@@ -25,7 +25,7 @@ We are always looking to enhance the quality of the ACM by integrating high-qual
    - **Description**: A brief summary of what the dataset covers.
    - **Link**: A URL to access or learn more about the dataset.
    - **License**: Verify that the dataset is licensed for commercial use.
-   - **Proposed Use**: Explain how the dataset can be used in the ACM project (e.g., training models, fine-tuning, validation).
+   - **Proposed Use**: Explain how the dataset can be used in the system project (e.g., training models, fine-tuning, validation).
 
 3. If approved, submit a pull request to add the dataset details to the `/docs/datasets.md` file. (Note: This `datasets.md` file is a planned document and crucial for dataset management. Its creation is a priority.)
 
@@ -99,4 +99,4 @@ By contributing to this project, you agree that your contributions will be licen
 
 ## Acknowledgments
 
-We greatly appreciate your time and effort in contributing to the Artificial Consciousness Module. Let’s build something great!
+We greatly appreciate your time and effort in contributing to The Consciousness AI. Let’s build something great!

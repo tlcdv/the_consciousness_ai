@@ -1,4 +1,4 @@
-# Core configuration for ACM consciousness development.
+# Core configuration for the system consciousness development.
 
 # Defines:
 # 1. Consciousness emergence thresholds
@@ -179,7 +179,7 @@ logging:
   wandb_logging: true
   log_level: "INFO"
 
-# Configuration for ACM consciousness development with LLaMA 3.3
+# Configuration for the system consciousness development with LLaMA 3.3
 foundation_model:
   name: "llama-3.3"
   path: "models/language/llama-3.3"

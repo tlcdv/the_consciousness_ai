@@ -10,7 +10,7 @@ import json
 
 class ACEConsciousAgent:
     def __init__(self, config):
-        # ACM Core Components
+        # Core Components
         self.consciousness_core = ConsciousnessCore()
         self.emotional_memory = EmotionalMemoryCore()
         self.world_model = DreamerEmotionalWrapper()
@@ -25,16 +25,16 @@ class ACEConsciousAgent:
         self.config = config
         
     async def initialize(self):
-        """Initialize both ACE and ACM components"""
+        """Initialize both ACE and consciousness core components"""
         # Initialize ACE services
         await self.setup_ace_services()
         
-        # Initialize ACM cores
+        # Initialize consciousness cores
         await self.initialize_consciousness()
         
     async def process_interaction(self, visual_input, audio_input=None, context=None):
-        """Process interaction through both ACE and ACM"""
-        # 1. Process through ACM consciousness pipeline
+        """Process interaction through both ACE and consciousness core"""
+        # 1. Process through consciousness pipeline
         consciousness_state = await self.consciousness_core.process({
             'visual': visual_input,
             'audio': audio_input,
@@ -66,7 +66,7 @@ class ACEConsciousAgent:
         }
         
     async def generate_ace_animation(self, emotional_response):
-        """Convert ACM emotional response to ACE animation"""
+        """Convert emotional response to ACE animation"""
         if not self.animation_graph:
             return None
             

@@ -1,7 +1,7 @@
 # models/predictive/emotional_predictor.py
 
 """
-Predictive module for ACM that handles:
+Predictive module that handles:
 - Emotional outcome prediction
 - Simulation evaluation
 - Meta-memory integration

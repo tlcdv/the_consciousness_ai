@@ -1,5 +1,5 @@
 """
-Emotional Graph Neural Network (EGNN) implementing ACM's emotional processing with:
+Emotional Graph Neural Network (EGNN) implementing emotional processing with:
 - Integration with LLaMA 3.3 narrative states
 - Meta-memory guided pattern recognition
 - Dynamic emotional adaptation

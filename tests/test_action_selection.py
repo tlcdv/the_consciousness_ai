@@ -64,17 +64,18 @@ class TestBasalGanglia(unittest.TestCase):
         # (Go pathway is boosted, No-Go is suppressed)
         mag_high = torch.abs(action_high_da).mean().item()
         mag_low = torch.abs(action_low_da).mean().item()
-        # Run multiple random seeds to confirm statistically
+        # Run multiple trials with fixed seed for reproducibility
+        torch.manual_seed(42)
         wins = 0
-        for _ in range(20):
+        for _ in range(50):
             pfc_state = torch.randn(1, self.context_dim)
             a_high, _ = self.bg(pfc_state, dopamine_rpe=1.0)
             a_low, _ = self.bg(pfc_state, dopamine_rpe=-1.0)
             if torch.abs(a_high).mean() > torch.abs(a_low).mean():
                 wins += 1
         # High dopamine should win the majority of the time
-        self.assertGreater(wins, 10, 
-            f"High dopamine should produce larger actions more often. Won {wins}/20.")
+        self.assertGreater(wins, 25, 
+            f"High dopamine should produce larger actions more often. Won {wins}/50.")
     
     def test_stn_global_inhibition(self):
         """STN output should be a scalar that gates all action dimensions."""

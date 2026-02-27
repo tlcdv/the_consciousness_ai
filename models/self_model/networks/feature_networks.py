@@ -1,5 +1,5 @@
 """
-Feature Extraction Networks for Self Model in ACM
+Feature Extraction Networks for Self Model
 
 This module implements:
 1. Core feature extraction for self representation

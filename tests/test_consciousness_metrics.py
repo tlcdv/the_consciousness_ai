@@ -9,7 +9,7 @@ from models.predictive.dreamer_emotional_wrapper import DreamerEmotionalWrapper
 from models.evaluation.consciousness_monitor import ConsciousnessMonitor
 
 """
-Unit tests for consciousness development metrics in ACM.
+Unit tests for consciousness development metrics.
 
 Tests the following metrics:
 1. Emotional awareness scoring

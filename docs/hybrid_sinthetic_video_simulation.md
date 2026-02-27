@@ -6,7 +6,7 @@
 
 ## 1 Purpose
 
-Provide a **licence‑clean**, scalable training pipeline that blends high‑throughput **text‑to‑video (T2V)** generation with **Unreal Engine 5 (UE5)** closed‑loop simulation to develop the Artificial Consciousness Module (ACM) without legal blockers for commercial deployment.
+Provide a **licence‑clean**, scalable training pipeline that blends high‑throughput **text‑to‑video (T2V)** generation with **Unreal Engine 5 (UE5)** closed‑loop simulation to develop The Consciousness AI (ACM) without legal blockers for commercial deployment.
 
 ---
 

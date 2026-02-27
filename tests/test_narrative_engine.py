@@ -1,5 +1,5 @@
 """
-Test suite for the Narrative Engine component of ACM.
+Test suite for the Narrative Engine component.
 
 Validates narrative generation and integration with memory/emotion dependencies.
 """

@@ -363,7 +363,7 @@ class ConsciousnessMetrics:
           return metrics
 
 class ConsciousnessCapabilityTester:
-    def __init__(self, acm_agent_interface, config: dict = None, logger: MetricsLogger = None):
+    def __init__(self, agent_interface, config: dict = None, logger: MetricsLogger = None):
         """
         Initializes the ConsciousnessCapabilityTester.
 
@@ -371,13 +371,13 @@ class ConsciousnessCapabilityTester:
         based on an indicator-property rubric for AI consciousness.
 
         Args:
-            acm_agent_interface: An interface to interact with the ACM agent,
+            agent_interface: An interface to interact with the agent,
                                  allowing the tester to send stimuli/queries
                                  and receive responses/internal states.
             config (dict, optional): Configuration for the tests.
             logger (MetricsLogger, optional): Logger for detailed test results.
         """
-        self.agent_interface = acm_agent_interface
+        self.agent_interface = agent_interface
         self.config = config if config else {}
         self.logger = logger if logger else MetricsLogger(experiment_name="capability_tests") # Default logger
         
@@ -497,8 +497,8 @@ class ConsciousnessCapabilityTester:
             print("ConsciousnessCapabilityTester logger closed.")
 
 if __name__ == '__main__':
-    # This example requires a mock or real ACM agent interface.
-    class MockACMAgentInterface:
+    # This example requires a mock or real agent interface.
+    class MockAgentInterface:
         def perform_action(self, action_command):
             print(f"MockAgent: Performing action '{action_command}'")
             return {"status": "success", "details": f"Action {action_command} completed."}
@@ -512,9 +512,9 @@ if __name__ == '__main__':
 
         # Add other methods that the tests might call
 
-    mock_agent = MockACMAgentInterface()
+    mock_agent = MockAgentInterface()
     # Assuming MetricsLogger is accessible or its dummy is used
-    capability_tester = ConsciousnessCapabilityTester(acm_agent_interface=mock_agent)
+    capability_tester = ConsciousnessCapabilityTester(agent_interface=mock_agent)
 
     print("\n--- Running All Capability Tests (Example) ---")
     test_summary = capability_tester.run_all_tests(step=1)

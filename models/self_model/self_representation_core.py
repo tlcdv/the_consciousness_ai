@@ -22,8 +22,8 @@ from collections import deque
 class SelfState:
     """Comprehensive representation of the system's self-model"""
     # Identity components
-    id: str = "ACM-1"
-    name: str = "Artificial Consciousness Module"
+    id: str = "TCA-1"
+    name: str = "The Consciousness AI"
     
     # Current state tracking
     emotional_state: Dict[str, float] = None
