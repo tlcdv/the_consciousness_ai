@@ -41,3 +41,7 @@ pdf_to_text.py
 repo_structure.yaml
 pdf_to_text.py
 pdf_to_text.py
+
+# Runtime state files
+memory_state.pkl
+*.pkl

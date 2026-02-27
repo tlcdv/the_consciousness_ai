@@ -7,6 +7,7 @@
   - **Username**: `tlcdv`
   - **Email**: `zae@todosloscobardesdelvalle.com`
   - **IMPORTANT**: NEVER use "Co-Authored-By: Claude" or similar attribution in commit messages. All commits should be attributed solely to the configured user.
+  - **IMPORTANT**: Never mention "CLAUDE.md", "Claude", or "Anthropic" in commit messages. Describe changes in plain technical terms only.
 
 Be at the same concise and avoid verbose tone. Avoid AI slop, buzz words, filled words, over hyped tone. Systematically replace em-dashes ("—") with a dot (".") to start a new sentence, or a comma (",") to continue the sentence. And always remove the "-" character that are between words like AI-generated. It is a big sign if AI generated or AI writting. ### Writing Style Constraints
 * **Eliminate Epanorthosis:** Do not use the "not just X, but Y" or "more than X, it is Y" rhetorical structure.
