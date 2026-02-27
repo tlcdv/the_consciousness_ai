@@ -17,7 +17,7 @@ from simulations.environments.vr_environment import VREnvironment
 from models.cognitive.chain_of_thought import ChainOfThought
 from models.ace_core.ace_agent import ACEConsciousAgent
 from models.ace_core.ace_config import ACEConfig
-from models.integration.video_llama3_integration import VideoLLaMA3Integration  # deprecated shim, routes to Qwen2-VL
+# VideoLLaMA3 has been removed (2026-02-27). Visual backbone is Qwen2-VL exclusively.
 from models.memory.emotional_memory_core import EmotionalMemoryCore
 from models.core.consciousness_core import ConsciousnessCore
 from models.evaluation.consciousness_monitor import ConsciousnessMonitor
@@ -246,27 +246,31 @@ class SimulationManager:
     async def initialize_simulation(self):
         """Initialize all components"""
         await self.ace_agent.initialize()
-        await self.video_llama.initialize()
+        # Visual backbone initialization (Qwen2-VL)
+        if hasattr(self, 'visual_processor') and self.visual_processor is not None:
+            await self.visual_processor.initialize()
         
     async def simulation_step(self, visual_input, audio_input=None, context=None):
         # Update ACE and ACM integration
-        llama_perception = await self.video_llama.process_input(
-            visual_input=visual_input,
-            audio_input=audio_input
-        )
+        perception = {}
+        if hasattr(self, 'visual_processor') and self.visual_processor is not None:
+            perception = await self.visual_processor.process_input(
+                visual_input=visual_input,
+                audio_input=audio_input
+            )
 
         # Global workspace broadcast
         await self.global_workspace.broadcast(
             WorkspaceMessage(
                 source="perception",
-                content=llama_perception,
+                content=perception,
                 priority=0.8
             )
         )
 
         # Process through consciousness core
         consciousness_state = await self.consciousness_core.process({
-            'perception': llama_perception,
+            'perception': perception,
             'context': context
         })
 
@@ -282,7 +286,7 @@ class SimulationManager:
             context={
                 'consciousness_state': consciousness_state,
                 'emotional_response': emotional_response,
-                'llama_perception': llama_perception
+                'perception': perception
             }
         )
 
@@ -319,7 +323,7 @@ class SimulationManager:
             'consciousness_state': consciousness_state,
             'emotional_response': emotional_response,
             'ace_result': ace_result,
-            'llama_perception': llama_perception,
+            'perception': perception,
             'attention_focus': cumulative_focus
         }
     

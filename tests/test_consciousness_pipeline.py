@@ -69,7 +69,7 @@ class TestConsciousnessPipeline(unittest.TestCase):
         self.test_scenarios = []
         self.consciousness_scores = []
 
-        # Create stub objects for video_llama3.
+        # Create stub objects for visual processing pipeline.
         class DummyProcessor:
             def __call__(self, x, return_tensors="pt"):
                 import torch

@@ -68,11 +68,14 @@ class GlobalWorkspace:
         self.qualia_mapper = QualiaMapper()
         
         # New: AKOrN Oscillatory Binding System
-        # We start with 5 oscillators (vision, audio, memory, emotion, default)
+        # 4 sensory/cognitive oscillators. Emotion is now a parallel modulator,
+        # not a workspace competitor (Tier 2 architecture redesign).
         from models.core.oscillatory_binding import WorkspaceBindingSystem
-        self.binding_system = WorkspaceBindingSystem(num_modules=5, iterations=5)
-        # Register the standard modules so they map to specific oscillator indices
-        self.binding_system.register_modules(['vision', 'audio', 'memory', 'emotion', 'body'])
+        self.binding_system = WorkspaceBindingSystem(num_modules=4, iterations=5)
+        self.binding_system.register_modules(['vision', 'audio', 'memory', 'body'])
+        
+        # Affective Modulator (Tier 2): emotion modulates bids + threshold
+        self.affective_modulator = None
         
     def register_specialist(self, name: str, module: Any) -> None:
         """Register a specialist cognitive module"""
@@ -104,6 +107,17 @@ class GlobalWorkspace:
                     
         # Provide fallback content dict name for the rest of the function
         contents = payloads
+        
+        # 1b. Affective Modulation (Tier 2)
+        # If a modulator is present, apply valence field to bids and
+        # adjust ignition threshold before competition.
+        if self.affective_modulator is not None and hasattr(self.affective_modulator, 'modulate'):
+            pad_state = self.affective_modulator._current_pad_state \
+                if hasattr(self.affective_modulator, '_current_pad_state') \
+                else getattr(self, '_current_pad_state', {})
+            if pad_state:
+                bids, adjusted_threshold = self.affective_modulator.modulate(bids, pad_state)
+                self.ignition_threshold = adjusted_threshold
         
         # 2. Oscillatory Binding (AKOrN - ICLR 2025)
         # Replaces the heuristic: If Vision and Audio > 0.5, multiply by 1.2

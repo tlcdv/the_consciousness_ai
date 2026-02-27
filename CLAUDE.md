@@ -252,87 +252,137 @@ Priority order based on dependency and impact:
 
 ---
 
-## Current State (2026-02-21)
+### (Sessions between Feb 21 and Feb 27: Tier 1 Core Architecture Implementation)
 
-77 of 79 tests pass (97%). Architecture being redesigned based on deep biological research.
+**What was done:**
 
-**Architectural decisions locked:**
-- Oscillatory binding: **AKOrN** (ICLR 2025) replaces hardcoded synchrony multiplier
-- Spatial topographic maps: **V-JEPA / DreamerV3 RSSM** as tectum pathway alongside Qwen2-VL
-- Compositional hierarchy: **Capsule Networks** (over GNNs)
+1. **Implemented AKOrN Oscillatory Binding** (`models/core/oscillatory_binding.py`):
+   - `KuramotoLayer`: discrete-time Kuramoto oscillator synchronization on N-spheres
+   - `WorkspaceBindingSystem`: wraps AKOrN for the GNW, maps module names to oscillator indices
+   - Integrated into `global_workspace.py`, replacing the hardcoded `1.2` synchrony multiplier
+   - Tests: `test_phi_binding_correlation.py` (synchronization dynamics, 3-condition phi monotony)
+
+2. **Implemented Sensory Tectum with RSSM** (`models/core/sensory_tectum.py`):
+   - `TopographicMap`: 2D spatial grid fusing visual and audio spatial features
+   - `RSSMCore`: DreamerV3 style recurrent state space model with categorical latents
+   - `SensoryTectum`: full midbrain integration layer with surprise-based bidding and `receive_broadcast()` for reentrant feedback
+   - Tests: `test_sensory_tectum.py` (topographic fusion, RSSM recurrence, surprise bids)
+
+3. **Implemented Reentrant Processing** (`models/core/reentrant_processor.py`):
+   - `ReentrantProcessor`: 5-10 adaptive convergence cycles wrapping GNW competition
+   - Prediction error delta early termination (convergence threshold)
+   - Top-down feedback via `receive_broadcast()` on specialist modules
+   - Tests: `test_reentrant_processing.py` (8 core tests + 6 specialist feedback tests + 3 end-to-end tests)
+
+4. **Implemented PAD Homeostatic Reward Formula** (`models/emotion/reward_shaping.py`):
+   - Added `compute_emotional_reward()` with corrected formula: `Rtotal = Rext + λ1·ΔValence - λ2·(Arousal - Arousal_target)² + λ3·Dominance`
+   - Configurable `arousal_target` parameter
+
+5. **Extended Self-Model** (`models/self_model/self_representation_core.py`):
+   - Added `body_schema` tensor, `interoceptive_state` dict, `capability_model` to `SelfState`
+   - `update_body_schema()` method for proprioceptive input
+   - `_update_interoceptive_state()` with energy/fatigue/damage homeostatic dynamics
+
+6. **Phi-Binding Validation Test** (`tests/test_phi_binding_correlation.py`):
+   - 3-condition controlled experiment (unbound/partial/full binding)
+   - Validates AKOrN synchronization dynamics and phi monotony
+
+**Test results after Tier 1:** 135 passed, 1 failed (VideoLLaMA3), 1 skipped.
+
+---
+
+### 2026-02-27: Tier 2 Architecture + VideoLLaMA3 Removal
+
+**What was done:**
+
+1. **Redesigned Affective System as Parallel Modulator** (`models/emotion/affective_modulator.py`):
+   - `AffectiveModulator` class with two biological mechanisms:
+     - Valence field: modulates sensory bid values (positive valence boosts approach modules, negative boosts threat modules)
+     - Arousal-threshold coupling: adjusts GNW `ignition_threshold` (high arousal = lower threshold = easier ignition)
+   - Dominance modulation: positive dominance slightly boosts all bids (active agency)
+   - Integrated into `global_workspace.py`: emotion removed from workspace competition, modulator applied before AKOrN binding
+   - Binding system reduced from 5 to 4 oscillators (vision, audio, memory, body)
+   - Tests: `test_affective_modulator.py` (9 tests: neutral PAD, arousal coupling, valence field, dominance, clamping, GNW integration)
+
+2. **Implemented Effective Information Function** (`models/evaluation/effective_information.py`):
+   - `compute_effective_information()`: builds empirical TPM from state trajectories, computes EI = max_entropy - avg_noise
+   - `compare_ei_levels()`: compares EI at gate vs workspace level for causal emergence detection
+   - `discretize_continuous()`: bins continuous activations for TPM construction
+   - Implements Hoel's PNAS 2013 framework for falsifying the strong emergence claim
+   - Tests: `test_effective_information.py` (11 tests: deterministic/random/partial TPMs, level comparison, discretization, TPM construction)
+
+3. **Deleted VideoLLaMA3 integration:**
+   - Removed `models/integration/video_llama3_integration.py`
+   - Cleaned all references in `simulations/api/simulation_manager.py`, `models/emotion/multimodal_detector.py`, `tests/test_consciousness_pipeline.py`
+   - Renamed `llama_perception` -> `perception` in simulation_manager async methods
+   - Eliminates the only failing test. Visual backbone is now Qwen2-VL exclusively.
+
+**Test results:** 156 passed, 0 failed, 1 skipped.
+
+---
+
+## Current State (2026-02-27)
+
+156 of 157 tests pass (99.4%). Tier 1 and Tier 2 architecture changes complete.
+
+**Architectural decisions locked and implemented:**
+- Oscillatory binding: **AKOrN** (ICLR 2025) integrated into GNW
+- Spatial topographic maps: **DreamerV3 RSSM** as tectum pathway alongside Qwen2-VL
 - Reentrant processing: **5-10 adaptive cycles** with predictive coding convergence
-- Spiking validation: **Brian2/NEST** offline, AKOrN in production
-- Affective system: **Parallel modulator** (not competing with sensory modules)
-- Visual backbone: Qwen2-VL (VideoLLaMA3 deprecated)
-- Reward formula: Full PAD with homeostatic arousal term + Dominance
-- Strong emergence falsification: EI at gate vs. workspace level (Hoel framework)
-- IIT input: must use causal gate states, not workspace bid values
+- Affective system: **Parallel modulator** (valence field + arousal threshold coupling)
+- Visual backbone: **Qwen2-VL** exclusively (VideoLLaMA3 deleted)
+- Reward formula: **Full PAD** with homeostatic arousal term + Dominance
+- Strong emergence falsification: **EI function** at gate vs. workspace level (Hoel framework)
+- Phi-binding validation: **3-condition test** (unbound/partial/full) passing
+- Self-model: **Body schema + interoception** in self_representation_core
 
-**What fails (1 test):**
-- `test_video_llama3_integration.py::test_load_model`. To be deleted when VideoLLaMA3 is removed.
+**Decisions locked, not yet implemented:**
+- Compositional hierarchy: **Capsule Networks** (over GNNs)
+- Spiking validation: **Brian2/NEST** offline
+
+**What fails (0 tests):** Nothing.
 
 **What's skipped (1 test):**
 - `test_predictive_processing.py::test_prediction_generation`: async test needs pytest-asyncio
 
 ---
 
-## Roadmap (Revised 2026-02-21)
+## Roadmap (Revised 2026-02-27)
 
-Based on deep biological research (Feinberg & Mallatt's neural architecture of consciousness) and resolved design questions. Full research document: `docs/biological_neural_architecture_research.md`.
+### Completed
+- ~~Tier 1: AKOrN Oscillatory Binding~~
+- ~~Tier 1: Sensory Tectum with RSSM~~
+- ~~Tier 1: Reentrant Processing~~
+- ~~Tier 2: Affective System Parallel Modulator~~
+- ~~Tier 2: Phi-Binding Validation Test~~
+- ~~Tier 2: Proprioceptive Self-Model (body schema + interoception)~~
+- ~~PAD Homeostatic Reward Formula~~
+- ~~Effective Information Function (Hoel framework)~~
+- ~~Delete VideoLLaMA3~~
 
-### Tier 1: Core Architecture Changes
+### Next: Tier 3 + Remaining Priorities
 
-1. **Implement AKOrN Oscillatory Binding** (HIGHEST PRIORITY)
-   - File: `models/core/oscillatory_binding.py` (NEW)
-   - Integrate AKOrN (Artificial Kuramoto Oscillatory Neurons) into workspace layers
-   - Replace the hardcoded `1.2` synchrony multiplier in `global_workspace.py`
-   - Tech: PyTorch native, available on GitHub
-
-2. **Implement Sensory Tectum with V-JEPA/RSSM**
-   - File: `models/core/sensory_tectum.py` (NEW)
-   - Add V-JEPA or DreamerV3 RSSM as spatial pathway (topographic mapping)
-   - Keep Qwen2-VL for semantic processing
-   - Create aligned multisensory maps in latent space
-
-3. **Add Reentrant Processing**
-   - File: `models/core/global_workspace.py` (MODIFY) + all specialist modules
-   - Add `receive_broadcast(context)` to every specialist module
-   - Implement adaptive 5-10 cycle convergence loop with prediction error delta early termination
-   - This replaces the single-pass workspace competition
-
-### Tier 2: Architecture Corrections
-
-4. **Redesign Affective System as Parallel Modulator**
-   - Remove emotion from workspace competition
-   - Implement valence field modulation on sensory bids
-   - Add global arousal -> ignition threshold coupling
-
-5. **Implement Phi-Binding Validation Test**
-   - File: `tests/test_phi_binding_correlation.py` (NEW)
-   - Three conditions: unbound, partially bound, fully bound
-   - Must validate before trusting ANY Phi measurements
-
-6. **Add Proprioceptive Self-Model**
-   - File: `models/self_model/self_representation_core.py` (MODIFY)
-   - Add body schema tensor, somatotopic map, interoceptive state
-   - Implement self-other boundary in shared coordinate frame
-
-### Tier 3: Compositional Deepening
-
-7. **Capsule Network Composition Layer**
+1. **Capsule Network Composition Layer** (HIGH)
    - Add CapsNet between tectum outputs and workspace
    - Part-whole routing via dynamic routing by agreement
 
-8. **Brian2 Validation Stack**
-   - Offline biological validation of AKOrN binding patterns
-   - Compare against biological gamma oscillation models
+2. **Wire up `get_visual_embeddings()` from Qwen2-VL** (HIGH)
+   - File: `models/vision-language/qwen2/qwen2_integration.py`
+   - Extract ViT hidden states before language head
 
-### Previous Priorities (still relevant)
-- Wire up `get_visual_embeddings()` from Qwen2-VL
-- Implement ethics filter (AsimovComplianceFilter)
-- Full IIT Phi integration with PyPhi
-- Delete VideoLLaMA3 integration
-- Python 3.10+ upgrade
+3. **Implement ethics filter** (MEDIUM)
+   - AsimovComplianceFilter: 7 placeholder methods in `consciousness_core.py`
+
+4. **Full IIT Phi integration with PyPhi** (MEDIUM)
+   - Use causal gate states (not workspace bid values) as input
+
+5. **Brian2 Validation Stack** (LOW)
+   - Offline biological validation of AKOrN binding patterns
+
+6. **NarrativeEngine full implementation** (LOW)
+   - LLM-backed narrative generation and coherence tracking
+
+7. **Python 3.10+ upgrade** (OPTIONAL)
 
 ---
 
