@@ -342,9 +342,37 @@ Priority order based on dependency and impact:
 
 ---
 
+### 2026-02-28: Tier 3 Capsule Composition + Visual Projection
+
+**What was done:**
+
+1. **Implemented Capsule Network Composition Layer** (`models/core/capsule_composition.py`):
+   - `PrimaryCapsuleLayer`: stride-2 Conv2d converts RSSM spatial state into capsule pose vectors, squash normalization bounds activity to [0, 1)
+   - `RoutingCapsuleLayer`: dynamic routing by agreement (Sabour 2017), 3 iteration default, learnable W prediction matrices
+   - `CapsuleCompositionLayer`: chains primary and routing layers, projects concatenated poses to workspace_dim
+   - Replaces the previous global_pool + linear projection in SensoryTectum, preserving compositional structure
+
+2. **Implemented Qwen2-VL to Tectum Projection** (`models/core/visual_tectum_projection.py`):
+   - `VisualTectumProjection`: adapts Qwen2-VL ViT output [1536, H, W] (variable resolution) to tectum input [B, 64, 16, 16]
+   - Bilinear interpolation for spatial resizing, 1x1 Conv2d for channel reduction, LayerNorm + GELU
+   - Handles both 3D (unbatched) and 4D (batched) input, zero input produces near-zero output (stub mode)
+
+3. **Modified SensoryTectum** (`models/core/sensory_tectum.py`):
+   - Replaced `global_pool` + `workspace_proj` with `CapsuleCompositionLayer`
+   - Added `visual_proj` (VisualTectumProjection) as a public attribute for external callers
+   - `forward()` signature and return type unchanged: still returns `(workspace_content, bid)`
+   - Added `get_capsule_payload()` method for structured workspace payloads
+   - Caches `_last_capsule_poses` and `_last_capsule_activities` for reentrant feedback
+
+4. **Tests:** 24 new tests (6 projection + 2 squash + 3 primary + 4 routing + 7 composition + 2 tectum integration)
+
+**Test results:** 177 passed, 0 failed, 1 skipped (up from 153).
+
+---
+
 ## Current State (2026-02-28)
 
-153 of 154 tests pass (99.4%). Tier 1 and Tier 2 architecture changes complete. ACM terminology removed.
+177 of 178 tests pass (99.4%). Tier 1, Tier 2, and Tier 3 capsule composition complete. ACM terminology removed.
 
 **Architectural decisions locked and implemented:**
 - Oscillatory binding: **AKOrN** (ICLR 2025) integrated into GNW
@@ -356,9 +384,10 @@ Priority order based on dependency and impact:
 - Strong emergence falsification: **EI function** at gate vs. workspace level (Hoel framework)
 - Phi-binding validation: **3-condition test** (unbound/partial/full) passing
 - Self-model: **Body schema + interoception** in self_representation_core
+- Capsule composition: **Dynamic routing by agreement** (Sabour 2017) between tectum and workspace
+- Visual projection: **Qwen2-VL ViT adapter** (1536 -> 64 channels, variable grid -> fixed 16x16)
 
 **Decisions locked, not yet implemented:**
-- Compositional hierarchy: **Capsule Networks** (over GNNs)
 - Spiking validation: **Brian2/NEST** offline
 
 **What fails (0 tests):** Nothing.
@@ -368,7 +397,7 @@ Priority order based on dependency and impact:
 
 ---
 
-## Roadmap (Revised 2026-02-27)
+## Roadmap (Revised 2026-02-28)
 
 ### Completed
 - ~~Tier 1: AKOrN Oscillatory Binding~~
@@ -380,30 +409,24 @@ Priority order based on dependency and impact:
 - ~~PAD Homeostatic Reward Formula~~
 - ~~Effective Information Function (Hoel framework)~~
 - ~~Delete VideoLLaMA3~~
+- ~~Tier 3: Capsule Network Composition Layer~~
+- ~~Tier 3: Qwen2-VL to Tectum Projection~~
 
-### Next: Tier 3 + Remaining Priorities
+### Next Priorities
 
-1. **Capsule Network Composition Layer** (HIGH)
-   - Add CapsNet between tectum outputs and workspace
-   - Part-whole routing via dynamic routing by agreement
-
-2. **Wire up `get_visual_embeddings()` from Qwen2-VL** (HIGH)
-   - File: `models/vision-language/qwen2/qwen2_integration.py`
-   - Extract ViT hidden states before language head
-
-3. **Implement ethics filter** (MEDIUM)
+1. **Implement ethics filter** (MEDIUM)
    - AsimovComplianceFilter: 7 placeholder methods in `consciousness_core.py`
 
-4. **Full IIT Phi integration with PyPhi** (MEDIUM)
+2. **Full IIT Phi integration with PyPhi** (MEDIUM)
    - Use causal gate states (not workspace bid values) as input
 
-5. **Brian2 Validation Stack** (LOW)
+3. **Brian2 Validation Stack** (LOW)
    - Offline biological validation of AKOrN binding patterns
 
-6. **NarrativeEngine full implementation** (LOW)
-   - LLM-backed narrative generation and coherence tracking
+4. **NarrativeEngine full implementation** (LOW)
+   - LLM backed narrative generation and coherence tracking
 
-7. **Python 3.10+ upgrade** (OPTIONAL)
+5. **Python 3.10+ upgrade** (OPTIONAL)
 
 ---
 

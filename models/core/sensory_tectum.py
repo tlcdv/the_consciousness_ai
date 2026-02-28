@@ -3,6 +3,9 @@ import torch.nn as nn
 import torch.nn.functional as F
 from typing import Dict, Tuple, Optional, Any
 
+from models.core.visual_tectum_projection import VisualTectumProjection
+from models.core.capsule_composition import CapsuleCompositionLayer
+
 class TopographicMap(nn.Module):
     """
     Biological Counterpart: Optic Tectum / Superior Colliculus
@@ -159,20 +162,40 @@ class SensoryTectum(nn.Module):
         super().__init__()
         self.feature_dim = config.get("tectum_feature_dim", 64)
         self.grid_size = config.get("tectum_grid_size", 16)
-        
+        workspace_dim = config.get("workspace_dim", 256)
+
         self.topo_map = TopographicMap(self.grid_size, self.feature_dim)
         self.rssm = RSSMCore(self.feature_dim, self.grid_size)
-        
-        # To summarize the spatial map into a single vector for the global workspace competition
-        self.global_pool = nn.AdaptiveAvgPool2d((1, 1))
-        self.workspace_proj = nn.Linear(self.feature_dim + (self.rssm.categories * self.rssm.classes), config.get("workspace_dim", 256))
-        
+
+        # Qwen2-VL grid adapter: [1536, H, W] -> [B, feature_dim, grid_size, grid_size]
+        self.visual_proj = VisualTectumProjection(
+            in_channels=config.get("vit_dim", 1536),
+            out_channels=self.feature_dim,
+            target_grid=self.grid_size
+        )
+
+        # Capsule composition layer replaces global_pool + linear projection.
+        # Preserves compositional structure through dynamic routing by agreement.
+        rssm_channels = self.feature_dim + (self.rssm.categories * self.rssm.classes)
+        self.capsule_layer = CapsuleCompositionLayer(
+            rssm_channels=rssm_channels,
+            grid_size=self.grid_size,
+            workspace_dim=workspace_dim,
+            num_output_caps=config.get("num_output_caps", 4),
+            output_dim=config.get("capsule_output_dim", 16),
+            num_primary_caps=config.get("num_primary_caps", 8),
+            primary_dim=config.get("capsule_primary_dim", 8),
+            routing_iterations=config.get("routing_iterations", 3)
+        )
+
         self.register_buffer('h_state', None)
         self.register_buffer('z_state', None)
-        
-        # Cache for reentrant feedback (Phase 6)
+
+        # Cache for reentrant feedback
         self._last_content = None
         self._last_raw_bid = 0.0
+        self._last_capsule_poses = None
+        self._last_capsule_activities = None
         
     def reset_state(self, batch_size: int = 1):
         device = next(self.parameters()).device
@@ -212,18 +235,29 @@ class SensoryTectum(nn.Module):
         # Scale bid to [0, 1] using tanh
         bid = torch.tanh(kl_div).item()
         
-        # 4. Extract content vector for workspace broadcast
+        # 4. Extract content via capsule composition
         z_flat = z_t.view(B, -1, self.grid_size, self.grid_size)
-        state_tensor = torch.cat([h_t, z_flat], dim=1) # [B, C, H, W]
-        
-        pooled = self.global_pool(state_tensor).view(B, -1)
-        workspace_content = self.workspace_proj(pooled)
-        
+        state_tensor = torch.cat([h_t, z_flat], dim=1)  # [B, C, H, W]
+
+        workspace_content, capsule_activities, capsule_poses = self.capsule_layer(state_tensor)
+
         # Cache for reentrant feedback
         self._last_content = workspace_content.detach()
         self._last_raw_bid = bid
-        
+        self._last_capsule_poses = capsule_poses.detach()
+        self._last_capsule_activities = capsule_activities.detach()
+
         return workspace_content, bid
+
+    def get_capsule_payload(self):
+        # type: () -> Dict[str, Any]
+        """Returns cached capsule state for structured workspace payloads."""
+        if self._last_capsule_poses is None:
+            return {}
+        return {
+            "capsule_poses": self._last_capsule_poses,
+            "capsule_activities": self._last_capsule_activities
+        }
     
     def receive_broadcast(self, broadcast_content: Any, current_bid: float) -> float:
         """
