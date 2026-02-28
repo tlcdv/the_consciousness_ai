@@ -37,7 +37,7 @@ class SubjectiveTestingSuite:
         # --- 3. Get System Report ---
         # agent_report = self.reporter.get_current_percept_report(context=illusion_type)
         agent_report = {"percept": f"perceived_{illusion_type}_variant_A", "confidence": 0.8} # Placeholder
-        print(f"  System Report (placeholder): {acm_report}")
+        print(f"  System Report (placeholder): {agent_report}")
 
         # --- 4. (External) Get Human Report ---
         # This would typically be logged separately by a human tester interface
