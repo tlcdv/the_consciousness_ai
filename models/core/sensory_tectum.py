@@ -3,69 +3,117 @@ import torch.nn as nn
 import torch.nn.functional as F
 from typing import Dict, Tuple, Optional, Any
 
-from models.core.visual_tectum_projection import VisualTectumProjection
+from models.core.retinotopic_encoder import RetinotopicEncoder
 from models.core.capsule_composition import CapsuleCompositionLayer
 
 class TopographicMap(nn.Module):
     """
     Biological Counterpart: Optic Tectum / Superior Colliculus
-    
+
     Maintains a 2D spatial grid representing the agent's egocentric space.
     Sensory inputs (vision, audio) are mapped into this shared coordinate frame,
     preserving spatial relationships (isomorphism).
+
+    Uses inverse effectiveness fusion (Stein & Meredith 1993): proportional
+    enhancement is greatest when individual unimodal responses are weakest.
+    This is how the biological SC detects faint multimodal stimuli that would
+    be missed by either modality alone.
     """
     def __init__(self, grid_size: int = 16, feature_dim: int = 64):
         super().__init__()
         self.grid_size = grid_size
         self.feature_dim = feature_dim
-        
-        # 2D Convolutional layers to fuse modalities into the spatial grid
+
+        # Refinement conv applied after inverse effectiveness additive fusion.
+        # Input is feature_dim (not 2x) because IE does weighted addition.
         self.fusion_conv = nn.Sequential(
-            nn.Conv2d(feature_dim * 2, feature_dim, kernel_size=3, padding=1),
+            nn.Conv2d(feature_dim, feature_dim, kernel_size=3, padding=1),
             nn.GELU(),
             nn.LayerNorm([feature_dim, grid_size, grid_size]),
             nn.Conv2d(feature_dim, feature_dim, kernel_size=3, padding=1),
             nn.GELU()
         )
-        
+
+    def _place_audio_on_grid(self, audio_spatial, B, C, H, W, device):
+        # type: (torch.Tensor, int, int, int, int, torch.device) -> torch.Tensor
+        """
+        Project audio bearing/elevation into a 2D spatial grid.
+
+        Biologically, auditory space is computed (from ITD, ILD, spectral cues)
+        and calibrated to match the visual map during development (Knudsen &
+        Brainard 1991). We place audio features at the corresponding grid
+        location with spatial blur for receptive field uncertainty.
+        """
+        audio_grid = torch.zeros(B, C, H, W, device=device)
+
+        for b in range(B):
+            ax = audio_spatial[b, 0, 0].item()  # azimuth
+            ay = audio_spatial[b, 0, 1].item()  # elevation
+
+            gx = torch.clamp(torch.tensor((ax + 1) / 2 * (W - 1)), 0, W - 1).int()
+            gy = torch.clamp(torch.tensor((ay + 1) / 2 * (H - 1)), 0, H - 1).int()
+
+            audio_grid[b, :, gy, gx] = audio_spatial[b, :, 0]
+
+        # Spatial blur: auditory RFs are 40-80 degrees in the SC,
+        # much coarser than visual RFs (10-30 degrees)
+        audio_grid = F.avg_pool2d(audio_grid, kernel_size=3, stride=1, padding=1)
+        return audio_grid
+
+    def _fuse_inverse_effectiveness(self, visual, audio, epsilon=1e-6):
+        # type: (torch.Tensor, torch.Tensor, float) -> torch.Tensor
+        """
+        Inverse effectiveness fusion (Stein & Meredith 1993, Ohshiro et al. 2011).
+
+        When both unimodal responses at a grid cell are weak, the proportional
+        enhancement from combining them is large. When both are strong, the
+        enhancement is modest. This follows from the sigmoid response function:
+        weak inputs operate on the steep part of the curve (large gain from
+        combination), strong inputs are near saturation (small gain).
+
+        Args:
+            visual: [B, C, H, W] visual feature grid
+            audio:  [B, C, H, W] audio feature grid (sparse, most cells zero)
+            epsilon: numerical stability
+
+        Returns:
+            [B, C, H, W] fused feature grid
+        """
+        v_mag = visual.norm(dim=1, keepdim=True)  # [B, 1, H, W]
+        a_mag = audio.norm(dim=1, keepdim=True)
+
+        # Weight inversely proportional to the stronger unimodal signal
+        max_unimodal = torch.max(v_mag, a_mag) + epsilon
+        ie_weight = 1.0 / max_unimodal
+        # Normalize so mean weight is 1.0 (preserves overall magnitude)
+        ie_weight = ie_weight / (ie_weight.mean() + epsilon)
+
+        # Additive fusion: visual is the anchor, audio is modulated
+        fused = visual + audio * ie_weight
+        return fused
+
     def forward(self, visual_grid: torch.Tensor, audio_spatial: torch.Tensor) -> torch.Tensor:
         """
-        Fuses visual and spatial audio into a single topographic map.
-        
+        Fuses visual and spatial audio into a single topographic map
+        using inverse effectiveness.
+
         Args:
-            visual_grid: [B, feature_dim, grid_size, grid_size] - from CNN backbone
-            audio_spatial: [B, feature_dim, 2] - bearing and elevation features
-            
+            visual_grid: [B, feature_dim, grid_size, grid_size] from RetinotopicEncoder
+            audio_spatial: [B, feature_dim, 2] bearing and elevation features
+
         Returns:
             fused_map: [B, feature_dim, grid_size, grid_size]
         """
         B, C, H, W = visual_grid.shape
         device = visual_grid.device
-        
-        # Project audio spatial vector into a 2D grid representation
-        # Biologically, auditory space is computed, not natively mapped on the retina
-        audio_grid = torch.zeros(B, C, H, W, device=device)
-        
-        # Simple heuristic: audio_spatial holds [x, y] coordinates in [-1, 1]
-        # We place a Gaussian bump at that coordinate in the grid
-        for b in range(B):
-            ax = audio_spatial[b, 0, 0].item() # x (azimuth)
-            ay = audio_spatial[b, 0, 1].item() # y (elevation)
-            
-            # Map [-1, 1] to [0, grid_size-1]
-            gx = torch.clamp(torch.tensor((ax + 1) / 2 * (W - 1)), 0, W - 1).int()
-            gy = torch.clamp(torch.tensor((ay + 1) / 2 * (H - 1)), 0, H - 1).int()
-            
-            # Add audio features to that location (with a small blur for uncertainty)
-            audio_grid[b, :, gy, gx] = audio_spatial[b, :, 0]
-            
-        # Apply slight blur to audio grid to represent spatial uncertainty
-        audio_grid = F.avg_pool2d(audio_grid, kernel_size=3, stride=1, padding=1)
-        
-        # Concatenate and fuse
-        combined = torch.cat([visual_grid, audio_grid], dim=1) # [B, 2*feature_dim, H, W]
-        fused_map = self.fusion_conv(combined)
-        
+
+        audio_grid = self._place_audio_on_grid(audio_spatial, B, C, H, W, device)
+
+        # Inverse effectiveness fusion instead of concatenation
+        fused = self._fuse_inverse_effectiveness(visual_grid, audio_grid)
+
+        # Refinement convolutions
+        fused_map = self.fusion_conv(fused)
         return fused_map
 
 class RSSMCore(nn.Module):
@@ -167,11 +215,13 @@ class SensoryTectum(nn.Module):
         self.topo_map = TopographicMap(self.grid_size, self.feature_dim)
         self.rssm = RSSMCore(self.feature_dim, self.grid_size)
 
-        # Qwen2-VL grid adapter: [1536, H, W] -> [B, feature_dim, grid_size, grid_size]
-        self.visual_proj = VisualTectumProjection(
-            in_channels=config.get("vit_dim", 1536),
+        # Retinotopic encoder: DINOv2-B/14 (frozen) -> [B, feature_dim, grid_size, grid_size]
+        # Falls back to conv stack when DINOv2 weights unavailable (CI/testing)
+        use_pretrained = config.get("use_pretrained_dino", False)
+        self.retinotopic_encoder = RetinotopicEncoder(
             out_channels=self.feature_dim,
-            target_grid=self.grid_size
+            target_grid=self.grid_size,
+            pretrained=use_pretrained,
         )
 
         # Capsule composition layer replaces global_pool + linear projection.
@@ -207,12 +257,25 @@ class SensoryTectum(nn.Module):
     def forward(self, vision_features: torch.Tensor, audio_spatial: torch.Tensor) -> Tuple[torch.Tensor, float]:
         """
         Process incoming streams, update the world model, and generate a bid for the workspace.
+
+        Args:
+            vision_features: either raw image frames [B, 3, 224, 224] (will be
+                encoded by RetinotopicEncoder) or pre-encoded features
+                [B, feature_dim, grid_size, grid_size] (passed through directly)
+            audio_spatial: [B, feature_dim, 2] bearing and elevation features
         """
+        if vision_features.dim() == 3:
+            vision_features = vision_features.unsqueeze(0)
+
+        # Auto-detect: raw frames (3 channels) vs pre-encoded (feature_dim channels)
+        if vision_features.shape[1] <= 3:
+            vision_features = self.retinotopic_encoder(vision_features)
+
         B = vision_features.shape[0]
         if self.h_state is None or self.h_state.shape[0] != B:
             self.reset_state(B)
-            
-        # 1. Create Egocentric Topographic Map
+
+        # 1. Create Egocentric Topographic Map (inverse effectiveness fusion)
         obs_map = self.topo_map(vision_features, audio_spatial)
         
         # 2. Update RSSM World Model

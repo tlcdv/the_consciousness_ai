@@ -370,22 +370,22 @@ Priority order based on dependency and impact:
 
 ---
 
-## Current State (2026-03-10)
+## Current State (2026-03-13)
 
-206 of 207 tests pass (99.5%). Tiers 1-3 complete, ethics filter implemented, CI green.
+233 of 234 tests pass (99.6%). Tiers 1-3 complete, isomorphic visual mapping implemented, CI green.
 
 **Architectural decisions locked and implemented:**
 - Oscillatory binding: **AKOrN** (ICLR 2025) integrated into GNW
-- Spatial topographic maps: **DreamerV3 RSSM** as tectum pathway alongside Qwen2-VL
+- Spatial topographic maps: **DreamerV3 RSSM** as tectum pathway
 - Reentrant processing: **5-10 adaptive cycles** with predictive coding convergence
 - Affective system: **Parallel modulator** (valence field + arousal threshold coupling)
-- Visual backbone: **Qwen2-VL** exclusively (VideoLLaMA3 deleted)
+- Visual backbone: **Dual-stream**. DINOv2-B/14 (frozen) for tectum spatial pathway, Qwen2-VL for cortical semantic pathway
+- Isomorphic visual mapping: **RetinotopicEncoder** (DINOv2 patch tokens with direct spatial correspondence) + **TDANN topographic loss** (Margalit 2024) + **inverse effectiveness fusion** (Stein & Meredith 1993)
 - Reward formula: **Full PAD** with homeostatic arousal term + Dominance
 - Strong emergence falsification: **EI function** at gate vs. workspace level (Hoel framework)
 - Phi-binding validation: **3-condition test** (unbound/partial/full) passing
 - Self-model: **Body schema + interoception** in self_representation_core
 - Capsule composition: **Dynamic routing by agreement** (Sabour 2017) between tectum and workspace
-- Visual projection: **Qwen2-VL ViT adapter** (1536 -> 64 channels, variable grid -> fixed 16x16)
 - Ethics filter: **AsimovComplianceFilter** with three law evaluation pipeline + world model prediction
 
 **Decisions locked, not yet implemented:**
@@ -398,7 +398,7 @@ Priority order based on dependency and impact:
 
 ---
 
-## Roadmap (Revised 2026-03-10)
+## Roadmap (Revised 2026-03-13)
 
 ### Completed
 - ~~Tier 1: AKOrN Oscillatory Binding~~
@@ -413,19 +413,82 @@ Priority order based on dependency and impact:
 - ~~Tier 3: Capsule Network Composition Layer~~
 - ~~Tier 3: Qwen2-VL to Tectum Projection~~
 - ~~Implement AsimovComplianceFilter ethics methods~~
+- ~~True isomorphic visual mapping (DINOv2 + TDANN + inverse effectiveness)~~
 
-### Next Priorities
+### Next Priorities (to reach 85%+ alignment)
 
-1. **Full IIT Phi integration with PyPhi** (MEDIUM)
+1. **Wire interoceptive state into affective modulator** (HIGH, low effort)
+   - Make energy/fatigue/damage generate valence signals that modulate sensory bids
+   - Closes the embodiment-affect loop (gap #2 from audit)
+
+2. **Add somatosensory channel to tectum** (MEDIUM, low effort)
+   - Feed body_schema tensor into TopographicMap as third sensory modality
+   - Requires extending TopographicMap to accept optional body input
+
+3. **Deepen capsule hierarchy to 3-4 levels** (MEDIUM)
+   - Add intermediate routing layers between primary and output capsules
+   - Required by Feinberg & Mallatt for compositional hierarchy (gap #3)
+
+4. **Multi-level reentrant processing** (MEDIUM)
+   - Add reciprocal connections between hierarchy levels (not just workspace-specialist)
+   - V1-LGN type nested reentrance (gap #4)
+
+5. **Full IIT Phi integration with PyPhi** (MEDIUM)
    - Use causal gate states (not workspace bid values) as input
 
-2. **Brian2 Validation Stack** (LOW)
+6. **Brian2 Validation Stack** (LOW)
    - Offline biological validation of AKOrN binding patterns
 
-3. **NarrativeEngine full implementation** (LOW)
-   - LLM backed narrative generation and coherence tracking
+7. **Python 3.10+ upgrade** (OPTIONAL)
 
-4. **Python 3.10+ upgrade** (OPTIONAL)
+---
+
+### 2026-03-13: True Isomorphic Visual Mapping Implementation
+
+**What was done:**
+
+1. **Implemented RetinotopicEncoder** (`models/core/retinotopic_encoder.py`):
+   - `RetinotopicEncoder`: wraps frozen DINOv2-B/14 (`facebook/dinov2-base`) for spatially faithful patch tokens
+   - Each patch token at grid position (i,j) corresponds to the 14x14 pixel region at (i*14, j*14). Direct spatial correspondence.
+   - `nn.Conv2d(768, 64, kernel_size=1)` channel reduction + LayerNorm + GELU
+   - All DINOv2 parameters frozen, only the 1x1 conv trains
+   - `RetinotopicConvStack` fallback: 4-layer strided conv stack (3->32->64->64->768) preserving retinotopy by construction, used when DINOv2 weights unavailable (CI/testing)
+   - Auto-resizes non-224x224 input via bilinear interpolation
+
+2. **Implemented TDANN Topographic Spatial Loss** (`models/core/topographic_loss.py`):
+   - `topographic_spatial_loss(feature_map, alpha=0.25)`: Margalit et al. 2024 (Neuron)
+   - Computes pairwise cosine similarity between all spatial locations
+   - Loss = negative Pearson correlation between response similarity and inverse spatial distance
+   - Cached inverse distance matrix for efficiency
+   - Forces topographic self-organization: nearby grid cells respond similarly
+
+3. **Replaced concatenation fusion with inverse effectiveness** in `TopographicMap` (`models/core/sensory_tectum.py`):
+   - `_fuse_inverse_effectiveness()`: Stein & Meredith 1993, Ohshiro et al. 2011
+   - Weight = 1 / max(visual_magnitude, audio_magnitude), normalized to mean 1.0
+   - Weak+weak signals get proportionally larger enhancement than strong+strong
+   - Fusion conv now processes feature_dim channels (additive fusion) instead of 2*feature_dim (concatenation)
+   - Extracted `_place_audio_on_grid()` for clarity
+
+4. **Rewired SensoryTectum** to use `RetinotopicEncoder` instead of `VisualTectumProjection`:
+   - `self.retinotopic_encoder` replaces `self.visual_proj`
+   - `forward()` auto-detects input type: raw frames (channels <= 3) run through encoder, pre-encoded features pass through directly
+   - Backward compatible: existing tests passing pre-encoded `[B, feature_dim, H, W]` tensors still work
+   - `VisualTectumProjection` file preserved but no longer imported by tectum
+
+5. **Tests:** 27 new tests across 3 files:
+   - `test_retinotopic_encoder.py` (12 tests): conv stack shape/spatial correspondence, encoder shapes, grid permutation, gradient flow, DINOv2 flag
+   - `test_topographic_loss.py` (6 tests): scalar/finite output, smooth < random loss, alpha scaling, gradient flow, batch independence
+   - `test_inverse_effectiveness.py` (6 tests): weak enhancement > strong enhancement, zero audio passthrough, shape preservation, weight normalization, spatial selectivity
+   - Plus 3 existing tectum tests and 9 existing capsule tests pass without modification
+
+**Test results:** 233 passed, 0 failed, 1 skipped (up from 206). No regressions.
+
+**Isomorphic mapping properties satisfied:**
+- P1 (neighborhood): DINOv2 patch tokens in spatial grid order by construction. TDANN loss reinforces.
+- P2 (metric): Each DINOv2 patch covers fixed 14x14 pixel region. Grid cells equispaced.
+- P3 (co-registration): Audio Gaussian bump on same grid. Inverse effectiveness amplifies weak multimodal signals.
+- P4 (hierarchy): 4+ levels: DINOv2 patches -> IE fusion -> RSSM -> capsules
+- P5 (causal efficacy): Grid permutation test confirms shuffling degrades output.
 
 ---
 
