@@ -112,5 +112,108 @@ class TestInverseEffectiveness(unittest.TestCase):
         self.assertGreater(center_val, corner_val)
 
 
+class TestSomatosensoryChannel(unittest.TestCase):
+    """Tests for the somatosensory (body schema) channel in TopographicMap.
+
+    The body schema from SelfRepresentationCore is projected onto the spatial
+    grid and fused via inverse effectiveness, creating a trimodal (vision +
+    audio + somatosensory) topographic map matching the deep layers of the
+    biological superior colliculus (Stein & Meredith 1993, ch. 4).
+    """
+
+    def setUp(self):
+        self.grid_size = 8
+        self.feature_dim = 16
+        self.body_parts = 10
+        self.body_features = 8
+        self.topo = TopographicMap(
+            grid_size=self.grid_size,
+            feature_dim=self.feature_dim,
+            body_parts=self.body_parts,
+            body_features=self.body_features,
+        )
+
+    def test_forward_without_body_unchanged(self):
+        """Calling forward without body_schema should still work (backward compat)."""
+        B = 2
+        vis = torch.randn(B, self.feature_dim, self.grid_size, self.grid_size)
+        aud = torch.randn(B, self.feature_dim, 2)
+        out = self.topo(vis, aud)
+        self.assertEqual(out.shape, (B, self.feature_dim, self.grid_size, self.grid_size))
+
+    def test_forward_with_body_correct_shape(self):
+        """Forward with body_schema should produce correct output shape."""
+        B = 2
+        vis = torch.randn(B, self.feature_dim, self.grid_size, self.grid_size)
+        aud = torch.randn(B, self.feature_dim, 2)
+        body = torch.randn(B, self.body_parts, self.body_features)
+        out = self.topo(vis, aud, body_schema=body)
+        self.assertEqual(out.shape, (B, self.feature_dim, self.grid_size, self.grid_size))
+
+    def test_body_changes_output(self):
+        """Providing body_schema should change the fused output compared to no body."""
+        B = 1
+        vis = torch.randn(B, self.feature_dim, self.grid_size, self.grid_size)
+        aud = torch.randn(B, self.feature_dim, 2)
+        body = torch.randn(B, self.body_parts, self.body_features) * 2.0
+
+        out_no_body = self.topo(vis, aud)
+        out_with_body = self.topo(vis, aud, body_schema=body)
+
+        diff = (out_with_body - out_no_body).abs().mean().item()
+        self.assertGreater(diff, 1e-4, "Body schema should change the fused output")
+
+    def test_zero_body_minimal_effect(self):
+        """Zero body schema should have minimal effect on fusion."""
+        B = 1
+        vis = torch.randn(B, self.feature_dim, self.grid_size, self.grid_size)
+        aud = torch.randn(B, self.feature_dim, 2)
+        body_zero = torch.zeros(B, self.body_parts, self.body_features)
+
+        out_no_body = self.topo(vis, aud)
+        out_zero_body = self.topo(vis, aud, body_schema=body_zero)
+
+        # Zero body projects to near-zero grid, IE fusion of near-zero
+        # should have minimal impact
+        diff = (out_zero_body - out_no_body).abs().mean().item()
+        self.assertLess(diff, 0.5, "Zero body schema should have small effect")
+
+    def test_body_projection_gradient_flows(self):
+        """Gradients should flow through the body projection layer."""
+        B = 1
+        vis = torch.randn(B, self.feature_dim, self.grid_size, self.grid_size)
+        aud = torch.randn(B, self.feature_dim, 2)
+        body = torch.randn(B, self.body_parts, self.body_features, requires_grad=True)
+
+        out = self.topo(vis, aud, body_schema=body)
+        loss = out.sum()
+        loss.backward()
+
+        self.assertIsNotNone(body.grad)
+        self.assertGreater(body.grad.abs().sum().item(), 0.0,
+                           "Gradients should flow back to body_schema")
+
+    def test_tectum_passes_body_through(self):
+        """SensoryTectum.forward() should accept and pass body_schema to TopographicMap."""
+        from models.core.sensory_tectum import SensoryTectum
+
+        config = {
+            "tectum_feature_dim": self.feature_dim,
+            "tectum_grid_size": self.grid_size,
+            "workspace_dim": 32,
+            "use_pretrained_dino": False,
+        }
+        tectum = SensoryTectum(config)
+
+        B = 1
+        vis = torch.randn(B, self.feature_dim, self.grid_size, self.grid_size)
+        aud = torch.randn(B, self.feature_dim, 2)
+        body = torch.randn(B, self.body_parts, self.body_features)
+
+        content, bid = tectum(vis, aud, body_schema=body)
+        self.assertEqual(content.shape[0], B)
+        self.assertIsInstance(bid, float)
+
+
 if __name__ == '__main__':
     unittest.main()

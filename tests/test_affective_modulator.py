@@ -122,6 +122,117 @@ class TestAffectiveModulator(unittest.TestCase):
         self.assertLessEqual(threshold_low, 0.9)
 
 
+class TestInteroceptiveAffect(unittest.TestCase):
+    """Tests for the interoceptive-to-affect loop.
+
+    Validates that homeostatic imbalance (low energy, high fatigue, damage)
+    generates PAD signals that modulate sensory bids, closing the
+    embodiment-affect loop (Feinberg & Mallatt gap #2).
+    """
+
+    def setUp(self):
+        self.modulator = AffectiveModulator({
+            "valence_gain": 0.15,
+            "arousal_gain": 0.2,
+            "baseline_threshold": 0.6,
+            "dominance_gain": 0.05,
+            "intero_gain": 0.4,
+        })
+        self.base_bids = {
+            "vision": 0.5,
+            "audio": 0.5,
+            "memory": 0.5,
+            "body": 0.5,
+        }
+        self.neutral_pad = {"valence": 0.0, "arousal": 0.0, "dominance": 0.0}
+        self.healthy_intero = {"energy": 1.0, "fatigue": 0.0, "damage": 0.0}
+
+    def test_healthy_intero_no_effect(self):
+        """Full energy, no fatigue, no damage should produce near-zero PAD delta."""
+        delta = self.modulator.interoceptive_to_pad(self.healthy_intero)
+        for key in ("valence", "arousal", "dominance"):
+            self.assertAlmostEqual(delta[key], 0.0, places=3,
+                                   msg=f"Healthy state should produce zero {key} delta")
+
+    def test_low_energy_negative_valence(self):
+        """Depleted energy should generate negative valence."""
+        intero = {"energy": 0.1, "fatigue": 0.0, "damage": 0.0}
+        delta = self.modulator.interoceptive_to_pad(intero)
+        self.assertLess(delta["valence"], -0.05)
+
+    def test_high_fatigue_suppresses_arousal(self):
+        """Fatigue should reduce arousal (sluggishness)."""
+        intero = {"energy": 1.0, "fatigue": 0.8, "damage": 0.0}
+        delta = self.modulator.interoceptive_to_pad(intero)
+        self.assertLess(delta["arousal"], -0.1)
+
+    def test_high_fatigue_negative_valence(self):
+        """Fatigue should also generate negative valence."""
+        intero = {"energy": 1.0, "fatigue": 0.9, "damage": 0.0}
+        delta = self.modulator.interoceptive_to_pad(intero)
+        self.assertLess(delta["valence"], -0.05)
+
+    def test_damage_negative_valence_and_high_arousal(self):
+        """Damage (pain) should generate strong negative valence and arousal spike."""
+        intero = {"energy": 1.0, "fatigue": 0.0, "damage": 0.8}
+        delta = self.modulator.interoceptive_to_pad(intero)
+        self.assertLess(delta["valence"], -0.3, "Damage should cause strong negative valence")
+        self.assertGreater(delta["arousal"], 0.2, "Damage should cause arousal spike")
+
+    def test_damage_reduces_dominance(self):
+        """Damage should reduce dominance (feeling vulnerable)."""
+        intero = {"energy": 1.0, "fatigue": 0.0, "damage": 0.7}
+        delta = self.modulator.interoceptive_to_pad(intero)
+        self.assertLess(delta["dominance"], -0.1)
+
+    def test_intero_modulates_bids(self):
+        """Low energy should shift bids via the valence field."""
+        depleted = {"energy": 0.1, "fatigue": 0.5, "damage": 0.0}
+        bids_with, thresh_with = self.modulator.modulate(
+            dict(self.base_bids), self.neutral_pad, interoceptive_state=depleted
+        )
+        bids_without, thresh_without = self.modulator.modulate(
+            dict(self.base_bids), self.neutral_pad, interoceptive_state=None
+        )
+        # Threat modules should get boosted (negative valence from depletion)
+        self.assertGreater(bids_with["body"], bids_without["body"])
+
+    def test_intero_shifts_threshold(self):
+        """Damage-induced arousal should lower the ignition threshold."""
+        damaged = {"energy": 1.0, "fatigue": 0.0, "damage": 0.8}
+        _, thresh_damaged = self.modulator.modulate(
+            dict(self.base_bids), self.neutral_pad, interoceptive_state=damaged
+        )
+        _, thresh_healthy = self.modulator.modulate(
+            dict(self.base_bids), self.neutral_pad, interoceptive_state=self.healthy_intero
+        )
+        self.assertLess(thresh_damaged, thresh_healthy,
+                        "Damage arousal should lower ignition threshold")
+
+    def test_pad_deltas_clamped(self):
+        """PAD deltas should stay within [-1, 1]."""
+        extreme = {"energy": 0.0, "fatigue": 1.0, "damage": 1.0}
+        delta = self.modulator.interoceptive_to_pad(extreme)
+        for key in ("valence", "arousal", "dominance"):
+            self.assertGreaterEqual(delta[key], -1.0)
+            self.assertLessEqual(delta[key], 1.0)
+
+    def test_combined_external_and_intero(self):
+        """External positive valence should partially offset interoceptive negativity."""
+        positive_pad = {"valence": 0.5, "arousal": 0.0, "dominance": 0.0}
+        depleted = {"energy": 0.2, "fatigue": 0.3, "damage": 0.0}
+        bids, _ = self.modulator.modulate(
+            dict(self.base_bids), positive_pad, interoceptive_state=depleted
+        )
+        # Vision should still be boosted (positive external valence partially offsets)
+        # but less than pure positive valence
+        bids_pure, _ = self.modulator.modulate(
+            dict(self.base_bids), positive_pad, interoceptive_state=None
+        )
+        # The interoceptive negative valence should reduce the boost
+        self.assertLessEqual(bids["vision"], bids_pure["vision"])
+
+
 class TestAffectiveModulatorIntegration(unittest.TestCase):
     """Test integration with GlobalWorkspace."""
 

@@ -11,18 +11,28 @@ class TopographicMap(nn.Module):
     Biological Counterpart: Optic Tectum / Superior Colliculus
 
     Maintains a 2D spatial grid representing the agent's egocentric space.
-    Sensory inputs (vision, audio) are mapped into this shared coordinate frame,
-    preserving spatial relationships (isomorphism).
+    Sensory inputs (vision, audio, somatosensory) are mapped into this shared
+    coordinate frame, preserving spatial relationships (isomorphism).
 
     Uses inverse effectiveness fusion (Stein & Meredith 1993): proportional
     enhancement is greatest when individual unimodal responses are weakest.
     This is how the biological SC detects faint multimodal stimuli that would
     be missed by either modality alone.
+
+    The somatosensory channel projects the body schema (10 body parts x 8 features)
+    onto the spatial grid via a learned linear map. Biologically, the deep layers
+    of the SC contain somatotopic maps aligned with the visual and auditory maps
+    (Stein & Meredith 1993, ch. 4).
     """
-    def __init__(self, grid_size: int = 16, feature_dim: int = 64):
+    def __init__(self, grid_size: int = 16, feature_dim: int = 64,
+                 body_parts: int = 10, body_features: int = 8):
         super().__init__()
         self.grid_size = grid_size
         self.feature_dim = feature_dim
+
+        # Somatosensory projection: body_schema [B, body_parts, body_features]
+        # -> [B, feature_dim, grid_size, grid_size]
+        self.body_proj = nn.Linear(body_parts * body_features, feature_dim * grid_size * grid_size)
 
         # Refinement conv applied after inverse effectiveness additive fusion.
         # Input is feature_dim (not 2x) because IE does weighted addition.
@@ -92,14 +102,30 @@ class TopographicMap(nn.Module):
         fused = visual + audio * ie_weight
         return fused
 
-    def forward(self, visual_grid: torch.Tensor, audio_spatial: torch.Tensor) -> torch.Tensor:
+    def _project_body_to_grid(self, body_schema: torch.Tensor, B: int, device: torch.device) -> torch.Tensor:
         """
-        Fuses visual and spatial audio into a single topographic map
-        using inverse effectiveness.
+        Project the body schema onto the spatial grid.
+
+        The body schema [B, body_parts, body_features] is flattened and linearly
+        mapped to [B, feature_dim, grid_size, grid_size]. This creates a
+        somatotopic spatial representation analogous to the deep layer maps
+        in the biological superior colliculus.
+        """
+        flat = body_schema.reshape(B, -1)  # [B, body_parts * body_features]
+        projected = self.body_proj(flat)    # [B, feature_dim * grid_size * grid_size]
+        return projected.view(B, self.feature_dim, self.grid_size, self.grid_size)
+
+    def forward(self, visual_grid: torch.Tensor, audio_spatial: torch.Tensor,
+                body_schema: Optional[torch.Tensor] = None) -> torch.Tensor:
+        """
+        Fuses visual, spatial audio, and somatosensory input into a single
+        topographic map using inverse effectiveness.
 
         Args:
             visual_grid: [B, feature_dim, grid_size, grid_size] from RetinotopicEncoder
             audio_spatial: [B, feature_dim, 2] bearing and elevation features
+            body_schema: Optional [B, body_parts, body_features] from SelfRepresentationCore.
+                When provided, projected onto the grid and fused via inverse effectiveness.
 
         Returns:
             fused_map: [B, feature_dim, grid_size, grid_size]
@@ -109,8 +135,13 @@ class TopographicMap(nn.Module):
 
         audio_grid = self._place_audio_on_grid(audio_spatial, B, C, H, W, device)
 
-        # Inverse effectiveness fusion instead of concatenation
+        # Inverse effectiveness fusion: vision + audio
         fused = self._fuse_inverse_effectiveness(visual_grid, audio_grid)
+
+        # Trimodal fusion: add somatosensory channel if available
+        if body_schema is not None:
+            body_grid = self._project_body_to_grid(body_schema, B, device)
+            fused = self._fuse_inverse_effectiveness(fused, body_grid)
 
         # Refinement convolutions
         fused_map = self.fusion_conv(fused)
@@ -254,7 +285,8 @@ class SensoryTectum(nn.Module):
         # Initialize Z randomly
         self.z_state[:, :, 0, :, :] = 1.0 
         
-    def forward(self, vision_features: torch.Tensor, audio_spatial: torch.Tensor) -> Tuple[torch.Tensor, float]:
+    def forward(self, vision_features: torch.Tensor, audio_spatial: torch.Tensor,
+                body_schema: Optional[torch.Tensor] = None) -> Tuple[torch.Tensor, float]:
         """
         Process incoming streams, update the world model, and generate a bid for the workspace.
 
@@ -263,6 +295,7 @@ class SensoryTectum(nn.Module):
                 encoded by RetinotopicEncoder) or pre-encoded features
                 [B, feature_dim, grid_size, grid_size] (passed through directly)
             audio_spatial: [B, feature_dim, 2] bearing and elevation features
+            body_schema: Optional [B, body_parts, body_features] from self-model
         """
         if vision_features.dim() == 3:
             vision_features = vision_features.unsqueeze(0)
@@ -276,7 +309,7 @@ class SensoryTectum(nn.Module):
             self.reset_state(B)
 
         # 1. Create Egocentric Topographic Map (inverse effectiveness fusion)
-        obs_map = self.topo_map(vision_features, audio_spatial)
+        obs_map = self.topo_map(vision_features, audio_spatial, body_schema=body_schema)
         
         # 2. Update RSSM World Model
         h_t, z_t, prior_logits, post_logits = self.rssm.step(obs_map, self.h_state, self.z_state)

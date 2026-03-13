@@ -116,7 +116,11 @@ class GlobalWorkspace:
                 if hasattr(self.affective_modulator, '_current_pad_state') \
                 else getattr(self, '_current_pad_state', {})
             if pad_state:
-                bids, adjusted_threshold = self.affective_modulator.modulate(bids, pad_state)
+                intero = getattr(self.affective_modulator, '_current_interoceptive_state', None) \
+                    or getattr(self, '_current_interoceptive_state', None)
+                bids, adjusted_threshold = self.affective_modulator.modulate(
+                    bids, pad_state, interoceptive_state=intero
+                )
                 self.ignition_threshold = adjusted_threshold
         
         # 2. Oscillatory Binding (AKOrN - ICLR 2025)

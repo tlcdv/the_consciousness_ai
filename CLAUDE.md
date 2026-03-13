@@ -370,15 +370,15 @@ Priority order based on dependency and impact:
 
 ---
 
-## Current State (2026-03-13)
+## Current State (2026-03-14)
 
-233 of 234 tests pass (99.6%). Tiers 1-3 complete, isomorphic visual mapping implemented, CI green.
+249 passed, 0 failed, 1 skipped. Tiers 1-3 complete, embodiment-affect loop closed, trimodal tectum operational, CI green.
 
 **Architectural decisions locked and implemented:**
 - Oscillatory binding: **AKOrN** (ICLR 2025) integrated into GNW
 - Spatial topographic maps: **DreamerV3 RSSM** as tectum pathway
 - Reentrant processing: **5-10 adaptive cycles** with predictive coding convergence
-- Affective system: **Parallel modulator** (valence field + arousal threshold coupling)
+- Affective system: **Parallel modulator** (valence field + arousal threshold coupling + interoceptive drive integration)
 - Visual backbone: **Dual-stream**. DINOv2-B/14 (frozen) for tectum spatial pathway, Qwen2-VL for cortical semantic pathway
 - Isomorphic visual mapping: **RetinotopicEncoder** (DINOv2 patch tokens with direct spatial correspondence) + **TDANN topographic loss** (Margalit 2024) + **inverse effectiveness fusion** (Stein & Meredith 1993)
 - Reward formula: **Full PAD** with homeostatic arousal term + Dominance
@@ -387,6 +387,8 @@ Priority order based on dependency and impact:
 - Self-model: **Body schema + interoception** in self_representation_core
 - Capsule composition: **Dynamic routing by agreement** (Sabour 2017) between tectum and workspace
 - Ethics filter: **AsimovComplianceFilter** with three law evaluation pipeline + world model prediction
+- Embodiment-affect loop: **Interoceptive PAD generation** (energy/fatigue/damage -> valence/arousal/dominance deltas)
+- Trimodal tectum: **Somatosensory channel** (body schema projected onto spatial grid via learned linear map + IE fusion)
 
 **Decisions locked, not yet implemented:**
 - Spiking validation: **Brian2/NEST** offline
@@ -398,7 +400,7 @@ Priority order based on dependency and impact:
 
 ---
 
-## Roadmap (Revised 2026-03-13)
+## Roadmap (Revised 2026-03-14)
 
 ### Completed
 - ~~Tier 1: AKOrN Oscillatory Binding~~
@@ -414,32 +416,58 @@ Priority order based on dependency and impact:
 - ~~Tier 3: Qwen2-VL to Tectum Projection~~
 - ~~Implement AsimovComplianceFilter ethics methods~~
 - ~~True isomorphic visual mapping (DINOv2 + TDANN + inverse effectiveness)~~
+- ~~Wire interoceptive state into affective modulator (embodiment-affect loop)~~
+- ~~Add somatosensory channel to tectum (trimodal fusion)~~
 
 ### Next Priorities (to reach 85%+ alignment)
 
-1. **Wire interoceptive state into affective modulator** (HIGH, low effort)
-   - Make energy/fatigue/damage generate valence signals that modulate sensory bids
-   - Closes the embodiment-affect loop (gap #2 from audit)
-
-2. **Add somatosensory channel to tectum** (MEDIUM, low effort)
-   - Feed body_schema tensor into TopographicMap as third sensory modality
-   - Requires extending TopographicMap to accept optional body input
-
-3. **Deepen capsule hierarchy to 3-4 levels** (MEDIUM)
+1. **Deepen capsule hierarchy to 3-4 levels** (MEDIUM)
    - Add intermediate routing layers between primary and output capsules
    - Required by Feinberg & Mallatt for compositional hierarchy (gap #3)
 
-4. **Multi-level reentrant processing** (MEDIUM)
+2. **Multi-level reentrant processing** (MEDIUM)
    - Add reciprocal connections between hierarchy levels (not just workspace-specialist)
    - V1-LGN type nested reentrance (gap #4)
 
-5. **Full IIT Phi integration with PyPhi** (MEDIUM)
+3. **Full IIT Phi integration with PyPhi** (MEDIUM)
    - Use causal gate states (not workspace bid values) as input
 
-6. **Brian2 Validation Stack** (LOW)
+4. **Brian2 Validation Stack** (LOW)
    - Offline biological validation of AKOrN binding patterns
 
-7. **Python 3.10+ upgrade** (OPTIONAL)
+5. **Python 3.10+ upgrade** (OPTIONAL)
+
+---
+
+### 2026-03-14: Embodiment-Affect Loop + Trimodal Tectum
+
+**What was done:**
+
+1. **Wired interoceptive state into affective modulator** (`models/emotion/affective_modulator.py`):
+   - Added `interoceptive_to_pad()` method: converts energy/fatigue/damage into PAD deltas
+   - Low energy (< 0.5) generates negative valence proportional to depletion depth
+   - High fatigue generates negative valence and suppressed arousal (sluggishness)
+   - Damage generates strong negative valence, arousal spike (pain alarm), reduced dominance (vulnerability)
+   - Configurable `intero_gain` parameter (default 0.4)
+   - `modulate()` now accepts optional `interoceptive_state` kwarg. When provided, interoceptive PAD deltas are summed with external PAD before modulation. Fully backward compatible.
+   - Updated `GlobalWorkspace.run_competition()` to forward `_current_interoceptive_state` to the modulator
+
+2. **Added somatosensory channel to TopographicMap** (`models/core/sensory_tectum.py`):
+   - `TopographicMap.__init__()` now creates `body_proj`: nn.Linear mapping `[B, body_parts * body_features]` to `[B, feature_dim * grid_size * grid_size]`
+   - `_project_body_to_grid()` reshapes projected output to spatial grid format
+   - `forward()` accepts optional `body_schema` kwarg. When provided, body is projected onto the grid and fused with the visual+audio map via a second round of inverse effectiveness
+   - `SensoryTectum.forward()` passes `body_schema` through to `TopographicMap`
+   - Biologically grounded: deep layers of the SC contain somatotopic maps aligned with visual and auditory maps (Stein & Meredith 1993, ch. 4)
+
+3. **Tests:** 16 new tests:
+   - `test_affective_modulator.py::TestInteroceptiveAffect` (11 tests): healthy baseline, low energy valence, fatigue arousal/valence, damage valence/arousal/dominance, bid modulation, threshold shift, clamping, combined external+intero
+   - `test_inverse_effectiveness.py::TestSomatosensoryChannel` (5 tests): backward compat, correct shape, body changes output, zero body minimal effect, gradient flow, tectum passthrough
+
+**Test results:** 249 passed, 0 failed, 1 skipped (up from 233). No regressions.
+
+**Gaps closed:**
+- Gap #2 (embodiment-affect loop): interoceptive drives now generate valence signals that modulate sensory bids and ignition threshold
+- Gap #5 (somatosensory channel): body schema projected onto tectum grid as third sensory modality with IE fusion
 
 ---
 

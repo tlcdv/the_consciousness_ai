@@ -52,10 +52,61 @@ class AffectiveModulator:
         # (agent with strong sense of agency processes more actively)
         self.dominance_gain = config.get("dominance_gain", 0.05)
 
+        # Interoceptive gain: how strongly homeostatic imbalance affects PAD
+        self.intero_gain = config.get("intero_gain", 0.4)
+
+    def interoceptive_to_pad(
+        self,
+        interoceptive_state: Dict[str, float],
+    ) -> Dict[str, float]:
+        """
+        Convert interoceptive drives into PAD deltas.
+
+        Biological basis: homeostatic imbalance generates affect independently
+        of external stimuli. An agent with depleted energy feels negative
+        valence even in a safe environment (Craig 2009, Damasio 1999).
+
+        Mapping:
+            energy:  low energy → negative valence (discomfort from depletion)
+            fatigue: high fatigue → negative valence, reduced arousal (sluggishness)
+            damage:  high damage → strong negative valence, high arousal (pain/alarm)
+
+        Args:
+            interoceptive_state: {"energy": float, "fatigue": float, "damage": float}
+                All values in [0, 1].
+
+        Returns:
+            PAD delta dict {"valence": float, "arousal": float, "dominance": float}
+        """
+        energy = interoceptive_state.get("energy", 1.0)
+        fatigue = interoceptive_state.get("fatigue", 0.0)
+        damage = interoceptive_state.get("damage", 0.0)
+
+        # Energy depletion: valence drops linearly below 0.5 energy
+        energy_valence = min(0.0, (energy - 0.5) * self.intero_gain)
+
+        # Fatigue: negative valence and suppressed arousal
+        fatigue_valence = -fatigue * self.intero_gain * 0.5
+        fatigue_arousal = -fatigue * self.intero_gain * 0.8
+
+        # Damage: strong negative valence, arousal spike (pain alarm)
+        damage_valence = -damage * self.intero_gain * 2.0
+        damage_arousal = damage * self.intero_gain * 1.5
+
+        # Damage also reduces dominance (feeling vulnerable)
+        damage_dominance = -damage * self.intero_gain
+
+        return {
+            "valence": max(-1.0, energy_valence + fatigue_valence + damage_valence),
+            "arousal": max(-1.0, min(1.0, fatigue_arousal + damage_arousal)),
+            "dominance": max(-1.0, damage_dominance),
+        }
+
     def modulate(
         self,
         bids: Dict[str, float],
         pad_state: Dict[str, float],
+        interoceptive_state: Optional[Dict[str, float]] = None,
     ) -> Tuple[Dict[str, float], float]:
         """
         Apply affective modulation to workspace bids and ignition threshold.
@@ -63,6 +114,9 @@ class AffectiveModulator:
         Args:
             bids: Specialist module bid values {name: float}
             pad_state: Current PAD state {"valence": float, "arousal": float, "dominance": float}
+            interoceptive_state: Optional internal drives {"energy": float, "fatigue": float, "damage": float}.
+                When provided, homeostatic imbalance generates additional PAD signals
+                that are summed with the external PAD state before modulation.
 
         Returns:
             Tuple of (modulated_bids, adjusted_ignition_threshold)
@@ -70,6 +124,13 @@ class AffectiveModulator:
         valence = pad_state.get("valence", 0.0)
         arousal = pad_state.get("arousal", 0.0)
         dominance = pad_state.get("dominance", 0.0)
+
+        # Integrate interoceptive drives if available
+        if interoceptive_state is not None:
+            intero_pad = self.interoceptive_to_pad(interoceptive_state)
+            valence = max(-1.0, min(1.0, valence + intero_pad["valence"]))
+            arousal = max(-1.0, min(1.0, arousal + intero_pad["arousal"]))
+            dominance = max(-1.0, min(1.0, dominance + intero_pad["dominance"]))
 
         # --- 1. Valence Field Modulation ---
         modulated_bids = {}
