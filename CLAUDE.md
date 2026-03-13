@@ -370,9 +370,9 @@ Priority order based on dependency and impact:
 
 ---
 
-## Current State (2026-03-14)
+## Current State (2026-03-15)
 
-249 passed, 0 failed, 1 skipped. Tiers 1-3 complete, embodiment-affect loop closed, trimodal tectum operational, CI green.
+261 passed, 0 failed, 1 skipped. Tiers 1-3 complete, 4-level capsule hierarchy complete.
 
 **Architectural decisions locked and implemented:**
 - Oscillatory binding: **AKOrN** (ICLR 2025) integrated into GNW
@@ -385,7 +385,7 @@ Priority order based on dependency and impact:
 - Strong emergence falsification: **EI function** at gate vs. workspace level (Hoel framework)
 - Phi-binding validation: **3-condition test** (unbound/partial/full) passing
 - Self-model: **Body schema + interoception** in self_representation_core
-- Capsule composition: **Dynamic routing by agreement** (Sabour 2017) between tectum and workspace
+- Capsule composition: **4-level hierarchical routing** (Sabour 2017) between tectum and workspace (12 tests passing)
 - Ethics filter: **AsimovComplianceFilter** with three law evaluation pipeline + world model prediction
 - Embodiment-affect loop: **Interoceptive PAD generation** (energy/fatigue/damage -> valence/arousal/dominance deltas)
 - Trimodal tectum: **Somatosensory channel** (body schema projected onto spatial grid via learned linear map + IE fusion)
@@ -421,11 +421,11 @@ Priority order based on dependency and impact:
 
 ### Next Priorities (to reach 85%+ alignment)
 
-1. **Deepen capsule hierarchy to 3-4 levels** (MEDIUM)
-   - Add intermediate routing layers between primary and output capsules
-   - Required by Feinberg & Mallatt for compositional hierarchy (gap #3)
+1. ~~**Deepen capsule hierarchy to 3-4 levels** (MEDIUM)~~ DONE
+   - `HierarchicalCapsuleComposition` with configurable hierarchy_spec, 12 tests passing
+   - SensoryTectum uses it as drop-in replacement
 
-2. **Multi-level reentrant processing** (MEDIUM)
+2. **Multi-level reentrant processing** (MEDIUM) **<-- NEXT**
    - Add reciprocal connections between hierarchy levels (not just workspace-specialist)
    - V1-LGN type nested reentrance (gap #4)
 
@@ -584,4 +584,35 @@ Priority order based on dependency and impact:
    - The optic tectum (midbrain) was the first seat of consciousness, not the cortex
    - Affective consciousness (limbic system) evolved separately from sensory consciousness
    - The four NSFCs: Referral, Mental Unity, Qualia, Mental Causation
+
+---
+
+### 2026-03-13: Capsule Hierarchy Deepening
+
+**What was done:**
+
+1. **Added `HierarchicalCapsuleComposition` class** (`models/core/capsule_composition.py`):
+   - Chains multiple `RoutingCapsuleLayer` instances via configurable `hierarchy_spec`
+   - Default hierarchy: 4 levels total (primary + 3 routing levels)
+     - Level 1: PrimaryCapsuleLayer (stride-2 conv) -> local features
+     - Level 2: 16 intermediate capsules, 12-D poses -> object primitives
+     - Level 3: 8 higher capsules, 16-D poses -> object categories
+     - Level 4: 4 output capsules, 16-D poses -> scene/workspace
+   - `get_all_level_poses()` exposes cached (poses, activities) at every routing level
+   - Same `forward()` return signature as `CapsuleCompositionLayer` for drop-in replacement
+
+2. **Switched SensoryTectum to `HierarchicalCapsuleComposition`** (`models/core/sensory_tectum.py`):
+   - Replaced `CapsuleCompositionLayer` instantiation
+   - Config key `capsule_hierarchy_spec` controls level count (None = default 4 levels)
+   - No changes to `forward()` signature or return type
+
+3. **Tests (2026-03-15):** 12 new tests in `TestHierarchicalCapsuleComposition`:
+   - Shape validation for all 3 routing levels (progressive capsule count reduction)
+   - `get_all_level_poses()` returns correct count and shapes
+   - Activity bounding [0, 1), gradient flow through full hierarchy
+   - Default hierarchy spec produces expected 4-level structure
+   - Drop-in compatibility with `CapsuleCompositionLayer` (same 3-tuple return)
+   - SensoryTectum integration: uses `HierarchicalCapsuleComposition`, forward produces valid output
+
+**Test results:** 261 passed, 0 failed, 1 skipped (up from 249).
 

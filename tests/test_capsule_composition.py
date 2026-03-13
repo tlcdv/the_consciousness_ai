@@ -6,6 +6,7 @@ from models.core.capsule_composition import (
     PrimaryCapsuleLayer,
     RoutingCapsuleLayer,
     CapsuleCompositionLayer,
+    HierarchicalCapsuleComposition,
 )
 from models.core.sensory_tectum import SensoryTectum
 
@@ -216,6 +217,144 @@ class TestCapsuleCompositionLayer(unittest.TestCase):
         payload = tectum.get_capsule_payload()
         self.assertIn("capsule_poses", payload)
         self.assertIn("capsule_activities", payload)
+
+
+class TestHierarchicalCapsuleComposition(unittest.TestCase):
+
+    def setUp(self):
+        self.rssm_channels = 32
+        self.grid_size = 8
+        self.workspace_dim = 64
+        self.layer = HierarchicalCapsuleComposition(
+            rssm_channels=self.rssm_channels,
+            grid_size=self.grid_size,
+            workspace_dim=self.workspace_dim,
+            num_primary_caps=4,
+            primary_dim=4,
+            hierarchy_spec=[(8, 6), (4, 8), (2, 8)],
+            routing_iterations=2
+        )
+
+    def _make_input(self, B=2):
+        return torch.randn(B, self.rssm_channels, self.grid_size, self.grid_size)
+
+    def test_num_levels(self):
+        """4 total levels: 1 primary + 3 routing."""
+        self.assertEqual(self.layer.num_levels, 4)
+
+    def test_workspace_content_shape(self):
+        content, _, _ = self.layer(self._make_input())
+        self.assertEqual(content.shape, (2, self.workspace_dim))
+
+    def test_final_capsule_shapes(self):
+        """Final level should match last hierarchy_spec entry."""
+        _, activities, poses = self.layer(self._make_input())
+        self.assertEqual(poses.shape, (2, 2, 8))       # 2 caps, 8-D
+        self.assertEqual(activities.shape, (2, 2))
+
+    def test_activities_bounded(self):
+        _, activities, _ = self.layer(self._make_input())
+        self.assertTrue((activities >= 0.0).all())
+        self.assertTrue((activities < 1.0).all())
+
+    def test_get_all_level_poses_count(self):
+        """Should return one (poses, activities) pair per routing level."""
+        self.layer(self._make_input(1))
+        levels = self.layer.get_all_level_poses()
+        self.assertEqual(len(levels), 3)  # 3 routing levels
+
+    def test_level_shapes_progressive(self):
+        """Each routing level should reduce capsule count per the spec."""
+        self.layer(self._make_input(1))
+        levels = self.layer.get_all_level_poses()
+
+        # Level 0: 8 caps, 6-D
+        self.assertEqual(levels[0][0].shape, (1, 8, 6))
+        self.assertEqual(levels[0][1].shape, (1, 8))
+
+        # Level 1: 4 caps, 8-D
+        self.assertEqual(levels[1][0].shape, (1, 4, 8))
+        self.assertEqual(levels[1][1].shape, (1, 4))
+
+        # Level 2: 2 caps, 8-D
+        self.assertEqual(levels[2][0].shape, (1, 2, 8))
+        self.assertEqual(levels[2][1].shape, (1, 2))
+
+    def test_caches_last_poses(self):
+        self.assertIsNone(self.layer._last_poses)
+        self.layer(self._make_input(1))
+        self.assertIsNotNone(self.layer._last_poses)
+        self.assertEqual(self.layer._last_poses.shape, (1, 2, 8))
+
+    def test_gradient_flows_through_hierarchy(self):
+        x = self._make_input(1)
+        x.requires_grad_(True)
+        content, activities, poses = self.layer(x)
+        loss = content.sum() + poses.sum()
+        loss.backward()
+        self.assertIsNotNone(x.grad)
+        self.assertFalse(torch.all(x.grad == 0))
+
+    def test_default_hierarchy_spec(self):
+        """Default spec should produce 4 levels: [(16,12), (8,16), (4,16)]."""
+        layer = HierarchicalCapsuleComposition(
+            rssm_channels=32, grid_size=8, workspace_dim=64
+        )
+        self.assertEqual(layer.num_levels, 4)
+        content, acts, poses = layer(self._make_input(1))
+        self.assertEqual(poses.shape, (1, 4, 16))  # 4 caps, 16-D
+        self.assertEqual(content.shape, (1, 64))
+
+    def test_drop_in_replacement_for_flat(self):
+        """Same forward signature as CapsuleCompositionLayer."""
+        flat_layer = CapsuleCompositionLayer(
+            rssm_channels=self.rssm_channels,
+            grid_size=self.grid_size,
+            workspace_dim=self.workspace_dim,
+            num_output_caps=2,
+            output_dim=8,
+            num_primary_caps=4,
+            primary_dim=4,
+        )
+        x = self._make_input(1)
+        flat_out = flat_layer(x)
+        hier_out = self.layer(x)
+        # Both return 3-tuple
+        self.assertEqual(len(flat_out), 3)
+        self.assertEqual(len(hier_out), 3)
+        # Both workspace contents have same shape
+        self.assertEqual(flat_out[0].shape, hier_out[0].shape)
+
+    def test_tectum_uses_hierarchical(self):
+        """SensoryTectum should use HierarchicalCapsuleComposition."""
+        config = {
+            "tectum_feature_dim": 16,
+            "tectum_grid_size": 8,
+            "workspace_dim": 64,
+        }
+        tectum = SensoryTectum(config)
+        self.assertIsInstance(tectum.capsule_layer, HierarchicalCapsuleComposition)
+
+    def test_tectum_hierarchical_forward(self):
+        """Tectum with hierarchical capsules should produce valid output."""
+        config = {
+            "tectum_feature_dim": 16,
+            "tectum_grid_size": 8,
+            "workspace_dim": 64,
+            "capsule_hierarchy_spec": [(8, 6), (4, 8)],
+            "num_primary_caps": 4,
+            "capsule_primary_dim": 4,
+            "routing_iterations": 2,
+        }
+        tectum = SensoryTectum(config)
+        vision = torch.randn(1, 16, 8, 8)
+        audio = torch.randn(1, 16, 2)
+        content, bid = tectum(vision, audio)
+
+        self.assertEqual(content.shape, (1, 64))
+        self.assertIsInstance(bid, float)
+        self.assertTrue(0.0 <= bid <= 1.0)
+        self.assertIsNotNone(tectum._last_capsule_poses)
 
 
 if __name__ == '__main__':

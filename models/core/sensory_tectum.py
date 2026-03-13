@@ -4,7 +4,7 @@ import torch.nn.functional as F
 from typing import Dict, Tuple, Optional, Any
 
 from models.core.retinotopic_encoder import RetinotopicEncoder
-from models.core.capsule_composition import CapsuleCompositionLayer
+from models.core.capsule_composition import HierarchicalCapsuleComposition
 
 class TopographicMap(nn.Module):
     """
@@ -255,17 +255,17 @@ class SensoryTectum(nn.Module):
             pretrained=use_pretrained,
         )
 
-        # Capsule composition layer replaces global_pool + linear projection.
-        # Preserves compositional structure through dynamic routing by agreement.
+        # Hierarchical capsule composition: 4 levels of compositional
+        # transformation via dynamic routing by agreement (Sabour 2017).
+        # Required by Feinberg & Mallatt Feature #3 (3-4+ hierarchical levels).
         rssm_channels = self.feature_dim + (self.rssm.categories * self.rssm.classes)
-        self.capsule_layer = CapsuleCompositionLayer(
+        self.capsule_layer = HierarchicalCapsuleComposition(
             rssm_channels=rssm_channels,
             grid_size=self.grid_size,
             workspace_dim=workspace_dim,
-            num_output_caps=config.get("num_output_caps", 4),
-            output_dim=config.get("capsule_output_dim", 16),
             num_primary_caps=config.get("num_primary_caps", 8),
             primary_dim=config.get("capsule_primary_dim", 8),
+            hierarchy_spec=config.get("capsule_hierarchy_spec", None),
             routing_iterations=config.get("routing_iterations", 3)
         )
 

@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from typing import Tuple
+from typing import List, Optional, Tuple
 
 
 def squash(x, dim=-1):
@@ -208,3 +208,128 @@ class CapsuleCompositionLayer(nn.Module):
         self._last_activities = capsule_activities.detach()
 
         return workspace_content, capsule_activities, capsule_poses
+
+
+class HierarchicalCapsuleComposition(nn.Module):
+    """
+    Multi-level capsule hierarchy with 3-4 routing levels.
+
+    Biological basis: Feinberg & Mallatt require 3-4+ hierarchical levels
+    with genuine compositional transformation at each level. Each routing
+    layer implements dynamic routing by agreement (Sabour 2017), where
+    capsules at level N vote for capsules at level N+1.
+
+    Default hierarchy (4 levels total):
+        Level 1: PrimaryCapsuleLayer (stride-2 conv) -> local features
+        Level 2: RoutingCapsuleLayer -> object primitives (16 caps, 12-D)
+        Level 3: RoutingCapsuleLayer -> object categories (8 caps, 16-D)
+        Level 4: RoutingCapsuleLayer -> scene/workspace (4 caps, 16-D)
+    """
+
+    DEFAULT_HIERARCHY = [
+        (16, 12),  # Level 2: 16 intermediate capsules, 12-D poses
+        (8, 16),   # Level 3: 8 higher capsules, 16-D poses
+        (4, 16),   # Level 4: 4 output capsules, 16-D poses
+    ]
+
+    def __init__(self, rssm_channels, grid_size, workspace_dim=256,
+                 num_primary_caps=8, primary_dim=8,
+                 hierarchy_spec=None, routing_iterations=3):
+        # type: (int, int, int, int, int, Optional[List[Tuple[int, int]]], int) -> None
+        super().__init__()
+
+        if hierarchy_spec is None:
+            hierarchy_spec = list(self.DEFAULT_HIERARCHY)
+
+        self.num_levels = 1 + len(hierarchy_spec)  # primary + routing levels
+
+        # Level 1: primary capsules from spatial features
+        self.primary = PrimaryCapsuleLayer(
+            in_channels=rssm_channels,
+            num_capsules=num_primary_caps,
+            capsule_dim=primary_dim
+        )
+
+        # Compute total primary capsule count after stride-2 spatial reduction
+        reduced_h = (grid_size + 1) // 2
+        reduced_w = (grid_size + 1) // 2
+        total_primary = num_primary_caps * reduced_h * reduced_w
+
+        # Build routing layers: each transforms level N capsules into level N+1
+        self.routing_layers = nn.ModuleList()
+        prev_num_caps = total_primary
+        prev_dim = primary_dim
+
+        for num_caps, cap_dim in hierarchy_spec:
+            self.routing_layers.append(RoutingCapsuleLayer(
+                num_primary_caps=prev_num_caps,
+                primary_dim=prev_dim,
+                num_output_caps=num_caps,
+                output_dim=cap_dim,
+                routing_iterations=routing_iterations
+            ))
+            prev_num_caps = num_caps
+            prev_dim = cap_dim
+
+        # Final projection to workspace dimension
+        final_num_caps, final_dim = hierarchy_spec[-1]
+        self.workspace_proj = nn.Linear(final_num_caps * final_dim, workspace_dim)
+
+        # Cache for reentrant feedback and inspection
+        self._last_poses = None
+        self._last_activities = None
+        self._level_poses = []     # poses at each routing level
+        self._level_activities = [] # activities at each routing level
+
+    def forward(self, state_tensor):
+        # type: (torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]
+        """
+        Args:
+            state_tensor: [B, rssm_channels, grid_size, grid_size]
+
+        Returns:
+            workspace_content: [B, workspace_dim]
+            capsule_activities: [B, num_output_caps] (final level)
+            capsule_poses: [B, num_output_caps, output_dim] (final level)
+        """
+        B = state_tensor.shape[0]
+
+        # Level 1: primary capsules
+        caps = self.primary(state_tensor)
+
+        # Levels 2+: successive routing
+        level_poses = []
+        level_activities = []
+
+        for routing in self.routing_layers:
+            caps, activities = routing(caps)
+            level_poses.append(caps.detach())
+            level_activities.append(activities.detach())
+
+        # Final level outputs
+        capsule_poses = caps
+        capsule_activities = activities
+
+        # Project to workspace
+        flat_poses = capsule_poses.reshape(B, -1)
+        workspace_content = self.workspace_proj(flat_poses)
+
+        # Cache for external access
+        self._last_poses = capsule_poses.detach()
+        self._last_activities = capsule_activities.detach()
+        self._level_poses = level_poses
+        self._level_activities = level_activities
+
+        return workspace_content, capsule_activities, capsule_poses
+
+    def get_all_level_poses(self):
+        # type: () -> List[Tuple[torch.Tensor, torch.Tensor]]
+        """
+        Returns cached (poses, activities) for each routing level.
+
+        Level indices correspond to routing layers:
+            index 0 = first routing level (Level 2 in the full hierarchy)
+            index 1 = second routing level (Level 3)
+            ...
+        """
+        return list(zip(self._level_poses, self._level_activities))
