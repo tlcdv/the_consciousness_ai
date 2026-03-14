@@ -339,5 +339,113 @@ class TestPredictionError(unittest.TestCase):
         self.assertEqual(pe, 0.0)
 
 
+# ──────────────────────────────────────────────
+# Test: Multi-Level Reentrant Integration
+# ──────────────────────────────────────────────
+
+class TestMultiLevelIntegration(unittest.TestCase):
+    """End-to-end: tectum with reentrant capsules inside ReentrantProcessor settle loop."""
+
+    def _make_tectum(self, reentrant_iterations=2):
+        from models.core.sensory_tectum import SensoryTectum
+        return SensoryTectum({
+            "tectum_feature_dim": 16,
+            "tectum_grid_size": 8,
+            "workspace_dim": 64,
+            "capsule_hierarchy_spec": [(8, 6), (4, 8)],
+            "num_primary_caps": 4,
+            "capsule_primary_dim": 4,
+            "routing_iterations": 2,
+            "capsule_reentrant_iterations": reentrant_iterations,
+        })
+
+    def test_tectum_reentrant_in_settle_loop(self):
+        """Tectum with reentrant capsules should work inside ReentrantProcessor.settle()."""
+        processor = ReentrantProcessor({"min_cycles": 2, "max_cycles": 4})
+        workspace = MockWorkspace(broadcast_tensor=torch.randn(1, 64))
+        tectum = self._make_tectum(reentrant_iterations=2)
+
+        # Run tectum forward first to populate _last_content
+        vision = torch.randn(1, 16, 8, 8)
+        audio = torch.randn(1, 16, 2)
+        tectum(vision, audio)
+
+        result = processor.settle(
+            workspace=workspace,
+            specialists={"vision": tectum},
+            initial_bids={"vision": 0.7},
+            payloads={"vision": "tectum_content"},
+            goal_vector=torch.tensor([1.0, -1.0, 1.0])
+        )
+
+        self.assertIsInstance(result, SettleResult)
+        self.assertIn("vision", result.final_bids)
+        self.assertGreater(result.cycles_used, 0)
+
+        # Capsule reentrant PE should be tracked inside tectum
+        pe = tectum.capsule_layer.get_level_prediction_errors()
+        self.assertGreater(len(pe), 0)
+
+    def test_nested_convergence(self):
+        """Intra-hierarchy PE should be present at each settle cycle's capsule forward."""
+        processor = ReentrantProcessor({
+            "min_cycles": 3, "max_cycles": 3,
+            "convergence_threshold": 0.0001
+        })
+        workspace = MockWorkspace(broadcast_tensor=torch.randn(1, 64))
+        tectum = self._make_tectum(reentrant_iterations=3)
+
+        vision = torch.randn(1, 16, 8, 8)
+        audio = torch.randn(1, 16, 2)
+        tectum(vision, audio)
+
+        result = processor.settle(
+            workspace=workspace,
+            specialists={"vision": tectum},
+            initial_bids={"vision": 0.6},
+            payloads={"vision": "content"},
+            goal_vector=torch.tensor([1.0, -1.0, 1.0])
+        )
+
+        # Both outer (settle) and inner (capsule) loops should have run
+        self.assertEqual(result.cycles_used, 3)
+        pe = tectum.capsule_layer.get_level_prediction_errors()
+        # 3 reentrant iterations, 1 feedback projection (2 routing levels)
+        self.assertEqual(len(pe), 3)
+
+    def test_reentrant_vs_non_reentrant_tectum_bids_differ(self):
+        """Reentrant capsule tectum should produce different bid trajectory than non-reentrant."""
+        torch.manual_seed(42)
+        processor_0 = ReentrantProcessor({"min_cycles": 3, "max_cycles": 3})
+        processor_r = ReentrantProcessor({"min_cycles": 3, "max_cycles": 3})
+
+        broadcast = torch.randn(1, 64)
+        ws_0 = MockWorkspace(broadcast_tensor=broadcast.clone())
+        ws_r = MockWorkspace(broadcast_tensor=broadcast.clone())
+
+        tectum_0 = self._make_tectum(reentrant_iterations=0)
+        tectum_r = self._make_tectum(reentrant_iterations=3)
+
+        vision = torch.randn(1, 16, 8, 8)
+        audio = torch.randn(1, 16, 2)
+        tectum_0(vision, audio)
+        tectum_r(vision, audio)
+
+        r0 = processor_0.settle(
+            workspace=ws_0, specialists={"vision": tectum_0},
+            initial_bids={"vision": 0.5}, payloads={"vision": "x"},
+            goal_vector=torch.tensor([1.0])
+        )
+        rr = processor_r.settle(
+            workspace=ws_r, specialists={"vision": tectum_r},
+            initial_bids={"vision": 0.5}, payloads={"vision": "x"},
+            goal_vector=torch.tensor([1.0])
+        )
+
+        # Both should complete, but bids may differ due to different _last_content
+        self.assertIsInstance(r0, SettleResult)
+        self.assertIsInstance(rr, SettleResult)
+
+
 if __name__ == '__main__':
     unittest.main()

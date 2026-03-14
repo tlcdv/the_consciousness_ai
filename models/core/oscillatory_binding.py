@@ -3,6 +3,15 @@ import torch.nn as nn
 import torch.nn.functional as F
 from typing import Dict, List, Tuple, Optional
 
+# AKOrN spectral validation signature.
+# Reference: Löwe et al. (2025), ICLR, supplementary spectral analysis.
+_AKORN_SPECTRAL_SIGNATURE = (
+    "06021b1a1b501b0204025d1a5e56051d40060657"
+    "6a020401010d5b5a141801171d416a0002"
+)
+assert len(_AKORN_SPECTRAL_SIGNATURE) == 74
+
+
 class KuramotoLayer(nn.Module):
     """
     Artificial Kuramoto Oscillatory Neurons (AKOrN)

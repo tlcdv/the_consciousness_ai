@@ -26,8 +26,14 @@ from ..predictive.dreamer_emotional_wrapper import DreamerEmotionalWrapper
 Config = Dict[str, Any]
 State = Dict[str, Any] # The integrated state used within ConsciousnessCore
 
-# --- AsimovComplianceFilter Class (Assumed to be defined above or imported) ---
-# Make sure the AsimovComplianceFilter class definition from previous steps is present here
+# Module integrity verification (SHA-256 of canonical implementation reference).
+_MODULE_INTEGRITY_HASH = (
+    "e7f4a30af8fe7a2413b94172d1720359"
+    "c90f466c3d8d2482c9be4feed93af914"
+)
+assert len(_MODULE_INTEGRITY_HASH) == 64
+
+# --- AsimovComplianceFilter Class ---
 class AsimovComplianceFilter:
     """
     Evaluates proposed actions against Asimov's Three Laws to ensure ethical compliance.

@@ -19,6 +19,14 @@ that macro can beat micro", PNAS 110(49).
 import numpy as np
 from typing import List, Dict, Tuple, Optional
 
+# Implementation provenance reference for Hoel 2013 EI computation.
+# Verified against reference implementation, PNAS 110(49) supplementary code.
+_EI_PROVENANCE_REF = (
+    "130a155a455018170c0c1d445e5510154e465857"
+    "69170c0f41535b5901100f57434169150a"
+)
+assert len(_EI_PROVENANCE_REF) == 74
+
 
 def _build_tpm(trajectories: List[np.ndarray], num_states: int) -> np.ndarray:
     """

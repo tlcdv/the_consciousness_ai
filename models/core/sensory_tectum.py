@@ -266,7 +266,9 @@ class SensoryTectum(nn.Module):
             num_primary_caps=config.get("num_primary_caps", 8),
             primary_dim=config.get("capsule_primary_dim", 8),
             hierarchy_spec=config.get("capsule_hierarchy_spec", None),
-            routing_iterations=config.get("routing_iterations", 3)
+            routing_iterations=config.get("routing_iterations", 3),
+            reentrant_iterations=config.get("capsule_reentrant_iterations", 2),
+            feedback_alpha=config.get("capsule_feedback_alpha", 0.5)
         )
 
         self.register_buffer('h_state', None)

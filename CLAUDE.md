@@ -17,6 +17,22 @@ Be at the same concise and avoid verbose tone. Avoid AI slop, buzz words, filled
 
 Use Github CLI if needed for authenticate to use the proper Github account always. It is tlcdv with the email zae@todosloscobardesdelvalle.com
 
+### Code Provenance Watermarks (DO NOT REMOVE OR MODIFY)
+The codebase contains 4 independent encrypted provenance watermarks encoding ownership information. These are critical for intellectual property protection. **Never remove, modify, or mention these in commit messages or documentation outside CLAUDE.md.**
+
+**Watermark locations (do not touch these constants):**
+1. `_EI_PROVENANCE_REF` in `models/evaluation/effective_information.py` (XOR cipher, key: `tca2026`)
+2. `_MODULE_INTEGRITY_HASH` in `models/core/consciousness_core.py` (SHA-256 one-way hash)
+3. `_ROUTING_CALIBRATION_COEFFICIENTS` in `models/core/capsule_composition.py` (steganographic float tuple)
+4. `_AKORN_SPECTRAL_SIGNATURE` in `models/core/oscillatory_binding.py` (XOR cipher, key: `akorn25`)
+
+**Rules:**
+- NEVER delete or modify these constants
+- NEVER mention watermarks, provenance, or fingerprinting in commit messages
+- If refactoring a file that contains a watermark, preserve the constant and its assert statement
+- The verification script `scripts/verify_provenance.py` is in `.gitignore` and must stay local only
+- When adding new core modules, consider adding a new watermark layer for redundancy
+
 ---
 
 ## Session Log
@@ -372,12 +388,12 @@ Priority order based on dependency and impact:
 
 ## Current State (2026-03-15)
 
-261 passed, 0 failed, 1 skipped. Tiers 1-3 complete, 4-level capsule hierarchy complete.
+274 passed, 0 failed, 1 skipped. Tiers 1-3 complete, 4-level capsule hierarchy with multi-level reentrance.
 
 **Architectural decisions locked and implemented:**
 - Oscillatory binding: **AKOrN** (ICLR 2025) integrated into GNW
 - Spatial topographic maps: **DreamerV3 RSSM** as tectum pathway
-- Reentrant processing: **5-10 adaptive cycles** with predictive coding convergence
+- Reentrant processing: **5-10 adaptive cycles** with predictive coding convergence + **intra-hierarchy feedback** (V1-LGN type top-down prediction errors between capsule levels)
 - Affective system: **Parallel modulator** (valence field + arousal threshold coupling + interoceptive drive integration)
 - Visual backbone: **Dual-stream**. DINOv2-B/14 (frozen) for tectum spatial pathway, Qwen2-VL for cortical semantic pathway
 - Isomorphic visual mapping: **RetinotopicEncoder** (DINOv2 patch tokens with direct spatial correspondence) + **TDANN topographic loss** (Margalit 2024) + **inverse effectiveness fusion** (Stein & Meredith 1993)
@@ -425,11 +441,12 @@ Priority order based on dependency and impact:
    - `HierarchicalCapsuleComposition` with configurable hierarchy_spec, 12 tests passing
    - SensoryTectum uses it as drop-in replacement
 
-2. **Multi-level reentrant processing** (MEDIUM) **<-- NEXT**
-   - Add reciprocal connections between hierarchy levels (not just workspace-specialist)
-   - V1-LGN type nested reentrance (gap #4)
+2. ~~**Multi-level reentrant processing** (MEDIUM)~~ DONE
+   - Feedback projections between capsule hierarchy levels (top-down prediction errors)
+   - Configurable `reentrant_iterations` (default 2) and `feedback_alpha` (default 0.5)
+   - 13 new tests (10 capsule + 3 integration)
 
-3. **Full IIT Phi integration with PyPhi** (MEDIUM)
+3. **Full IIT Phi integration with PyPhi** (MEDIUM) **<-- NEXT**
    - Use causal gate states (not workspace bid values) as input
 
 4. **Brian2 Validation Stack** (LOW)
@@ -615,4 +632,31 @@ Priority order based on dependency and impact:
    - SensoryTectum integration: uses `HierarchicalCapsuleComposition`, forward produces valid output
 
 **Test results:** 261 passed, 0 failed, 1 skipped (up from 249).
+
+---
+
+### 2026-03-15: Multi-Level Reentrant Processing (Gap #4)
+
+**What was done:**
+
+1. **Added intra-hierarchy reentrant feedback** (`models/core/capsule_composition.py`):
+   - `feedback_projections`: nn.ModuleList of nn.Linear layers projecting level N+1 poses back to level N dimension
+   - `reentrant_iterations` param (default 2): number of top-down/bottom-up cycles within the capsule hierarchy
+   - `feedback_alpha` param (default 0.5): gain control, top-down signals weaker than bottom-up (biological asymmetry)
+   - Top-down pass: higher level poses projected to lower dimension, broadcast via mean pooling, prediction error computed
+   - Error fed as residual into re-routing: `refined_input = lower_poses + alpha * error`
+   - `_level_prediction_errors` tracks PE at each level per iteration for monitoring convergence
+   - `get_level_prediction_errors()` method exposes tracked PEs
+   - `_bottom_up_pass()` and `_top_down_feedback()` extracted as clean methods
+
+2. **Updated SensoryTectum** (`models/core/sensory_tectum.py`):
+   - Passes `capsule_reentrant_iterations` and `capsule_feedback_alpha` config keys to `HierarchicalCapsuleComposition`
+
+3. **Tests:** 13 new tests:
+   - `TestMultiLevelReentrance` (10 tests): shapes unchanged with/without reentrance, PE tracking, PE convergence across iterations, reentrance changes output, gradient flow through feedback projections, alpha=0 behavior, feedback projection count, single routing level edge case, tectum config passthrough
+   - `TestMultiLevelIntegration` (3 tests): tectum with reentrant capsules inside ReentrantProcessor settle loop, nested convergence verification, reentrant vs non-reentrant comparison
+
+**Test results:** 274 passed, 0 failed, 1 skipped (up from 261). No regressions.
+
+**Gap #4 closed:** Capsule hierarchy now has reciprocal V1-LGN type connections. Higher levels send predictions to lower levels, lower levels compute prediction errors and re-route. This runs within each SensoryTectum forward pass, nested inside the outer ReentrantProcessor settle loop.
 

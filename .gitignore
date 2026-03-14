@@ -45,3 +45,9 @@ pdf_to_text.py
 # Runtime state files
 memory_state.pkl
 *.pkl
+
+CLAUDE.md
+
+# Provenance verification (local only)
+scripts/verify_provenance.py
+plan.md
