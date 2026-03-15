@@ -64,6 +64,7 @@ def build_config(args):
             "action_dim": args.action_dim,
             "context_dim": 128,
             "learning_rate": args.lr,
+            "device": "cuda" if torch.cuda.is_available() else "cpu",
         },
         "memory": {},
         "episodes": args.episodes,
@@ -86,7 +87,7 @@ def init_components(config):
 
     modulator = AffectiveModulator()
 
-    emotion_shaper = EmotionalRewardShaper(config["emotion"])
+    emotion_shaper = EmotionalRewardShaper(config["emotion"]).to(device)
 
     memory = MemoryCore(config["memory"])
 

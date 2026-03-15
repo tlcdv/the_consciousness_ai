@@ -22,12 +22,12 @@ public class AgentManager : MonoBehaviour
     public void OnDestroy()
     {
         // Unregister to prevent memory leaks
-        if (SideChannelManager.IsSideChannelRegistered(_consciousnessChannel))
+        if (_consciousnessChannel != null)
         {
             SideChannelManager.UnregisterSideChannel(_consciousnessChannel);
         }
-        
-        if (SideChannelManager.IsSideChannelRegistered(_emotionChannel))
+
+        if (_emotionChannel != null)
         {
             SideChannelManager.UnregisterSideChannel(_emotionChannel);
         }

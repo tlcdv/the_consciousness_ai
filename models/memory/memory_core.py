@@ -278,12 +278,13 @@ class MemoryCore:
         Create a combined memory vector by concatenating state, action,
         and emotional embedding.
         """
+        device = state.device if isinstance(state, torch.Tensor) else torch.device('cpu')
         parts = [state]
         if action is not None:
-            parts.append(action)
+            parts.append(action.to(device) if isinstance(action, torch.Tensor) else action)
         else:
-            parts.append(torch.zeros(8))
-        parts.append(emotional_embedding)
+            parts.append(torch.zeros(8, device=device))
+        parts.append(emotional_embedding.to(device) if isinstance(emotional_embedding, torch.Tensor) else emotional_embedding)
         return torch.cat(parts, dim=0)
 
     def _generate_memory_id(self) -> str:

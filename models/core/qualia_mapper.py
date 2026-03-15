@@ -43,11 +43,14 @@ class QualiaMapper:
         Returns:
             QualiaState object representing the 'feel' of the thought.
         """
-        # Ensure tensor inputs
+        # Ensure tensor inputs on the same device
         if not isinstance(workspace_tensor, torch.Tensor):
             workspace_tensor = torch.tensor(workspace_tensor, dtype=torch.float32)
+        device = workspace_tensor.device
         if not isinstance(goal_vector, torch.Tensor):
-            goal_vector = torch.tensor(goal_vector, dtype=torch.float32)
+            goal_vector = torch.tensor(goal_vector, dtype=torch.float32, device=device)
+        else:
+            goal_vector = goal_vector.to(device)
             
         # 1. Intensity (L2 Norm)
         # How "loud" or salient is this thought?
