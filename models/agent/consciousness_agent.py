@@ -279,49 +279,31 @@ class ConsciousnessAgent:
         
         return action, info
 
-    def update(self, 
-               state: np.ndarray, 
-               action: np.ndarray, 
-               reward: float, 
-               next_state: np.ndarray, 
-               done: bool, 
+    def update(self,
+               state: np.ndarray,
+               action: np.ndarray,
+               reward: float,
+               next_state: np.ndarray,
+               done: bool,
                info: Dict[str, Any]):
         """
         Learning Step (Post-Action).
-        Feeds result back to Reinforcement Core.
+        Feeds result back to ActionSelectionCore.
         """
-        # Convert raw numpy inputs to tensors/embeddings matching step() logic
-        # Note: In a real loop, we'd cache the tensors from step() to avoid re-encoding
-        # For this prototype, we re-encode or assume caller handles it.
-        # But wait, PPO update needs tensors.
-        
-        # We'll trust the RL Core to handle the buffering if we pass the right data.
-        # rl_core.step() takes (state, action, reward, next_state...)
-        
-        # Re-encode for consistency (Optimization: pass tensors from step return)
-        state_vec = self._encode_text_to_state(info["description"]) # Approximation
-        # Next state needs encoding too? 
-        # In "Dark Room", next_state image comes from environment *after* step.
-        # We might skip re-encoding 'next_state' here and let RL Core handle sparse rewards 
-        # or require the Training Loop to call agent.encode(next_obs).
-        
-        # Simplified: We just pass the values to RL Core's step function
-        # The RL Core stores them.
-        
-        # We pass the *shaped* emotional state
-        self.rl_core.step(
-            state=state_vec,
+        broadcast_tensor = self.previous_broadcast if self.previous_broadcast is not None else torch.zeros(1, self.state_dim, device=self.device)
+
+        self.action_core.step(
+            workspace_broadcast=broadcast_tensor,
             action=action,
             raw_reward=reward,
-            next_state=state_vec, # Placeholder: PPO needs real next state, usually handled in training loop
+            next_broadcast=broadcast_tensor,
             done=done,
             emotion_state=self.current_emotion,
-            attention_level=self.global_workspace.state.broadcast_strength,
-            narrative=info["description"]
+            attention_level=info.get("phi", 0.0),
+            narrative=info.get("description", "")
         )
-        
-        # Trigger PPO Update if buffer is full
-        metrics = self.rl_core.update_policy()
+
+        metrics = self.action_core.update_policy()
         return metrics
 
     def _evaluate_reflex_emotion(self, description: str) -> Dict[str, float]:

@@ -106,14 +106,17 @@ class MemoryCore:
     4. Meta-learning capabilities
     """
 
-    def __init__(self, config: MemoryConfig):
+    def __init__(self, config=None):
         """
         Initialize memory management system.
 
         Args:
-            config: A MemoryConfig dataclass instance with fields like:
-                max_memories, cleanup_threshold, etc.
+            config: A MemoryConfig dataclass or dict with memory parameters.
         """
+        if config is None:
+            config = MemoryConfig()
+        elif isinstance(config, dict):
+            config = MemoryConfig(**{k: v for k, v in config.items() if hasattr(MemoryConfig, k)})
         self.config = config
 
         # Internal storage for non-vector-based memory.

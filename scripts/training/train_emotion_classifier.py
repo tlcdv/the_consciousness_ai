@@ -21,7 +21,8 @@ def load_datasets():
     heu_dataset = EmotionDataset('/data/emotions/heu_emotion.csv')
     return meld_dataset, heu_dataset
 
-meld, heu = load_datasets()
-dataloader = DataLoader(meld, batch_size=16, shuffle=True)
-for batch in dataloader:
-    print(batch)
+if __name__ == "__main__":
+    meld, heu = load_datasets()
+    dataloader = DataLoader(meld, batch_size=16, shuffle=True)
+    for batch in dataloader:
+        print(batch)
