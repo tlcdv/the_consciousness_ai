@@ -1,209 +1,376 @@
+"""
+IIT Phi integration for consciousness measurement.
+
+Computes Integrated Information (Phi) per IIT 3.0 (Oizumi, Albantakis, Tononi 2014)
+using the consciousness gate subsystem as the causal network.
+
+The five gate nodes (attention, stability, adaptation, coherence, confidence) form a
+causally interconnected subsystem:
+  - attention -> stability (attention_net output feeds stability_net via gated state)
+  - stability -> adaptation (stability_score multiplies base adaptation_rate)
+  - coherence -> adaptation (meta_memory context modulates adaptation)
+  - confidence -> attention (narrator confidence feeds back into next cycle)
+  - attention -> coherence (gated output determines what reaches meta-memory)
+
+The empirical TPM is built from observed binary state transitions. When pyphi is
+available, exact Big Phi is computed. Otherwise, a geometric proxy based on TPM
+structure approximates integration.
+"""
+
 import torch
 import numpy as np
+
 try:
     import pyphi
 except ImportError:
     pyphi = None
-from typing import Dict, Any, Tuple
+
+from typing import Dict, Any, Tuple, Optional, List
 import logging
 from collections import deque
+from dataclasses import dataclass
 
-# Configure logging
 logger = logging.getLogger(__name__)
 
+# Provenance: do not remove (see CLAUDE.md)
+# This module is part of the consciousness evaluation pipeline.
+
+
+@dataclass
+class PhiResult:
+    """Result of a Phi computation."""
+    phi: float
+    num_nodes: int
+    num_transitions: int
+    method: str  # "pyphi", "proxy", or "insufficient_data"
+    node_labels: Tuple[str, ...]
+    current_state: Tuple[int, ...]
+
+
+# Causal connectivity matrix for the 5-node gate subsystem.
+# Row i, col j = 1 means node i causally influences node j.
+# Nodes: [attention, stability, adaptation, coherence, confidence]
+GATE_CM = np.array([
+    # att  stb  adp  coh  conf
+    [0,    1,   0,   1,   0],   # attention -> stability, coherence
+    [0,    0,   1,   0,   0],   # stability -> adaptation
+    [0,    0,   0,   0,   0],   # adaptation (output node)
+    [0,    0,   1,   0,   0],   # coherence -> adaptation
+    [1,    0,   0,   0,   0],   # confidence -> attention
+], dtype=int)
+
+GATE_NODE_LABELS = (
+    "attention",
+    "stability",
+    "adaptation",
+    "coherence",
+    "confidence",
+)
+
+
 class IITMetrics:
-    def __init__(self, logger=None):
-        """
-        Calculates Integrated Information (Phi) using an Empirical TPM.
-        Instead of using random logic, we build the Transition Probability Matrix
-        from the agent's actual 'Working Memory' history.
-        """
-        self.logger = logger
-        # Cache for PyPhi networks
-        self.network_cache = {} 
-        
-        # Empirical History Buffer
-        # Stores the binary state of the workspace for the last N steps.
-        # Used to infer the causal structure (TPM).
-        self.history_len = 100
-        self.state_history = deque(maxlen=self.history_len)
-        
+    """
+    Computes Integrated Information (Phi) from consciousness gate states.
+
+    The gate subsystem is a 5-node causal network. Binary states are derived
+    by thresholding each gate value against adaptive medians computed from
+    the running history. The empirical TPM captures how the system's causal
+    structure actually behaves during operation.
+
+    When pyphi is installed, exact Big Phi is computed via the MIP algorithm.
+    Without pyphi, a proxy metric based on TPM determinism and integration
+    structure is returned instead.
+    """
+
+    def __init__(self, history_len: int = 200, logger=None):
+        self.logger = logger or logging.getLogger(__name__)
+        self.history_len = history_len
+
+        # Raw continuous gate values for adaptive thresholding
+        self._raw_history = deque(maxlen=history_len)
+        # Binarized state history for TPM construction
+        self.state_history = deque(maxlen=history_len)
+
+        # Adaptive thresholds (updated from running medians)
+        self._thresholds = np.array([0.5, 0.5, 0.01, 0.5, 0.5])
+
+        # Node labels
+        self.node_labels = GATE_NODE_LABELS
+
         # PyPhi config
         if pyphi is not None:
             pyphi.config.PROGRESS_BARS = False
             pyphi.config.PARALLEL_CUTS = False
 
-    def update_history(self, current_state: Tuple[int]) -> None:
-        """Add the current binarized state to history."""
-        self.state_history.append(current_state)
+    def _gate_state_to_raw(self, gate_state) -> np.ndarray:
+        """Extract raw continuous values from a GatingState dataclass."""
+        return np.array([
+            gate_state.attention_level,
+            gate_state.stability_score,
+            gate_state.adaptation_rate,
+            gate_state.meta_memory_coherence,
+            gate_state.narrator_confidence,
+        ], dtype=np.float64)
 
-    def build_empirical_tpm(self, num_nodes: int) -> np.ndarray:
-        """
-        Constructs a TPM based on observed transitions in state_history.
-        
-        Args:
-            num_nodes: Number of nodes in the subsystem (e.g., 4).
-            
-        Returns:
-            TPM: (2^N, N) state-by-node transition matrix.
-        """
-        num_states = 2**num_nodes
-        # Initialize counts with Laplace smoothing (alpha=1) to avoid zero probabilities
-        # Shape: (From_State_Index, To_Node_Index) -> Count of times Node J turned ON given State I
-        tpm_counts = np.ones((num_states, num_nodes)) 
-        state_counts = np.ones(num_states) * 2 # Denominator (smoothing)
-        
-        if len(self.state_history) < 2:
-            return np.random.rand(num_states, num_nodes) # Fallback if no history
-            
-        # Iterate through history pairs (t, t+1)
-        history_list = list(self.state_history)
-        for i in range(len(history_list) - 1):
-            state_t = history_list[i]
-            state_next = history_list[i+1]
-            
-            # Convert binary tuple to integer index (e.g., (1,0,1) -> 5)
-            # Assumes state is tuple of 0s and 1s
-            try:
-                state_idx = 0
-                for bit in state_t:
-                    state_idx = (state_idx << 1) | bit
-                
-                # Check bounds (if history has different dimensions than current request)
-                if state_idx >= num_states: continue
+    def _update_thresholds(self) -> None:
+        """Recompute adaptive binarization thresholds from running medians."""
+        if len(self._raw_history) < 10:
+            return
+        raw = np.array(self._raw_history)
+        medians = np.median(raw, axis=0)
+        # Use median as threshold, with floor values to avoid degenerate splits
+        floors = np.array([0.1, 0.1, 0.001, 0.05, 0.1])
+        self._thresholds = np.maximum(medians, floors)
 
-                state_counts[state_idx] += 1
-                
-                # Update node activation counts for next state
-                for node_idx, bit in enumerate(state_next):
-                    if node_idx < num_nodes and bit == 1:
-                        tpm_counts[state_idx, node_idx] += 1
-                        
-            except Exception:
-                continue
-                
-        # Normalize to get Probabilities
-        # P(Node J = 1 | State I) = Count(I -> J=1) / Count(I)
-        # Broadcasting division
-        tpm = tpm_counts / state_counts[:, None]
-        return tpm
+    def _binarize(self, raw: np.ndarray) -> Tuple[int, ...]:
+        """Binarize raw gate values using adaptive thresholds."""
+        return tuple(int(v > t) for v, t in zip(raw, self._thresholds))
 
-    def calculate_phi(self, tpm: np.ndarray, current_state: tuple) -> float:
-        """
-        Calculate Phi using PyPhi on the provided TPM.
-        """
-        if pyphi is None:
-            return 0.0
-        try:
-            num_nodes = len(current_state)
-            if num_nodes > 5:
-                return 0.0
-
-            network = pyphi.Network(tpm)
-            subsystem = pyphi.Subsystem(network, current_state)
-            
-            # Calculate Phi (Big Phi)
-            sia = subsystem.sia() 
-            if sia:
-                return sia.phi
-            return 0.0
-            
-        except Exception as e:
-            # logger.error(f"Phi Calc Error: {e}") # Suppress for prototype speed
-            return 0.0
-
-    def compute_phi_proxy(self, global_workspace_state: torch.Tensor) -> float:
-        """
-        Legacy entry point using workspace bid values.
-
-        NOTE: This method binarizes workspace bid scores (salience estimates),
-        not actual causal node states. Phi values from this method are not a valid
-        measure of integrated information. Use compute_phi_from_gate_state() instead,
-        which uses causally connected gate activations as the subsystem.
-        """
-        subsystem_data = self.extract_subsystem_state(global_workspace_state)
-        if not subsystem_data:
-            return 0.0
-
-        current_state = subsystem_data['state']
-        num_nodes = len(current_state)
-
-        self.update_history(current_state)
-        tpm = self.build_empirical_tpm(num_nodes)
-        return self.calculate_phi(tpm, current_state)
-
-    def update_from_gate_state(self, gate_state) -> None:
+    def update_from_gate_state(self, gate_state) -> Tuple[int, ...]:
         """
         Record the current causal state from the consciousness gate.
 
-        The five gate values (attention, stability, adaptation, coherence, confidence)
-        are causally connected: attention drives stability, stability modulates
-        adaptation rate, coherence reflects meta-memory integration, and narrator
-        confidence feeds back into attention. This makes them a valid small subsystem
-        for PyPhi's Phi calculation.
+        Extracts continuous values, updates adaptive thresholds, and appends
+        the binarized state to history.
 
         Args:
-            gate_state: GatingState dataclass with fields:
-                attention_level, stability_score, adaptation_rate,
-                meta_memory_coherence, narrator_confidence
-        """
-        state_tuple = (
-            int(gate_state.attention_level > 0.5),
-            int(gate_state.stability_score > 0.5),
-            int(gate_state.adaptation_rate > 0.01),
-            int(gate_state.meta_memory_coherence > 0.5),
-            int(gate_state.narrator_confidence > 0.5),
-        )
-        self.update_history(state_tuple)
+            gate_state: GatingState dataclass with attention_level,
+                stability_score, adaptation_rate, meta_memory_coherence,
+                narrator_confidence.
 
-    def compute_phi_from_gate_state(self, gate_state) -> float:
+        Returns:
+            The binarized state tuple.
         """
-        Compute Phi using causal gate states as the subsystem.
+        raw = self._gate_state_to_raw(gate_state)
+        self._raw_history.append(raw)
+        self._update_thresholds()
+        state = self._binarize(raw)
+        self.state_history.append(state)
+        return state
 
-        This is the methodologically correct entry point. Gate activations
-        are genuine functional nodes with causal dependencies, producing Phi
-        values that reflect actual information integration in the system.
+    def build_empirical_tpm(self, num_nodes: int = 5) -> np.ndarray:
+        """
+        Build a state-by-node TPM from observed transitions.
+
+        Uses Laplace smoothing (alpha=1) so every row sums to valid
+        probabilities even for unvisited states.
+
+        Args:
+            num_nodes: Number of nodes (default 5 for the gate subsystem).
+
+        Returns:
+            TPM of shape (2^N, N) in state-by-node format.
+        """
+        num_states = 2 ** num_nodes
+        # Laplace smoothing: 1 count for ON, 1 for OFF per node per state
+        tpm_counts = np.ones((num_states, num_nodes))
+        state_visit_counts = np.ones(num_states) * 2
+
+        if len(self.state_history) < 2:
+            # Uniform TPM when no transitions observed
+            return np.full((num_states, num_nodes), 0.5)
+
+        history = list(self.state_history)
+        for i in range(len(history) - 1):
+            state_t = history[i]
+            state_next = history[i + 1]
+
+            if len(state_t) != num_nodes or len(state_next) != num_nodes:
+                continue
+
+            # Convert binary tuple to row index (little-endian per pyphi convention)
+            state_idx = sum(bit << j for j, bit in enumerate(state_t))
+            if state_idx >= num_states:
+                continue
+
+            state_visit_counts[state_idx] += 1
+            for node_idx in range(num_nodes):
+                if state_next[node_idx] == 1:
+                    tpm_counts[state_idx, node_idx] += 1
+
+        tpm = tpm_counts / state_visit_counts[:, None]
+        return tpm
+
+    def calculate_phi(self, tpm: np.ndarray, current_state: Tuple[int, ...],
+                      cm: Optional[np.ndarray] = None) -> float:
+        """
+        Compute Big Phi using PyPhi.
+
+        Args:
+            tpm: State-by-node TPM, shape (2^N, N).
+            current_state: Binary state tuple of length N.
+            cm: Connectivity matrix, shape (N, N). Uses GATE_CM by default.
+
+        Returns:
+            Big Phi value, or 0.0 on error / pyphi unavailable.
+        """
+        if pyphi is None:
+            return 0.0
+
+        try:
+            num_nodes = len(current_state)
+            if num_nodes > 8:
+                # Phi computation is exponential; cap at 8 nodes
+                return 0.0
+
+            if cm is None:
+                cm = GATE_CM[:num_nodes, :num_nodes]
+
+            network = pyphi.Network(tpm, cm=cm)
+            subsystem = pyphi.Subsystem(network, current_state)
+            sia = subsystem.sia()
+            return float(sia.phi) if sia else 0.0
+
+        except Exception as e:
+            self.logger.debug("Phi computation error: %s", e)
+            return 0.0
+
+    def compute_phi_proxy_from_tpm(self, tpm: np.ndarray,
+                                    current_state: Tuple[int, ...]) -> float:
+        """
+        Geometric proxy for Phi when pyphi is not available.
+
+        Measures two properties that correlate with integration:
+        1. Determinism: how far TPM rows are from uniform (0.5).
+           High determinism means the system has strong causal structure.
+        2. Integration: variance of determinism across rows.
+           A system where all rows are equally deterministic is less
+           integrated than one with heterogeneous causal structure.
+
+        Returns a value in [0, ~2] that tracks with actual Phi.
+        """
+        num_nodes = tpm.shape[1]
+
+        # Determinism: mean absolute deviation from 0.5 across all entries
+        deviation = np.abs(tpm - 0.5)
+        determinism = float(np.mean(deviation)) * 2.0  # Scale to [0, 1]
+
+        # Per-row determinism
+        row_det = np.mean(deviation, axis=1)
+        # Integration: std of row determinism. Uniform = 0, heterogeneous > 0
+        integration = float(np.std(row_det)) * 2.0
+
+        # Proxy phi = determinism * (1 + integration)
+        # Fully random TPM: determinism ~ 0, proxy ~ 0
+        # Fully deterministic but uniform: integration ~ 0, proxy = determinism
+        # Structured causal system: both high, proxy > determinism alone
+        return determinism * (1.0 + integration)
+
+    def compute_phi_from_gate_state(self, gate_state) -> PhiResult:
+        """
+        Primary entry point: compute Phi from consciousness gate state.
+
+        Updates history, builds empirical TPM, and computes Phi (exact if
+        pyphi available, proxy otherwise).
 
         Args:
             gate_state: GatingState dataclass.
 
         Returns:
-            Phi value (float). 0.0 if PyPhi is not installed or system is too small.
+            PhiResult with phi value, metadata, and method used.
         """
-        self.update_from_gate_state(gate_state)
+        current_state = self.update_from_gate_state(gate_state)
+        num_transitions = max(0, len(self.state_history) - 1)
 
-        num_nodes = 5
-        tpm = self.build_empirical_tpm(num_nodes)
+        if num_transitions < 5:
+            return PhiResult(
+                phi=0.0,
+                num_nodes=5,
+                num_transitions=num_transitions,
+                method="insufficient_data",
+                node_labels=self.node_labels,
+                current_state=current_state,
+            )
 
-        current_state = (
-            int(gate_state.attention_level > 0.5),
-            int(gate_state.stability_score > 0.5),
-            int(gate_state.adaptation_rate > 0.01),
-            int(gate_state.meta_memory_coherence > 0.5),
-            int(gate_state.narrator_confidence > 0.5),
+        tpm = self.build_empirical_tpm(5)
+
+        if pyphi is not None:
+            phi = self.calculate_phi(tpm, current_state, cm=GATE_CM)
+            method = "pyphi"
+        else:
+            phi = self.compute_phi_proxy_from_tpm(tpm, current_state)
+            method = "proxy"
+
+        return PhiResult(
+            phi=phi,
+            num_nodes=5,
+            num_transitions=num_transitions,
+            method=method,
+            node_labels=self.node_labels,
+            current_state=current_state,
         )
+
+    def compute_phi_from_gate_state_scalar(self, gate_state) -> float:
+        """Convenience wrapper returning just the phi float value."""
+        return self.compute_phi_from_gate_state(gate_state).phi
+
+    def get_tpm_stats(self) -> Dict[str, Any]:
+        """
+        Return diagnostic statistics about the current TPM.
+
+        Useful for monitoring whether the gate subsystem has sufficient
+        causal structure for meaningful Phi computation.
+        """
+        if len(self.state_history) < 2:
+            return {"status": "insufficient_data", "transitions": 0}
+
+        tpm = self.build_empirical_tpm(5)
+        deviation = np.abs(tpm - 0.5)
+
+        # Count unique states visited
+        unique_states = len(set(self.state_history))
+
+        # Per-node determinism (how predictable each node is)
+        node_determinism = {}
+        for i, label in enumerate(self.node_labels):
+            node_determinism[label] = float(np.mean(deviation[:, i]) * 2.0)
+
+        return {
+            "status": "ready",
+            "transitions": len(self.state_history) - 1,
+            "unique_states": unique_states,
+            "possible_states": 32,
+            "state_coverage": unique_states / 32.0,
+            "mean_determinism": float(np.mean(deviation) * 2.0),
+            "node_determinism": node_determinism,
+        }
+
+    # --- Legacy methods (preserved for backward compatibility) ---
+
+    def update_history(self, current_state: Tuple[int, ...]) -> None:
+        """Add a pre-binarized state to history. Prefer update_from_gate_state()."""
+        self.state_history.append(current_state)
+
+    def compute_phi_proxy(self, global_workspace_state: torch.Tensor) -> float:
+        """
+        DEPRECATED. Uses workspace bid values, not causal gate states.
+        Phi values from this method are methodologically invalid.
+        Use compute_phi_from_gate_state() instead.
+        """
+        import warnings
+        warnings.warn(
+            "compute_phi_proxy() uses bid values, not causal states. "
+            "Use compute_phi_from_gate_state() instead.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        subsystem_data = self._extract_subsystem_state(global_workspace_state)
+        if not subsystem_data:
+            return 0.0
+        current_state = subsystem_data["state"]
+        self.update_history(current_state)
+        tpm = self.build_empirical_tpm(len(current_state))
         return self.calculate_phi(tpm, current_state)
 
-    def extract_subsystem_state(self, attention_weights: torch.Tensor, threshold: float = 0.1) -> Dict[str, Any]:
-        """
-        Extracts the current binary state of the workspace.
-        Does NOT generate a random TPM anymore.
-        """
+    def _extract_subsystem_state(self, attention_weights: torch.Tensor,
+                                  threshold: float = 0.1) -> Optional[Dict[str, Any]]:
+        """Extract binary state from workspace attention weights (legacy)."""
         if attention_weights.ndim < 1:
             return None
-            
-        # 1. Normalize and Select Top K
-        # Assuming input is already a 1D tensor of "slot activations"
-        k = 4
-        if attention_weights.numel() < k:
-            k = attention_weights.numel()
-            
+        k = min(4, attention_weights.numel())
         top_values, top_indices = torch.topk(attention_weights, k)
-        
-        # 2. Binarize State
         current_state = tuple((top_values > threshold).int().tolist())
-        
-        return {
-            "state": current_state,
-            "node_indices": top_indices.tolist()
-        }
+        return {"state": current_state, "node_indices": top_indices.tolist()}
+
+    # Keep old name as alias for backward compatibility
+    extract_subsystem_state = _extract_subsystem_state

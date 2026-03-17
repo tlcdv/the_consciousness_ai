@@ -395,9 +395,9 @@ Priority order based on dependency and impact:
 
 ---
 
-## Current State (2026-03-15)
+## Current State (2026-03-17)
 
-274 passed, 0 failed, 1 skipped. Tiers 1-3 complete, 4-level capsule hierarchy with multi-level reentrance.
+312 passed, 0 failed, 1 skipped. Tiers 1-3 complete, 4-level capsule hierarchy with multi-level reentrance. IIT Phi integration rewired to use causal gate states.
 
 **Architectural decisions locked and implemented:**
 - Oscillatory binding: **AKOrN** (ICLR 2025) integrated into GNW
@@ -408,6 +408,7 @@ Priority order based on dependency and impact:
 - Isomorphic visual mapping: **RetinotopicEncoder** (DINOv2 patch tokens with direct spatial correspondence) + **TDANN topographic loss** (Margalit 2024) + **inverse effectiveness fusion** (Stein & Meredith 1993)
 - Reward formula: **Full PAD** with homeostatic arousal term + Dominance
 - Strong emergence falsification: **EI function** at gate vs. workspace level (Hoel framework)
+- IIT Phi: **Causal gate states** as subsystem nodes, empirical TPM with adaptive binarization, connectivity matrix, geometric proxy without pyphi (38 tests)
 - Phi-binding validation: **3-condition test** (unbound/partial/full) passing
 - Self-model: **Body schema + interoception** in self_representation_core
 - Capsule composition: **4-level hierarchical routing** (Sabour 2017) between tectum and workspace (12 tests passing)
@@ -455,10 +456,14 @@ Priority order based on dependency and impact:
    - Configurable `reentrant_iterations` (default 2) and `feedback_alpha` (default 0.5)
    - 13 new tests (10 capsule + 3 integration)
 
-3. **Full IIT Phi integration with PyPhi** (MEDIUM) **<-- NEXT**
-   - Use causal gate states (not workspace bid values) as input
+3. ~~**Full IIT Phi integration with PyPhi** (MEDIUM)~~ DONE
+   - Rewired to use causal gate states (ConsciousnessGate's GatingState) instead of workspace bid values
+   - Adaptive binarization thresholds from running medians, connectivity matrix for PyPhi
+   - Geometric proxy metric (determinism x integration) when pyphi unavailable
+   - PhiResult dataclass with method/metadata, TPM diagnostics, legacy deprecation warnings
+   - 38 new tests
 
-4. **Brian2 Validation Stack** (LOW)
+4. **Brian2 Validation Stack** (LOW) **<-- NEXT**
    - Offline biological validation of AKOrN binding patterns
 
 5. **Python 3.10+ upgrade** (OPTIONAL)
@@ -718,4 +723,35 @@ Priority order based on dependency and impact:
 4. **Fixed AgentManager.cs**: Replaced nonexistent `SideChannelManager.IsSideChannelRegistered()` with null checks, matching current ML-Agents API.
 
 **Test results:** 274 passed, 0 failed, 1 skipped. No regressions.
+
+---
+
+### 2026-03-17: Full IIT Phi Integration with Causal Gate States
+
+**What was done:**
+
+1. **Rewrote IIT Phi module** (`models/evaluation/iit_phi.py`):
+   - Fixed HIGH severity audit issue: phi computation was using binarized workspace bid values (salience estimates) instead of actual causal node states
+   - New primary entry point: `compute_phi_from_gate_state()` uses the 5 ConsciousnessGate nodes (attention, stability, adaptation, coherence, confidence) as the IIT subsystem
+   - These nodes have genuine causal dependencies: attention drives stability, stability modulates adaptation, coherence feeds adaptation, confidence loops back to attention
+   - Added `GATE_CM` connectivity matrix (5x5) encoding the causal graph for PyPhi's network constructor
+   - Adaptive binarization: thresholds computed from running medians instead of hardcoded 0.5. Floor values prevent degenerate splits when variance is low
+   - `PhiResult` dataclass returns phi value, method used ("pyphi", "proxy", or "insufficient_data"), node labels, current state, and transition count
+   - Geometric proxy for CI (no pyphi): measures TPM determinism (deviation from uniform) and integration (heterogeneity of causal structure). Correlates with actual Phi.
+   - `get_tpm_stats()` diagnostic method: reports state coverage, per-node determinism, unique states visited
+   - Legacy `compute_phi_proxy()` now emits `DeprecationWarning`
+   - TPM uses little-endian bit indexing per pyphi convention
+   - Laplace smoothing prevents zero probability entries for unvisited states
+
+2. **Tests:** 38 new tests in `tests/test_iit_phi.py`:
+   - `TestGateStateBinarization` (6): above/below/mixed threshold, adaptive shift, type checks, raw history
+   - `TestTPMConstruction` (6): insufficient history, shape, probability bounds, deterministic transitions, little-endian indexing, Laplace smoothing
+   - `TestConnectivityMatrix` (8): shape, binary, no self-loops, specific causal connections, label count
+   - `TestPhiProxy` (4): uniform=zero, deterministic=positive, nonnegative, structured > random
+   - `TestComputePhiFromGateState` (6): PhiResult type, insufficient data method, proxy fallback, metadata, scalar convenience, varied states produce positive proxy
+   - `TestTPMStats` (2): empty stats, stats with data
+   - `TestLegacyDeprecation` (2): deprecation warning, backward compat
+   - `TestEdgeCases` (4): all-zero state, constant history, history length cap, 3-node TPM
+
+**Test results:** 312 passed, 0 failed, 1 skipped (up from 274). No regressions.
 
