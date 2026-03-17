@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 # models/predictive/emotional_predictor.py
 
 """
@@ -11,7 +13,6 @@ Predictive module that handles:
 import numpy as np
 import torch
 import torch.nn as nn
-from typing import Dict, List, Optional, Tuple
 from dataclasses import dataclass
 
 from models.core.consciousness_core import ConsciousnessState
@@ -48,7 +49,7 @@ class EmotionalPredictor(nn.Module):
     4. Consciousness-weighted predictions
     """
     
-    def __init__(self, config: Dict):
+    def __init__(self, config: dict):
         super().__init__()
         
         # Core parameters
@@ -86,7 +87,7 @@ class EmotionalPredictor(nn.Module):
         
         # State tracking
         self.state = EmotionalState()
-        self.history: List[EmotionalState] = []
+        self.history: list[EmotionalState] = []
         
         # Core components
         self.emotional_graph = EmotionalGraphNetwork()
@@ -112,11 +113,11 @@ class EmotionalPredictor(nn.Module):
     def forward(
         self,
         input_state: torch.Tensor,
-        attention_context: Optional[torch.Tensor] = None,
-        memory_context: Optional[torch.Tensor] = None,
-        meta_memory_context: Optional[Dict] = None,
-        consciousness_state: Optional[ConsciousnessState] = None
-    ) -> Tuple[Dict[str, torch.Tensor], Dict[str, float]]:
+        attention_context: torch.Tensor | None = None,
+        memory_context: torch.Tensor | None = None,
+        meta_memory_context: dict | None = None,
+        consciousness_state: ConsciousnessState | None = None
+    ) -> tuple[dict[str, torch.Tensor], dict[str, float]]:
         """Process input state for emotional predictions"""
         
         # Encode emotional features
@@ -237,7 +238,7 @@ class EmotionalPredictor(nn.Module):
         # Modulate by stability
         return float(base_attention * (1.0 + self.state.emotional_stability))
         
-    def get_metrics(self) -> Dict[str, float]:
+    def get_metrics(self) -> dict[str, float]:
         """Get current emotional metrics"""
         return {
             'valence': self.state.valence,
@@ -256,8 +257,8 @@ class EmotionalPredictor(nn.Module):
         self,
         prediction: torch.Tensor,
         confidence: torch.Tensor,
-        meta_memory_context: Optional[Dict],
-        consciousness_state: Optional[ConsciousnessState]
+        meta_memory_context: dict | None,
+        consciousness_state: ConsciousnessState | None
     ):
         """Update prediction metrics"""
         self.metrics.confidence = confidence.mean().item()

@@ -15,8 +15,8 @@ for conscious access. It modulates sensory processing via two mechanisms:
 
 Reference: Feinberg & Mallatt (2016), The Ancient Origins of Consciousness.
 """
+from __future__ import annotations
 
-from typing import Dict, Tuple, Optional
 
 
 # Semantic categories for bid modulation by valence
@@ -33,7 +33,7 @@ class AffectiveModulator:
     - Arousal-threshold coupling on GNW ignition threshold
     """
 
-    def __init__(self, config: Dict = None):
+    def __init__(self, config: dict = None):
         config = config or {}
 
         # Valence field strength: how much valence influences bids
@@ -57,8 +57,8 @@ class AffectiveModulator:
 
     def interoceptive_to_pad(
         self,
-        interoceptive_state: Dict[str, float],
-    ) -> Dict[str, float]:
+        interoceptive_state: dict[str, float],
+    ) -> dict[str, float]:
         """
         Convert interoceptive drives into PAD deltas.
 
@@ -104,10 +104,10 @@ class AffectiveModulator:
 
     def modulate(
         self,
-        bids: Dict[str, float],
-        pad_state: Dict[str, float],
-        interoceptive_state: Optional[Dict[str, float]] = None,
-    ) -> Tuple[Dict[str, float], float]:
+        bids: dict[str, float],
+        pad_state: dict[str, float],
+        interoceptive_state: dict[str, float] | None = None,
+    ) -> tuple[dict[str, float], float]:
         """
         Apply affective modulation to workspace bids and ignition threshold.
 
@@ -119,7 +119,7 @@ class AffectiveModulator:
                 that are summed with the external PAD state before modulation.
 
         Returns:
-            Tuple of (modulated_bids, adjusted_ignition_threshold)
+            tuple of (modulated_bids, adjusted_ignition_threshold)
         """
         valence = pad_state.get("valence", 0.0)
         arousal = pad_state.get("arousal", 0.0)

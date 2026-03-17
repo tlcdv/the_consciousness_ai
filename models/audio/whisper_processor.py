@@ -1,9 +1,8 @@
 import whisper
 import torch
-from typing import Dict
 
 class WhisperProcessor:
-    def __init__(self, config: Dict):
+    def __init__(self, config: dict):
         self.model = whisper.load_model("large-v3")
         self.emotion_classifier = self._load_emotion_classifier()
     

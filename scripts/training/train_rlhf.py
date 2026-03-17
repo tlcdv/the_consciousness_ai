@@ -12,6 +12,7 @@ Usage:
     python -m scripts.training.train_rlhf
     python -m scripts.training.train_rlhf --episodes 50 --max-steps 200
 """
+from __future__ import annotations
 
 import sys
 import os

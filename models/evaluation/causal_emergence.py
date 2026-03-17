@@ -37,10 +37,10 @@ Hoel EP, Albantakis L, Tononi G (2013). Quantifying causal emergence shows
 that macro can beat micro. PNAS 110(49):19790-19795.
 https://www.pnas.org/doi/10.1073/pnas.1314922110
 """
+from __future__ import annotations
 
 import numpy as np
 import logging
-from typing import Dict, List
 from dataclasses import dataclass
 
 logger = logging.getLogger(__name__)
@@ -121,7 +121,7 @@ class CausalEmergenceTracker:
 
     def __init__(self, log_interval: int = 100):
         self.log_interval = log_interval
-        self.history: List[EISnapshot] = []
+        self.history: list[EISnapshot] = []
         self._step = 0
 
     def record(self, gate_tpm: np.ndarray, workspace_tpm: np.ndarray) -> EISnapshot:
@@ -174,7 +174,7 @@ class CausalEmergenceTracker:
         fraction = sum(1 for s in recent if s.emergence_ratio > 1.0) / len(recent)
         return fraction >= threshold
 
-    def get_summary(self) -> Dict:
+    def get_summary(self) -> dict:
         """Return summary statistics for logging and the consciousness dashboard."""
         if not self.history:
             return {

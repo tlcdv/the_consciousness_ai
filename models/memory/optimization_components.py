@@ -12,8 +12,8 @@ Dependencies:
 - models/memory/temporal_coherence.py for sequence tracking
 - models/evaluation/memory_metrics.py for optimization metrics
 """
+from __future__ import annotations
 
-from typing import Dict, List, Optional, Tuple
 import torch
 import numpy as np
 from dataclasses import dataclass
@@ -27,16 +27,16 @@ class OptimizationMetrics:
     storage_utilization: float = 0.0
 
 class MemoryOptimizer:
-    def __init__(self, config: Dict):
+    def __init__(self, config: dict):
         """Initialize memory optimization"""
         self.config = config
         self.metrics = OptimizationMetrics()
         
     def optimize_storage(
         self,
-        memories: Dict[str, torch.Tensor],
-        access_patterns: Dict[str, int]
-    ) -> Tuple[Dict[str, torch.Tensor], OptimizationMetrics]:
+        memories: dict[str, torch.Tensor],
+        access_patterns: dict[str, int]
+    ) -> tuple[dict[str, torch.Tensor], OptimizationMetrics]:
         """Optimize memory storage"""
         # Find redundant memories
         redundant = self._identify_redundant(memories)
@@ -61,13 +61,13 @@ class CacheManager:
     Implements adaptive caching based on access patterns.
     """
 
-    def __init__(self, config: Dict):
+    def __init__(self, config: dict):
         self.config = config
         self.cache_size = config.get('cache_size', 1000)
         self.access_history = {}
         self.cache = {}
 
-    def update_cache_config(self, access_patterns: Dict[str, int]):
+    def update_cache_config(self, access_patterns: dict[str, int]):
         """
         Update cache configuration based on access patterns
         
@@ -92,14 +92,14 @@ class PartitionOptimizer:
     Optimizes memory partitions for efficient storage and retrieval.
     """
 
-    def __init__(self, config: Dict):
+    def __init__(self, config: dict):
         self.config = config
         self.partition_stats = {}
 
     def optimize(
         self,
-        access_patterns: Dict[str, int],
-        current_load: Dict[str, float]
+        access_patterns: dict[str, int],
+        current_load: dict[str, float]
     ):
         """
         Optimize partition configuration
@@ -125,14 +125,14 @@ class IndexBalancer:
     Maintains balanced index structures for efficient retrieval.
     """
 
-    def __init__(self, config: Dict):
+    def __init__(self, config: dict):
         self.config = config
         self.rebalance_threshold = config.get('rebalance_threshold', 0.2)
 
     def rebalance_partitions(
         self,
-        partition_stats: Dict[str, Dict],
-        access_patterns: Dict[str, int]
+        partition_stats: dict[str, dict],
+        access_patterns: dict[str, int]
     ):
         """
         Rebalance memory partitions

@@ -5,14 +5,14 @@ try:
 except ImportError:
     unreal = None
 import logging
-from typing import Dict, Any
+from typing import Any
 import numpy as np
 from .vr_environment import VREnvironment
 
 class PavilionVREnvironment(VREnvironment):
     """Pavilion-based VR environment for emotional reinforcement learning"""
     
-    def __init__(self, config: Dict, emotion_network):
+    def __init__(self, config: dict, emotion_network):
         super().__init__()
         self.config = config
         self.emotion_network = emotion_network
@@ -44,7 +44,7 @@ class PavilionVREnvironment(VREnvironment):
         # Setup emotional response tracking
         self._setup_emotional_tracking()
         
-    def step(self, action: Dict) -> tuple:
+    def step(self, action: dict) -> tuple:
         """Take step in environment with emotional feedback"""
         # Execute action in base environment
         next_state, reward, done, info = super().step(action)
@@ -68,13 +68,13 @@ class PavilionVREnvironment(VREnvironment):
 
 from .vr_environment import VREnvironment
 import logging
-from typing import Dict, Any
+from typing import Any
 import numpy as np
 
 class InteractiveVREnvironment(VREnvironment):
     """Generic VR environment for emotional reinforcement learning"""
     
-    def __init__(self, config: Dict, emotion_network):
+    def __init__(self, config: dict, emotion_network):
         super().__init__()
         self.config = config
         self.emotion_network = emotion_network
@@ -94,7 +94,7 @@ class InteractiveVREnvironment(VREnvironment):
             logging.error(f"Error initializing environment: {e}")
             return False
 
-    def step(self, action: Dict) -> tuple:
+    def step(self, action: dict) -> tuple:
         # Execute action in base environment
         next_state, reward, done, info = super().step(action)
         

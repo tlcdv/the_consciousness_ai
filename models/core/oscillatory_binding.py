@@ -1,7 +1,8 @@
+from __future__ import annotations
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from typing import Dict, List, Tuple, Optional
 
 # AKOrN spectral validation signature.
 # Reference: Löwe et al. (2025), ICLR, supplementary spectral analysis.
@@ -66,8 +67,8 @@ class KuramotoLayer(nn.Module):
         
     def forward(self, 
                 phases: torch.Tensor, 
-                amplitudes: Optional[torch.Tensor] = None,
-                iterations: int = 5) -> Tuple[torch.Tensor, torch.Tensor]:
+                amplitudes: torch.Tensor | None = None,
+                iterations: int = 5) -> tuple[torch.Tensor, torch.Tensor]:
         """
         Run the discrete Kuramoto update.
         
@@ -134,9 +135,9 @@ class WorkspaceBindingSystem(nn.Module):
         
         # We need to maintain the phase state across workspace steps
         self.register_buffer('current_phases', None)
-        self.module_names: List[str] = []
+        self.module_names: list[str] = []
         
-    def register_modules(self, names: List[str]):
+    def register_modules(self, names: list[str]):
         """Map module names to oscillator indices"""
         self.module_names = names
         assert len(names) == self.num_modules, "Mismatch between mapped names and oscillator count"
@@ -145,7 +146,7 @@ class WorkspaceBindingSystem(nn.Module):
         """Reset phases for a new episode/sequence"""
         self.current_phases = None
         
-    def bind_bids(self, bids: Dict[str, float]) -> Tuple[Dict[str, float], float]:
+    def bind_bids(self, bids: dict[str, float]) -> tuple[dict[str, float], float]:
         """
         Take scalar bids, run Kuramoto synchronization, and boost bids
         that synchronize with the global mean field.

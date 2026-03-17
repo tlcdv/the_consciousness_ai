@@ -12,10 +12,10 @@ Dependencies:
 - models/memory/emotional_memory_core.py for experience storage
 - models/evaluation/consciousness_monitor.py for progress tracking
 """
+from __future__ import annotations
 
 import torch
 import torch.nn as nn
-from typing import Dict, List, Optional, Tuple
 from models.emotion.tgnn.emotional_graph import EmotionalGraphNetwork as EmotionalGraphNN
 from models.memory.emotional_memory_core import EmotionalMemoryCore
 
@@ -78,7 +78,7 @@ class ExperienceBuffer:
 
 
 class MetaLearner:
-    def __init__(self, config: Dict):
+    def __init__(self, config: dict):
         """Initialize meta-learning system"""
         self.config = config
         self.emotion_net = EmotionalGraphNN(config)
@@ -87,8 +87,8 @@ class MetaLearner:
     def adapt_to_task(
         self,
         task_features: torch.Tensor,
-        emotional_context: Dict[str, float]
-    ) -> Tuple[torch.Tensor, Dict]:
+        emotional_context: dict[str, float]
+    ) -> tuple[torch.Tensor, dict]:
         """Adapt learning strategy to new task"""
         # Extract task characteristics
         task_embedding = self._embed_task(task_features)
@@ -109,7 +109,7 @@ class MetaLearner:
         }
 
 class MetaLearningModule(nn.Module):
-    def __init__(self, config: Dict):
+    def __init__(self, config: dict):
         super().__init__()
         
         # Core networks
@@ -126,9 +126,9 @@ class MetaLearningModule(nn.Module):
         self,
         emotional_state: torch.Tensor,
         behavioral_state: torch.Tensor,
-        social_context: Optional[torch.Tensor] = None,
+        social_context: torch.Tensor | None = None,
         attention_level: float = 0.0
-    ) -> Dict:
+    ) -> dict:
         """Generate meta-update for self-model"""
         # Encode current state
         state_encoding = self.state_encoder(

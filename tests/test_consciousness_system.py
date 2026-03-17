@@ -12,11 +12,11 @@ Dependencies:
 - models/evaluation/consciousness_metrics.py for evaluation
 - models/memory/emotional_memory_core.py for memory storage
 """
+from __future__ import annotations
 
 import unittest
 import torch
 import numpy as np
-from typing import Dict, List, Optional
 from dataclasses import dataclass
 
 from models.memory.memory_integration import MemoryIntegrationCore
@@ -96,7 +96,7 @@ class TestConsciousnessSystem(unittest.TestCase):
         # Verify development progression
         self._verify_development_progression(development_metrics)
 
-    def _process_consciousness_cycle(self, experience: Dict) -> Dict:
+    def _process_consciousness_cycle(self, experience: dict) -> dict:
         """Process an experience through the consciousness pipeline."""
         state = experience['state']
         emotion = experience['emotion']
@@ -107,7 +107,7 @@ class TestConsciousnessSystem(unittest.TestCase):
             'emotion': emotion,
         }
 
-    def _generate_experience(self, episode: int) -> Dict:
+    def _generate_experience(self, episode: int) -> dict:
         """Generate increasingly complex experiences"""
         return {
             'state': torch.randn(32),
@@ -121,7 +121,7 @@ class TestConsciousnessSystem(unittest.TestCase):
             'complexity_level': episode / 10.0
         }
 
-    def _verify_development_progression(self, metrics_history: List[Dict]):
+    def _verify_development_progression(self, metrics_history: list[dict]):
         """Verify consciousness development progression"""
         initial_metrics = metrics_history[0]
         final_metrics = metrics_history[-1]

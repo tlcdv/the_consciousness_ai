@@ -1,8 +1,9 @@
+from __future__ import annotations
+
 # models/memory/emotional_sync.py
 
 import torch
 import numpy as np
-from typing import Dict, List, Optional, Tuple
 from dataclasses import dataclass
 from models.memory.emotional_memory_core import EmotionalMemoryCore
 from models.fusion.emotional_memory_fusion import EmotionalMemoryFusion
@@ -44,10 +45,10 @@ class EmotionalMemorySync:
         
     def sync_memories(
         self,
-        current_state: Dict[str, torch.Tensor],
-        emotion_values: Dict[str, float],
-        attention_metrics: Dict[str, float]
-    ) -> Dict:
+        current_state: dict[str, torch.Tensor],
+        emotion_values: dict[str, float],
+        attention_metrics: dict[str, float]
+    ) -> dict:
         """Synchronize emotional memories across components"""
         
         # Check if sync is needed
@@ -93,7 +94,7 @@ class EmotionalMemorySync:
     def _get_attention_memories(
         self,
         attention_level: float
-    ) -> List[Dict]:
+    ) -> list[dict]:
         """Retrieve memories based on attention significance"""
         if attention_level < self.config.attention_threshold:
             return []
@@ -105,8 +106,8 @@ class EmotionalMemorySync:
         
     def _get_emotional_memories(
         self,
-        emotion_values: Dict[str, float]
-    ) -> List[Dict]:
+        emotion_values: dict[str, float]
+    ) -> list[dict]:
         """Retrieve emotionally coherent memories"""
         return self.memory_core.retrieve_similar_memories(
             emotion_query=emotion_values,
@@ -115,10 +116,10 @@ class EmotionalMemorySync:
         
     def _consolidate_memories(
         self,
-        attention_memories: List[Dict],
-        emotional_memories: List[Dict],
-        current_state: Dict[str, torch.Tensor]
-    ) -> Dict:
+        attention_memories: list[dict],
+        emotional_memories: list[dict],
+        current_state: dict[str, torch.Tensor]
+    ) -> dict:
         """Consolidate memories through fusion and evaluation"""
         
         # Combine memory sets
@@ -146,7 +147,7 @@ class EmotionalMemorySync:
             'source_memories': combined_memories
         }
         
-    def _store_consolidated_memories(self, consolidated: Dict):
+    def _store_consolidated_memories(self, consolidated: dict):
         """Store consolidated memories"""
         if not consolidated:
             return
@@ -161,7 +162,7 @@ class EmotionalMemorySync:
         if len(self.consolidated_memories) > 1000:
             self.consolidated_memories = self.consolidated_memories[-1000:]
             
-    def get_sync_status(self) -> Dict:
+    def get_sync_status(self) -> dict:
         """Get current synchronization status"""
         return {
             'total_syncs': self.sync_counter,

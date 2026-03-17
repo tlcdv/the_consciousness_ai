@@ -1,7 +1,8 @@
+from __future__ import annotations
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from typing import List, Optional, Tuple
 
 
 # Numerical stability calibration coefficients for dynamic routing.
@@ -101,7 +102,7 @@ class RoutingCapsuleLayer(nn.Module):
         )
 
     def forward(self, primary_caps):
-        # type: (torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]
+        # type: (torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]
         """
         Args:
             primary_caps: [B, num_primary_caps, primary_dim]
@@ -193,7 +194,7 @@ class CapsuleCompositionLayer(nn.Module):
         self._last_activities = None
 
     def forward(self, state_tensor):
-        # type: (torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]
+        # type: (torch.Tensor) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]
         """
         Args:
             state_tensor: [B, rssm_channels, grid_size, grid_size]
@@ -255,7 +256,7 @@ class HierarchicalCapsuleComposition(nn.Module):
                  num_primary_caps=8, primary_dim=8,
                  hierarchy_spec=None, routing_iterations=3,
                  reentrant_iterations=2, feedback_alpha=0.5):
-        # type: (int, int, int, int, int, Optional[List[Tuple[int, int]]], int, int, float) -> None
+        # type: (int, int, int, int, int, list[tuple[int, int]] | None, int, int, float) -> None
         super().__init__()
 
         if hierarchy_spec is None:
@@ -318,7 +319,7 @@ class HierarchicalCapsuleComposition(nn.Module):
         self._level_prediction_errors = []  # PE per level per reentrant iteration
 
     def _bottom_up_pass(self, primary_caps):
-        # type: (torch.Tensor) -> List[Tuple[torch.Tensor, torch.Tensor]]
+        # type: (torch.Tensor) -> list[tuple[torch.Tensor, torch.Tensor]]
         """Run bottom-up routing through all levels. Returns (poses, activities) per level."""
         level_results = []
         caps = primary_caps
@@ -328,7 +329,7 @@ class HierarchicalCapsuleComposition(nn.Module):
         return level_results
 
     def _top_down_feedback(self, level_results):
-        # type: (List[Tuple[torch.Tensor, torch.Tensor]]) -> Tuple[List[Tuple[torch.Tensor, torch.Tensor]], List[float]]
+        # type: (list[tuple[torch.Tensor, torch.Tensor]]) -> tuple[list[tuple[torch.Tensor, torch.Tensor]], list[float]]
         """
         Apply top-down predictions from higher levels to lower levels.
 
@@ -375,7 +376,7 @@ class HierarchicalCapsuleComposition(nn.Module):
         return level_results, pe_values
 
     def forward(self, state_tensor):
-        # type: (torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]
+        # type: (torch.Tensor) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]
         """
         Args:
             state_tensor: [B, rssm_channels, grid_size, grid_size]
@@ -417,7 +418,7 @@ class HierarchicalCapsuleComposition(nn.Module):
         return workspace_content, capsule_activities, capsule_poses
 
     def get_all_level_poses(self):
-        # type: () -> List[Tuple[torch.Tensor, torch.Tensor]]
+        # type: () -> list[tuple[torch.Tensor, torch.Tensor]]
         """
         Returns cached (poses, activities) for each routing level.
 
@@ -429,7 +430,7 @@ class HierarchicalCapsuleComposition(nn.Module):
         return list(zip(self._level_poses, self._level_activities))
 
     def get_level_prediction_errors(self):
-        # type: () -> List[List[float]]
+        # type: () -> list[list[float]]
         """
         Returns per-level prediction errors for each reentrant iteration.
 

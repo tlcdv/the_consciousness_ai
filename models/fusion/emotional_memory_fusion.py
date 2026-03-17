@@ -12,10 +12,10 @@ Dependencies:
 - models/memory/emotional_memory_core.py for storage
 - models/evaluation/consciousness_monitor.py for metrics
 """
+from __future__ import annotations
 
 import torch
 import torch.nn as nn
-from typing import Dict, List, Optional, Tuple
 from dataclasses import dataclass
 from transformers import AutoModel, AutoTokenizer
 from models.emotion.tgnn.emotional_graph import EmotionalGraphNetwork
@@ -38,7 +38,7 @@ class FusionMetrics:
     """Tracks fusion performance metrics"""
     alignment_score: float = 0.0
     fusion_confidence: float = 0.0
-    modality_weights: Dict[str, float] = None
+    modality_weights: dict[str, float] = None
 
 class EmotionalMemoryFusion(nn.Module):
     """
@@ -89,12 +89,12 @@ class EmotionalMemoryFusion(nn.Module):
         
     def forward(
         self,
-        text_input: Optional[torch.Tensor] = None,
-        vision_input: Optional[torch.Tensor] = None,
-        audio_input: Optional[torch.Tensor] = None,
-        emotional_context: Optional[Dict[str, float]] = None,
-        memory_context: Optional[List[Dict]] = None
-    ) -> Tuple[torch.Tensor, Dict]:
+        text_input: torch.Tensor | None = None,
+        vision_input: torch.Tensor | None = None,
+        audio_input: torch.Tensor | None = None,
+        emotional_context: dict[str, float] | None = None,
+        memory_context: list[dict] | None = None
+    ) -> tuple[torch.Tensor, dict]:
         """
         Process multimodal inputs with emotional and memory context.
         When pretrained encoders are not loaded, raw tensors are used directly.
@@ -159,7 +159,7 @@ class EmotionalMemoryFusion(nn.Module):
         
     def _calculate_fusion_quality(
         self,
-        embeddings: List[torch.Tensor]
+        embeddings: list[torch.Tensor]
     ) -> float:
         """Calculate quality of multimodal fusion.
         Returns a value in [0, 1]. More modalities yields higher quality."""
@@ -182,16 +182,16 @@ class EmotionalMemoryFusion(nn.Module):
         
     def _calculate_weights(
         self,
-        encoded_features: List[torch.Tensor],
-        emotional_context: Optional[Dict]
-    ) -> Dict[str, float]:
+        encoded_features: list[torch.Tensor],
+        emotional_context: dict | None
+    ) -> dict[str, float]:
         """Calculate modality weights based on encoded features and emotional context"""
         # Placeholder implementation
         return {f"modality_{i}": 1.0 for i, _ in enumerate(encoded_features)}
         
     def _calculate_alignment(
         self,
-        encoded_features: List[torch.Tensor]
+        encoded_features: list[torch.Tensor]
     ) -> float:
         """Calculate alignment score between encoded features"""
         # Placeholder implementation

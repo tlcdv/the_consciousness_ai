@@ -9,10 +9,10 @@ Implements efficient memory storage and retrieval through:
 
 Based on MANN architecture for cognitive self-representation.
 """
+from __future__ import annotations
 
 import time
 
-from typing import Dict, List, Optional
 import torch
 import numpy as np
 from dataclasses import dataclass
@@ -36,11 +36,11 @@ MemoryOptimizationMetrics = MemoryMetrics
 class EmotionalHierarchicalIndex:
     """Hierarchical index partitioned by emotional context."""
 
-    def __init__(self, config: Dict):
+    def __init__(self, config: dict):
         self.config = config
-        self._partitions: Dict[str, List] = {"neutral": [], "positive": [], "negative": []}
+        self._partitions: dict[str, list] = {"neutral": [], "positive": [], "negative": []}
 
-    def get_optimal_partition(self, emotional_context: Dict[str, float]) -> str:
+    def get_optimal_partition(self, emotional_context: dict[str, float]) -> str:
         valence = emotional_context.get("valence", 0.0)
         if valence > 0.3:
             return "positive"
@@ -48,18 +48,18 @@ class EmotionalHierarchicalIndex:
             return "negative"
         return "neutral"
 
-    def get_relevant_partitions(self, emotional_context: Optional[Dict[str, float]] = None) -> List[str]:
+    def get_relevant_partitions(self, emotional_context: dict[str, float] | None = None) -> list[str]:
         if emotional_context is None:
             return list(self._partitions.keys())
         primary = self.get_optimal_partition(emotional_context)
         return [primary, "neutral"] if primary != "neutral" else ["neutral"]
 
-    def store(self, partition: str, memory_id: str, vector, metadata: Optional[Dict] = None):
+    def store(self, partition: str, memory_id: str, vector, metadata: dict | None = None):
         if partition not in self._partitions:
             self._partitions[partition] = []
         self._partitions[partition].append({"id": memory_id, "vector": vector, "metadata": metadata})
 
-    def search(self, partition: str, query_vector, k: int = 5) -> List[Dict]:
+    def search(self, partition: str, query_vector, k: int = 5) -> list[dict]:
         entries = self._partitions.get(partition, [])
         if not entries:
             return []
@@ -84,8 +84,8 @@ class EmotionalHierarchicalIndex:
 class TemporalHierarchicalIndex:
     """Temporal index for time based memory retrieval."""
 
-    def __init__(self, config: Dict):
-        self._entries: List[Dict] = []
+    def __init__(self, config: dict):
+        self._entries: list[dict] = []
 
     def store(self, memory_id: str, timestamp: float):
         self._entries.append({"id": memory_id, "timestamp": timestamp})
@@ -94,7 +94,7 @@ class TemporalHierarchicalIndex:
 class MemoryConsolidationManager:
     """Manages memory consolidation across partitions."""
 
-    def __init__(self, config: Dict):
+    def __init__(self, config: dict):
         self.config = config
         self.threshold = config.get("consolidation_threshold", 0.8)
 
@@ -111,7 +111,7 @@ class OptimizedMemoryStore:
     Uses hierarchical structure for fast retrieval.
     """
 
-    def __init__(self, config: Dict):
+    def __init__(self, config: dict):
         self.config = config
 
         # Initialize optimized storage components
@@ -124,9 +124,9 @@ class OptimizedMemoryStore:
     def store_optimized(
         self,
         memory_vector: torch.Tensor,
-        emotional_context: Dict[str, float],
+        emotional_context: dict[str, float],
         attention_level: float,
-        metadata: Optional[Dict] = None
+        metadata: dict | None = None
     ) -> str:
         """Store memory with optimized indexing and consolidation."""
         # Apply attention-based gating
@@ -152,9 +152,9 @@ class OptimizedMemoryStore:
     def retrieve_optimized(
         self,
         query_vector: torch.Tensor,
-        emotional_context: Optional[Dict[str, float]] = None,
+        emotional_context: dict[str, float] | None = None,
         k: int = 5
-    ) -> List[Dict]:
+    ) -> list[dict]:
         """Retrieve memories using optimized indices."""
         start_time = time.time()
 
@@ -183,13 +183,13 @@ class OptimizedMemoryStore:
         self.consolidation_manager.consolidate_partition(partition)
         self._update_optimization_metrics()
 
-    def _store_in_indices(self, memory_vector, partition: str, emotional_context: Dict, metadata: Optional[Dict]) -> str:
+    def _store_in_indices(self, memory_vector, partition: str, emotional_context: dict, metadata: dict | None) -> str:
         memory_id = f"mem_{time.time()}_{partition}"
         self.emotional_index.store(partition, memory_id, memory_vector, metadata)
         self.temporal_index.store(memory_id, time.time())
         return memory_id
 
-    def _search_partition(self, partition: str, query_vector, k: int = 5) -> List[Dict]:
+    def _search_partition(self, partition: str, query_vector, k: int = 5) -> list[dict]:
         return self.emotional_index.search(partition, query_vector, k)
 
     def _update_optimization_metrics(self):

@@ -12,10 +12,10 @@ Dependencies:
 - models/memory/temporal_coherence.py for sequence tracking
 - models/emotion/tgnn/emotional_graph.py for emotional context
 """
+from __future__ import annotations
 
 import torch
 import torch.nn as nn 
-from typing import Dict, List, Optional, Tuple
 from dataclasses import dataclass
 
 @dataclass
@@ -27,16 +27,16 @@ class ConsolidationMetrics:
     emotional_alignment: float = 0.0
 
 class MemoryConsolidation:
-    def __init__(self, config: Dict):
+    def __init__(self, config: dict):
         """Initialize memory consolidation"""
         self.config = config
         self.metrics = ConsolidationMetrics()
         
     def consolidate_memories(
         self,
-        memories: List[Dict],
-        emotional_context: Optional[Dict] = None
-    ) -> Tuple[List[Dict], ConsolidationMetrics]:
+        memories: list[dict],
+        emotional_context: dict | None = None
+    ) -> tuple[list[dict], ConsolidationMetrics]:
         """Consolidate related memories"""
         # Group related memories
         memory_groups = self._group_related_memories(memories)

@@ -1,9 +1,11 @@
+from __future__ import annotations
+
 import gymnasium as gym
 from gymnasium import spaces
 import numpy as np
 import pygame
 import time
-from typing import Tuple, Dict, Any, Optional
+from typing import Any
 
 class SimpleVisualEnv(gym.Env):
     """
@@ -17,7 +19,7 @@ class SimpleVisualEnv(gym.Env):
     """
     metadata = {"render_modes": ["human", "rgb_array"], "render_fps": 30}
 
-    def __init__(self, render_mode: Optional[str] = None, width: int = 512, height: int = 512):
+    def __init__(self, render_mode: str | None = None, width: int = 512, height: int = 512):
         self.width = width
         self.height = height
         self.render_mode = render_mode
@@ -41,7 +43,7 @@ class SimpleVisualEnv(gym.Env):
         self.window = None
         self.clock = None
         
-    def reset(self, seed: Optional[int] = None, options: Optional[Dict] = None) -> Tuple[np.ndarray, Dict]:
+    def reset(self, seed: int | None = None, options: dict | None = None) -> tuple[np.ndarray, dict]:
         super().reset(seed=seed)
         
         # Randomize positions
@@ -57,7 +59,7 @@ class SimpleVisualEnv(gym.Env):
             
         return observation, info
         
-    def step(self, action: np.ndarray) -> Tuple[np.ndarray, float, bool, bool, Dict]:
+    def step(self, action: np.ndarray) -> tuple[np.ndarray, float, bool, bool, dict]:
         # Update Physics
         move = np.clip(action, -1.0, 1.0) * 10.0 # Speed
         self.agent_pos += move
@@ -106,7 +108,7 @@ class SimpleVisualEnv(gym.Env):
             np.array(pygame.surfarray.pixels3d(canvas)), axes=(1, 0, 2)
         )
 
-    def _get_info(self) -> Dict:
+    def _get_info(self) -> dict:
         return {
             "distance_to_light": np.linalg.norm(self.agent_pos - self.light_pos),
             "battery": self.battery

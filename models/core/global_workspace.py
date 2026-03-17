@@ -1,7 +1,9 @@
+from __future__ import annotations
+
 import torch
 import numpy as np
 import time
-from typing import Dict, List, Any, Tuple, Optional
+from typing import Any
 from dataclasses import dataclass
 import torch.nn.functional as F
 
@@ -20,10 +22,10 @@ class WorkspaceMessage:
 @dataclass
 class WorkspaceState:
     """Current state of the global workspace"""
-    active_content: Dict[str, Any]
-    access_history: List[Dict[str, Any]]
+    active_content: dict[str, Any]
+    access_history: list[dict[str, Any]]
     broadcast_strength: float # Activation level (0.0 - 1.0)
-    competition_results: Dict[str, float]
+    competition_results: dict[str, float]
     
     # Consciousness metrics
     phi_value: float = 0.0
@@ -43,7 +45,7 @@ class GlobalWorkspace:
     3. Synchrony Binding (Multimodal Integration)
     """
     
-    def __init__(self, config: Dict):
+    def __init__(self, config: dict):
         self.config = config
         self.state = WorkspaceState(
             active_content={},
@@ -82,10 +84,10 @@ class GlobalWorkspace:
         self.specialist_modules[name] = module
     
     def run_competition(self, 
-                        inputs: Dict[str, Any], 
+                        inputs: dict[str, Any], 
                         goal_vector: torch.Tensor, 
-                        bids: Optional[Dict[str, float]] = None, 
-                        payloads: Optional[Dict[str, Any]] = None) -> Tuple[Dict[str, Any], Dict[str, float]]:
+                        bids: dict[str, float] | None = None, 
+                        payloads: dict[str, Any] | None = None) -> tuple[dict[str, Any], dict[str, float]]:
         """
         Run GNW competition with Non-linear Ignition, Reverberation, and AKOrN Binding.
         
@@ -200,14 +202,14 @@ class GlobalWorkspace:
             self.state.qualia_vector = np.zeros(3)
             return {}, bids
     
-    def _resolve_competition(self, bids: Dict[str, float]) -> List[str]:
+    def _resolve_competition(self, bids: dict[str, float]) -> list[str]:
         """Determine winners (Winner-Take-Most)."""
         if not bids: return []
         sorted_bids = sorted(bids.items(), key=lambda x: x[1], reverse=True)
         # Return top K or all above threshold
         return [k for k, v in sorted_bids if v >= self.ignition_threshold * 0.8] # Soft threshold
 
-    def _bids_to_tensor(self, bids: Dict[str, float]) -> torch.Tensor:
+    def _bids_to_tensor(self, bids: dict[str, float]) -> torch.Tensor:
         """Convert bids to tensor for IIT/Qualia mapping."""
         slots = 8
         data = torch.zeros(slots)
@@ -216,7 +218,7 @@ class GlobalWorkspace:
             if i < slots: data[i] = v
         return data
 
-    def get_unity_metrics(self) -> Tuple[float, bool, str, List[float]]:
+    def get_unity_metrics(self) -> tuple[float, bool, str, list[float]]:
         """
         Export metrics for Unity Bridge.
         Returns: (Phi, IsConscious, FocusTopic, QualiaVector)

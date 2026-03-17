@@ -15,10 +15,10 @@ Dependencies:
 Reference: Martinez-Luaces et al. "Using modular neural networks to model self-consciousness 
 and self-representation for artificial entities"
 """
+from __future__ import annotations
 
 import torch
 import torch.nn as nn
-from typing import Dict, List, Optional, Tuple
 from dataclasses import dataclass
 from models.emotion.tgnn.emotional_graph import EmotionalGraphNetwork as EmotionalGraphNN
 from models.memory.emotional_memory_core import EmotionalMemoryCore
@@ -67,16 +67,16 @@ class HolonicState:
         interaction_history: Record of social interactions for observational learning
     """
     growth_level: int = 0
-    state_values: Dict[str, float] = None
+    state_values: dict[str, float] = None
     self_confidence: float = 0.5
-    interaction_history: List[Dict] = None
+    interaction_history: list[dict] = None
 
 @dataclass
 class SelfModelState:
     """Tracks current self-model state"""
-    emotional_state: Dict[str, float]
+    emotional_state: dict[str, float]
     attention_focus: float
-    memory_context: List[Dict]
+    memory_context: list[dict]
     consciousness_level: float
 
 class ModularSelfRepresentation(nn.Module):
@@ -90,7 +90,7 @@ class ModularSelfRepresentation(nn.Module):
     4. Dynamic adaptation of self-model
     """
 
-    def __init__(self, config: Dict):
+    def __init__(self, config: dict):
         super().__init__()
         self.config = config
         
@@ -133,9 +133,9 @@ class ModularSelfRepresentation(nn.Module):
     def update_self_representation(
         self,
         current_features: torch.Tensor,
-        social_feedback: Optional[Dict] = None,
-        interaction_data: Optional[Dict] = None
-    ) -> Dict:
+        social_feedback: dict | None = None,
+        interaction_data: dict | None = None
+    ) -> dict:
         """
         Update self-representation through direct and observational learning
         
@@ -145,7 +145,7 @@ class ModularSelfRepresentation(nn.Module):
             interaction_data: Optional interaction context
             
         Returns:
-            Dict containing updated self-model state and metrics
+            dict containing updated self-model state and metrics
         """
         # Encode current features
         feature_embedding = self.feature_encoder(current_features)
@@ -184,9 +184,9 @@ class ModularSelfRepresentation(nn.Module):
 
     def update_self_model(
         self,
-        input_state: Dict[str, torch.Tensor],
-        emotional_context: Dict[str, float]
-    ) -> Tuple[SelfModelState, Dict[str, float]]:
+        input_state: dict[str, torch.Tensor],
+        emotional_context: dict[str, float]
+    ) -> tuple[SelfModelState, dict[str, float]]:
         """Update self-model based on new experience"""
         # Process emotional state
         emotional_features = self.emotion_network.process(
@@ -231,7 +231,7 @@ class ModularSelfRepresentation(nn.Module):
             max=self.config['max_confidence']
         )
 
-    def _integrate_observational_learning(self, observational_update: Dict):
+    def _integrate_observational_learning(self, observational_update: dict):
         """Integrate learning from observing other agents"""
         # Update self-model weights based on observed interactions
         self.self_model.update_weights(
@@ -239,7 +239,7 @@ class ModularSelfRepresentation(nn.Module):
             learning_rate=self.state.self_confidence * self.config['observational_lr']
         )
 
-    def update(self, current_state=None, emotional_context=None, attention_level=0.0, **kwargs) -> Dict:
+    def update(self, current_state=None, emotional_context=None, attention_level=0.0, **kwargs) -> dict:
         """Simple update that returns a dict with consciousness_level.
         Used by integration tests for self-model updates."""
         ec = emotional_context or {}

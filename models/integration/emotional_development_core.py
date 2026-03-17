@@ -5,11 +5,11 @@ Emotional Development Core architecture with:
 - Emotion-narrative fusion mechanisms
 - Stable pattern recognition and adaptation
 """
+from __future__ import annotations
 
 import torch
 import torch.nn as nn
 from dataclasses import dataclass
-from typing import Dict, List, Optional, Tuple
 
 from models.core.consciousness_core import ConsciousnessCore 
 from models.emotion.tgnn.emotional_graph import EmotionalGraphNetwork
@@ -50,10 +50,10 @@ class EmotionalDevelopmentCore(nn.Module):
         
     def process_experience(
         self,
-        input_state: Dict[str, torch.Tensor],
-        emotional_context: Optional[Dict] = None,
-        narrative_context: Optional[Dict] = None
-    ) -> Tuple[Dict, EmotionalDevelopmentState]:
+        input_state: dict[str, torch.Tensor],
+        emotional_context: dict | None = None,
+        narrative_context: dict | None = None
+    ) -> tuple[dict, EmotionalDevelopmentState]:
         """Process new experiences through emotional development pipeline"""
         
         # Generate emotional embedding
@@ -103,9 +103,9 @@ class EmotionalDevelopmentCore(nn.Module):
     def _update_emotional_memory(
         self,
         emotional_embedding: torch.Tensor,
-        narrative: Dict,
-        consciousness_state: Dict
-    ) -> Dict:
+        narrative: dict,
+        consciousness_state: dict
+    ) -> dict:
         """Update emotional memory with controlled adaptation"""
         
         # Calculate stability metrics

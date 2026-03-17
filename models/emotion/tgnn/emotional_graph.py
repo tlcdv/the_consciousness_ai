@@ -5,10 +5,10 @@ Emotional Graph Neural Network (EGNN) implementing emotional processing with:
 - Dynamic emotional adaptation
 - Controlled stability mechanisms
 """
+from __future__ import annotations
 
 import torch
 import torch.nn as nn
-from typing import Dict, List, Optional, Tuple
 from dataclasses import dataclass
 
 @dataclass
@@ -65,9 +65,9 @@ class EmotionalGraphNetwork(nn.Module):
     def forward(
         self,
         emotional_input: torch.Tensor,
-        meta_memory: Optional[Dict] = None,
-        narrative_state: Optional[Dict] = None
-    ) -> Tuple[torch.Tensor, EmotionalGraphState]:
+        meta_memory: dict | None = None,
+        narrative_state: dict | None = None
+    ) -> tuple[torch.Tensor, EmotionalGraphState]:
         """Process emotional input through graph network"""
         
         # Generate base emotional embedding

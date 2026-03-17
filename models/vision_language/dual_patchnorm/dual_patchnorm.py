@@ -1,13 +1,14 @@
+from __future__ import annotations
+
 import torch
 import torch.nn as nn
 import einops
-from typing import Tuple, Optional 
 from dataclasses import dataclass
 
 @dataclass
 class DualPatchNormConfig:
     """Configuration for Dual PatchNorm layer"""
-    patch_size: Tuple[int, int] = (16, 16)
+    patch_size: tuple[int, int] = (16, 16)
     hidden_size: int = 768
     eps: float = 1e-6
     elementwise_affine: bool = True

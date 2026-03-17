@@ -8,10 +8,10 @@ Key components:
 - Controlled adaptation
 - Narrator confidence tracking
 """
+from __future__ import annotations
 
 import torch
 import torch.nn as nn
-from typing import Dict, Optional, Tuple
 from dataclasses import dataclass
 
 @dataclass
@@ -63,9 +63,9 @@ class ConsciousnessGate(nn.Module):
     def forward(
         self,
         input_state: torch.Tensor,
-        meta_memory_context: Optional[Dict] = None,
-        narrator_state: Optional[Dict] = None
-    ) -> Tuple[torch.Tensor, GatingState]:
+        meta_memory_context: dict | None = None,
+        narrator_state: dict | None = None
+    ) -> tuple[torch.Tensor, GatingState]:
         """Processes input through gating networks and updates the gating state."""
         attention_level = self.attention_net(input_state)
         stability_score = self.stability_net(input_state)
@@ -93,7 +93,7 @@ class ConsciousnessGate(nn.Module):
     def _calculate_adaptation_rate(
         self,
         stability_score: torch.Tensor,
-        meta_memory_context: Optional[Dict]
+        meta_memory_context: dict | None
     ) -> float:
         """Calculates a learning rate multiplier based on stability and meta-memory."""
         base_rate = self.adaptation_rate
@@ -122,7 +122,7 @@ class ConsciousnessGate(nn.Module):
         attention_level: torch.Tensor,
         stability_score: torch.Tensor,
         adaptation_rate: float,
-        narrator_state: Optional[Dict]
+        narrator_state: dict | None
     ) -> None:
         """Updates the gating state with new information."""
         self.state.attention_level = float(attention_level.mean().item())
@@ -153,7 +153,7 @@ class ConsciousnessGating:
         determines if it meets the threshold.
 
         Args:
-            sensory_input (list): List of numeric sensory values.
+            sensory_input (list): list of numeric sensory values.
 
         Returns:
             bool: True if attention level exceeds the threshold, otherwise False.

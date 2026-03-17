@@ -1,5 +1,7 @@
+from __future__ import annotations
+
 from abc import ABC, abstractmethod
-from typing import Dict, Any, List, Optional
+from typing import Dict, Any
 
 # Context for retrieval (e.g., current perception, emotion)
 QueryContext = Dict[str, Any]
@@ -14,7 +16,7 @@ class MemoryInterface(ABC):
     Defines methods for storing and retrieving experiences/information.
     """
 
-    def __init__(self, config: Dict):
+    def __init__(self, config: dict):
         """
         Initializes the memory system with its specific configuration.
         """
@@ -33,7 +35,7 @@ class MemoryInterface(ABC):
         pass
 
     @abstractmethod
-    def retrieve(self, query_context: QueryContext, top_k: int = 5) -> List[RetrievedMemory]:
+    def retrieve(self, query_context: QueryContext, top_k: int = 5) -> list[RetrievedMemory]:
         """
         Retrieves relevant memories based on the provided context.
 

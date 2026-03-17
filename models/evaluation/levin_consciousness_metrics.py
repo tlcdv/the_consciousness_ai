@@ -1,6 +1,7 @@
+from __future__ import annotations
+
 import torch
 import numpy as np
-from typing import Dict, List, Optional
 from dataclasses import dataclass
 
 @dataclass
@@ -32,10 +33,10 @@ class LevinConsciousnessEvaluator:
     4. Morphological computation
     """
     
-    def __init__(self, config: Dict):
+    def __init__(self, config: dict):
         self.config = config
         
-    def evaluate_bioelectric_complexity(self, bioelectric_state: Dict[str, torch.Tensor]) -> float:
+    def evaluate_bioelectric_complexity(self, bioelectric_state: dict[str, torch.Tensor]) -> float:
         """
         Evaluate complexity of bioelectric fields
         Similar to IIT's phi measure but focused on field dynamics
@@ -65,8 +66,8 @@ class LevinConsciousnessEvaluator:
         
     def evaluate_morphological_adaptation(
         self, 
-        past_states: List[Dict], 
-        current_state: Dict
+        past_states: list[dict], 
+        current_state: dict
     ) -> float:
         """
         Evaluate adaptation of internal representations over time
@@ -98,7 +99,7 @@ class LevinConsciousnessEvaluator:
         # Average change as adaptation score, clamped to [0, 1]
         return min(1.0, sum(changes) / len(changes))
         
-    def evaluate_collective_intelligence(self, holonic_output: Dict) -> float:
+    def evaluate_collective_intelligence(self, holonic_output: dict) -> float:
         """
         Evaluate degree of integration between holonic components
         Based on Levin's concept of collective intelligence
@@ -129,9 +130,9 @@ class LevinConsciousnessEvaluator:
         
     def evaluate_goal_directed_behavior(
         self,
-        actions: List[Dict],
-        goals: List[Dict],
-        outcomes: List[Dict]
+        actions: list[dict],
+        goals: list[dict],
+        outcomes: list[dict]
     ) -> float:
         """
         Evaluate evidence of goal-directed behavior
@@ -163,7 +164,7 @@ class LevinConsciousnessEvaluator:
         # Average alignment as goal-directedness score
         return sum(alignments) / len(alignments)
         
-    def evaluate_basal_cognition(self, component_states: Dict[str, torch.Tensor]) -> float:
+    def evaluate_basal_cognition(self, component_states: dict[str, torch.Tensor]) -> float:
         """
         Evaluate non-neural cognitive processes
         Based on Levin's concept of basal cognition
@@ -194,15 +195,15 @@ class LevinConsciousnessEvaluator:
         
     def evaluate_levin_consciousness(
         self,
-        bioelectric_state: Dict[str, torch.Tensor],
-        holonic_output: Dict,
-        past_states: List[Dict],
-        current_state: Dict,
-        actions: List[Dict] = None,
-        goals: List[Dict] = None,
-        outcomes: List[Dict] = None,
-        component_states: Dict[str, torch.Tensor] = None
-    ) -> Dict[str, float]:
+        bioelectric_state: dict[str, torch.Tensor],
+        holonic_output: dict,
+        past_states: list[dict],
+        current_state: dict,
+        actions: list[dict] = None,
+        goals: list[dict] = None,
+        outcomes: list[dict] = None,
+        component_states: dict[str, torch.Tensor] = None
+    ) -> dict[str, float]:
         """
         Evaluate consciousness metrics based on Levin's principles
         """

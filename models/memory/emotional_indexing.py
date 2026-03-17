@@ -1,8 +1,9 @@
+from __future__ import annotations
+
 import torch
 import numpy as np
 import time
 import logging
-from typing import Dict, List, Optional
 from dataclasses import dataclass
 
 try:
@@ -66,8 +67,8 @@ class EmotionalMemoryIndex:
         self.consciousness_metrics = None
 
         # In memory storage
-        self._vectors: List[np.ndarray] = []
-        self._metadata: List[Dict] = []
+        self._vectors: list[np.ndarray] = []
+        self._metadata: list[dict] = []
         self._faiss_index = None
         self.total_memories = 0
 
@@ -99,17 +100,17 @@ class EmotionalMemoryIndex:
     def store_memory(
         self,
         state: torch.Tensor,
-        emotion_values: Dict[str, float],
+        emotion_values: dict[str, float],
         attention_level: float,
         narrative: str,
-        context: Optional[Dict] = None,
+        context: dict | None = None,
     ) -> str:
         """
         Store an emotional memory with indexed metadata.
 
         Args:
             state: Tensor representing state or environment info.
-            emotion_values: Dict of emotional signals (valence, arousal, dominance).
+            emotion_values: dict of emotional signals (valence, arousal, dominance).
             attention_level: Numeric indicator of attention/consciousness.
             narrative: Text describing the experience.
             context: Optional dict for extra metadata (timestamps, etc).
@@ -181,20 +182,20 @@ class EmotionalMemoryIndex:
 
     def retrieve_similar_memories(
         self,
-        emotion_query: Dict[str, float],
+        emotion_query: dict[str, float],
         k: int = 5,
         min_consciousness_score: float = 0.5,
-    ) -> List[Dict]:
+    ) -> list[dict]:
         """
         Retrieve similar memories based on emotional context.
 
         Args:
-            emotion_query: Dict of emotion signals to build the query vector.
+            emotion_query: dict of emotion signals to build the query vector.
             k: Number of results to return after filtering.
             min_consciousness_score: Minimum consciousness score to include.
 
         Returns:
-            List of memory dicts with id, emotion_values, attention_level,
+            list of memory dicts with id, emotion_values, attention_level,
             narrative, consciousness_score, and similarity.
         """
         if self.total_memories == 0:
@@ -256,7 +257,7 @@ class EmotionalMemoryIndex:
         start_time: float,
         end_time: float,
         min_consciousness_score: float = 0.0,
-    ) -> List[Dict]:
+    ) -> list[dict]:
         """
         Retrieve memories within a given time window.
 
@@ -266,7 +267,7 @@ class EmotionalMemoryIndex:
             min_consciousness_score: Filter out memories below this threshold.
 
         Returns:
-            List of memory dicts sorted by timestamp.
+            list of memory dicts sorted by timestamp.
         """
         memories = []
         for meta in self._metadata:
@@ -298,7 +299,7 @@ class EmotionalMemoryIndex:
             recent_attention = [m["attention_level"] for m in self._metadata[-10:]]
             self.memory_stats["emotional_coherence"] = float(np.mean(recent_attention))
 
-    def _calculate_temporal_consistency(self, m1: Dict, m2: Dict) -> float:
+    def _calculate_temporal_consistency(self, m1: dict, m2: dict) -> float:
         """Compare two memories to produce a consistency measure from 0.0 to 1.0."""
         emo_diff = []
         for k in m1["emotion_values"]:

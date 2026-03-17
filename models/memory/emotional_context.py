@@ -10,17 +10,17 @@ Implements emotional state processing for memory formation through:
 Based on holonic principles where emotional context influences both 
 local processing and global system behavior.
 """
+from __future__ import annotations
 
 import torch
 import torch.nn as nn
-from typing import Dict, List, Optional, Tuple
 
 class EmotionalContextNetwork(nn.Module):
     """
     Processes emotional context for memory formation and retrieval
     """
     
-    def __init__(self, config: Dict):
+    def __init__(self, config: dict):
         super().__init__()
         
         # Emotion embedding 
@@ -46,9 +46,9 @@ class EmotionalContextNetwork(nn.Module):
 
     def forward(
         self,
-        emotional_state: Dict[str, float],
-        memory_context: Optional[torch.Tensor] = None
-    ) -> Tuple[torch.Tensor, Dict]:
+        emotional_state: dict[str, float],
+        memory_context: torch.Tensor | None = None
+    ) -> tuple[torch.Tensor, dict]:
         """Process emotional state with optional memory context"""
         
         # Get emotion embedding

@@ -9,12 +9,12 @@ Implements efficient memory storage and retrieval through:
 
 Based on MANN architecture for maintaining temporal coherence and self-awareness.
 """
+from __future__ import annotations
 
 import time
 
 import torch
 import numpy as np
-from typing import Dict, List, Optional, Tuple
 from dataclasses import dataclass
 from models.evaluation.consciousness_metrics import ConsciousnessMetrics
 
@@ -41,7 +41,7 @@ class OptimizedMemoryIndex:
     Implements optimized memory indexing with emotional context partitioning
     """
 
-    def __init__(self, config: Dict):
+    def __init__(self, config: dict):
         self.config = config
         self.consciousness_metrics = ConsciousnessMetrics(config)
         
@@ -55,9 +55,9 @@ class OptimizedMemoryIndex:
     def store_memory(
         self,
         memory_vector: torch.Tensor,
-        emotional_context: Dict[str, float],
+        emotional_context: dict[str, float],
         consciousness_score: float,
-        metadata: Optional[Dict] = None
+        metadata: dict | None = None
     ) -> str:
         """
         Store memory with optimized indexing
@@ -100,10 +100,10 @@ class OptimizedMemoryIndex:
     def retrieve_memories(
         self,
         query_vector: torch.Tensor,
-        emotional_context: Optional[Dict[str, float]] = None,
+        emotional_context: dict[str, float] | None = None,
         consciousness_threshold: float = 0.0,
         k: int = 5
-    ) -> List[Dict]:
+    ) -> list[dict]:
         """
         Optimized memory retrieval using hierarchical indices
         """
@@ -145,7 +145,7 @@ class OptimizedMemoryIndex:
     def _init_consciousness_index(self):
         return {}
 
-    def _get_optimal_partition(self, emotional_context: Dict[str, float]) -> str:
+    def _get_optimal_partition(self, emotional_context: dict[str, float]) -> str:
         valence = emotional_context.get("valence", 0.0)
         if valence > 0.3:
             return "positive"
@@ -153,7 +153,7 @@ class OptimizedMemoryIndex:
             return "negative"
         return "neutral"
 
-    def _get_relevant_partitions(self, emotional_context) -> List[str]:
+    def _get_relevant_partitions(self, emotional_context) -> list[str]:
         if emotional_context is None:
             return list(self.emotional_partitions.keys())
         primary = self._get_optimal_partition(emotional_context)

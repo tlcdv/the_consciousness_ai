@@ -11,9 +11,9 @@ Dependencies:
 - models/language/llama-3.3/ for narrative generation
 - models/emotion/emotional_processing.py for emotion analysis
 """
+from __future__ import annotations
 
 from transformers import AutoModelForCausalLM, AutoTokenizer
-from typing import List, Dict
 import numpy as np
 
 class NarrativeEngine:
@@ -24,7 +24,7 @@ class NarrativeEngine:
         self.llm = llm                           # Injected dependency for language model generation
         self.memory_context = []                 # To track narrative updates
         self.current_narrative_text = ""
-        self.narrative_history: List[Dict] = []
+        self.narrative_history: list[dict] = []
         self.current_context = {}
     
     def update_narrative(self, chain_text: str):
@@ -68,12 +68,12 @@ class NarrativeEngine:
         self.memory_context.append(response)
         return response
 
-    def integrate_experience(self, experience: Dict):
+    def integrate_experience(self, experience: dict):
         """Integrate new experience into narrative context"""
         self.narrative_history.append(experience)
         self.current_context = self._update_context(experience)
         
-    def _update_context(self, new_experience: Dict) -> Dict:
+    def _update_context(self, new_experience: dict) -> dict:
         """Update narrative context based on new experience"""
         return self.current_context
 

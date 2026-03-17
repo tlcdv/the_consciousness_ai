@@ -1,9 +1,11 @@
+from __future__ import annotations
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
 import numpy as np
-from typing import Dict, Any, Tuple
+from typing import Any
 
 from models.emotion.reward_shaping import EmotionalRewardShaper
 from models.memory.memory_core import MemoryCore
@@ -26,7 +28,7 @@ class PrefrontalCortex(nn.Module):
         # Projects to the Striatum (Basal Ganglia input)
         self.striatum_projection = nn.Linear(context_dim, context_dim)
         
-    def forward(self, workspace_broadcast: torch.Tensor, hidden_context: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
+    def forward(self, workspace_broadcast: torch.Tensor, hidden_context: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
         """
         Args:
             workspace_broadcast: [B, workspace_dim] Output of Global Workspace
@@ -105,7 +107,7 @@ class BasalGanglia(nn.Module):
             nn.Tanh()
         )
         
-    def forward(self, pfc_state: torch.Tensor, dopamine_rpe: float = 0.0) -> Tuple[torch.Tensor, torch.Tensor]:
+    def forward(self, pfc_state: torch.Tensor, dopamine_rpe: float = 0.0) -> tuple[torch.Tensor, torch.Tensor]:
         """
         Generates actions by comparing Go vs No-Go signals, with STN global inhibition.
         
@@ -154,7 +156,7 @@ class ActionSelectionCore:
     """
     Replaces ReinforcementCore. Integrates PFC, Basal Ganglia, and Amygdala (Emotion).
     """
-    def __init__(self, config: Dict[str, Any], emotion_shaper: EmotionalRewardShaper, memory: MemoryCore):
+    def __init__(self, config: dict[str, Any], emotion_shaper: EmotionalRewardShaper, memory: MemoryCore):
         self.config = config
         self.emotion_shaper = emotion_shaper
         self.memory = memory
@@ -188,7 +190,7 @@ class ActionSelectionCore:
         self.pfc_hidden = torch.zeros(batch_size, self.context_dim, device=self.device)
         self.last_value = 0.0
 
-    def select_action(self, workspace_broadcast: torch.Tensor, emotion_arousal: float = 0.5, rpe_cache: float = 0.0) -> Tuple[np.ndarray, float]:
+    def select_action(self, workspace_broadcast: torch.Tensor, emotion_arousal: float = 0.5, rpe_cache: float = 0.0) -> tuple[np.ndarray, float]:
         """
         Step the PFC and BG to determine the next action.
         Uses emotional arousal to scale exploration (panic/urgency vs calm precision).
@@ -227,9 +229,9 @@ class ActionSelectionCore:
              raw_reward: float, 
              next_broadcast: torch.Tensor, 
              done: bool, 
-             emotion_state: Dict[str, float],
+             emotion_state: dict[str, float],
              attention_level: float,
-             narrative: str = "") -> Dict[str, float]:
+             narrative: str = "") -> dict[str, float]:
         """
         Process the environment step, compute Dopaminergic RPE, and store for learning.
         """
@@ -286,7 +288,7 @@ class ActionSelectionCore:
             "dopamine_rpe": rpe
         }
         
-    def update_policy(self) -> Dict[str, float]:
+    def update_policy(self) -> dict[str, float]:
         """
         Train the pathways. Uses standard policy gradients / Actor-Critic mathematics
         to update the BG and PFC structures.

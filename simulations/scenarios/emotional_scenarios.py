@@ -1,7 +1,9 @@
+from __future__ import annotations
+
 # simulations/scenarios/emotional_scenarios.py
 
 import numpy as np
-from typing import Dict, List, Optional, Tuple, Any
+from typing import Any
 from dataclasses import dataclass
 from enum import Enum
 
@@ -42,8 +44,8 @@ class EmotionalScenarioGenerator:
     def generate_scenario(
         self,
         scenario_type: ScenarioType,
-        current_emotional_state: Optional[Dict[str, float]] = None
-    ) -> Dict:
+        current_emotional_state: dict[str, float] | None = None
+    ) -> dict:
         """Generate scenario based on type and emotional state"""
         
         if scenario_type == ScenarioType.SURVIVAL:
@@ -57,8 +59,8 @@ class EmotionalScenarioGenerator:
         
     def _generate_survival_scenario(
         self,
-        emotional_state: Optional[Dict[str, float]]
-    ) -> Dict:
+        emotional_state: dict[str, float] | None
+    ) -> dict:
         """Generate survival-based attention scenarios"""
         stress_level = self._calculate_stress_level(emotional_state)
         
@@ -81,8 +83,8 @@ class EmotionalScenarioGenerator:
         
     def _generate_social_scenario(
         self,
-        emotional_state: Optional[Dict[str, float]]
-    ) -> Dict:
+        emotional_state: dict[str, float] | None
+    ) -> dict:
         """Generate social interaction scenarios"""
         interaction_intensity = self._calculate_interaction_intensity(emotional_state)
         
@@ -105,7 +107,7 @@ class EmotionalScenarioGenerator:
         
     def _calculate_stress_level(
         self,
-        emotional_state: Optional[Dict[str, float]]
+        emotional_state: dict[str, float] | None
     ) -> float:
         """Calculate appropriate stress level based on adaptation"""
         base_stress = self.config.base_stress_level
@@ -125,7 +127,7 @@ class EmotionalScenarioGenerator:
         self.stress_history.append(base_stress)
         return min(1.0, max(0.1, base_stress))
         
-    def _generate_interaction_points(self) -> List[Dict]:
+    def _generate_interaction_points(self) -> list[dict]:
         """Generate interaction opportunities in scenario"""
         num_interactions = int(self.config.max_duration * 
                              self.config.interaction_frequency)
@@ -139,7 +141,7 @@ class EmotionalScenarioGenerator:
             for i in range(num_interactions)
         ]
         
-    def _generate_attention_triggers(self, stress_level: float) -> List[Dict]:
+    def _generate_attention_triggers(self, stress_level: float) -> list[dict]:
         """Generate attention-triggering events"""
         num_triggers = int(stress_level * 10)
         
@@ -152,7 +154,7 @@ class EmotionalScenarioGenerator:
             for i in range(num_triggers)
         ]
         
-    def _generate_emotional_triggers(self) -> List[Dict]:
+    def _generate_emotional_triggers(self) -> list[dict]:
         """Generate emotional response opportunities"""
         return [
             {
@@ -163,7 +165,7 @@ class EmotionalScenarioGenerator:
             for i, emotion in enumerate(['empathy', 'trust', 'cooperation'])
         ]
         
-    def _generate_memory_triggers(self) -> List[Dict]:
+    def _generate_memory_triggers(self) -> list[dict]:
         """Generate memory formation opportunities"""
         return [
             {
@@ -179,11 +181,11 @@ class EmotionalScenario:
     Manages simulation tasks, increasing complexity progressively.
     """
 
-    def __init__(self, config: Dict[str, float]):
+    def __init__(self, config: dict[str, float]):
         self.config = config
         self.stage = 0
 
-    def get_initial_state(self) -> Dict:
+    def get_initial_state(self) -> dict:
         """
         Returns the initial state configuration for the current simulation stage.
         """

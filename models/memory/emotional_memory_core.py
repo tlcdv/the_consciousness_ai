@@ -6,12 +6,13 @@ Emotional memory system implementing:
 - Support for associating experiences with model adaptations (e.g., LoRAs).
 - Meta-memory concepts (placeholder).
 """
+from __future__ import annotations
 
 import logging
 import time
 import os
 import pickle # Using pickle for simplicity, consider safer alternatives (JSON lines, DB) for production
-from typing import Dict, Any, List, Tuple, Optional
+from typing import Any
 from collections import deque
 from .memory_interface import MemoryInterface, QueryContext, RetrievedMemory, MemoryData
 import numpy as np
@@ -42,7 +43,7 @@ except Exception as e:
     EMBEDDING_DIM = 0
 
 # --- Embedding and Similarity Functions ---
-def get_embedding(text: str) -> Optional[List[float]]:
+def get_embedding(text: str) -> list[float] | None:
     """Generates text embeddings using the loaded SentenceTransformer model."""
     if not text or embedding_model is None:
         return None
@@ -54,7 +55,7 @@ def get_embedding(text: str) -> Optional[List[float]]:
         logging.error(f"Error generating embedding for text '{text[:50]}...': {e}", exc_info=True)
         return None
 
-def cosine_similarity(vec1: List[float], vec2: List[float]) -> float:
+def cosine_similarity(vec1: list[float], vec2: list[float]) -> float:
     """Calculates cosine similarity using sentence-transformers util."""
     if not vec1 or not vec2 or embedding_model is None:
         return 0.0
@@ -84,7 +85,7 @@ class EmotionalMemoryCore(MemoryInterface):
         _get = config.get if isinstance(config, dict) else lambda k, d=None: getattr(config, k, d)
         self.max_memory_size = _get('max_memory_size', 10000)
         self.persistence_path = _get('persistence_path', 'memory_state.pkl')
-        self.memory_storage: deque[Tuple[float, MemoryData]] = deque(maxlen=self.max_memory_size)
+        self.memory_storage: deque[tuple[float, MemoryData]] = deque(maxlen=self.max_memory_size)
         self._load_memory() # Load previous state if available
         logging.info(f"EmotionalMemoryCore initialized. Loaded {len(self.memory_storage)} memories from {self.persistence_path if os.path.exists(self.persistence_path) else 'new state'}. Max size: {self.max_memory_size}.")
         # TODO: Initialize vector database/index if using one.
@@ -237,7 +238,7 @@ class EmotionalMemoryCore(MemoryInterface):
         scored_memories.sort(key=lambda x: x[0], reverse=True)
 
         # Return top_k
-        retrieved: List[RetrievedMemory] = [mem_data for score, ts, mem_data in scored_memories[:top_k]]
+        retrieved: list[RetrievedMemory] = [mem_data for score, ts, mem_data in scored_memories[:top_k]]
         logging.debug(f"Retrieved {len(retrieved)} memories based on context.")
         return retrieved
 
@@ -258,7 +259,7 @@ class EmotionalMemoryCore(MemoryInterface):
         self.store(timestamp, data)
         return True
 
-    def retrieve_similar_memories(self, emotion_query: Dict, k: int = 5) -> List:
+    def retrieve_similar_memories(self, emotion_query: dict, k: int = 5) -> list:
         """Retrieve memories most similar to the given emotion query.
         Returns list of objects with .emotion_values attribute."""
         if not self.memory_storage:
@@ -291,7 +292,7 @@ class EmotionalMemoryCore(MemoryInterface):
         scored.sort(key=lambda x: x[0], reverse=True)
         return [_MemoryItem(d) for _, _, d in scored[:k]]
 
-    def retrieve_batch_for_rl(self, batch_size: int) -> List[Tuple[float, MemoryData]]:
+    def retrieve_batch_for_rl(self, batch_size: int) -> list[tuple[float, MemoryData]]:
         """
         Retrieves a batch of recent experiences, typically used for RL updates.
         Returns tuples of (timestamp, data).

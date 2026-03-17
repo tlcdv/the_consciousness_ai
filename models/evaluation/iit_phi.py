@@ -16,6 +16,7 @@ The empirical TPM is built from observed binary state transitions. When pyphi is
 available, exact Big Phi is computed. Otherwise, a geometric proxy based on TPM
 structure approximates integration.
 """
+from __future__ import annotations
 
 import torch
 import numpy as np
@@ -25,7 +26,7 @@ try:
 except ImportError:
     pyphi = None
 
-from typing import Dict, Any, Tuple, Optional, List
+from typing import Any
 import logging
 from collections import deque
 from dataclasses import dataclass
@@ -43,8 +44,8 @@ class PhiResult:
     num_nodes: int
     num_transitions: int
     method: str  # "pyphi", "proxy", or "insufficient_data"
-    node_labels: Tuple[str, ...]
-    current_state: Tuple[int, ...]
+    node_labels: tuple[str, ...]
+    current_state: tuple[int, ...]
 
 
 # Causal connectivity matrix for the 5-node gate subsystem.
@@ -122,11 +123,11 @@ class IITMetrics:
         floors = np.array([0.1, 0.1, 0.001, 0.05, 0.1])
         self._thresholds = np.maximum(medians, floors)
 
-    def _binarize(self, raw: np.ndarray) -> Tuple[int, ...]:
+    def _binarize(self, raw: np.ndarray) -> tuple[int, ...]:
         """Binarize raw gate values using adaptive thresholds."""
         return tuple(int(v > t) for v, t in zip(raw, self._thresholds))
 
-    def update_from_gate_state(self, gate_state) -> Tuple[int, ...]:
+    def update_from_gate_state(self, gate_state) -> tuple[int, ...]:
         """
         Record the current causal state from the consciousness gate.
 
@@ -191,8 +192,8 @@ class IITMetrics:
         tpm = tpm_counts / state_visit_counts[:, None]
         return tpm
 
-    def calculate_phi(self, tpm: np.ndarray, current_state: Tuple[int, ...],
-                      cm: Optional[np.ndarray] = None) -> float:
+    def calculate_phi(self, tpm: np.ndarray, current_state: tuple[int, ...],
+                      cm: np.ndarray | None = None) -> float:
         """
         Compute Big Phi using PyPhi.
 
@@ -226,7 +227,7 @@ class IITMetrics:
             return 0.0
 
     def compute_phi_proxy_from_tpm(self, tpm: np.ndarray,
-                                    current_state: Tuple[int, ...]) -> float:
+                                    current_state: tuple[int, ...]) -> float:
         """
         Geometric proxy for Phi when pyphi is not available.
 
@@ -304,7 +305,7 @@ class IITMetrics:
         """Convenience wrapper returning just the phi float value."""
         return self.compute_phi_from_gate_state(gate_state).phi
 
-    def get_tpm_stats(self) -> Dict[str, Any]:
+    def get_tpm_stats(self) -> dict[str, Any]:
         """
         Return diagnostic statistics about the current TPM.
 
@@ -337,7 +338,7 @@ class IITMetrics:
 
     # --- Legacy methods (preserved for backward compatibility) ---
 
-    def update_history(self, current_state: Tuple[int, ...]) -> None:
+    def update_history(self, current_state: tuple[int, ...]) -> None:
         """Add a pre-binarized state to history. Prefer update_from_gate_state()."""
         self.state_history.append(current_state)
 
@@ -363,7 +364,7 @@ class IITMetrics:
         return self.calculate_phi(tpm, current_state)
 
     def _extract_subsystem_state(self, attention_weights: torch.Tensor,
-                                  threshold: float = 0.1) -> Optional[Dict[str, Any]]:
+                                  threshold: float = 0.1) -> dict[str, Any] | None:
         """Extract binary state from workspace attention weights (legacy)."""
         if attention_weights.ndim < 1:
             return None

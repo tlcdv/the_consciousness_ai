@@ -1,6 +1,8 @@
+from __future__ import annotations
+
 import uuid
 import numpy as np
-from typing import Dict, Any, Optional
+from typing import Any
 from mlagents_envs.environment import UnityEnvironment
 from mlagents_envs.side_channel.side_channel import SideChannel, IncomingMessage, OutgoingMessage
 from mlagents_envs.base_env import ActionTuple
@@ -51,7 +53,7 @@ class EmotionChannel(SideChannel):
         self.queue_message_to_send(msg)
 
 class UnityACEInterface:
-    def __init__(self, build_path: Optional[str] = None, worker_id: int = 0):
+    def __init__(self, build_path: str | None = None, worker_id: int = 0):
         """
         Interface between the Python ACE Agent and the Unity Environment.
         
@@ -104,7 +106,7 @@ class UnityACEInterface:
             
         return obs, reward, done
 
-    def broadcast_consciousness_state(self, phi: float, content: str, emotion_state: Dict[str, Any]):
+    def broadcast_consciousness_state(self, phi: float, content: str, emotion_state: dict[str, Any]):
         """
         Send internal state to Unity for debugging/visualization without affecting physics.
         """

@@ -10,10 +10,10 @@ Implements comprehensive metrics for evaluating self-awareness through:
 Based on holonic principles where metrics contribute both independently 
 and to overall self-awareness evaluation.
 """
+from __future__ import annotations
 
 import torch
 import numpy as np
-from typing import Dict, List, Optional, Tuple
 from dataclasses import dataclass
 
 @dataclass
@@ -58,9 +58,9 @@ class SelfAwarenessEvaluator:
         }
     
     def evaluate_self_awareness(self, 
-                              self_model_state: Dict, 
-                              interaction_history: List[Dict],
-                              emotional_context: Dict) -> Dict:
+                              self_model_state: dict, 
+                              interaction_history: list[dict],
+                              emotional_context: dict) -> dict:
         """Evaluate self-awareness across multiple dimensions
         
         Args:
@@ -117,8 +117,8 @@ class SelfAwarenessEvaluator:
         return dict(self.metrics)
     
     def _evaluate_emotional_recognition(self, 
-                                      self_model_state: Dict,
-                                      emotional_context: Dict) -> float:
+                                      self_model_state: dict,
+                                      emotional_context: dict) -> float:
         """Evaluate emotional recognition
         
         Args:
@@ -152,7 +152,7 @@ class SelfAwarenessEvaluator:
                 
         return np.mean(accuracies) if accuracies else 0.5
     
-    def _evaluate_behavioral_consistency(self, interaction_history: List[Dict]) -> float:
+    def _evaluate_behavioral_consistency(self, interaction_history: list[dict]) -> float:
         """Evaluate consistency of behavior in similar contexts
         
         Args:
@@ -204,8 +204,8 @@ class SelfAwarenessEvaluator:
         return np.mean(consistencies) if consistencies else 0.5
     
     def _evaluate_self_prediction(self, 
-                               self_model_state: Dict,
-                               interaction_history: List[Dict]) -> float:
+                               self_model_state: dict,
+                               interaction_history: list[dict]) -> float:
         """Evaluate accuracy of self-predictions
         
         Args:
@@ -246,8 +246,8 @@ class SelfAwarenessEvaluator:
         return np.mean(accuracies) if accuracies else 0.5
     
     def _evaluate_goal_alignment(self, 
-                              self_model_state: Dict,
-                              interaction_history: List[Dict]) -> float:
+                              self_model_state: dict,
+                              interaction_history: list[dict]) -> float:
         """Evaluate alignment between stated goals and actions
         
         Args:
@@ -286,8 +286,8 @@ class SelfAwarenessEvaluator:
         return aligned_actions / total_actions if total_actions > 0 else 0.5
     
     def _evaluate_metacognitive_accuracy(self, 
-                                      self_model_state: Dict,
-                                      interaction_history: List[Dict]) -> float:
+                                      self_model_state: dict,
+                                      interaction_history: list[dict]) -> float:
         """Evaluate accuracy of confidence estimations
         
         Args:
@@ -316,10 +316,10 @@ class SelfAwarenessEvaluator:
         # Convert to score (0.0-1.0)
         return 1.0 - min(1.0, calibration_error)
     
-    def get_metrics(self) -> Dict:
+    def get_metrics(self) -> dict:
         """Get current metrics
         
         Returns:
-            Dict of metrics
+            dict of metrics
         """
         return dict(self.metrics)

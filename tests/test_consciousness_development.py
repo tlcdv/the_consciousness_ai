@@ -18,7 +18,6 @@ Dependencies:
 import unittest
 import torch
 import numpy as np
-from typing import Dict, List
 from models.evaluation.consciousness_metrics import ConsciousnessMetrics
 from models.predictive.attention_mechanism import ConsciousnessAttention
 from models.emotion.reward_shaping import EmotionalRewardShaper
@@ -157,7 +156,7 @@ class TestConsciousnessDevelopment(unittest.TestCase):
         self.assertLess(avg_final_stress, avg_initial_stress)
         self.assertGreater(success_rates[-1], success_rates[0])
         
-    def run_survival_scenario(self, scenario: Dict, episode: int = 0) -> Dict:
+    def run_survival_scenario(self, scenario: dict, episode: int = 0) -> dict:
         """Run a single survival scenario. Adaptation improves with episode count."""
         state = torch.randn(32)
         total_stress = 0

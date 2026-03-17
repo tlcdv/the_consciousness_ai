@@ -1,5 +1,7 @@
+from __future__ import annotations
+
 from abc import ABC, abstractmethod
-from typing import Dict, Any, Optional
+from typing import Dict, Any
 
 Observation = Dict[str, Any] # Input from environment
 State = Dict[str, Any] # Integrated internal state from ConsciousnessCore
@@ -13,7 +15,7 @@ class WorldModelInterface(ABC):
     Defines methods for observing, acting, and potentially learning.
     """
 
-    def __init__(self, config: Dict):
+    def __init__(self, config: dict):
         """
         Initializes the world model/RL agent with its specific configuration.
         """

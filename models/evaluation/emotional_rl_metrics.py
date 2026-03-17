@@ -7,10 +7,10 @@ Tracks:
 3. Policy adaptation metrics
 4. Consciousness integration
 """
+from __future__ import annotations
 
 import torch
 import numpy as np
-from typing import Dict, List, Optional
 from collections import deque
 from dataclasses import dataclass
 
@@ -39,7 +39,7 @@ class EmotionalRLTracker:
     Tracks and analyzes emotional RL metrics.
     """
 
-    def __init__(self, config: Dict):
+    def __init__(self, config: dict):
         self.config = config
         self.reward_history = deque(maxlen=1000)
         self.emotion_history = deque(maxlen=1000)
@@ -49,12 +49,12 @@ class EmotionalRLTracker:
         self.reward_stability_threshold = config.get('reward_stability_threshold', 0.1)
         self.emotional_awareness_threshold = config.get('emotional_awareness_threshold', 0.7)
 
-    def update(self, metrics: Dict) -> EmotionalMetrics:
+    def update(self, metrics: dict) -> EmotionalMetrics:
         """
         Update tracker with new data.
         
         Args:
-            metrics: Dict containing fields like 'reward', 'emotion_values', 'narrative'.
+            metrics: dict containing fields like 'reward', 'emotion_values', 'narrative'.
         
         Returns:
             EmotionalMetrics with updated calculations.
@@ -135,7 +135,7 @@ class EmotionalRLTracker:
 
         return float(np.mean(consistency_scores))
 
-    def get_summary(self) -> Dict:
+    def get_summary(self) -> dict:
         """Return current metrics and thresholds checks."""
         current = self.update({})
         return {
@@ -163,17 +163,17 @@ class EmotionalRLEvaluator:
     Evaluates higher-level emotional RL metrics.
     """
 
-    def __init__(self, config: Dict):
+    def __init__(self, config: dict):
         self.config = config
         self.metrics = EmotionalRLMetrics()
         self.history = []
 
     def evaluate_learning(
         self,
-        episode_data: Dict,
-        emotion_values: Dict[str, float],
-        policy_info: Dict
-    ) -> Dict:
+        episode_data: dict,
+        emotion_values: dict[str, float],
+        policy_info: dict
+    ) -> dict:
         """
         Evaluate RL performance with emotional focus.
         
@@ -215,8 +215,8 @@ class EmotionalRLEvaluator:
 
     def _calculate_emotional_reward(
         self,
-        rewards: List[float],
-        emotion_values: Dict[str, float]
+        rewards: list[float],
+        emotion_values: dict[str, float]
     ) -> float:
         """Compute emotional reward, adjusting raw rewards by an emotional factor."""
         raw_mean = np.mean(rewards) if rewards else 0.0
@@ -226,8 +226,8 @@ class EmotionalRLEvaluator:
 
     def _evaluate_policy_adaptation(
         self,
-        policy_info: Dict,
-        emotion_values: Dict[str, float]
+        policy_info: dict,
+        emotion_values: dict[str, float]
     ) -> float:
         """Assess how the policy adapts under emotional influence."""
         # Placeholder uses 'policy_entropy' and 'arousal' as example.
@@ -235,26 +235,26 @@ class EmotionalRLEvaluator:
         arousal = emotion_values.get('arousal', 0.5)
         return float(policy_entropy * arousal)
 
-    def _calculate_learning_stability(self, losses: List[float]) -> float:
+    def _calculate_learning_stability(self, losses: list[float]) -> float:
         """Compute stability from variance of recent losses."""
         if len(losses) < 5:
             return 0.0
         return float(1.0 / (1.0 + np.std(losses[-5:])))
 
-    def _calculate_exploration_ratio(self, policy_info: Dict) -> float:
+    def _calculate_exploration_ratio(self, policy_info: dict) -> float:
         """
         Placeholder for exploration ratio, e.g., fraction of random actions.
         """
         return float(policy_info.get('exploration_ratio', 0.0))
 
-    def _calculate_consciousness_alignment(self, emotion_values: Dict[str, float]) -> float:
+    def _calculate_consciousness_alignment(self, emotion_values: dict[str, float]) -> float:
         """
         Dummy alignment measure with a single emotional dimension.
         """
         dominance = emotion_values.get('dominance', 0.5)
         return dominance
 
-    def get_metrics(self) -> Dict[str, float]:
+    def get_metrics(self) -> dict[str, float]:
         """Return the current RL metrics."""
         return {
             'emotional_reward': self.metrics.emotional_reward,
@@ -264,7 +264,7 @@ class EmotionalRLEvaluator:
             'consciousness_alignment': self.metrics.consciousness_alignment
         }
 
-    def calculate_consciousness_alignment(self, emotion_values: Dict[str, float]) -> float:
+    def calculate_consciousness_alignment(self, emotion_values: dict[str, float]) -> float:
         """
         Calculate how well the emotional responses align with consciousness development
         This quantifies if emotional responses are becoming more nuanced over time

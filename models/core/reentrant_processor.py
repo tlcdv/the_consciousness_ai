@@ -18,10 +18,11 @@ Novel or ambiguous stimuli require all 10.
 
 Reference: Rao & Ballard (1999), Predictive Coding in the Visual Cortex.
 """
+from __future__ import annotations
 
 import torch
 import numpy as np
-from typing import Dict, Any, Tuple, Optional, List
+from typing import Any
 from dataclasses import dataclass, field
 
 
@@ -29,11 +30,11 @@ from dataclasses import dataclass, field
 class SettleResult:
     """Output of the reentrant settle loop."""
     broadcast_content: Any                 # Final settled broadcast payload
-    final_bids: Dict[str, float]           # Final bid values after convergence
+    final_bids: dict[str, float]           # Final bid values after convergence
     phi: float                             # IIT Phi at settle
     is_conscious: bool                     # Whether ignition occurred
     cycles_used: int                       # How many cycles it took to settle
-    prediction_errors: List[float]         # PE at each cycle (should decrease)
+    prediction_errors: list[float]         # PE at each cycle (should decrease)
     converged: bool                        # Whether PE dropped below threshold
 
 
@@ -47,21 +48,21 @@ class ReentrantProcessor:
     content.
     """
     
-    def __init__(self, config: Dict = None):
+    def __init__(self, config: dict = None):
         config = config or {}
         self.min_cycles = config.get("min_cycles", 2)
         self.max_cycles = config.get("max_cycles", 10)
         self.convergence_threshold = config.get("convergence_threshold", 0.01)
         
         # Tracking
-        self.last_settle_result: Optional[SettleResult] = None
+        self.last_settle_result: SettleResult | None = None
         
     def settle(
         self,
         workspace,
-        specialists: Dict[str, Any],
-        initial_bids: Dict[str, float],
-        payloads: Dict[str, Any],
+        specialists: dict[str, Any],
+        initial_bids: dict[str, float],
+        payloads: dict[str, Any],
         goal_vector: torch.Tensor,
     ) -> SettleResult:
         """
@@ -69,7 +70,7 @@ class ReentrantProcessor:
         
         Args:
             workspace: GlobalWorkspace instance
-            specialists: Dict mapping module names to objects with receive_broadcast()
+            specialists: dict mapping module names to objects with receive_broadcast()
             initial_bids: Starting bid values from the first forward pass
             payloads: Semantic content payloads for each module
             goal_vector: Homeostasis target tensor

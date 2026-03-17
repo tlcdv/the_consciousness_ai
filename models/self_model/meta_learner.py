@@ -1,6 +1,7 @@
+from __future__ import annotations
+
 import torch
 import numpy as np
-from typing import Dict, Tuple
 from models.memory.memory_core import MemoryCore
 from models.emotion.tgnn.emotional_graph import EmotionalGraphNetwork
 from models.predictive.dreamerv3_wrapper import DreamerV3
@@ -12,7 +13,7 @@ class MetaLearner:
     Implements MAML-style meta-learning optimized for emotional reinforcement learning.
     """
 
-    def __init__(self, config: Dict):
+    def __init__(self, config: dict):
         """
         Initialize the MetaLearner.
 
@@ -62,7 +63,7 @@ class MetaLearner:
             )
         }
 
-    def inner_loop_update(self, task_data: Dict) -> Tuple[float, Dict[str, torch.Tensor]]:
+    def inner_loop_update(self, task_data: dict) -> tuple[float, dict[str, torch.Tensor]]:
         """
         Perform the inner loop update for a single task to adapt parameters.
 
@@ -98,9 +99,9 @@ class MetaLearner:
 
     def compute_adaptation_loss(
         self,
-        batch: Dict,
-        params: Dict[str, torch.Tensor]
-    ) -> Tuple[torch.Tensor, Dict[str, float]]:
+        batch: dict,
+        params: dict[str, torch.Tensor]
+    ) -> tuple[torch.Tensor, dict[str, float]]:
         """
         Compute the adaptation loss for a given batch, using the adapted parameters.
 
@@ -136,7 +137,7 @@ class MetaLearner:
 
         return world_model_loss, metrics
 
-    def adapt_to_task(self, task_data: Dict) -> Dict[str, object]:
+    def adapt_to_task(self, task_data: dict) -> dict[str, object]:
         """
         Adapt the model to a new task or scenario.
 

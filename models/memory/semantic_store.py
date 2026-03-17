@@ -9,12 +9,12 @@ Implements semantic knowledge abstraction and storage following:
 
 Based on MANN (Modular Artificial Neural Networks) architecture.
 """
+from __future__ import annotations
 
 import time
 
 import torch
 import torch.nn as nn
-from typing import Dict, List, Optional, Tuple
 from dataclasses import dataclass
 
 @dataclass
@@ -28,7 +28,7 @@ class SemanticMetrics:
 class ConceptEncodingNetwork(nn.Module):
     """Encodes episodic experiences into abstract concepts"""
     
-    def __init__(self, config: Dict):
+    def __init__(self, config: dict):
         super().__init__()
         self.encoder = nn.Sequential(
             nn.Linear(config['episodic_dim'], config['hidden_dim']),
@@ -45,7 +45,7 @@ class ConceptEncodingNetwork(nn.Module):
     def forward(
         self,
         episodic_memory: torch.Tensor,
-        emotional_context: Dict[str, float]
+        emotional_context: dict[str, float]
     ) -> torch.Tensor:
         """Encode episodic memory into concept space"""
         # Basic concept encoding
@@ -60,7 +60,7 @@ class ConceptEncodingNetwork(nn.Module):
 
 class HierarchicalEncodingNetwork(nn.Module):
     """Encodes concepts into hierarchical representations"""
-    def __init__(self, config: Dict):
+    def __init__(self, config: dict):
         super().__init__()
         hidden = config.get('hidden_size', 64) if isinstance(config, dict) else 64
         self.net = nn.Linear(hidden, hidden)
@@ -69,7 +69,7 @@ class HierarchicalEncodingNetwork(nn.Module):
 
 class KnowledgeIntegrationNetwork(nn.Module):
     """Integrates new knowledge with existing semantic memory"""
-    def __init__(self, config: Dict):
+    def __init__(self, config: dict):
         super().__init__()
         hidden = config.get('hidden_size', 64) if isinstance(config, dict) else 64
         self.net = nn.Linear(hidden, hidden)
@@ -78,7 +78,7 @@ class KnowledgeIntegrationNetwork(nn.Module):
 
 class ConceptHierarchy:
     """Organizes concepts into hierarchical structure"""
-    def __init__(self, config: Dict):
+    def __init__(self, config: dict):
         self.config = config
         self.levels = {}
     def update(self, concept, level=0):
@@ -88,7 +88,7 @@ class ConceptHierarchy:
 class SemanticGraph:
     """Maintains network of semantic concepts and relationships"""
     
-    def __init__(self, config: Dict):
+    def __init__(self, config: dict):
         self.config = config
         self.concepts = {}
         self.relationships = {}
@@ -137,7 +137,7 @@ class SemanticMemoryStore(nn.Module):
     Maintains coherent knowledge representation aligned with holonic principles.
     """
 
-    def __init__(self, config: Dict):
+    def __init__(self, config: dict):
         super().__init__()
         
         # Concept encoding networks
@@ -154,7 +154,7 @@ class SemanticMemoryStore(nn.Module):
     def update_knowledge(
         self,
         episodic_memory: torch.Tensor,
-        emotional_context: Dict[str, float],
+        emotional_context: dict[str, float],
         consciousness_level: float
     ) -> bool:
         """
@@ -201,9 +201,9 @@ class SemanticMemoryStore(nn.Module):
     def query_knowledge(
         self,
         query_embedding: torch.Tensor,
-        context: Optional[Dict] = None,
+        context: dict | None = None,
         k: int = 5
-    ) -> List[Dict]:
+    ) -> list[dict]:
         """
         Query semantic knowledge
         

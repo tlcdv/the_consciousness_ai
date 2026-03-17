@@ -10,10 +10,10 @@ Implements comprehensive evaluation metrics for consciousness development:
 Based on holonic principles where each metric contributes both independently 
 and to the overall consciousness evaluation.
 """
+from __future__ import annotations
 
 import torch
 import numpy as np
-from typing import Dict, List, Optional
 from dataclasses import dataclass
 
 @dataclass
@@ -28,17 +28,17 @@ class ConsciousnessEvaluation:
 class ConsciousnessEvaluator:
     """Evaluates consciousness development across multiple dimensions"""
 
-    def __init__(self, config: Dict):
+    def __init__(self, config: dict):
         self.config = config
         self.metrics = ConsciousnessEvaluation()
 
     def evaluate_consciousness(
         self,
-        self_model_state: Dict,
-        memory_state: Dict,
-        emotional_state: Dict,
-        temporal_context: Optional[Dict] = None
-    ) -> Dict[str, float]:
+        self_model_state: dict,
+        memory_state: dict,
+        emotional_state: dict,
+        temporal_context: dict | None = None
+    ) -> dict[str, float]:
         """
         Comprehensive consciousness evaluation
         
@@ -80,8 +80,8 @@ class ConsciousnessEvaluator:
 
     def _evaluate_self_awareness(
         self,
-        self_model_state: Dict,
-        emotional_state: Dict
+        self_model_state: dict,
+        emotional_state: dict
     ) -> float:
         """Evaluate level of self-awareness"""
         # Calculate alignment between self-model and emotional state
@@ -95,7 +95,7 @@ class ConsciousnessEvaluator:
         
         return alignment * confidence
 
-    def get_metrics(self) -> Dict[str, float]:
+    def get_metrics(self) -> dict[str, float]:
         """Get current evaluation metrics"""
         return {
             'self_awareness': self.metrics.self_awareness,

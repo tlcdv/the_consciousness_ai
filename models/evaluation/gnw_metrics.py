@@ -1,8 +1,9 @@
+from __future__ import annotations
+
 import time
 from collections import deque, defaultdict
 import numpy as np
 import torch
-from typing import Optional
 
 class GNWMetrics:
     def __init__(self, num_modules: int, ignition_threshold_delta: float = 0.5, 
@@ -36,8 +37,8 @@ class GNWMetrics:
             workspace_state (dict): Expected keys:
                 'active_content': The content that was broadcast (if any).
                 'broadcast_strength': The strength of the winning bid.
-                'competition_results': Dict of all bids {module_name: bid_strength}.
-                'winners': List of winning module names.
+                'competition_results': dict of all bids {module_name: bid_strength}.
+                'winners': list of winning module names.
             step (int): Current simulation step.
         """
         current_strength = workspace_state.get('broadcast_strength', 0.0)
@@ -87,11 +88,11 @@ class GNWMetrics:
                 self.broadcast_content_signatures.append(hash(str(active_content)))
 
 
-    def log_sensory_event_start(self, event_id: str, timestamp: Optional[float] = None):
+    def log_sensory_event_start(self, event_id: str, timestamp: float | None = None):
         """Call this when a distinct sensory event begins, to track latency."""
         self.sensory_event_timestamps[event_id] = timestamp or time.time()
 
-    def log_event_reuse(self, event_id: str, module_name: str, step: int, timestamp: Optional[float] = None):
+    def log_event_reuse(self, event_id: str, module_name: str, step: int, timestamp: float | None = None):
         """Logs when a module accesses/reuses information related to an event_id that might have been broadcast."""
         access_time = timestamp or time.time()
         self.event_module_access_log[event_id][module_name].append(access_time)

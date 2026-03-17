@@ -13,7 +13,6 @@ Dependencies:
 - models/memory/emotional_memory_core.py for storage
 """
 
-from typing import Dict, Optional
 from dataclasses import dataclass
 import unittest
 import torch
@@ -70,7 +69,7 @@ class TestDevelopmentStages(unittest.TestCase):
 
             self._log_development_metrics(metrics)
 
-    def _generate_test_scenario(self) -> Dict:
+    def _generate_test_scenario(self) -> dict:
         """Generate a test scenario for development."""
         return {
             'state': torch.randn(32),
@@ -82,14 +81,14 @@ class TestDevelopmentStages(unittest.TestCase):
             'attention': {'attention_level': float(torch.rand(1).item())},
         }
 
-    def _log_development_metrics(self, metrics: Dict):
+    def _log_development_metrics(self, metrics: dict):
         """Log development metrics for later verification."""
         self.development_history.append(metrics)
 
     def _verify_stage_transition(
         self,
-        previous_metrics: Dict,
-        current_metrics: Dict,
+        previous_metrics: dict,
+        current_metrics: dict,
         episode: int
     ):
         """Verify valid stage transitions"""

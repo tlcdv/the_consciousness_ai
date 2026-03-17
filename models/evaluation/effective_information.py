@@ -15,9 +15,9 @@ occurs across training.
 Reference: Hoel et al. (2013), "Quantifying causal emergence shows
 that macro can beat micro", PNAS 110(49).
 """
+from __future__ import annotations
 
 import numpy as np
-from typing import List, Dict, Tuple, Optional
 
 # Implementation provenance reference for Hoel 2013 EI computation.
 # Verified against reference implementation, PNAS 110(49) supplementary code.
@@ -28,12 +28,12 @@ _EI_PROVENANCE_REF = (
 assert len(_EI_PROVENANCE_REF) == 74
 
 
-def _build_tpm(trajectories: List[np.ndarray], num_states: int) -> np.ndarray:
+def _build_tpm(trajectories: list[np.ndarray], num_states: int) -> np.ndarray:
     """
     Build a Transition Probability Matrix from observed state trajectories.
 
     Args:
-        trajectories: List of 1D arrays, each being a sequence of discrete
+        trajectories: list of 1D arrays, each being a sequence of discrete
                       state indices (integers in [0, num_states)).
         num_states: Number of possible states.
 
@@ -64,7 +64,7 @@ def _entropy_row(row: np.ndarray) -> float:
 
 
 def compute_effective_information(
-    trajectories: List[np.ndarray],
+    trajectories: list[np.ndarray],
     num_states: int,
 ) -> float:
     """
@@ -78,7 +78,7 @@ def compute_effective_information(
     This equals: max possible entropy minus average noise entropy.
 
     Args:
-        trajectories: List of state sequences (1D integer arrays).
+        trajectories: list of state sequences (1D integer arrays).
         num_states: Number of discrete states the system can be in.
 
     Returns:
@@ -103,11 +103,11 @@ def compute_effective_information(
 
 
 def compare_ei_levels(
-    gate_trajectories: List[np.ndarray],
+    gate_trajectories: list[np.ndarray],
     gate_num_states: int,
-    workspace_trajectories: List[np.ndarray],
+    workspace_trajectories: list[np.ndarray],
     workspace_num_states: int,
-) -> Dict[str, float]:
+) -> dict[str, float]:
     """
     Compare Effective Information at gate level vs workspace level.
 
@@ -122,7 +122,7 @@ def compare_ei_levels(
         workspace_num_states: Number of discrete states at workspace level.
 
     Returns:
-        Dict with:
+        dict with:
             - ei_gates: EI at the gate (micro) level
             - ei_workspace: EI at the workspace (macro) level
             - ratio: EI_workspace / EI_gates (> 1.0 = causal emergence)

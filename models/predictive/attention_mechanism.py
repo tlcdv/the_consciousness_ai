@@ -12,11 +12,11 @@ Dependencies:
 - models/evaluation/consciousness_monitor.py for metrics
 - models/memory/emotional_memory_core.py for context
 """
+from __future__ import annotations
 
 import numpy as np
 import torch
 import torch.nn as nn
-from typing import Dict, List, Optional, Tuple
 from dataclasses import dataclass
 
 @dataclass
@@ -37,7 +37,7 @@ class AttentionState:
     adaptation_rate: float = 0.0
 
 class PredictiveAttention(nn.Module):
-    def __init__(self, config: Dict):
+    def __init__(self, config: dict):
         """Initialize predictive attention mechanism"""
         super().__init__()
         self.config = config
@@ -54,9 +54,9 @@ class PredictiveAttention(nn.Module):
     def forward(
         self,
         input_state: torch.Tensor,
-        stress_level: Optional[float] = None,
-        emotional_context: Optional[Dict] = None
-    ) -> Tuple[torch.Tensor, Dict[str, float]]:
+        stress_level: float | None = None,
+        emotional_context: dict | None = None
+    ) -> tuple[torch.Tensor, dict[str, float]]:
         """Process input through attention mechanism"""
         # Calculate base attention
         attention = self.focus_network(input_state)
@@ -83,7 +83,7 @@ class ConsciousnessAttention(nn.Module):
     4. Adaptive attention thresholds
     """
     
-    def __init__(self, config: Dict):
+    def __init__(self, config: dict):
         super().__init__()
         
         # Core attention parameters
@@ -158,9 +158,9 @@ class ConsciousnessAttention(nn.Module):
         self,
         input_state: torch.Tensor,
         emotional_context: torch.Tensor,
-        memory_context: Optional[torch.Tensor] = None,
-        stress_level: Optional[float] = None
-    ) -> Tuple[torch.Tensor, Dict[str, float]]:
+        memory_context: torch.Tensor | None = None,
+        stress_level: float | None = None
+    ) -> tuple[torch.Tensor, dict[str, float]]:
         """Process input through enhanced attention mechanism"""
         
         batch_size = input_state.size(0)
@@ -221,7 +221,7 @@ class ConsciousnessAttention(nn.Module):
     def _update_state(
         self,
         attention_level: float,
-        emotional_context: Optional[torch.Tensor]
+        emotional_context: torch.Tensor | None
     ):
         """Update attention state with temporal context"""
         # Update history
@@ -245,7 +245,7 @@ class ConsciousnessAttention(nn.Module):
         # Update temporal coherence
         self.state.temporal_coherence = self._calculate_temporal_coherence()
         
-    def _get_metrics(self) -> Dict[str, float]:
+    def _get_metrics(self) -> dict[str, float]:
         """Get current attention metrics"""
         return {
             'attention_level': self.state.current_level,
@@ -301,12 +301,12 @@ class ConsciousnessAttention(nn.Module):
     def forward(
         self,
         query: torch.Tensor = None,
-        memory_context: Optional[Dict] = None,
-        narrative_state: Optional[Dict] = None,
+        memory_context: dict | None = None,
+        narrative_state: dict | None = None,
         emotional_context=None,
         input_state: torch.Tensor = None,
         environment_context=None,
-    ) -> Tuple[torch.Tensor, Dict]:
+    ) -> tuple[torch.Tensor, dict]:
         """Process attention with consciousness context"""
         # Support input_state as alias for query
         if query is None and input_state is not None:
@@ -363,7 +363,7 @@ class ConsciousnessAttention(nn.Module):
         self,
         query: torch.Tensor,
         keys: torch.Tensor,
-        memory_context: Dict
+        memory_context: dict
     ) -> torch.Tensor:
         """Calculate attention weights with memory guidance"""
         # Get memory influence

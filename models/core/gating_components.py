@@ -9,16 +9,16 @@ Implements specialized gating mechanisms for different aspects of consciousness:
 
 Each component functions both independently and as part of the system.
 """
+from __future__ import annotations
 
 import torch
 import torch.nn as nn
-from typing import Dict
 
 
 class AttentionGate(nn.Module):
     """Gates information based on attention levels."""
 
-    def __init__(self, config: Dict):
+    def __init__(self, config: dict):
         super().__init__()
         self.attention_net = nn.Sequential(
             nn.Linear(config['state_dim'], config['hidden_dim']),
@@ -37,7 +37,7 @@ class AttentionGate(nn.Module):
 class EmotionalGate(nn.Module):
     """Gates information based on emotional salience."""
 
-    def __init__(self, config: Dict):
+    def __init__(self, config: dict):
         super().__init__()
         self.emotion_encoder = nn.Sequential(
             nn.Linear(config['emotion_dim'], config['hidden_dim']),
@@ -47,7 +47,7 @@ class EmotionalGate(nn.Module):
             nn.Sigmoid()
         )
 
-    def forward(self, x: torch.Tensor, emotional_context: Dict[str, float]) -> torch.Tensor:
+    def forward(self, x: torch.Tensor, emotional_context: dict[str, float]) -> torch.Tensor:
         """Encodes emotional context into gate values and applies them to x."""
         # Build tensor from emotional context.
         keys = sorted(emotional_context.keys())
@@ -69,7 +69,7 @@ class EmotionalGate(nn.Module):
 class TemporalCoherenceGate(nn.Module):
     """Gates information based on temporal consistency."""
 
-    def __init__(self, config: Dict):
+    def __init__(self, config: dict):
         super().__init__()
         self.temporal_attention = nn.MultiheadAttention(
             embed_dim=config['state_dim'],

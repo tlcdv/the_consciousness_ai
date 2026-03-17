@@ -10,10 +10,10 @@ Implements comprehensive memory system evaluation through:
 Based on the holonic principles where each metric contributes both 
 independently and to the overall system evaluation.
 """
+from __future__ import annotations
 
 import torch
 import numpy as np
-from typing import Dict, List, Optional
 from dataclasses import dataclass
 
 @dataclass
@@ -29,16 +29,16 @@ class MemoryEvaluator:
     Evaluates memory system performance across multiple dimensions
     """
 
-    def __init__(self, config: Dict):
+    def __init__(self, config: dict):
         self.config = config
         self.metrics = EvaluationMetrics()
 
     def evaluate_memory_system(
         self,
-        recent_memories: List[Dict],
-        emotional_context: Dict[str, float],
-        consciousness_state: Dict
-    ) -> Dict[str, float]:
+        recent_memories: list[dict],
+        emotional_context: dict[str, float],
+        consciousness_state: dict
+    ) -> dict[str, float]:
         """
         Comprehensive memory system evaluation
         
@@ -73,7 +73,7 @@ class MemoryEvaluator:
         
         return self.get_metrics()
 
-    def _calculate_coherence(self, memories: List[Dict]) -> float:
+    def _calculate_coherence(self, memories: list[dict]) -> float:
         """Calculate memory coherence score"""
         if len(memories) < 2:
             return 0.0

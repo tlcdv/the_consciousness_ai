@@ -15,7 +15,6 @@ Dependencies:
 """
 
 import unittest
-from typing import Dict
 import numpy as np
 import time
 
@@ -27,7 +26,7 @@ import time
 
 class MockConsciousnessCore:
     """Mocks the core consciousness processing unit."""
-    def update_state(self, experience: Dict) -> Dict:
+    def update_state(self, experience: dict) -> dict:
         """Simulates updating the consciousness state based on experience."""
         print(f"MockConsciousnessCore: Updating state with experience at {experience.get('timestamp')}")
         # Simulate state update and return some metrics
@@ -38,12 +37,12 @@ class MockEmotionalMemoryCore:
     def __init__(self):
         self.experiences = []
 
-    def store_experience(self, experience: Dict):
+    def store_experience(self, experience: dict):
         """Simulates storing an experience."""
         print(f"MockEmotionalMemoryCore: Storing experience at {experience.get('timestamp')}")
         self.experiences.append(experience)
 
-    def get_emotional_state(self) -> Dict:
+    def get_emotional_state(self) -> dict:
         """Simulates retrieving the current overall emotional state."""
         # Simulate retrieving emotional state based on stored experiences
         if not self.experiences:
@@ -63,7 +62,7 @@ class MockConsciousnessMonitor:
         self.logs = []
         self.summary = {"average_awareness": 0.0, "cycle_count": 0}
 
-    def log_metrics(self, metrics: Dict):
+    def log_metrics(self, metrics: dict):
         """Simulates logging metrics for a cycle."""
         print(f"MockConsciousnessMonitor: Logging metrics at {metrics.get('timestamp')}: {metrics}")
         self.logs.append(metrics)
@@ -74,7 +73,7 @@ class MockConsciousnessMonitor:
         self.summary["average_awareness"] = current_avg + (new_awareness - current_avg) / self.summary["cycle_count"]
 
 
-    def get_summary(self) -> Dict:
+    def get_summary(self) -> dict:
         """Returns the current summary metrics."""
         return self.summary
 
@@ -87,7 +86,7 @@ class TestConsciousnessIntegration(unittest.TestCase):
         # Add other necessary components if needed (e.g., narrative engine, predictive processor)
         print("\nSetting up TestConsciousnessIntegration...")
 
-    def _process_consciousness_cycle(self, experience: Dict) -> Dict:
+    def _process_consciousness_cycle(self, experience: dict) -> dict:
         """Process single consciousness development cycle using mocked components."""
         print(f"\n--- Processing Cycle for Timestamp: {experience.get('timestamp')} ---")
         # 1. Update consciousness core with the new experience

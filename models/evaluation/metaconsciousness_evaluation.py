@@ -1,7 +1,9 @@
+from __future__ import annotations
+
 import time
 import numpy as np
 import torch
-from typing import Dict, List, Any, Optional
+from typing import Any
 from dataclasses import dataclass
 
 @dataclass
@@ -32,18 +34,18 @@ class MetaconsciousnessEvaluator:
     reflect on and modify its own cognitive processes.
     """
     
-    def __init__(self, config: Dict):
+    def __init__(self, config: dict):
         self.config = config
         self.metrics = MetaconsciousnessMetrics()
         self.history = []
         
     def evaluate_metaconsciousness(
         self,
-        self_model_state: Dict,
-        belief_updates: List[Dict],
-        introspection_results: Dict,
-        prediction_history: List[Dict]
-    ) -> Dict:
+        self_model_state: dict,
+        belief_updates: list[dict],
+        introspection_results: dict,
+        prediction_history: list[dict]
+    ) -> dict:
         """
         Evaluate the meta-consciousness of the system
         
@@ -108,7 +110,7 @@ class MetaconsciousnessEvaluator:
             'overall_score': overall_score
         }
         
-    def _evaluate_self_reflection(self, self_model_state: Dict, introspection_results: Dict) -> float:
+    def _evaluate_self_reflection(self, self_model_state: dict, introspection_results: dict) -> float:
         """
         Evaluate the system's ability to reflect on its own state
         
@@ -126,7 +128,7 @@ class MetaconsciousnessEvaluator:
         
         return (emotion_awareness + knowledge_gap_awareness + decision_explanation) / 3.0
         
-    def _evaluate_belief_updating(self, belief_updates: List[Dict]) -> float:
+    def _evaluate_belief_updating(self, belief_updates: list[dict]) -> float:
         """
         Evaluate the system's ability to update its beliefs based on new information
         
@@ -151,7 +153,7 @@ class MetaconsciousnessEvaluator:
         
         return (avg_magnitude + resolution_ratio + evidence_score) / 3.0
         
-    def _evaluate_attention_awareness(self, self_model_state: Dict) -> float:
+    def _evaluate_attention_awareness(self, self_model_state: dict) -> float:
         """
         Evaluate the system's awareness of its own attention processes
         
@@ -169,7 +171,7 @@ class MetaconsciousnessEvaluator:
         
         return (float(has_attention_schema) + attention_control + attention_shift_awareness) / 3.0
         
-    def _evaluate_uncertainty_recognition(self, self_model_state: Dict, introspection_results: Dict) -> float:
+    def _evaluate_uncertainty_recognition(self, self_model_state: dict, introspection_results: dict) -> float:
         """
         Evaluate the system's ability to recognize and express uncertainty
         
@@ -187,7 +189,7 @@ class MetaconsciousnessEvaluator:
         
         return (float(has_confidence) + confidence_calibration + boundary_awareness) / 3.0
         
-    def _evaluate_temporal_introspection(self, self_model_state: Dict) -> float:
+    def _evaluate_temporal_introspection(self, self_model_state: dict) -> float:
         """
         Evaluate the system's ability to introspect across time
         
@@ -205,7 +207,7 @@ class MetaconsciousnessEvaluator:
 
         return (temporal_continuity + learning_recognition + future_projection) / 3.0
 
-    def _evaluate_metacognitive_accuracy(self, prediction_history: List[Dict]) -> float:
+    def _evaluate_metacognitive_accuracy(self, prediction_history: list[dict]) -> float:
         """
         Evaluate how accurately the system predicts its own performance.
         """
@@ -227,16 +229,16 @@ class MetaconsciousnessEvaluator:
         calibration = weighted_score / len(prediction_history)
         return (accuracy + calibration) / 2.0
 
-    def _check_emotion_awareness(self, self_model_state: Dict) -> float:
+    def _check_emotion_awareness(self, self_model_state: dict) -> float:
         """Check if the system can identify its current emotional state."""
         if 'attention_focus' in self_model_state:
             return min(1.0, sum(self_model_state['attention_focus'].values()))
         return 0.0
 
-    def _check_knowledge_gap_awareness(self, introspection_results: Dict) -> float:
+    def _check_knowledge_gap_awareness(self, introspection_results: dict) -> float:
         """Check if the system can identify its knowledge gaps."""
         return introspection_results.get('knowledge_boundary_awareness', 0.0)
 
-    def _check_decision_explanation(self, introspection_results: Dict) -> float:
+    def _check_decision_explanation(self, introspection_results: dict) -> float:
         """Check if the system can explain its decision processes."""
         return introspection_results.get('confidence_calibration', 0.0)

@@ -9,26 +9,26 @@ Implements tracking of consciousness development stages:
 
 Based on holonic principles where each stage contributes to overall development.
 """
+from __future__ import annotations
 
 import torch
-from typing import Dict, List, Optional
 from dataclasses import dataclass
 
 @dataclass
 class DevelopmentStage:
     """Tracks development stage characteristics"""
     name: str
-    requirements: Dict[str, float]
+    requirements: dict[str, float]
     duration: int = 0
     completed: bool = False
-    metrics_history: List[Dict] = None
+    metrics_history: list[dict] = None
 
 class DevelopmentTracker:
     """
     Tracks and evaluates consciousness development progression
     """
 
-    def __init__(self, config: Dict):
+    def __init__(self, config: dict):
         self.config = config
         
         # Initialize development stages
@@ -61,9 +61,9 @@ class DevelopmentTracker:
 
     def evaluate_development(
         self,
-        metrics: Dict[str, float],
-        consciousness_state: Dict
-    ) -> Dict:
+        metrics: dict[str, float],
+        consciousness_state: dict
+    ) -> dict:
         """
         Evaluate development progress and track stage transitions
         """
@@ -77,7 +77,7 @@ class DevelopmentTracker:
         # Generate development report
         return self._generate_development_report(metrics)
 
-    def _check_stage_completion(self, metrics: Dict[str, float]) -> bool:
+    def _check_stage_completion(self, metrics: dict[str, float]) -> bool:
         """Check if current stage requirements are met"""
         stage = self.stages[self.current_stage]
         

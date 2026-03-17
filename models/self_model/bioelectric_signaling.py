@@ -1,6 +1,7 @@
+from __future__ import annotations
+
 import torch
 import torch.nn as nn
-from typing import Dict, List, Optional, Tuple
 
 class BioelectricSignalingNetwork(nn.Module):
     """
@@ -13,7 +14,7 @@ class BioelectricSignalingNetwork(nn.Module):
     3. Self-organizes into functional cognitive units
     """
     
-    def __init__(self, config: Dict):
+    def __init__(self, config: dict):
         super().__init__()
         self.field_dim = config.get('field_dimension', 128)
         self.num_channels = config.get('bioelectric_channels', 8)
@@ -34,7 +35,7 @@ class BioelectricSignalingNetwork(nn.Module):
             dropout=config.get('gap_junction_dropout', 0.1)
         )
     
-    def forward(self, component_states: Dict[str, torch.Tensor]) -> Dict[str, torch.Tensor]:
+    def forward(self, component_states: dict[str, torch.Tensor]) -> dict[str, torch.Tensor]:
         """Process states through bioelectric signaling network"""
         # Project component states to bioelectric fields
         fields = {}

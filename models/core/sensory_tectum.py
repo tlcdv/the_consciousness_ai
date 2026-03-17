@@ -1,7 +1,9 @@
+from __future__ import annotations
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from typing import Dict, Tuple, Optional, Any
+from typing import Any
 
 from models.core.retinotopic_encoder import RetinotopicEncoder
 from models.core.capsule_composition import HierarchicalCapsuleComposition
@@ -116,7 +118,7 @@ class TopographicMap(nn.Module):
         return projected.view(B, self.feature_dim, self.grid_size, self.grid_size)
 
     def forward(self, visual_grid: torch.Tensor, audio_spatial: torch.Tensor,
-                body_schema: Optional[torch.Tensor] = None) -> torch.Tensor:
+                body_schema: torch.Tensor | None = None) -> torch.Tensor:
         """
         Fuses visual, spatial audio, and somatosensory input into a single
         topographic map using inverse effectiveness.
@@ -186,10 +188,10 @@ class RSSMCore(nn.Module):
         )
         
     def step(self, 
-             obs_map: Optional[torch.Tensor], 
+             obs_map: torch.Tensor | None, 
              h_prev: torch.Tensor, 
              z_prev: torch.Tensor, 
-             action: Optional[torch.Tensor] = None) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
+             action: torch.Tensor | None = None) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
         """
         RSSM forward step.
         If obs_map is provided: calculates posterior (z_t|obs, h_t)
@@ -237,7 +239,7 @@ class SensoryTectum(nn.Module):
     The full midbrain sensory integration layer.
     Replaces raw visual/audio processing with a coherent, spatial world model.
     """
-    def __init__(self, config: Dict):
+    def __init__(self, config: dict):
         super().__init__()
         self.feature_dim = config.get("tectum_feature_dim", 64)
         self.grid_size = config.get("tectum_grid_size", 16)
@@ -288,7 +290,7 @@ class SensoryTectum(nn.Module):
         self.z_state[:, :, 0, :, :] = 1.0 
         
     def forward(self, vision_features: torch.Tensor, audio_spatial: torch.Tensor,
-                body_schema: Optional[torch.Tensor] = None) -> Tuple[torch.Tensor, float]:
+                body_schema: torch.Tensor | None = None) -> tuple[torch.Tensor, float]:
         """
         Process incoming streams, update the world model, and generate a bid for the workspace.
 
@@ -348,7 +350,7 @@ class SensoryTectum(nn.Module):
         return workspace_content, bid
 
     def get_capsule_payload(self):
-        # type: () -> Dict[str, Any]
+        # type: () -> dict[str, Any]
         """Returns cached capsule state for structured workspace payloads."""
         if self._last_capsule_poses is None:
             return {}

@@ -7,8 +7,9 @@ This module implements:
 3. Development milestone validation
 4. Integration with emotional and memory systems
 """
+from __future__ import annotations
 
-from typing import Dict, Any
+from typing import Any
 import torch
 import numpy as np
 from dataclasses import dataclass
@@ -294,7 +295,7 @@ class ConsciousnessMonitor:
             print(f"Step {step}: Capability tester not available.")
             return {"status": "Capability tester not initialized."}
 
-    def evaluate_current_state(self) -> Dict[str, Any]:
+    def evaluate_current_state(self) -> dict[str, Any]:
         """Evaluate the current consciousness state without arguments.
         Pulls state from core if available, otherwise returns baseline metrics."""
         state = {}
@@ -319,7 +320,7 @@ class ConsciousnessMonitor:
 
     def evaluate_development(self, current_state=None, emotion_values=None,
                              attention_metrics=None, stress_level=0.0,
-                             self_model_state=None, memory_state=None) -> Dict[str, Any]:
+                             self_model_state=None, memory_state=None) -> dict[str, Any]:
         """Evaluate consciousness development progress.
         Supports multiple call signatures used by different tests."""
         self.step_count += 1
@@ -352,7 +353,7 @@ class ConsciousnessMonitor:
         }
 
     def evaluate_state(self, consciousness_state=None, emotional_context=None,
-                       attention_metrics=None, **kwargs) -> Dict[str, Any]:
+                       attention_metrics=None, **kwargs) -> dict[str, Any]:
         """Evaluate a given consciousness state with emotional and attention context."""
         self.step_count += 1
         if isinstance(attention_metrics, dict):

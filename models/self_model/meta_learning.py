@@ -8,11 +8,11 @@ Implements meta-learning for self-model adaptation through:
 
 Based on the holonic principles described in the research paper.
 """
+from __future__ import annotations
 
 import torch
 import torch.nn as nn
 import numpy as np
-from typing import Dict, List, Optional, Tuple
 
 class ConsciousnessMetaLearner(nn.Module):
     """
@@ -22,7 +22,7 @@ class ConsciousnessMetaLearner(nn.Module):
     3. Architecture search for optimal self-representation
     """
 
-    def __init__(self, config: Dict):
+    def __init__(self, config: dict):
         super(ConsciousnessMetaLearner, self).__init__()
         self.config = config
         
@@ -70,13 +70,13 @@ class ConsciousnessMetaLearner(nn.Module):
     def adapt_learning(
         self,
         current_state: torch.Tensor,
-        emotional_context: Dict[str, float]
-    ) -> Tuple[float, float]:
+        emotional_context: dict[str, float]
+    ) -> tuple[float, float]:
         """
         Adapt learning parameters based on current state and emotions
         
         Returns:
-            Tuple containing:
+            tuple containing:
             - Adapted learning rate
             - Loss modulation factor
         """
@@ -95,15 +95,15 @@ class ConsciousnessMetaLearner(nn.Module):
 
     def update_architecture(
         self,
-        performance_metrics: Dict[str, float]
-    ) -> Dict[str, torch.Tensor]:
+        performance_metrics: dict[str, float]
+    ) -> dict[str, torch.Tensor]:
         """Update architecture based on performance metrics"""
         # TODO: Implement architecture search
         pass
 
     def compute_learning_rate(self, 
-                             emotional_state: Dict[str, float],
-                             success_rate: Optional[float] = None,
+                             emotional_state: dict[str, float],
+                             success_rate: float | None = None,
                              consciousness_level: float = 0.5) -> float:
         """Calculate adaptive learning rate based on emotions and performance
         
@@ -171,7 +171,7 @@ class ConsciousnessMetaLearner(nn.Module):
             
         return sum(self.success_history) / len(self.success_history)
         
-    def update_emotion_weights(self, reward: float, emotions: Dict[str, float]):
+    def update_emotion_weights(self, reward: float, emotions: dict[str, float]):
         """Update emotion weights based on rewards
         
         Args:
@@ -189,10 +189,10 @@ class ConsciousnessMetaLearner(nn.Module):
                 update = self.adaptation_rate * reward * value
                 self.emotion_weights[emotion] += update
                 
-    def get_emotion_weights(self) -> Dict[str, float]:
+    def get_emotion_weights(self) -> dict[str, float]:
         """Get current emotion weights
         
         Returns:
-            Dict of emotion weights
+            dict of emotion weights
         """
         return dict(self.emotion_weights)

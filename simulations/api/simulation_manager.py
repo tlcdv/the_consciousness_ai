@@ -1,7 +1,9 @@
+from __future__ import annotations
+
 import pandas as pd
 from threading import Lock
 import subprocess
-from typing import Dict, Any, Optional, List
+from typing import Any
 from dataclasses import dataclass
 import numpy as np
 import torch
@@ -43,7 +45,7 @@ class SimulationConfig:
     narrative_max_length: int = 128
     # Removed Pavilion-specific flag and config
     # use_pavilion: bool = True
-    # pavilion_config: Optional[Dict] = None
+    # pavilion_config: dict | None = None
 
 
 class SimulationManager:
@@ -65,8 +67,8 @@ class SimulationManager:
         logging.info("Simulation Manager initialized with config: %s", config)
 
         # Tracking metrics.
-        self.episode_rewards: List[float] = []
-        self.emotion_history: List[Dict[str, float]] = []
+        self.episode_rewards: list[float] = []
+        self.emotion_history: list[dict[str, float]] = []
         self.current_scenario = None
 
         # Defer heavy component initialization, wrap in try/except so tests can still instantiate
@@ -101,7 +103,7 @@ class SimulationManager:
             self.consciousness_gate = None
             self.global_gating = None
 
-    def run_interaction(self, agent, environment, max_steps=None) -> Dict[str, Any]:
+    def run_interaction(self, agent, environment, max_steps=None) -> dict[str, Any]:
         """Synchronous interaction loop for testing."""
         sim_cfg = self.config.get('simulation', {}) if isinstance(self.config, dict) else {}
         max_steps = max_steps or sim_cfg.get('max_steps', 100)
@@ -147,7 +149,7 @@ class SimulationManager:
         except Exception as e:
             print(f"Error loading datasets: {e}")
 
-    async def run_interaction_episode(self, agent, environment) -> Dict[str, Any]:
+    async def run_interaction_episode(self, agent, environment) -> dict[str, Any]:
         try:
             episode_data = []
             state = environment.reset()
@@ -212,7 +214,7 @@ class SimulationManager:
             logging.error("Episode execution failed: %s", e)
             raise
 
-    def get_performance_metrics(self) -> Dict[str, Any]:
+    def get_performance_metrics(self) -> dict[str, Any]:
         """
         Get current learning and performance metrics.
         """

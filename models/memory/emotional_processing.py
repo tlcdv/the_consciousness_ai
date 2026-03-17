@@ -9,10 +9,10 @@ Implements advanced emotional processing features:
 
 Based on MANN architecture for holonic consciousness development.
 """
+from __future__ import annotations
 
 import torch
 import torch.nn as nn
-from typing import Dict, List, Optional, Tuple
 from dataclasses import dataclass
 
 class MetaEmotionalLearner(nn.Module):
@@ -45,7 +45,7 @@ class EmotionalProcessingCore(nn.Module):
     Implements advanced emotional processing and integration
     """
 
-    def __init__(self, config: Dict):
+    def __init__(self, config: dict):
         super().__init__()
         
         # Primary emotion processing
@@ -78,10 +78,10 @@ class EmotionalProcessingCore(nn.Module):
 
     def process_emotion(
         self,
-        emotional_state: Dict[str, float],
-        social_context: Optional[Dict] = None,
-        temporal_history: Optional[List[Dict]] = None
-    ) -> Tuple[torch.Tensor, Dict]:
+        emotional_state: dict[str, float],
+        social_context: dict | None = None,
+        temporal_history: list[dict] | None = None
+    ) -> tuple[torch.Tensor, dict]:
         """
         Process emotional input with social and temporal context
         """
@@ -125,9 +125,9 @@ class EmotionalProcessingCore(nn.Module):
 
     def _update_metrics(
         self,
-        emotional_state: Dict[str, float],
-        social_context: Optional[Dict],
-        temporal_history: Optional[List[Dict]]
+        emotional_state: dict[str, float],
+        social_context: dict | None,
+        temporal_history: list[dict] | None
     ):
         """Update emotional processing metrics"""
         self.metrics.emotional_stability = self._calculate_emotional_stability(

@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from abc import ABC, abstractmethod
 from typing import Dict, Any
 
@@ -12,7 +14,7 @@ class EmotionProcessingInterface(ABC):
     Defines the method for updating the internal emotional state.
     """
 
-    def __init__(self, config: Dict):
+    def __init__(self, config: dict):
         """
         Initializes the emotion processing module with its specific configuration.
         """

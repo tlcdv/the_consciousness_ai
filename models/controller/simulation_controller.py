@@ -1,9 +1,10 @@
+from __future__ import annotations
+
 # models/controller/simulation_controller.py
 
 import numpy as np
 import torch
 import logging
-from typing import Dict, List, Optional, Tuple
 from dataclasses import dataclass
 from models.core.consciousness_core import ConsciousnessCore
 from models.evaluation.consciousness_monitor import ConsciousnessMonitor
@@ -47,7 +48,7 @@ class ConsciousnessSimulationController:
     Integrates emotional learning, attention mechanisms, and memory systems.
     """
     
-    def __init__(self, config: Dict):
+    def __init__(self, config: dict):
         """Initialize simulation controller"""
         self.config = config
         
@@ -62,9 +63,9 @@ class ConsciousnessSimulationController:
         
     def run_development_episode(
         self,
-        scenario_config: Dict,
-        agent_config: Dict
-    ) -> Dict[str, float]:
+        scenario_config: dict,
+        agent_config: dict
+    ) -> dict[str, float]:
         """Run a single consciousness development episode"""
         # Generate scenario
         scenario = self._generate_scenario(scenario_config)
@@ -96,7 +97,7 @@ class ConsciousnessSimulationController:
             
         return self._summarize_metrics(episode_metrics)
         
-    def _get_initial_state(self, scenario: Dict) -> Dict:
+    def _get_initial_state(self, scenario: dict) -> dict:
         """Get initial state for scenario"""
         return {
             'text': scenario.get('description', ''),
@@ -112,8 +113,8 @@ class ConsciousnessSimulationController:
     def _execute_action(
         self,
         action: torch.Tensor,
-        scenario: Dict
-    ) -> Tuple[Dict, float, bool, Dict]:
+        scenario: dict
+    ) -> tuple[dict, float, bool, dict]:
         """Execute action in simulation"""
         # Implementation depends on specific simulation environment
         raise NotImplementedError
@@ -124,10 +125,10 @@ class ConsciousnessSimulationController:
         
     def _calculate_episode_results(
         self,
-        episode_data: List[Dict],
+        episode_data: list[dict],
         total_reward: float,
-        evaluation: Dict
-    ) -> Dict:
+        evaluation: dict
+    ) -> dict:
         """Calculate episode results and metrics"""
         return {
             'total_reward': total_reward,
@@ -149,7 +150,7 @@ class ConsciousnessSimulationController:
         
         return float(np.mean(recent_rewards) - np.mean(previous_rewards))
         
-    def _log_episode_progress(self, results: Dict):
+    def _log_episode_progress(self, results: dict):
         """Log episode progress"""
         msg = f"\nEpisode {self.metrics.episode_count} Results:\n"
         msg += f"Total Reward: {results['total_reward']:.3f}\n"

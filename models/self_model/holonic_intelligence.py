@@ -1,6 +1,8 @@
+from __future__ import annotations
+
 import torch
 import torch.nn as nn
-from typing import Dict, List, Any
+from typing import Any
 from models.self_model.bioelectric_signaling import BioelectricSignalingNetwork
 
 class HolonUnit(nn.Module):
@@ -14,7 +16,7 @@ class HolonUnit(nn.Module):
     3. Communicates with other holons through bioelectric signaling
     4. Participates in collective decision-making
     """
-    def __init__(self, config: Dict, id: int):
+    def __init__(self, config: dict, id: int):
         super().__init__()
         self.id = id
         self.hidden_size = config['hidden_size']
@@ -38,7 +40,7 @@ class HolonUnit(nn.Module):
         # Communication channel
         self.communication_channel = nn.Linear(self.hidden_size, self.hidden_size)
     
-    def process(self, input_state: torch.Tensor) -> Dict[str, torch.Tensor]:
+    def process(self, input_state: torch.Tensor) -> dict[str, torch.Tensor]:
         # Generate holonic state
         holon_state = self.state_network(input_state)
         
@@ -66,7 +68,7 @@ class HolonicSystem(nn.Module):
     2. Self-organization through bioelectric signaling
     3. Autonomous yet interconnected cognitive units
     """
-    def __init__(self, config: Dict):
+    def __init__(self, config: dict):
         super().__init__()
         self.num_holons = config.get('num_holons', 8)
         
@@ -84,7 +86,7 @@ class HolonicSystem(nn.Module):
             num_heads=config.get('integration_heads', 4)
         )
     
-    def forward(self, input_states: torch.Tensor) -> Dict[str, Any]:
+    def forward(self, input_states: torch.Tensor) -> dict[str, Any]:
         # Process inputs through individual holons
         holon_outputs = [holon.process(input_states) for holon in self.holons]
         

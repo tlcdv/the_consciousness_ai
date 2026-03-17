@@ -1,7 +1,6 @@
 # simulations/scenarios/consciousness_scenarios.py
 
 import logging
-from typing import Dict, List, Optional
 from dataclasses import dataclass
 from enum import Enum
 import numpy as np
@@ -71,7 +70,7 @@ class ConsciousnessScenarioGenerator:
         difficulty: float = 0.5,
         stress_level: float = 0.7,
         scenario_type: str = "survival"
-    ) -> Dict:
+    ) -> dict:
         """Generate consciousness development scenario"""
         # Configure base scenario
         scenario_config = {
@@ -92,7 +91,7 @@ class ConsciousnessScenarioGenerator:
         
         return self._build_scenario_descriptor(scenario_id, scenario_config)
 
-    def _get_evaluation_metrics(self) -> Dict:
+    def _get_evaluation_metrics(self) -> dict:
         """Return default evaluation metrics for a scenario."""
         return {
             'attention_threshold': 0.7,
@@ -100,7 +99,7 @@ class ConsciousnessScenarioGenerator:
             'emotional_coherence': 0.5,
         }
 
-    def _build_scenario_descriptor(self, scenario_id, config=None) -> Dict:
+    def _build_scenario_descriptor(self, scenario_id, config=None) -> dict:
         """Build a descriptor dict for a generated scenario."""
         import torch
         cfg = config or {}
@@ -118,7 +117,7 @@ class ConsciousnessScenarioGenerator:
             'attention': {'attention_level': random.uniform(0.5, 0.9)},
         }
 
-    def _generate_survival_scenario(self) -> Dict:
+    def _generate_survival_scenario(self) -> dict:
         """Generate survival-based scenario"""
         # Create stressful situation to trigger attention
         stress_params = {
@@ -137,7 +136,7 @@ class ConsciousnessScenarioGenerator:
             }
         }
         
-    def _generate_social_scenario(self) -> Dict:
+    def _generate_social_scenario(self) -> dict:
         """Generate social interaction scenario"""
         scenario = {
             'type': ScenarioType.SOCIAL,
@@ -161,7 +160,7 @@ class ConsciousnessScenarioGenerator:
         attention_level: float,
         interaction_quality: float,
         success_rate: float
-    ) -> Dict:
+    ) -> dict:
         """Evaluate scenario performance"""
         
         # Track metrics
@@ -196,7 +195,7 @@ class ConsciousnessScenarioGenerator:
             success >= self.config.success_threshold
         )
         
-    def get_scenario_stats(self) -> Dict:
+    def get_scenario_stats(self) -> dict:
         """Get current scenario statistics"""
         if not self.attention_history:
             return {}

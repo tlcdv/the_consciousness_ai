@@ -12,8 +12,8 @@ Dependencies:
 - models/memory/emotional_memory_core.py for memory storage
 - models/evaluation/consciousness_monitor.py for metrics
 """
+from __future__ import annotations
 
-from typing import Dict, List, Optional, Tuple
 import torch
 from dataclasses import dataclass
 from models.emotion.tgnn.emotional_graph import EmotionalGraphNetwork as EmotionalGraphNN
@@ -23,12 +23,12 @@ class Intention:
     """Tracks current intention state"""
     goal: str
     priority: float
-    emotional_context: Dict[str, float]
+    emotional_context: dict[str, float]
     attention_required: float
     completion_status: float
 
 class IntentionTracker:
-    def __init__(self, config: Dict):
+    def __init__(self, config: dict):
         """Initialize intention tracking system"""
         self.config = config
         self.active_intentions = []
@@ -38,8 +38,8 @@ class IntentionTracker:
     def add_intention(
         self,
         goal: str,
-        emotional_context: Dict[str, float],
-        priority: Optional[float] = None
+        emotional_context: dict[str, float],
+        priority: float | None = None
     ) -> str:
         """Add new intention to tracking"""
         # Create intention object

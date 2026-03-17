@@ -1,7 +1,9 @@
+from __future__ import annotations
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from typing import Dict, Tuple, Any
+from typing import Any
 
 class SomatotopicMap(nn.Module):
     """
@@ -117,7 +119,7 @@ class ProprioceptiveProcessor(nn.Module):
             nn.Sigmoid() # Bid is always [0, 1]
         )
         
-    def forward(self, raw_proprioception: torch.Tensor, collision_flags: torch.Tensor = None) -> Tuple[torch.Tensor, float]:
+    def forward(self, raw_proprioception: torch.Tensor, collision_flags: torch.Tensor = None) -> tuple[torch.Tensor, float]:
         """
         Processes physical state and estimates salience (e.g. pain/contact = high bid).
         

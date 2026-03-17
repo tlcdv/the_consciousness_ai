@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from abc import ABC, abstractmethod
 from typing import Dict, Any
 
@@ -14,7 +16,7 @@ class SelfRepresentationInterface(ABC):
     Defines methods for updating and querying the agent's self-model.
     """
 
-    def __init__(self, config: Dict):
+    def __init__(self, config: dict):
         """
         Initializes the self-representation module with its specific configuration.
         """

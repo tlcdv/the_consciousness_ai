@@ -12,7 +12,7 @@ Validates:
 import unittest
 import torch
 import numpy as np
-from typing import Dict, Any, Tuple, Optional
+from typing import Any
 
 from models.core.reentrant_processor import ReentrantProcessor, SettleResult
 
@@ -325,7 +325,7 @@ class TestPredictionError(unittest.TestCase):
         self.assertGreater(pe, 0.0)
     
     def test_dict_broadcast_comparison(self):
-        """Dict broadcasts should compare by keys."""
+        """dict broadcasts should compare by keys."""
         a = {"vision": "cat", "emotion": "happy"}
         b = {"vision": "cat", "emotion": "sad"}
         pe = self.processor._compute_prediction_error(a, b)

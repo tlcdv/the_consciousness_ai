@@ -1,10 +1,11 @@
+from __future__ import annotations
+
 # models/memory/emotional_integration.py
 
 import time
 
 import torch
 import torch.nn as nn
-from typing import Dict, List, Optional, Tuple
 from dataclasses import dataclass
 
 @dataclass
@@ -29,7 +30,7 @@ class EmotionalMemoryIntegration(nn.Module):
     4. Consciousness-weighted memory retrieval
     """
     
-    def __init__(self, config: Dict):
+    def __init__(self, config: dict):
         super().__init__()
         self.config = config
         
@@ -64,10 +65,10 @@ class EmotionalMemoryIntegration(nn.Module):
         
     def forward(
         self,
-        emotional_input: Dict[str, torch.Tensor],
-        memory_context: Optional[torch.Tensor] = None,
-        attention_state: Optional[Dict] = None
-    ) -> Tuple[torch.Tensor, Dict]:
+        emotional_input: dict[str, torch.Tensor],
+        memory_context: torch.Tensor | None = None,
+        attention_state: dict | None = None
+    ) -> tuple[torch.Tensor, dict]:
         """Process emotional input with memory integration"""
         
         # Embed emotional state
@@ -117,9 +118,9 @@ class EmotionalMemoryIntegration(nn.Module):
         
     def _update_state(
         self,
-        emotional_input: Dict[str, torch.Tensor],
-        attention_state: Optional[Dict],
-        attention_weights: Optional[torch.Tensor]
+        emotional_input: dict[str, torch.Tensor],
+        attention_state: dict | None,
+        attention_weights: torch.Tensor | None
     ):
         """Update emotional memory state"""
         # Update emotional components
@@ -140,7 +141,7 @@ class EmotionalMemoryIntegration(nn.Module):
             
     def _is_significant_experience(
         self,
-        emotional_input: Dict[str, torch.Tensor]
+        emotional_input: dict[str, torch.Tensor]
     ) -> bool:
         """Improved experience significance detection"""
         emotional_intensity = sum(abs(v) for v in emotional_input.values()) / len(emotional_input)
@@ -153,9 +154,9 @@ class EmotionalMemoryIntegration(nn.Module):
         
     def _store_experience(
         self,
-        emotional_state: Dict[str, torch.Tensor],
+        emotional_state: dict[str, torch.Tensor],
         fused_state: torch.Tensor,
-        attention_state: Optional[Dict]
+        attention_state: dict | None
     ):
         """Store significant experience in memory buffer"""
         experience = {
@@ -171,7 +172,7 @@ class EmotionalMemoryIntegration(nn.Module):
         if len(self.memory_buffer) > self.config.get('max_memories', 1000):
             self.memory_buffer = self.memory_buffer[-self.config.get('max_memories', 1000):]
             
-    def get_state(self) -> Dict:
+    def get_state(self) -> dict:
         """Get current emotional memory state"""
         return {
             'emotional_valence': self.state.emotional_valence,
@@ -207,9 +208,9 @@ class EmotionalIntegrator:
         
     def integrate_experience(
         self,
-        state: Dict,
-        emotion_values: Dict[str, float],
-        social_context: Optional[Dict] = None
+        state: dict,
+        emotion_values: dict[str, float],
+        social_context: dict | None = None
     ):
         # Process emotional context
         emotional_embedding = self._embed_emotional_state(emotion_values)

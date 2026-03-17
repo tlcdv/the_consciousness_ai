@@ -10,10 +10,10 @@ Implements fusion of multiple gating mechanisms for consciousness development:
 Based on a holonic MANN approach: each component functions independently
 and also as part of the larger system.
 """
+from __future__ import annotations
 
 import torch
 import torch.nn as nn
-from typing import Dict, List, Optional, Tuple
 from dataclasses import dataclass
 
 @dataclass
@@ -37,7 +37,7 @@ class GateFusion(nn.Module):
     4. Meta-learning for weight optimization
     """
 
-    def __init__(self, config: Dict):
+    def __init__(self, config: dict):
         super().__init__()
 
         self.attention_weighting = nn.Sequential(
@@ -88,9 +88,9 @@ class GateFusion(nn.Module):
         self,
         attention: torch.Tensor,
         emotional: torch.Tensor,
-        stress: Optional[torch.Tensor] = None,
-        temporal: Optional[torch.Tensor] = None
-    ) -> Tuple[torch.Tensor, Dict[str, float]]:
+        stress: torch.Tensor | None = None,
+        temporal: torch.Tensor | None = None
+    ) -> tuple[torch.Tensor, dict[str, float]]:
         """
         Fuse multiple gating signals.
 
@@ -142,9 +142,9 @@ class GateFusion(nn.Module):
         self,
         attention_weight: torch.Tensor,
         emotional_weight: torch.Tensor,
-        stress_weight: Optional[torch.Tensor] = None,
-        temporal_weight: Optional[torch.Tensor] = None,
-        fused: Optional[torch.Tensor] = None
+        stress_weight: torch.Tensor | None = None,
+        temporal_weight: torch.Tensor | None = None,
+        fused: torch.Tensor | None = None
     ) -> None:
         """Updates internal metric tracking."""
         self.metrics.attention_weight = float(attention_weight.mean().item())
@@ -183,7 +183,7 @@ class GateFusion(nn.Module):
 
         return (stability + coherence) / 2.0
 
-    def get_metrics(self) -> Dict[str, float]:
+    def get_metrics(self) -> dict[str, float]:
         """Returns current fusion metrics as a dict."""
         return {
             'attention_weight': self.metrics.attention_weight,

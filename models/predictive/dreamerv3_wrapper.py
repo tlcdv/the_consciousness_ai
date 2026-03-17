@@ -12,9 +12,9 @@ Dependencies:
 - models/memory/emotional_memory_core.py for memory context
 - models/evaluation/consciousness_monitor.py for metrics
 """
+from __future__ import annotations
 
 import torch
-from typing import Dict, Optional, Tuple
 from dataclasses import dataclass
 
 # Replace with actual imports once they exist in your codebase.
@@ -27,12 +27,12 @@ class WorldModelState:
     """Tracks world model internal state."""
     hidden_state: torch.Tensor
     memory_state: torch.Tensor
-    emotional_context: Dict[str, float]
+    emotional_context: dict[str, float]
     prediction_confidence: float
 
 
 class DreamerV3Wrapper:
-    def __init__(self, config: Dict):
+    def __init__(self, config: dict):
         """
         Initialize DreamerV3 wrapper.
         
@@ -47,9 +47,9 @@ class DreamerV3Wrapper:
     def process_experience(
         self,
         observation: torch.Tensor,
-        action: Optional[torch.Tensor] = None,
-        emotional_context: Optional[Dict[str, float]] = None
-    ) -> Tuple[WorldModelState, Dict[str, float]]:
+        action: torch.Tensor | None = None,
+        emotional_context: dict[str, float] | None = None
+    ) -> tuple[WorldModelState, dict[str, float]]:
         """
         Process new experience through the world model.
         
@@ -87,8 +87,8 @@ class DreamerV3Wrapper:
     def _update_world_model(
         self,
         observation: torch.Tensor,
-        action: Optional[torch.Tensor],
-        emotion: Dict[str, float]
+        action: torch.Tensor | None,
+        emotion: dict[str, float]
     ) -> WorldModelState:
         """
         Update the internal representation of the world model.
@@ -140,7 +140,7 @@ class DreamerV3Wrapper:
     def _calculate_emotional_alignment(
         self,
         predictions: torch.Tensor,
-        emotional_context: Dict[str, float]
+        emotional_context: dict[str, float]
     ) -> float:
         """
         Calculate how well the predictions align with emotional context.

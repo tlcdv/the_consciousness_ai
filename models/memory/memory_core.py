@@ -12,9 +12,9 @@ Dependencies:
 - models/memory/emotional_indexing.py for emotional context
 - models/memory/temporal_coherence.py for sequence tracking
 """
+from __future__ import annotations
 
 import time
-from typing import Dict, List, Optional
 import torch
 import numpy as np
 from dataclasses import dataclass
@@ -22,7 +22,7 @@ from dataclasses import dataclass
 # Placeholder imports for references in the code.
 # Replace these with the real classes if they exist.
 class EmotionalGraphNetwork:
-    def get_embedding(self, emotion_values: Dict[str, float]) -> torch.Tensor:
+    def get_embedding(self, emotion_values: dict[str, float]) -> torch.Tensor:
         """
         Placeholder method to create an embedding from emotion_values.
         """
@@ -41,10 +41,10 @@ class PineconeIndexStub:
     Placeholder Pinecone-like index stub. 
     Replace with actual pinecone.Index usage in production.
     """
-    def upsert(self, vectors: List):
+    def upsert(self, vectors: list):
         pass
 
-    def query(self, vector: List[float], top_k: int, include_metadata: bool):
+    def query(self, vector: list[float], top_k: int, include_metadata: bool):
         # Return a placeholder result with empty matches.
         class Match:
             def __init__(self, _id):
@@ -120,12 +120,12 @@ class MemoryCore:
         self.config = config
 
         # Internal storage for non-vector-based memory.
-        self.storage: Dict[str, Dict] = {}
-        self.temporal_index: List[str] = []
+        self.storage: dict[str, dict] = {}
+        self.temporal_index: list[str] = []
         self.emotion_network = EmotionalGraphNetwork()
         self.consciousness_metrics = ConsciousnessMetrics(config)
         self.metrics = MemoryMetrics()
-        self.recent_experiences: List[Dict] = []
+        self.recent_experiences: list[dict] = []
 
         # Pinecone or other vector store setup.
         self.pinecone = PineconeStub(
@@ -137,7 +137,7 @@ class MemoryCore:
         # Attention threshold for deciding whether to store a vector in Pinecone.
         self.attention_threshold = self.config.attention_threshold
 
-    def store(self, memory_content: torch.Tensor, metadata: Dict[str, float]) -> str:
+    def store(self, memory_content: torch.Tensor, metadata: dict[str, float]) -> str:
         """
         Store a new memory entry in local storage (non-vector).
         
@@ -167,9 +167,9 @@ class MemoryCore:
         state: torch.Tensor,
         action: torch.Tensor,
         reward: float,
-        emotion_values: Dict[str, float],
+        emotion_values: dict[str, float],
         attention_level: float,
-        narrative: Optional[str] = None
+        narrative: str | None = None
     ) -> str:
         """
         Store an experience with emotional context in the vector store
@@ -221,9 +221,9 @@ class MemoryCore:
     def get_similar_experiences(
         self,
         query_vector: torch.Tensor,
-        emotion_context: Optional[Dict[str, float]] = None,
+        emotion_context: dict[str, float] | None = None,
         k: int = 5
-    ) -> List[Dict]:
+    ) -> list[dict]:
         """
         Retrieve similar experiences from the vector store,
         optionally including emotional context.
@@ -299,7 +299,7 @@ class MemoryCore:
         """Get current timestamp as a float."""
         return time.time()
 
-    def _update_indices(self, memory_id: str, memory_entry: Dict) -> None:
+    def _update_indices(self, memory_id: str, memory_entry: dict) -> None:
         """
         Update in-memory or external indices for quick lookups.
         Placeholder if you need advanced indexing logic.
@@ -373,7 +373,7 @@ class MemoryCore:
         """
         return 0.0
 
-    def get_metrics(self) -> Dict[str, float]:
+    def get_metrics(self) -> dict[str, float]:
         """
         Return current memory metrics as a dictionary.
         """
@@ -385,7 +385,7 @@ class MemoryCore:
             "narrative_alignment": self.metrics.narrative_alignment
         }
 
-    def store_adaptation(self, adaptation_data: Dict) -> None:
+    def store_adaptation(self, adaptation_data: dict) -> None:
         """
         Placeholder for storing meta-learning adaptation records.
         If your meta-learner calls this, define the logic to store it.

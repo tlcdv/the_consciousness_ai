@@ -9,10 +9,11 @@ Implements dynamic self-model generation and maintenance through:
 
 Based on the research paper's MANN architecture and holon concept.
 """
+from __future__ import annotations
 
 import torch
 import torch.nn as nn
-from typing import Dict, Optional, List, Tuple, Any
+from typing import Any
 from dataclasses import dataclass
 import numpy as np
 import time
@@ -26,18 +27,18 @@ class SelfState:
     name: str = "The Consciousness AI"
     
     # Current state tracking
-    emotional_state: Dict[str, float] = None
-    attention_focus: Dict[str, float] = None
-    confidence_levels: Dict[str, float] = None
+    emotional_state: dict[str, float] = None
+    attention_focus: dict[str, float] = None
+    confidence_levels: dict[str, float] = None
     
     # Meta-cognitive components
-    knowledge_domains: Dict[str, float] = None  # Domain: confidence level
-    knowledge_boundaries: List[str] = None      # Known knowledge gaps
+    knowledge_domains: dict[str, float] = None  # Domain: confidence level
+    knowledge_boundaries: list[str] = None      # Known knowledge gaps
     temporal_continuity: float = 0.0
     
     # Self-reflection components
-    beliefs: Dict[str, Any] = None
-    intentions: Dict[str, Any] = None
+    beliefs: dict[str, Any] = None
+    intentions: dict[str, Any] = None
     learning_recognition: float = 0.0
     stability: float = 0.0
     
@@ -46,8 +47,8 @@ class SelfState:
     
     # Biological Self components (Phase 5)
     body_schema: torch.Tensor = None            # Spatial representation of the physical self
-    interoceptive_state: Dict[str, float] = None # Internal needs (energy, damage, fatigue)
-    capability_model: Dict[str, float] = None    # Action-to-outcome confidence mappings
+    interoceptive_state: dict[str, float] = None # Internal needs (energy, damage, fatigue)
+    capability_model: dict[str, float] = None    # Action-to-outcome confidence mappings
     
     def __post_init__(self):
         """Initialize empty containers"""
@@ -84,7 +85,7 @@ class SelfRepresentationCore:
     5. Temporal self-continuity
     """
     
-    def __init__(self, config: Dict):
+    def __init__(self, config: dict):
         self.config = config
         self.state = SelfState()
         self.state_history = []
@@ -95,14 +96,14 @@ class SelfRepresentationCore:
         
     def update_self_model(
         self,
-        current_state: Dict[str, Any],
+        current_state: dict[str, Any],
         attention_level: float,
-        action: Optional[np.ndarray] = None,
-        emotional_state: Optional[Dict] = None,
+        action: np.ndarray | None = None,
+        emotional_state: dict | None = None,
         rpe: float = 0.0,
-        social_feedback: Optional[Dict] = None,
-        timestamp: Optional[float] = None
-    ) -> Dict[str, Any]:
+        social_feedback: dict | None = None,
+        timestamp: float | None = None
+    ) -> dict[str, Any]:
         """
         Update the self-model based on new experience and feedback.
         This is the core integration point for Phase 5: every cognitive
@@ -166,7 +167,7 @@ class SelfRepresentationCore:
             'timestamp': timestamp
         }
     
-    def _update_interoceptive_state(self, action: Optional[np.ndarray], emotional_state: Dict) -> Dict:
+    def _update_interoceptive_state(self, action: np.ndarray | None, emotional_state: dict) -> dict:
         """
         Simulate homeostatic drive dynamics per Q7 of the biological research.
         Energy depletes with action magnitude. Fatigue accumulates.
@@ -196,11 +197,11 @@ class SelfRepresentationCore:
         
         return dict(intero)
         
-    def _integrate_social_feedback(self, social_embedding: torch.Tensor) -> Dict:
+    def _integrate_social_feedback(self, social_embedding: torch.Tensor) -> dict:
         """Integrate feedback from social interactions"""
         pass
     
-    def _update_epistemic_model(self, current_state: Dict[str, Any]) -> Dict:
+    def _update_epistemic_model(self, current_state: dict[str, Any]) -> dict:
         """
         Update the system's model of what it knows.
         
@@ -230,7 +231,7 @@ class SelfRepresentationCore:
             'boundaries_identified': self.state.knowledge_boundaries
         }
     
-    def _update_temporal_continuity(self, timestamp: float) -> Dict:
+    def _update_temporal_continuity(self, timestamp: float) -> dict:
         """Update the system's sense of continuity across time"""
         # Calculate temporal continuity based on consistency of self-representation
         if self.state_history:
@@ -256,7 +257,7 @@ class SelfRepresentationCore:
         
         return {'initialized': True}
     
-    def _update_confidence_calibration(self, prediction_outcomes: Dict) -> None:
+    def _update_confidence_calibration(self, prediction_outcomes: dict) -> None:
         """
         Update how well calibrated the system's confidence is with actual accuracy.
         
@@ -300,7 +301,7 @@ class SelfRepresentationCore:
         if len(self.state_history) > self.max_history:
             self.state_history = self.state_history[-self.max_history:]
     
-    def _calculate_state_similarity(self, current_state: SelfState, previous_snapshot: Optional[Dict]) -> float:
+    def _calculate_state_similarity(self, current_state: SelfState, previous_snapshot: dict | None) -> float:
         """
         Calculate similarity between current state and a previous snapshot.
         Uses emotional state cosine similarity as the primary metric.
@@ -341,7 +342,7 @@ class SelfRepresentationCore:
         # Weighted combination: 60% emotional, 40% interoceptive
         return 0.6 * ((cosine_sim + 1.0) / 2.0) + 0.4 * intero_sim
     
-    def get_current_state(self) -> Dict[str, Any]:
+    def get_current_state(self) -> dict[str, Any]:
         """Get the full current self-model state including Phase 5 biological fields."""
         return {
             'id': self.state.id,
@@ -381,7 +382,7 @@ class DirectExperienceLearner:
         self.config = config
         self.learning_rate = config.get("capability_lr", 0.1)
         
-    def __call__(self, action: Optional[np.ndarray], emotional_outcome: Dict[str, float], current_state: SelfState) -> Dict:
+    def __call__(self, action: np.ndarray | None, emotional_outcome: dict[str, float], current_state: SelfState) -> dict:
         if action is None:
             return {}
             
@@ -427,7 +428,7 @@ class MetaLearningModule:
         self.rpe_history = deque(maxlen=self.rpe_window_size)
         self.learning_velocity = 0.0
         
-    def __call__(self, rpe: float, current_state: SelfState) -> Dict:
+    def __call__(self, rpe: float, current_state: SelfState) -> dict:
         self.rpe_history.append(rpe)
         
         if len(self.rpe_history) < 10:

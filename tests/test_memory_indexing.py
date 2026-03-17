@@ -1,7 +1,6 @@
 import unittest
 import torch
 import numpy as np
-from typing import Dict
 from models.memory.emotional_indexing import EmotionalMemoryIndex
 from models.memory.emotional_memory_core import EmotionalMemoryCore
 # EmotionalGraphNetwork not used directly in these tests

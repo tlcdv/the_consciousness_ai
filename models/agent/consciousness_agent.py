@@ -1,8 +1,10 @@
+from __future__ import annotations
+
 import torch
 import numpy as np
 import logging
 import time
-from typing import Dict, Any, Tuple, Optional
+from typing import Any
 
 # Components
 from models.vision_language.qwen2.qwen2_integration import Qwen2VLIntegration
@@ -27,7 +29,7 @@ class ConsciousnessAgent:
     3. Workspace (GNW) -> Conscious State (Ignition)
     4. Action (PPO) -> Behavior
     """
-    def __init__(self, config: Dict[str, Any]):
+    def __init__(self, config: dict[str, Any]):
         self.config = config
         self.device = config.get("device", "cuda" if torch.cuda.is_available() else "cpu")
         
@@ -94,7 +96,7 @@ class ConsciousnessAgent:
         # We'll use a random projection if no real text encoder is loaded for this prototype
         self.text_projection = torch.randn(768, self.state_dim).to(self.device)
 
-    def step(self, observation: Any) -> Tuple[np.ndarray, Dict[str, Any]]:
+    def step(self, observation: Any) -> tuple[np.ndarray, dict[str, Any]]:
         """
         Main Cognitive Cycle.
         """
@@ -285,7 +287,7 @@ class ConsciousnessAgent:
                reward: float,
                next_state: np.ndarray,
                done: bool,
-               info: Dict[str, Any]):
+               info: dict[str, Any]):
         """
         Learning Step (Post-Action).
         Feeds result back to ActionSelectionCore.
@@ -306,7 +308,7 @@ class ConsciousnessAgent:
         metrics = self.action_core.update_policy()
         return metrics
 
-    def _evaluate_reflex_emotion(self, description: str) -> Dict[str, float]:
+    def _evaluate_reflex_emotion(self, description: str) -> dict[str, float]:
         """
         Heuristic 'Amygdala'.
         Decodes text to basic PAD (Pleasure-Arousal-Dominance) values.

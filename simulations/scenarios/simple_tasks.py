@@ -61,7 +61,7 @@ class SimpleTaskManager:
         """
         Retrieve all tasks that are not yet completed.
         Returns:
-            list: List of incomplete tasks.
+            list: list of incomplete tasks.
         """
         return [task for task in self.tasks if not task.completed]
 

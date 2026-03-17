@@ -16,11 +16,11 @@ References:
       eLife 2019
     - Kuramoto, "Chemical Oscillations, Waves, and Turbulence", Springer 1984
 """
+from __future__ import annotations
 
 import math
 import warnings
 from dataclasses import dataclass, field
-from typing import Optional, List, Tuple, Dict
 
 import numpy as np
 import torch
@@ -52,12 +52,12 @@ class SyncCurve:
 class ValidationResult:
     """Comparison result between AKOrN and Brian2 synchronization curves."""
     akorn_curve: SyncCurve
-    brian2_curve: Optional[SyncCurve]
+    brian2_curve: SyncCurve | None
     correlation: float                # Pearson correlation of R curves
     max_deviation: float              # max |R_akorn - R_brian2|
     mean_deviation: float             # mean |R_akorn - R_brian2|
     final_r_akorn: float
-    final_r_brian2: Optional[float]
+    final_r_brian2: float | None
     passed: bool                      # True if correlation > threshold
     method: str                       # "brian2" or "skipped"
     message: str = ""
@@ -157,7 +157,7 @@ def build_brian2_network(
     amplitudes: np.ndarray,
     initial_phases: np.ndarray,
     dt_ms: float = 1.0,
-) -> Tuple:
+) -> tuple:
     """
     Build a Brian2 network with Kuramoto dynamics equivalent to AKOrN.
 
@@ -181,7 +181,7 @@ def build_brian2_network(
         dt_ms: Integration timestep in milliseconds
 
     Returns:
-        Tuple of (NeuronGroup, Synapses, StateMonitor) Brian2 objects
+        tuple of (NeuronGroup, Synapses, StateMonitor) Brian2 objects
 
     Raises:
         RuntimeError: If Brian2 is not installed
@@ -316,7 +316,7 @@ def run_brian2_simulation(
 def _interpolate_to_common_times(
     curve_a: SyncCurve,
     curve_b: SyncCurve,
-) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
+) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
     """
     Interpolate both curves to a common time grid for comparison.
     Uses the curve with fewer points as the reference grid.
@@ -334,7 +334,7 @@ def _interpolate_to_common_times(
 
 def validate_binding(
     kuramoto: KuramotoLayer,
-    amplitudes: Optional[np.ndarray] = None,
+    amplitudes: np.ndarray | None = None,
     total_steps: int = 100,
     brian2_duration: float = 1.0,
     brian2_dt_ms: float = 1.0,
@@ -458,13 +458,13 @@ def validate_binding(
     )
 
 
-def translate_akorn_params(kuramoto: KuramotoLayer) -> Dict:
+def translate_akorn_params(kuramoto: KuramotoLayer) -> dict:
     """
     Extract all AKOrN parameters in a plain dict for inspection or
     manual Brian2 network construction.
 
     Returns:
-        Dict with keys: num_oscillators, dimensions, coupling_strength,
+        dict with keys: num_oscillators, dimensions, coupling_strength,
         natural_frequencies, coupling_matrix, dt
     """
     return {

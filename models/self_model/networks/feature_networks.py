@@ -12,10 +12,10 @@ Dependencies:
 - models/memory/emotional_memory_core.py for memory context
 - models/core/consciousness_core.py for attention
 """
+from __future__ import annotations
 
 import torch
 import torch.nn as nn
-from typing import Dict, List, Optional, Tuple
 
 class FeatureNetwork(nn.Module):
     def __init__(self, config=None):
@@ -53,8 +53,8 @@ class FeatureNetwork(nn.Module):
     def extract_features(
         self,
         visual_input: torch.Tensor,
-        emotional_context: Optional[Dict] = None
-    ) -> Tuple[torch.Tensor, Dict[str, float]]:
+        emotional_context: dict | None = None
+    ) -> tuple[torch.Tensor, dict[str, float]]:
         """Extract multimodal features"""
         # Extract visual features
         visual_features = self.visual_encoder(visual_input)
@@ -83,7 +83,7 @@ class EmotionalStateNetwork(nn.Module):
     Uses a transformer-based architecture for temporal emotion processing.
     """
     
-    def __init__(self, config: Dict):
+    def __init__(self, config: dict):
         super().__init__()
         self.hidden_dim = config['emotional_hidden_dim']
         
@@ -107,7 +107,7 @@ class EmotionalStateNetwork(nn.Module):
         # Output projection
         self.output_projector = nn.Linear(self.hidden_dim, config['embedding_dim'])
 
-    def forward(self, emotion_values: Dict[str, float]) -> torch.Tensor:
+    def forward(self, emotion_values: dict[str, float]) -> torch.Tensor:
         """Process emotional state into embedding"""
         # Convert emotion values to tensor
         emotion_tensor = self._dict_to_tensor(emotion_values)
@@ -127,7 +127,7 @@ class BehavioralNetwork(nn.Module):
     Implements behavioral pattern recognition through temporal convolutions.
     """
     
-    def __init__(self, config: Dict):
+    def __init__(self, config: dict):
         super().__init__()
         
         # Behavioral feature extraction
@@ -170,7 +170,7 @@ class SocialContextNetwork(nn.Module):
     Implements social learning through feedback integration.
     """
     
-    def __init__(self, config: Dict):
+    def __init__(self, config: dict):
         super().__init__()
         _get = config.get if isinstance(config, dict) else lambda k, d=None: getattr(config, k, d)
         social_dim = _get('social_dim', 64)
@@ -194,7 +194,7 @@ class SocialContextNetwork(nn.Module):
     def forward(
         self,
         social_context: torch.Tensor,
-        prev_representation: Optional[torch.Tensor] = None
+        prev_representation: torch.Tensor | None = None
     ) -> torch.Tensor:
         """Process social context and integrate with previous representation"""
         # Encode social context

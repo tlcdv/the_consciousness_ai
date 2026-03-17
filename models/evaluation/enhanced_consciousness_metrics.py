@@ -12,8 +12,8 @@ Dependencies:
 - models/memory/emotional_memory_core.py for memory validation
 - models/evaluation/consciousness_monitor.py for base metrics
 """
+from __future__ import annotations
 
-from typing import Dict, List, Optional, Tuple
 import torch
 import numpy as np
 from dataclasses import dataclass
@@ -44,7 +44,7 @@ class EnhancedConsciousnessEvaluator:
     Evaluates consciousness development across multiple dimensions
     """
     
-    def __init__(self, config: Dict):
+    def __init__(self, config: dict):
         self.config = config
         self.metrics = ConsciousnessMetrics()
         self.development_history = []
@@ -59,11 +59,11 @@ class EnhancedConsciousnessEvaluator:
 
     def evaluate_consciousness(
         self,
-        current_state: Dict,
-        memory_state: Dict,
-        self_model_state: Dict,
-        emotional_context: Optional[Dict] = None
-    ) -> Dict[str, float]:
+        current_state: dict,
+        memory_state: dict,
+        self_model_state: dict,
+        emotional_context: dict | None = None
+    ) -> dict[str, float]:
         """
         Comprehensive consciousness evaluation across all dimensions
         """
@@ -100,7 +100,7 @@ class EnhancedConsciousnessEvaluator:
         
         return self.get_metrics()
 
-    def _evaluate_self_model(self, self_model_state: Dict) -> float:
+    def _evaluate_self_model(self, self_model_state: dict) -> float:
         """Evaluate quality of self-model representation"""
         if not self_model_state:
             return 0.0
@@ -111,7 +111,7 @@ class EnhancedConsciousnessEvaluator:
         
         return (confidence + coherence + stability) / 3.0
 
-    def get_metrics(self) -> Dict[str, float]:
+    def get_metrics(self) -> dict[str, float]:
         """Get current consciousness metrics"""
         return {
             'emotional_awareness': self.metrics.emotional_awareness,

@@ -9,10 +9,10 @@ Implements advanced emotional processing for memory formation:
 
 Based on MANN architecture principles.
 """
+from __future__ import annotations
 
 import torch
 import torch.nn as nn
-from typing import Dict, List, Optional, Tuple
 
 
 class MetaEmotionalNetwork(nn.Module):
@@ -31,7 +31,7 @@ class EnhancedEmotionalContext(nn.Module):
     Processes enhanced emotional context for memory formation
     """
     
-    def __init__(self, config: Dict):
+    def __init__(self, config: dict):
         super().__init__()
         
         # Emotional embedding networks
@@ -59,10 +59,10 @@ class EnhancedEmotionalContext(nn.Module):
 
     def forward(
         self,
-        emotional_state: Dict[str, float],
-        social_context: Optional[Dict] = None,
-        temporal_history: Optional[torch.Tensor] = None
-    ) -> Tuple[torch.Tensor, Dict]:
+        emotional_state: dict[str, float],
+        social_context: dict | None = None,
+        temporal_history: torch.Tensor | None = None
+    ) -> tuple[torch.Tensor, dict]:
         """Process emotional context with temporal coherence"""
         
         # Encode primary emotions

@@ -7,10 +7,10 @@ Implements:
 3. Emotional reward shaping for world model learning
 4. Integration with consciousness development
 """
+from __future__ import annotations
 
 import torch
 import numpy as np
-from typing import Dict, Optional, Tuple, List
 from dataclasses import dataclass
 
 from models.predictive.dreamerv3_wrapper import DreamerV3Wrapper as DreamerV3
@@ -26,7 +26,7 @@ class EmotionalMetrics:
     valence: float = 0.0
     arousal: float = 0.0
     dominance: float = 0.0
-    reward_history: List[float] = None
+    reward_history: list[float] = None
     consciousness_score: float = 0.0
 
 
@@ -44,7 +44,7 @@ class DreamerEmotionalWrapper:
     Integrates DreamerV3 with emotional learning.
     """
 
-    def __init__(self, config: Dict):
+    def __init__(self, config: dict):
         """Initialize emotional dreamer wrapper."""
         self.config = config
 
@@ -87,9 +87,9 @@ class DreamerEmotionalWrapper:
         action: torch.Tensor,
         reward: float,
         next_state: torch.Tensor,
-        emotion_values: Dict[str, float],
+        emotion_values: dict[str, float],
         done: bool
-    ) -> Dict:
+    ) -> dict:
         """Process interaction with emotional context."""
         self.update_emotional_state(emotion_values)
 
@@ -122,8 +122,8 @@ class DreamerEmotionalWrapper:
             'emotional_state': emotional_state,
         }
 
-    def compute_reward(self, state: torch.Tensor, emotion_values: Dict[str, float],
-                       action_info: Optional[Dict] = None) -> float:
+    def compute_reward(self, state: torch.Tensor, emotion_values: dict[str, float],
+                       action_info: dict | None = None) -> float:
         """Compute a shaped reward from state and emotion values."""
         valence = emotion_values.get('valence', 0.5)
         arousal = emotion_values.get('arousal', 0.5)
@@ -136,7 +136,7 @@ class DreamerEmotionalWrapper:
         shaped = base * scale * (0.5 + 0.5 * intensity)
         return max(0.01, min(scale * 2.0, shaped))
 
-    def update_emotional_state(self, emotion_values: Dict[str, float]):
+    def update_emotional_state(self, emotion_values: dict[str, float]):
         """Update internal emotional state tracking."""
         self.metrics.valence = emotion_values.get('valence', self.metrics.valence)
         self.metrics.arousal = emotion_values.get('arousal', self.metrics.arousal)
@@ -161,7 +161,7 @@ class DreamerEmotionalWrapper:
         if 'reward' in kwargs:
             self.metrics.reward_history.append(kwargs['reward'])
 
-    def get_emotional_state(self) -> Dict:
+    def get_emotional_state(self) -> dict:
         """Return current emotional state."""
         return {
             'valence': self.metrics.valence,
@@ -173,7 +173,7 @@ class DreamerEmotionalWrapper:
     def get_action(
         self,
         state: torch.Tensor,
-        emotion_context: Optional[Dict] = None
+        emotion_context: dict | None = None
     ) -> torch.Tensor:
         """Get action with optional emotional context."""
         if emotion_context is not None:
@@ -204,9 +204,9 @@ class DreamerEmotionalWrapper:
     def imagine_trajectory(
         self,
         current_state: torch.Tensor,
-        emotional_context: Dict[str, float],
+        emotional_context: dict[str, float],
         horizon: int = 10
-    ) -> Tuple[torch.Tensor, Dict]:
+    ) -> tuple[torch.Tensor, dict]:
         """Generate imagined trajectory with emotional context."""
         imagined_trajectory = []
         for _ in range(horizon):
@@ -219,8 +219,8 @@ class DreamerEmotionalWrapper:
     def process_dream(
         self,
         dream_state: torch.Tensor,
-        emotional_context: Optional[Dict] = None
-    ) -> Tuple[torch.Tensor, Dict]:
+        emotional_context: dict | None = None
+    ) -> tuple[torch.Tensor, dict]:
         """Process dream state with optional emotional context."""
         emotional_features = self.emotion_network.extract_features(dream_state)
         self.dream_state = self._update_dream_state(emotional_features, emotional_context)
@@ -236,7 +236,7 @@ class DreamerEmotionalWrapper:
     def _update_dream_state(
         self,
         emotional_features: torch.Tensor,
-        emotional_context: Optional[Dict]
+        emotional_context: dict | None
     ) -> EmotionalDreamState:
         """Update the dream state using extracted emotional features."""
         updated_state = EmotionalDreamState(

@@ -3,7 +3,6 @@
 import unittest
 import torch
 import numpy as np
-from typing import Dict, List
 from dataclasses import dataclass
 from models.fusion.emotional_memory_fusion import EmotionalMemoryFusion
 from models.memory.emotional_memory_core import EmotionalMemoryCore

@@ -10,16 +10,17 @@ References:
 - Mehrabian (1996) PAD temperament model
 - Russell (2003) Core affect theory
 """
+from __future__ import annotations
 
 import logging
 import math
 import random
-from typing import Dict, Any, List
+from typing import Any
 from collections import deque
 from .emotion_processing_interface import EmotionProcessingInterface, UpdateContext, EmotionalState
 
 # Mapping from discrete emotion labels to PAD coordinates
-EMOTION_PAD_MAP: Dict[str, Dict[str, float]] = {
+EMOTION_PAD_MAP: dict[str, dict[str, float]] = {
     "joy":       {"valence": 0.8,  "arousal": 0.5,  "dominance": 0.6},
     "sadness":   {"valence": -0.7, "arousal": -0.3, "dominance": -0.5},
     "anger":     {"valence": -0.6, "arousal": 0.8,  "dominance": 0.7},
@@ -44,7 +45,7 @@ class EmotionalProcessingCore(EmotionProcessingInterface):
     with exponential moving average smoothing.
     """
 
-    def __init__(self, config: Dict):
+    def __init__(self, config: dict):
         super().__init__(config)
 
         # PAD state (all start at neutral)

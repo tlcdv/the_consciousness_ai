@@ -1,7 +1,9 @@
+from __future__ import annotations
+
 # models/ace_core/unreal_interface.py
 
 import unreal
-from typing import Dict, Any
+from typing import Any
 import asyncio
 
 class UnrealACEInterface:
@@ -28,7 +30,7 @@ class UnrealACEInterface:
             print(f"Failed to initialize character: {e}")
             return False
     
-    async def update_character_state(self, visual_input: Dict[str, Any], audio_input: bytes = None):
+    async def update_character_state(self, visual_input: dict[str, Any], audio_input: bytes = None):
         """Update character state based on consciousness core/ACE processing"""
         try:
             # Process input through ACE agent

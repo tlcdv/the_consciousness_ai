@@ -10,10 +10,10 @@ Implements a holonic memory architecture integrating:
 Based on Modular Artificial Neural Networks (MANN) architecture and holonic principles
 where each component functions both independently and as part of the whole system.
 """
+from __future__ import annotations
 
 import torch
 import torch.nn as nn
-from typing import Dict, List, Optional, Tuple
 from dataclasses import dataclass
 from models.core.consciousness_gating import ConsciousnessGate
 
@@ -90,7 +90,7 @@ class MemoryMetrics:
     retrieval_quality: float = 0.0
 
 class MemoryIntegrationCore(nn.Module):
-    def __init__(self, config: Dict):
+    def __init__(self, config: dict):
         super().__init__()
         
         # Memory subsystems
@@ -113,7 +113,7 @@ class MemoryIntegrationCore(nn.Module):
         experience_data=None,
         emotional_context=None,
         consciousness_level: float = 0.5,
-        metadata: Optional[Dict] = None
+        metadata: dict | None = None
     ) -> bool:
         """
         Store experience with emotional context and consciousness gating.
@@ -169,10 +169,10 @@ class MemoryIntegrationCore(nn.Module):
 
     def retrieve_memories(
         self,
-        query: Dict[str, torch.Tensor],
-        emotional_context: Optional[Dict[str, float]] = None,
+        query: dict[str, torch.Tensor],
+        emotional_context: dict[str, float] | None = None,
         k: int = 5
-    ) -> List[Dict]:
+    ) -> list[dict]:
         """
         Retrieve relevant memories using emotional context
         """
@@ -199,7 +199,7 @@ class MemoryIntegrationCore(nn.Module):
             'metrics': self.get_metrics()
         }
 
-    def get_state(self) -> Dict:
+    def get_state(self) -> dict:
         """Return current memory system state."""
         return {
             'episodic_count': len(self.episodic_memory.memories),
@@ -211,7 +211,7 @@ class MemoryIntegrationCore(nn.Module):
             }
         }
 
-    def get_metrics(self) -> Dict:
+    def get_metrics(self) -> dict:
         """Return current memory metrics."""
         return {
             'temporal_coherence': self.metrics.temporal_coherence,
@@ -222,8 +222,8 @@ class MemoryIntegrationCore(nn.Module):
 
     def _update_memory_metrics(
         self,
-        experience_data: Dict,
-        emotional_context: Dict[str, float],
+        experience_data: dict,
+        emotional_context: dict[str, float],
         consciousness_level: float
     ):
         """Update memory system metrics"""
@@ -239,7 +239,7 @@ class MemoryIntegrationCore(nn.Module):
         count = len(self.episodic_memory.memories) if hasattr(self.episodic_memory, 'memories') else 0
         return min(1.0, count / 100.0) if count > 0 else 0.0
 
-    def _calculate_emotional_stability(self, emotional_context: Dict[str, float]) -> float:
+    def _calculate_emotional_stability(self, emotional_context: dict[str, float]) -> float:
         """Compute emotional stability from current context."""
         values = [abs(v) for v in emotional_context.values()]
         return 1.0 - (sum(values) / max(len(values), 1)) if values else 0.5

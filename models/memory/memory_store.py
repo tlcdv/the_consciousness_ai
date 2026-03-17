@@ -12,8 +12,8 @@ Dependencies:
 - models/memory/memory_integration.py for system integration
 - configs/consciousness_development.yaml for parameters
 """
+from __future__ import annotations
 
-from typing import Dict, List, Optional, Tuple
 import torch
 from dataclasses import dataclass
 import numpy as np
@@ -31,12 +31,12 @@ class MemoryOptimization:
 class MemoryEntry:
     """Memory entry containing experience data and metadata"""
     content: torch.Tensor
-    context: Dict[str, float]
+    context: dict[str, float]
     timestamp: float
     attention: float
 
 class MemoryStore:
-    def __init__(self, config: Dict):
+    def __init__(self, config: dict):
         """Initialize memory storage system"""
         self.config = config
         self.storage = {}
@@ -46,7 +46,7 @@ class MemoryStore:
     def store(
         self,
         content: torch.Tensor,
-        context: Dict[str, float],
+        context: dict[str, float],
         attention: float
     ) -> str:
         """Store new memory entry"""
@@ -83,7 +83,6 @@ Based on the holonic memory architecture described in the MANN research paper.
 
 import torch
 import torch.nn as nn
-from typing import Dict, List, Optional, Tuple
 from dataclasses import dataclass
 import time
 import numpy as np
@@ -136,7 +135,7 @@ class EpisodicMemoryStore(nn.Module):
     Implements experience-based learning through high-attention states.
     """
 
-    def __init__(self, config: Dict):
+    def __init__(self, config: dict):
         super().__init__()
         
         # Initialize vector store
@@ -156,10 +155,10 @@ class EpisodicMemoryStore(nn.Module):
     def store(
         self,
         state_embedding: torch.Tensor,
-        emotional_context: Dict[str, float],
+        emotional_context: dict[str, float],
         temporal_context: torch.Tensor,
         consciousness_level: float,
-        metadata: Optional[Dict] = None
+        metadata: dict | None = None
     ) -> bool:
         """
         Store episodic memory with emotional and temporal context
@@ -205,9 +204,9 @@ class EpisodicMemoryStore(nn.Module):
     def retrieve(
         self,
         query_embedding: torch.Tensor,
-        emotional_filter: Optional[Dict[str, float]] = None,
+        emotional_filter: dict[str, float] | None = None,
         k: int = 5
-    ) -> List[Dict]:
+    ) -> list[dict]:
         """
         Retrieve similar episodic memories with optional emotional filtering
         """
@@ -231,7 +230,7 @@ class EpisodicMemoryStore(nn.Module):
     def _update_stats(
         self,
         memory_vector: torch.Tensor,
-        emotional_context: Dict[str, float]
+        emotional_context: dict[str, float]
     ):
         """Update memory statistics"""
         # Calculate temporal coherence
@@ -258,7 +257,6 @@ Memory store implementation that handles:
 
 import torch
 import torch.nn as nn
-from typing import Dict, List, Optional, Tuple
 from dataclasses import dataclass
 
 @dataclass
@@ -302,8 +300,8 @@ class MemoryStore(nn.Module):
     def store_experience(
         self,
         experience: torch.Tensor,
-        emotional_context: Optional[Dict] = None,
-        narrative_state: Optional[Dict] = None
+        emotional_context: dict | None = None,
+        narrative_state: dict | None = None
     ) -> str:
         """Store new experience with controlled adaptation"""
         
@@ -344,8 +342,8 @@ class MemoryStore(nn.Module):
     def _store_novel_experience(
         self,
         embedding: torch.Tensor,
-        emotional_context: Optional[Dict],
-        narrative_state: Optional[Dict]
+        emotional_context: dict | None,
+        narrative_state: dict | None
     ) -> str:
         """Store new experience with low initial weight"""
         memory_key = self._generate_key()

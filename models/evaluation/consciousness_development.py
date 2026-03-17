@@ -1,5 +1,6 @@
+from __future__ import annotations
+
 # models/evaluation/consciousness_development.py
-from typing import Dict, List, Optional
 from dataclasses import dataclass, field
 import torch
 import time
@@ -36,7 +37,7 @@ class ConsciousnessDevelopment:
     with core components like emotion, memory, and reinforcement learning.
     """
 
-    def __init__(self, config: Dict, core_module: Optional[Any] = None): # Added core_module dependency
+    def __init__(self, config: dict, core_module: Any | None = None): # Added core_module dependency
         """
         Initializes the ConsciousnessDevelopment module.
 
@@ -105,11 +106,11 @@ class ConsciousnessDevelopment:
         action: torch.Tensor,
         reward: float,
         next_state: torch.Tensor,
-        emotion_values: Dict[str, float],
+        emotion_values: dict[str, float],
         attention_level: float, # Assuming this comes from ConsciousnessCore or attention module
         done: bool,
         timestamp: float = None,
-    ) -> Dict:
+    ) -> dict:
         """
         Processes a single step of experience, updates models, shapes reward, and calculates metrics.
         """
@@ -190,9 +191,9 @@ class ConsciousnessDevelopment:
 
     def update_metrics(
         self,
-        emotion_values: Dict[str, float],
+        emotion_values: dict[str, float],
         attention_level: float,
-        learning_info: Dict,
+        learning_info: dict,
         done: bool # Include 'done' flag for survival tracking
     ):
         """Updates the internal DevelopmentMetrics based on recent experience."""
@@ -227,7 +228,7 @@ class ConsciousnessDevelopment:
         self.metrics.last_updated = time.time()
 
 
-    def _calculate_emotional_awareness(self, emotion_values: Dict[str, float]) -> float:
+    def _calculate_emotional_awareness(self, emotion_values: dict[str, float]) -> float:
         """Calculates a score based on emotion complexity/differentiation."""
         if not emotion_values: return 0.0
         try:
@@ -243,7 +244,7 @@ class ConsciousnessDevelopment:
             logging.error(f"Error calculating emotional awareness: {e}", exc_info=True)
             return 0.0
 
-    def _calculate_behavioral_adaptation(self, learning_info: Dict) -> float:
+    def _calculate_behavioral_adaptation(self, learning_info: dict) -> float:
         """Calculates adaptation based on RL learning progress (e.g., loss reduction)."""
         try:
             loss = learning_info.get("loss")
@@ -281,7 +282,7 @@ class ConsciousnessDevelopment:
              return self.metrics.survival_success
 
 
-    def get_metrics(self) -> Dict:
+    def get_metrics(self) -> dict:
         """Returns the current development metrics as a dictionary."""
         # Ensure metrics are reasonably up-to-date
         # self.metrics.survival_success = self.calculate_survival_success() # Optional: Force query here if needed
@@ -291,8 +292,8 @@ class ConsciousnessDevelopment:
     def evaluate_development(
         self,
         # Removed current_state, activity_log etc. as these should come from the core_module if needed
-        attention_metrics: Optional[Dict[str, float]] = None
-    ) -> Dict:
+        attention_metrics: dict[str, float] | None = None
+    ) -> dict:
         """
         Performs a more comprehensive evaluation using ConsciousnessMetrics.
         Relies on the core_module instance provided during initialization.

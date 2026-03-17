@@ -12,10 +12,10 @@ Dependencies:
 - models/memory/emotional_memory_core.py for memory access
 - models/evaluation/consciousness_monitor.py for metrics
 """
+from __future__ import annotations
 
 import torch
 import numpy as np
-from typing import Dict, List, Optional, Tuple
 from dataclasses import dataclass
 from transformers import LlamaTokenizer, LlamaForCausalLM
 from models.emotion.tgnn.emotional_graph import EmotionalGraphNetwork
@@ -80,9 +80,9 @@ class GenerativeEmotionalCore:
     def generate_with_emotion(
         self,
         prompt: str,
-        emotional_context: Dict[str, float],
-        memory_context: Optional[List[Dict]] = None
-    ) -> Tuple[str, Dict[str, float]]:
+        emotional_context: dict[str, float],
+        memory_context: list[dict] | None = None
+    ) -> tuple[str, dict[str, float]]:
         """Generate text with emotional awareness"""
         # Process emotional context
         emotional_features = self.emotion_network.process(emotional_context)
@@ -123,8 +123,8 @@ class GenerativeEmotionalCore:
         self,
         prompt: str,
         emotional_features: torch.Tensor,
-        memory_context: List[Dict]
-    ) -> Dict:
+        memory_context: list[dict]
+    ) -> dict:
         """Prepare context for generation with emotional conditioning"""
         
         # Create memory context string
@@ -146,7 +146,7 @@ class GenerativeEmotionalCore:
         
         return tokenized
         
-    def _format_memory_context(self, memories: List[Dict]) -> str:
+    def _format_memory_context(self, memories: list[dict]) -> str:
         """Format memories into context string"""
         context_parts = []
         
@@ -183,8 +183,8 @@ class GenerativeEmotionalCore:
         self,
         prompt: str,
         response: str,
-        emotional_context: Dict[str, float],
-        situation_context: Optional[Dict]
+        emotional_context: dict[str, float],
+        situation_context: dict | None
     ):
         """Store interaction in emotional memory"""
         self.memory_core.store_experience({
@@ -197,10 +197,10 @@ class GenerativeEmotionalCore:
         
     def _get_generation_metadata(
         self,
-        context: Dict,
+        context: dict,
         response: str,
-        emotional_context: Dict[str, float]
-    ) -> Dict:
+        emotional_context: dict[str, float]
+    ) -> dict:
         """Get metadata about the generation process"""
         return {
             'context_length': len(context['input_ids'][0]),

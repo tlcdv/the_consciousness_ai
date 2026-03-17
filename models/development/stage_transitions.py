@@ -12,17 +12,17 @@ Dependencies:
 - models/emotion/tgnn/emotional_graph.py for emotion integration
 - models/memory/emotional_memory_core.py for memory validation
 """
+from __future__ import annotations
 
 import torch
-from typing import Dict, List, Optional, Tuple
 from dataclasses import dataclass
 
 @dataclass
 class DevelopmentStage:
     """Tracks development stage information"""
     name: str
-    requirements: Dict[str, float]
-    completion_metrics: Dict[str, float]
+    requirements: dict[str, float]
+    completion_metrics: dict[str, float]
     transition_threshold: float
 
 @dataclass
@@ -38,7 +38,7 @@ class StageTransitionManager:
     Manages consciousness development stage transitions
     """
 
-    def __init__(self, config: Dict):
+    def __init__(self, config: dict):
         """Initialize stage transition system"""
         self.config = config
         self.current_stage = None
@@ -48,9 +48,9 @@ class StageTransitionManager:
 
     def evaluate_stage_transition(
         self,
-        consciousness_metrics: Dict[str, float],
-        emotional_metrics: Dict[str, float]
-    ) -> Tuple[bool, Dict[str, float]]:
+        consciousness_metrics: dict[str, float],
+        emotional_metrics: dict[str, float]
+    ) -> tuple[bool, dict[str, float]]:
         """Evaluate if system should transition to next stage"""
         # Calculate current progress
         stage_progress = self._calculate_stage_progress(
@@ -72,9 +72,9 @@ class StageTransitionManager:
 
     def evaluate_transition(
         self,
-        current_metrics: Dict[str, float],
-        development_history: List[Dict]
-    ) -> Dict:
+        current_metrics: dict[str, float],
+        development_history: list[dict]
+    ) -> dict:
         """
         Evaluate potential stage transitions
         
@@ -117,7 +117,7 @@ class StageTransitionManager:
 
     def _check_stage_requirements(
         self,
-        metrics: Dict[str, float],
+        metrics: dict[str, float],
         stage: str
     ) -> bool:
         """Check if current metrics meet stage requirements"""

@@ -1,9 +1,11 @@
+from __future__ import annotations
+
 # models/evaluation/consciousness_metrics.py
 
 import numpy as np
 import time
 import logging
-from typing import Dict, Any, List, Optional, Tuple
+from typing import Dict, Any
 import torch
 
 # Placeholder types for state and core module
@@ -27,13 +29,13 @@ class IntegratedInformationCalculator:
     Provides methods to *approximate* Integrated Information (Phi).
     Direct calculation is intractable; approximations focus on connectivity/dynamics.
     """
-    def __init__(self, config: Dict):
+    def __init__(self, config: dict):
          self.config = config
          # Example config: which subsystems to analyze, connectivity estimation method
          self.subsystems = config.get('subsystems_to_analyze', ['perception', 'memory', 'emotion', 'self_model'])
          logging.info("IntegratedInformationCalculator initialized (using placeholder logic).")
 
-    def calculate_phi_approximation(self, system_state: State, activity_log: List) -> float:
+    def calculate_phi_approximation(self, system_state: State, activity_log: list) -> float:
         """
         Approximates Phi based on system state and recent activity.
 
@@ -65,7 +67,7 @@ class GlobalWorkspaceTracker:
     Monitors system activity for signs of Global Workspace Theory (GWT) 'ignition'
     or 'broadcasting' events, where information becomes widely available.
     """
-    def __init__(self, config: Dict):
+    def __init__(self, config: dict):
          self.config = config
          self.ignition_threshold = config.get('ignition_threshold', 0.8) # Example: High activation level
          self.min_duration = config.get('min_duration', 0.2) # Example: Must persist for 200ms
@@ -73,7 +75,7 @@ class GlobalWorkspaceTracker:
          self.recent_activity = [] # Store recent activity snapshots for duration check
          logging.info("GlobalWorkspaceTracker initialized (using placeholder logic).")
 
-    def detect_ignition(self, system_state: State, activity_log: List) -> Tuple[bool, Dict]:
+    def detect_ignition(self, system_state: State, activity_log: list) -> tuple[bool, dict]:
         """
         Detects potential GWT ignition events based on state and activity.
 
@@ -121,7 +123,7 @@ class PerturbationTester:
     Approximates system complexity using Perturbational Complexity Index (PCI).
     Requires the ability to briefly perturb the system and measure the response.
     """
-    def __init__(self, config: Dict, core_module: Optional[CoreModule]):
+    def __init__(self, config: dict, core_module: CoreModule | None):
          self.config = config
          self.core = core_module # Needs access to apply perturbations
          self.perturbation_interval = config.get('perturbation_interval', 10.0) # seconds
@@ -180,7 +182,7 @@ class SelfAwarenessMonitor:
     """
     Evaluates aspects of self-awareness based on the agent's internal state and memory.
     """
-    def __init__(self, config: Dict, core_module: Optional[CoreModule], memory_system: Optional[MemorySystem]):
+    def __init__(self, config: dict, core_module: CoreModule | None, memory_system: MemorySystem | None):
          self.config = config
          self.core = core_module
          self.memory = memory_system
@@ -188,7 +190,7 @@ class SelfAwarenessMonitor:
               logging.warning("SelfAwarenessMonitor: Core module or memory system not provided. Evaluation will be limited/placeholder.")
          logging.info("SelfAwarenessMonitor initialized (using placeholder logic).")
 
-    def evaluate_self_awareness(self, current_state: State) -> Dict:
+    def evaluate_self_awareness(self, current_state: State) -> dict:
         """
         Evaluates self-awareness based on the current state.
 
@@ -243,7 +245,7 @@ class SelfAwarenessMonitor:
 # Define the ConsciousnessMetrics class to group the calculators
 class ConsciousnessMetrics:
      """Groups the various consciousness metric calculators."""
-     def __init__(self, config: dict, core_module: Optional[CoreModule] = None, memory_system: Optional[MemorySystem] = None):
+     def __init__(self, config: dict, core_module: CoreModule | None = None, memory_system: MemorySystem | None = None):
           self.config = config
           self._experience_store = []
           logging.info("Initializing ConsciousnessMetrics group...")
@@ -273,7 +275,7 @@ class ConsciousnessMetrics:
           """Store an experience for later retrieval and evaluation."""
           self._experience_store.append(experience)
 
-     def get_similar_emotional_experiences(self, emotion_query: dict, k: int = 5) -> List[dict]:
+     def get_similar_emotional_experiences(self, emotion_query: dict, k: int = 5) -> list[dict]:
           """Retrieve stored experiences most similar to the given emotion query."""
           scored = []
           for exp in self._experience_store:
@@ -289,7 +291,7 @@ class ConsciousnessMetrics:
           scored.sort(key=lambda x: x[0], reverse=True)
           return [e for _, e in scored[:k]]
 
-     def evaluate_consciousness_development(self, interactions: List[dict]) -> dict:
+     def evaluate_consciousness_development(self, interactions: list[dict]) -> dict:
           """Evaluate consciousness development from a list of interactions."""
           if not interactions:
                return {'emotional_awareness': 0.0, 'memory_coherence': 0.0,
@@ -322,7 +324,7 @@ class ConsciousnessMetrics:
           }
 
      # Add helper methods to call sub-calculators safely
-     def calculate_all_metrics(self, system_state: State, activity_log: List) -> Dict:
+     def calculate_all_metrics(self, system_state: State, activity_log: list) -> dict:
           """Calculates all available metrics safely."""
           metrics = {}
           if self.phi_calculator:

@@ -12,20 +12,20 @@ Key Features:
 - Memory integration with emotional context
 - Meta-learning for self-model adaptation
 """
+from __future__ import annotations
 
 import torch
 import torch.nn as nn
-from typing import Dict, Optional
 
 # Placeholder imports — replace with actual classes if they exist in your codebase.
 # e.g., from models.self_model.emotional_state_network import EmotionalStateNetwork
 # Here, we just define minimal stubs to avoid runtime errors.
 class EmotionalStateNetwork(nn.Module):
-    def __init__(self, config: Dict):
+    def __init__(self, config: dict):
         super().__init__()
         # Example: store config, define layers
 
-    def forward(self, emotion_values: Optional[Dict[str, float]]) -> torch.Tensor:
+    def forward(self, emotion_values: dict[str, float] | None) -> torch.Tensor:
         if emotion_values is None:
             # Return a zero embedding if no emotion provided
             return torch.zeros(1, dtype=torch.float)
@@ -34,19 +34,19 @@ class EmotionalStateNetwork(nn.Module):
 
 
 class BehavioralNetwork(nn.Module):
-    def __init__(self, config: Dict):
+    def __init__(self, config: dict):
         super().__init__()
 
-    def forward(self, current_state: Dict[str, torch.Tensor]) -> torch.Tensor:
+    def forward(self, current_state: dict[str, torch.Tensor]) -> torch.Tensor:
         # Return a zero embedding as a placeholder
         return torch.zeros(1, dtype=torch.float)
 
 
 class SocialContextProcessor(nn.Module):
-    def __init__(self, config: Dict):
+    def __init__(self, config: dict):
         super().__init__()
 
-    def forward(self, social_feedback: Dict) -> torch.Tensor:
+    def forward(self, social_feedback: dict) -> torch.Tensor:
         # Placeholder logic: sum numeric feedback fields.
         if not social_feedback:
             return torch.zeros(1, dtype=torch.float)
@@ -55,16 +55,16 @@ class SocialContextProcessor(nn.Module):
 
 
 class EmotionalMemoryCore(nn.Module):
-    def __init__(self, config: Dict):
+    def __init__(self, config: dict):
         super().__init__()
 
-    def store(self, state: torch.Tensor, emotion: Dict[str, float], attention: float):
+    def store(self, state: torch.Tensor, emotion: dict[str, float], attention: float):
         # Placeholder store logic.
         pass
 
 
 class ExperienceLearner(nn.Module):
-    def __init__(self, config: Dict):
+    def __init__(self, config: dict):
         super().__init__()
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
@@ -72,7 +72,7 @@ class ExperienceLearner(nn.Module):
 
 
 class SocialLearner(nn.Module):
-    def __init__(self, config: Dict):
+    def __init__(self, config: dict):
         super().__init__()
 
     def update(self, social_embedding: torch.Tensor):
@@ -81,7 +81,7 @@ class SocialLearner(nn.Module):
 
 
 class ConsciousnessMetaLearner(nn.Module):
-    def __init__(self, config: Dict):
+    def __init__(self, config: dict):
         super().__init__()
 
     def update(self, state: torch.Tensor, learning_progress: float):
@@ -94,14 +94,14 @@ class ConsciousnessMetaLearner(nn.Module):
 
 
 class MultimodalFusion(nn.Module):
-    def __init__(self, config: Dict):
+    def __init__(self, config: dict):
         super().__init__()
 
     def forward(
         self,
         emotional: torch.Tensor,
         behavioral: torch.Tensor,
-        social: Optional[torch.Tensor] = None
+        social: torch.Tensor | None = None
     ) -> torch.Tensor:
         # Simple placeholder: sum all the embeddings that aren’t None.
         fused = emotional + behavioral
@@ -111,7 +111,7 @@ class MultimodalFusion(nn.Module):
 
 
 class ConsciousnessAttention(nn.Module):
-    def __init__(self, config: Dict):
+    def __init__(self, config: dict):
         super().__init__()
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
@@ -126,7 +126,7 @@ class SelfRepresentationCore(nn.Module):
     described in the MANN (Modular Artificial Neural Networks) architecture.
     """
 
-    def __init__(self, config: Dict):
+    def __init__(self, config: dict):
         """
         Initialize the self-representation core components.
 
@@ -160,11 +160,11 @@ class SelfRepresentationCore(nn.Module):
 
     def update_self_model(
         self,
-        current_state: Dict[str, torch.Tensor],
-        social_feedback: Optional[Dict] = None,
-        emotion_values: Optional[Dict[str, float]] = None,
+        current_state: dict[str, torch.Tensor],
+        social_feedback: dict | None = None,
+        emotion_values: dict[str, float] | None = None,
         attention_level: float = 0.0
-    ) -> Dict:
+    ) -> dict:
         """
         Update the agent's self-representation through both direct and social learning.
 

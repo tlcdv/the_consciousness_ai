@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from abc import ABC, abstractmethod
 from typing import Dict, Any
 
@@ -10,7 +12,7 @@ class PerceptionInterface(ABC):
     Defines the standard method for processing raw observations.
     """
 
-    def __init__(self, config: Dict):
+    def __init__(self, config: dict):
         """
         Initializes the perception module with its specific configuration.
         """
@@ -32,9 +34,9 @@ class PerceptionInterface(ABC):
 
     # Optional: Add methods for specific modalities if needed
     # @abstractmethod
-    # def process_visual(self, image_data: Any) -> Dict:
+    # def process_visual(self, image_data: Any) -> dict:
     #     pass
     #
     # @abstractmethod
-    # def process_audio(self, audio_data: Any) -> Dict:
+    # def process_audio(self, audio_data: Any) -> dict:
     #     pass

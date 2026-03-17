@@ -12,8 +12,8 @@ Dependencies:
 - models/memory/temporal_coherence.py for sequence tracking
 - models/evaluation/memory_metrics.py for optimization metrics
 """
+from __future__ import annotations
 
-from typing import Dict, List, Optional, Tuple
 from dataclasses import dataclass
 import torch
 import numpy as np
@@ -41,7 +41,7 @@ class MemoryOptimizer:
     Implements memory system optimizations for efficient retrieval and storage
     """
 
-    def __init__(self, config: Dict):
+    def __init__(self, config: dict):
         """Initialize memory optimization system"""
         self.config = config
         self.consolidation_threshold = config.memory.consolidation_threshold
@@ -56,9 +56,9 @@ class MemoryOptimizer:
 
     def optimize_storage(
         self,
-        memories: Dict[str, torch.Tensor],
-        usage_stats: Dict[str, float]
-    ) -> Tuple[Dict[str, torch.Tensor], Dict[str, float]]:
+        memories: dict[str, torch.Tensor],
+        usage_stats: dict[str, float]
+    ) -> tuple[dict[str, torch.Tensor], dict[str, float]]:
         """Optimize memory storage"""
         # Find redundant memories
         redundant_ids = self._find_redundant_memories(memories)
@@ -80,9 +80,9 @@ class MemoryOptimizer:
 
     def optimize_indices(
         self,
-        access_patterns: Dict[str, int],
-        partition_stats: Dict[str, Dict],
-        current_load: Dict[str, float]
+        access_patterns: dict[str, int],
+        partition_stats: dict[str, dict],
+        current_load: dict[str, float]
     ):
         """
         Optimize memory indices based on usage patterns
@@ -113,7 +113,7 @@ class MemoryOptimizer:
         # Update metrics
         self._update_optimization_metrics()
 
-    def _needs_rebalancing(self, partition_stats: Dict[str, Dict]) -> bool:
+    def _needs_rebalancing(self, partition_stats: dict[str, dict]) -> bool:
         """Determine if index rebalancing is needed"""
         imbalance_scores = []
         for partition, stats in partition_stats.items():

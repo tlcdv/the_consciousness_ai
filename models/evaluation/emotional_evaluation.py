@@ -12,12 +12,12 @@ Dependencies:
 - models/memory/emotional_memory_core.py for memory access
 - models/evaluation/consciousness_monitor.py for metrics
 """
+from __future__ import annotations
 
 # models/evaluation/emotional_evaluation.py
 
 import torch
 import numpy as np
-from typing import Dict, List, Optional, Tuple
 from dataclasses import dataclass
 from models.emotion.tgnn.emotional_graph import EmotionalGraphNetwork
 from models.memory.memory_core import MemoryCore
@@ -75,13 +75,13 @@ class EmotionalEvaluator:
     def evaluate_interaction(
         self,
         state: torch.Tensor,
-        emotion_values: Dict[str, float] = None,
+        emotion_values: dict[str, float] = None,
         attention_level: float = 0.5,
         narrative: str = "",
         stress_level: float = 0.5,
         action: torch.Tensor = None,
         **kwargs
-    ) -> Dict:
+    ) -> dict:
         """Evaluate a single interaction for consciousness development"""
         if emotion_values is None:
             emotion_values = {}
@@ -110,8 +110,8 @@ class EmotionalEvaluator:
         
     def update_metrics(
         self,
-        emotion_values: Dict[str, float],
-        attention_metrics: Dict[str, float],
+        emotion_values: dict[str, float],
+        attention_metrics: dict[str, float],
         stress_level: float
     ):
         """Update consciousness development metrics"""
@@ -140,7 +140,7 @@ class EmotionalEvaluator:
         # Update narrative consistency
         self.metrics.narrative_consistency = self._calculate_narrative_consistency()
         
-    def _calculate_emotional_awareness(self, emotion_values: Dict[str, float]) -> float:
+    def _calculate_emotional_awareness(self, emotion_values: dict[str, float]) -> float:
         """Calculate emotional awareness score based on emotional history."""
         if len(self.experience_history) < 2:
             # With limited history, estimate from current emotional engagement
@@ -167,7 +167,7 @@ class EmotionalEvaluator:
 
         return float((stability + emotional_range + recent_attention) / 3.0)
         
-    def _calculate_attention_stability(self, attention_metrics: Dict[str, float]) -> float:
+    def _calculate_attention_stability(self, attention_metrics: dict[str, float]) -> float:
         """Calculate attention stability score"""
         return attention_metrics.get('attention_level', 0.0)
         
@@ -253,7 +253,7 @@ class EmotionalEvaluator:
         has_narrative = [1.0 for exp in recent if exp.get('narrative')]
         return len(has_narrative) / len(recent)
 
-    def store_experience(self, experience: Dict):
+    def store_experience(self, experience: dict):
         """Store experience in memory"""
         import torch as _torch
         self.memory.store_experience(
@@ -266,7 +266,7 @@ class EmotionalEvaluator:
         )
         self.experience_history.append(experience)
         
-    def get_evaluation_results(self) -> Dict:
+    def get_evaluation_results(self) -> dict:
         """Get current evaluation results"""
         return {
             'emotional_awareness': self.metrics.emotional_awareness,
@@ -296,9 +296,9 @@ class EmotionalEvaluator:
         
     def evaluate_emotional_state(
         self,
-        current_state: Dict[str, torch.Tensor],
-        memory_context: Optional[Dict] = None
-    ) -> Dict[str, float]:
+        current_state: dict[str, torch.Tensor],
+        memory_context: dict | None = None
+    ) -> dict[str, float]:
         """Evaluate current emotional state"""
         # Calculate coherence
         coherence = self._calculate_coherence(

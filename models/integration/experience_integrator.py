@@ -12,12 +12,12 @@ Dependencies:
 - models/memory/emotional_memory_core.py for memory storage  
 - models/evaluation/consciousness_monitor.py for metrics
 """
+from __future__ import annotations
 
 # models/integration/experience_integrator.py
 
 import torch
 import numpy as np
-from typing import Dict, List, Optional, Tuple
 from dataclasses import dataclass
 from models.fusion.emotional_memory_fusion import EmotionalMemoryFusion
 from models.generative.generative_emotional_core import GenerativeEmotionalCore
@@ -48,7 +48,7 @@ class ExperienceIntegrator:
     4. Meta-learning for rapid emotional adaptation
     """
     
-    def __init__(self, config: Dict):
+    def __init__(self, config: dict):
         """Initialize experience integration"""
         self.config = config
         self.emotion_network = EmotionalGraphNN(config)
@@ -57,10 +57,10 @@ class ExperienceIntegrator:
         
     def integrate_experience(
         self,
-        sensory_input: Dict[str, torch.Tensor],
-        emotional_context: Dict[str, float],
+        sensory_input: dict[str, torch.Tensor],
+        emotional_context: dict[str, float],
         attention_level: float
-    ) -> Tuple[Dict, Dict[str, float]]:
+    ) -> tuple[dict, dict[str, float]]:
         """Integrate new experience with emotional context"""
         # Process emotional features
         emotional_features = self.emotion_network.process(
@@ -91,11 +91,11 @@ class ExperienceIntegrator:
 
     def process_experience(
         self,
-        state: Dict[str, torch.Tensor],
-        emotion_values: Dict[str, float],
+        state: dict[str, torch.Tensor],
+        emotion_values: dict[str, float],
         stress_level: float,
-        context: Optional[Dict] = None
-    ) -> Dict:
+        context: dict | None = None
+    ) -> dict:
         """Process and integrate a new experience"""
         
         # Get attention focus based on stress and emotion
@@ -151,15 +151,15 @@ class ExperienceIntegrator:
             'metrics': self.get_metrics()
         }
         
-    def store_experience(self, experience: Dict):
+    def store_experience(self, experience: dict):
         """Store experience in memory"""
         self.experience_history.append(experience)
         self.fusion.memory_core.store_experience(experience)
         
     def update_metrics(
         self,
-        attention_metrics: Dict[str, float],
-        fusion_info: Dict,
+        attention_metrics: dict[str, float],
+        fusion_info: dict,
         stress_level: float
     ):
         """Update consciousness development metrics"""
@@ -184,16 +184,16 @@ class ExperienceIntegrator:
         
     def _get_relevant_memories(
         self,
-        emotion_values: Dict[str, float],
+        emotion_values: dict[str, float],
         k: int = 5
-    ) -> List[Dict]:
+    ) -> list[dict]:
         """Retrieve relevant memories based on emotional similarity"""
         return self.fusion.memory_core.retrieve_similar_memories(
             emotion_query=emotion_values,
             k=k
         )
         
-    def _calculate_emotional_coherence(self, emotional_context: Dict) -> float:
+    def _calculate_emotional_coherence(self, emotional_context: dict) -> float:
         """Calculate emotional coherence score"""
         if len(self.experience_history) < 2:
             return 0.0
@@ -210,7 +210,7 @@ class ExperienceIntegrator:
         
         return coherence
         
-    def get_metrics(self) -> Dict:
+    def get_metrics(self) -> dict:
         """Get current consciousness metrics"""
         return {
             'emotional_coherence': self.metrics.emotional_coherence,
@@ -221,14 +221,14 @@ class ExperienceIntegrator:
         }
 
 class SocialLearningPipeline:
-    def __init__(self, config: Dict):
+    def __init__(self, config: dict):
         self.self_model = SelfRepresentationCore(config)
         self.emotional_core = EmotionalDevelopmentCore(config)
         
     def process_interaction(
         self,
-        interaction_data: Dict,
-        emotion_values: Dict[str, float],
+        interaction_data: dict,
+        emotion_values: dict[str, float],
         attention_level: float
     ):
         # Extract social feedback

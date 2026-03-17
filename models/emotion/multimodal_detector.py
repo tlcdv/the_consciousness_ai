@@ -1,6 +1,8 @@
+from __future__ import annotations
+
 import torch
 import torch.nn as nn
-from typing import Dict, Any
+from typing import Any
 
 try:
     from models.vision_language.qwen2.qwen2_integration import Qwen2VLIntegration as _VisualBackend
@@ -12,7 +14,7 @@ from models.audio.whisper_processor import WhisperProcessor
 
 
 class MultimodalEmotionDetector:
-    def __init__(self, config: Dict):
+    def __init__(self, config: dict):
         visual_config = config.get('qwen2_vl', {})
         self.visual_encoder = _VisualBackend(visual_config)
         self.llama = Llama3Processor(config['llama3'])
@@ -24,7 +26,7 @@ class MultimodalEmotionDetector:
         visual_input: torch.Tensor,
         audio_input: torch.Tensor,
         text_input: str
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         visual_context = self.visual_encoder.process_stream_frame(visual_input)
         audio_text = self.whisper.transcribe(audio_input)
         audio_context = self.whisper.process_audio(audio_input)

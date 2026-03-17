@@ -4,7 +4,6 @@ Loads parameters from consciousness_development.yaml when available.
 """
 
 from dataclasses import dataclass, field
-from typing import Dict
 import os
 import logging
 
@@ -30,13 +29,13 @@ class DevelopmentConfig:
     min_stage_duration: int = 50
 
     # Survival metrics
-    survival_metrics: Dict = field(default_factory=lambda: {
+    survival_metrics: dict = field(default_factory=lambda: {
         'stress_threshold': 0.6,
         'adaptation_rate': 0.01,
     })
 
     # Attention config
-    attention: Dict = field(default_factory=lambda: {
+    attention: dict = field(default_factory=lambda: {
         'base_threshold': 0.5,
         'high_threshold': 0.8,
     })

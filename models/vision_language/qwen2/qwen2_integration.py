@@ -1,5 +1,7 @@
+from __future__ import annotations
+
 import torch
-from typing import Dict, Any
+from typing import Any
 import logging
 
 logger = logging.getLogger(__name__)
@@ -29,7 +31,7 @@ class Qwen2VLIntegration:
     weights are unavailable (returns zero embeddings so tests can run without weights).
     """
 
-    def __init__(self, config: Dict[str, Any]):
+    def __init__(self, config: dict[str, Any]):
         self.config = config
         self.model_name = config.get("model_name", "Qwen/Qwen2-VL-7B-Instruct")
         self.device = config.get("device", "cuda" if torch.cuda.is_available() else "cpu")
@@ -222,7 +224,7 @@ class Qwen2VLIntegration:
     def get_embeddings(self, image_input: Any) -> torch.Tensor:
         return self.get_visual_embeddings(image_input)
 
-    def process_stream_frame(self, frame: Any) -> Dict[str, Any]:
+    def process_stream_frame(self, frame: Any) -> dict[str, Any]:
         """
         Process a single frame from a real-time stream.
         Returns embedding dict compatible with MultimodalEmotionDetector.

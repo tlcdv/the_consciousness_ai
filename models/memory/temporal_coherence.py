@@ -12,8 +12,8 @@ Dependencies:
 - models/memory/temporal_context.py for context tracking
 - models/evaluation/memory_metrics.py for coherence metrics
 """
+from __future__ import annotations
 
-from typing import Dict, List, Optional, Tuple
 import torch
 import torch.nn as nn
 import numpy as np
@@ -48,8 +48,8 @@ class TemporalContext:
     """Tracks temporal context for memory sequences"""
     timestamp: float
     sequence_id: str
-    previous_memory: Optional[str]
-    next_memory: Optional[str]
+    previous_memory: str | None
+    next_memory: str | None
     
 class TemporalCoherenceProcessor(nn.Module):
     """
@@ -58,7 +58,7 @@ class TemporalCoherenceProcessor(nn.Module):
     maintains both individual significance and sequential coherence.
     """
 
-    def __init__(self, config: Dict):
+    def __init__(self, config: dict):
         super().__init__()
         
         # Temporal processing networks
@@ -82,15 +82,15 @@ class TemporalCoherenceProcessor(nn.Module):
         
     def process_sequence(
         self,
-        experiences: List[Dict],
-        emotional_context: Dict[str, float],
+        experiences: list[dict],
+        emotional_context: dict[str, float],
         consciousness_level: float
-    ) -> Tuple[torch.Tensor, Dict]:
+    ) -> tuple[torch.Tensor, dict]:
         """
         Process experience sequence maintaining temporal coherence
         
         Args:
-            experiences: List of sequential experiences
+            experiences: list of sequential experiences
             emotional_context: Current emotional state
             consciousness_level: Current consciousness level
         """
@@ -125,8 +125,8 @@ class TemporalCoherenceProcessor(nn.Module):
     def add_temporal_context(
         self,
         memory_id: str,
-        current_state: Dict[str, torch.Tensor],
-        previous_state: Optional[Dict] = None
+        current_state: dict[str, torch.Tensor],
+        previous_state: dict | None = None
     ) -> TemporalContext:
         """Add temporal context to memory"""
         # Generate sequence ID if new sequence
@@ -151,7 +151,7 @@ class TemporalCoherenceProcessor(nn.Module):
     def _update_metrics(
         self,
         sequence: torch.Tensor,
-        emotional_context: Dict[str, float],
+        emotional_context: dict[str, float],
         consciousness_level: float
     ):
         """Update temporal coherence metrics"""

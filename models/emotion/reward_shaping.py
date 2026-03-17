@@ -8,11 +8,11 @@ Key features:
 - Controlled adaptation rates
 - Narrative coherence rewards
 """
+from __future__ import annotations
 
 import torch
 import torch.nn as nn
 import numpy as np
-from typing import Dict, Optional
 from dataclasses import dataclass
 
 from models.emotion.tgnn.emotional_graph import EmotionalGraphNetwork
@@ -32,7 +32,7 @@ class EmotionalRewardShaper(nn.Module):
     Shapes rewards based on emotional responses and learning progress.
     """
 
-    def __init__(self, config: Dict):
+    def __init__(self, config: dict):
         """
         Initializes the reward shaping system.
 
@@ -80,15 +80,15 @@ class EmotionalRewardShaper(nn.Module):
 
     def compute_reward(
         self,
-        emotion_values: Dict[str, float],
+        emotion_values: dict[str, float],
         attention_level: float,
-        meta_memory: Optional[Dict] = None
+        meta_memory: dict | None = None
     ) -> float:
         """
         Compute the shaped reward based on emotional context.
 
         Args:
-            emotion_values: Dict of emotional signals (valence, arousal, etc.).
+            emotion_values: dict of emotional signals (valence, arousal, etc.).
             attention_level: Current attention level or weighting factor.
             meta_memory: Additional memory-based data or patterns.
 
@@ -110,7 +110,7 @@ class EmotionalRewardShaper(nn.Module):
         # Modulate by attention
         return base_reward * (1.0 + attention_level)
 
-    def _encode_emotions(self, emotion_values: Dict[str, float]) -> torch.Tensor:
+    def _encode_emotions(self, emotion_values: dict[str, float]) -> torch.Tensor:
         """
         Encode emotional values into a tensor for further processing.
         Placeholder logic; adjust as needed.
@@ -131,7 +131,7 @@ class EmotionalRewardShaper(nn.Module):
     def _calculate_memory_influence(
         self,
         emotional_embedding: torch.Tensor,
-        meta_memory: Dict
+        meta_memory: dict
     ) -> float:
         """
         Compute how meta-memory influences the reward.
@@ -177,7 +177,7 @@ class EmotionalRewardShaper(nn.Module):
         high-arousal/negative-valence, but only fear is submissive).
 
         Args:
-            emotion_values: Dict with keys 'valence', 'arousal', 'dominance'.
+            emotion_values: dict with keys 'valence', 'arousal', 'dominance'.
             base_reward: External task reward (Rext).
             context: Optional dict with 'emotional_history' and 'adaptation_detected'.
         """

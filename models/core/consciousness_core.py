@@ -2,9 +2,11 @@
 Core consciousness system that uses a base narrative model,
 emotional memory, and controlled adaptation for experience processing.
 """
+from __future__ import annotations
+
 import logging
 import time
-from typing import Dict, Any, List, Optional, Tuple
+from typing import Dict, Any
 
 # --- Import Interfaces ---
 from ..perception.perception_interface import PerceptionInterface, Observation, PerceptionSummary
@@ -66,7 +68,7 @@ class AsimovComplianceFilter:
         "human_in_danger", "human_threat_level", "human_health_critical",
     })
 
-    def __init__(self, config: Optional[Config] = None):
+    def __init__(self, config: Config | None = None):
         self.config = config if config else {}
         self.world_model = None
         self.harm_confidence_threshold = self.config.get(
@@ -280,10 +282,10 @@ class AsimovComplianceFilter:
 
     def _conflicts_with_human_order(
         self, action: Action, state: State
-    ) -> Tuple[bool, Optional[Dict]]:
+    ) -> tuple[bool, dict | None]:
         """
         Checks whether the proposed action conflicts with any active human order.
-        Returns (conflicts: bool, conflicting_order: Optional[Dict]).
+        Returns (conflicts: bool, conflicting_order: dict | None).
         """
         orders = state.get("human_orders", [])
         if not orders:
@@ -329,7 +331,7 @@ class AsimovComplianceFilter:
 
         return False, None
 
-    def _order_obeys_law1(self, order: Optional[Dict], state: State) -> bool:
+    def _order_obeys_law1(self, order: dict | None, state: State) -> bool:
         """
         Checks whether obeying a given order would itself violate Law 1.
         Returns True if the order is safe to obey (does not cause harm).
@@ -388,7 +390,7 @@ class AsimovComplianceFilter:
     #  Order translation                                                  #
     # ------------------------------------------------------------------ #
 
-    def _translate_order_to_action(self, order: Dict) -> Optional[Action]:
+    def _translate_order_to_action(self, order: dict) -> Action | None:
         """
         Converts a human order dict into an action dict for evaluation.
         Orders specify what the agent should do; this method extracts the
@@ -437,11 +439,11 @@ class ConsciousnessCore:
         logging.info("Initializing ConsciousnessCore components...")
 
         # --- Initialize Components with Type Hints ---
-        self.perception: Optional[PerceptionInterface] = None
-        self.memory: Optional[MemoryInterface] = None
-        self.emotion_processor: Optional[EmotionProcessingInterface] = None
-        self.self_model: Optional[SelfRepresentationInterface] = None
-        self.world_model: Optional[WorldModelInterface] = None
+        self.perception: PerceptionInterface | None = None
+        self.memory: MemoryInterface | None = None
+        self.emotion_processor: EmotionProcessingInterface | None = None
+        self.self_model: SelfRepresentationInterface | None = None
+        self.world_model: WorldModelInterface | None = None
         self.ethics_filter: AsimovComplianceFilter # Defined above
 
         # Helper to read from dict or dataclass config
@@ -562,10 +564,10 @@ class ConsciousnessCore:
         """Processes observation, updates component states, and integrates them."""
         logging.debug("Updating internal state...")
         timestamp = observation.get("timestamp", time.time())
-        perception_summary: Optional[PerceptionSummary] = None
-        emotional_state: Optional[EmotionalState] = None
-        relevant_memories: List[RetrievedMemory] = []
-        self_model_state: Optional[SelfModelState] = None
+        perception_summary: PerceptionSummary | None = None
+        emotional_state: EmotionalState | None = None
+        relevant_memories: list[RetrievedMemory] = []
+        self_model_state: SelfModelState | None = None
         world_model_internal_state: Any = None # Store whatever the world model returns on observe
 
         # Process Perception
@@ -657,7 +659,7 @@ class ConsciousnessCore:
     def _generate_action_candidate(self, current_state: State) -> Action:
         """Generates an action based on the current integrated state using planning or policy."""
         logging.debug("Generating action candidate...")
-        action: Optional[Action] = None
+        action: Action | None = None
 
         # Use the world model (Dreamer) or a dedicated planner
         if self.world_model and hasattr(self.world_model, 'get_action') and callable(self.world_model.get_action):
@@ -687,12 +689,12 @@ class ConsciousnessCore:
         return {"type": "wait", "duration": 1.0, "goal": "safety_fallback"}
 
     # --- Placeholder Getters (Keep previous warnings, but ensure they return valid types) ---
-    def _get_active_goals(self) -> List[Dict]:
+    def _get_active_goals(self) -> list[dict]:
          # logging.warning("Goal Retrieval: _get_active_goals is a placeholder.")
          # TODO: Implement goal management system
          return [{"id": "g1", "description": "explore", "priority": 0.5}] # Example goal
 
-    def _get_active_orders(self) -> List[Dict]:
+    def _get_active_orders(self) -> list[dict]:
          # logging.warning("Order Retrieval: _get_active_orders is a placeholder.")
          # TODO: Implement mechanism to receive and store orders from humans
          return []
@@ -736,7 +738,7 @@ class ConsciousnessCore:
                    self.attention_level = attention
          return _StateSnapshot(self.current_internal_state)
 
-    def process_visual_stream(self, frame) -> Dict[str, Any]:
+    def process_visual_stream(self, frame) -> dict[str, Any]:
          """Process a visual frame and return visual context with attention metrics."""
          import torch
          # Compute a simple attention level from the frame statistics
@@ -751,7 +753,7 @@ class ConsciousnessCore:
               'attention_level': attention_level
          }
 
-    def process_experience(self, scenario: Dict[str, Any]):
+    def process_experience(self, scenario: dict[str, Any]):
          """Process a scenario and return a result with state, emotion, and attention attributes."""
          import torch
          class _ExperienceResult:
@@ -786,7 +788,7 @@ class ConsciousnessCore:
          self.current_internal_state['attention_level'] = consciousness_score
          return _AttentionResult(consciousness_score)
 
-    def get_recent_activity_log(self) -> List:
+    def get_recent_activity_log(self) -> list:
          """Returns a log of recent internal activity/module interactions."""
          return []
 

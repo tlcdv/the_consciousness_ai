@@ -1,6 +1,8 @@
+from __future__ import annotations
+
 from pinecone import Pinecone
 import numpy as np
-from typing import List, Dict, Any
+from typing import Any
 import time
 
 class MemoryCore:
@@ -9,9 +11,9 @@ class MemoryCore:
         self.index = self.pc.Index("consciousness-memory")
         
     def store_experience(self, 
-                        embedding: List[float], 
-                        metadata: Dict[str, Any],
-                        emotional_context: Dict[str, float]):
+                        embedding: list[float], 
+                        metadata: dict[str, Any],
+                        emotional_context: dict[str, float]):
         """Store an experience with emotional context"""
         vector_id = f"exp_{np.random.uuid4()}"
         self.index.upsert(
@@ -28,8 +30,8 @@ class MemoryCore:
         )
         
     def retrieve_similar_experiences(self, 
-                                   query_embedding: List[float],
-                                   emotional_filter: Dict[str, float] = None,
+                                   query_embedding: list[float],
+                                   emotional_filter: dict[str, float] = None,
                                    top_k: int = 5):
         """Retrieve experiences with emotional context filtering"""
         filter_query = {}

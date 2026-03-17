@@ -5,8 +5,9 @@ Generates experience narratives for consciousness development.
 Wraps around NarrativeEngine for integration with emotional development.
 Provides an autobiographical inner monologue derived from the Global Workspace.
 """
+from __future__ import annotations
 
-from typing import Dict, Any, List, Optional
+from typing import Any
 from collections import deque
 import numpy as np
 
@@ -19,7 +20,7 @@ class NarrativeBuffer:
     def add(self, narrative: str) -> None:
         self.buffer.append(narrative)
         
-    def get_recent(self) -> List[str]:
+    def get_recent(self) -> list[str]:
         return list(self.buffer)
         
     def get_coherence(self) -> float:
@@ -34,7 +35,7 @@ class NarrativeBuffer:
 class NarrativeGenerator:
     """Generates an inner monologue from the workspace broadcast and emotional state."""
 
-    def __init__(self, config: Optional[Dict] = None):
+    def __init__(self, config: dict | None = None):
         self.config = config or {}
         buffer_size = self.config.get("buffer_size", 10)
         self.buffer = NarrativeBuffer(capacity=buffer_size)
@@ -95,8 +96,8 @@ class NarrativeGenerator:
     def generate_from_workspace(
         self, 
         broadcast: Any, 
-        emotional_state: Dict[str, float], 
-        action: Optional[np.ndarray] = None
+        emotional_state: dict[str, float], 
+        action: np.ndarray | None = None
     ) -> str:
         """
         Generate a stream-of-consciousness narrative segment.
@@ -148,12 +149,12 @@ class NarrativeGenerator:
         return narrative
 
     # Legacy interface mapping
-    def generate(self, context: Dict, emotional_state: Optional[Dict] = None) -> str:
+    def generate(self, context: dict, emotional_state: dict | None = None) -> str:
         """Legacy compatibility wrapper."""
         if emotional_state is None:
             emotional_state = {"valence": 0.0, "arousal": 0.0, "dominance": 0.0}
         return self.generate_from_workspace(context, emotional_state)
 
-    def generate_experience_narrative(self, experience: Dict) -> str:
+    def generate_experience_narrative(self, experience: dict) -> str:
         """Generate narrative from raw experience data."""
         return self.generate(experience, experience.get("emotion_values"))

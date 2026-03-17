@@ -12,8 +12,8 @@ Dependencies:
 - models/memory/temporal_coherence.py for sequence tracking
 - models/evaluation/memory_metrics.py for validation
 """
+from __future__ import annotations
 
-from typing import Dict, List, Optional, Tuple
 import torch
 import torch.nn as nn
 from dataclasses import dataclass
@@ -24,8 +24,8 @@ class TimeContext:
     """Tracks temporal context information"""
     timestamp: float
     sequence_id: str
-    previous_contexts: List[str]
-    next_contexts: List[str]
+    previous_contexts: list[str]
+    next_contexts: list[str]
     attention_level: float
 
 @dataclass
@@ -37,7 +37,7 @@ class TemporalMetrics:
     temporal_consistency: float = 0.0
 
 class TemporalContextManager:
-    def __init__(self, config: Dict):
+    def __init__(self, config: dict):
         """Initialize temporal context system"""
         self.config = config
         self.contexts = {}
@@ -46,7 +46,7 @@ class TemporalContextManager:
     def add_context(
         self,
         memory_id: str,
-        current_state: Dict[str, torch.Tensor],
+        current_state: dict[str, torch.Tensor],
         attention: float
     ) -> TimeContext:
         """Add temporal context to memory"""
@@ -73,7 +73,7 @@ class TemporalContextNetwork(nn.Module):
     Maintains temporal coherence in consciousness development.
     """
 
-    def __init__(self, config: Dict):
+    def __init__(self, config: dict):
         super().__init__()
         
         # Core networks
@@ -100,8 +100,8 @@ class TemporalContextNetwork(nn.Module):
         self,
         sequence: torch.Tensor,
         timestamps: torch.Tensor,
-        attention_mask: Optional[torch.Tensor] = None
-    ) -> Tuple[torch.Tensor, Dict[str, float]]:
+        attention_mask: torch.Tensor | None = None
+    ) -> tuple[torch.Tensor, dict[str, float]]:
         """
         Process temporal sequence with attention
         

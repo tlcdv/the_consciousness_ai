@@ -13,7 +13,6 @@ individual significance and contributes to overall knowledge representation.
 
 import torch
 import torch.nn as nn
-from typing import Dict, List, Optional, Tuple
 from dataclasses import dataclass
 
 @dataclass
@@ -29,7 +28,7 @@ class ConceptHierarchy(nn.Module):
     Maintains hierarchical organization of semantic concepts
     """
     
-    def __init__(self, config: Dict):
+    def __init__(self, config: dict):
         super().__init__()
         
         # Hierarchical networks
@@ -50,7 +49,7 @@ class ConceptHierarchy(nn.Module):
     def update(
         self,
         concept_embedding: torch.Tensor,
-        semantic_context: Dict
+        semantic_context: dict
     ) -> bool:
         """
         Update concept hierarchy with new concept
@@ -71,7 +70,7 @@ class KnowledgeIntegrator(nn.Module):
     Integrates new concepts into existing knowledge base
     """
     
-    def __init__(self, config: Dict):
+    def __init__(self, config: dict):
         super().__init__()
         
         self.knowledge_fusion = nn.Sequential(

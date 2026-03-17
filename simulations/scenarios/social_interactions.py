@@ -17,7 +17,7 @@ class SocialInteraction:
         Initialize a social interaction.
         Args:
             interaction_id (str): Unique identifier for the interaction.
-            participants (list): List of participant IDs (agents or humans).
+            participants (list): list of participant IDs (agents or humans).
             scenario (str): Description of the social scenario.
             success_criteria (callable): A function to evaluate interaction success.
         """
