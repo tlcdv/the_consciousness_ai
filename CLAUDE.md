@@ -395,9 +395,9 @@ Priority order based on dependency and impact:
 
 ---
 
-## Current State (2026-03-17)
+## Current State (2026-03-18)
 
-312 passed, 0 failed, 1 skipped. Tiers 1-3 complete, 4-level capsule hierarchy with multi-level reentrance. IIT Phi integration rewired to use causal gate states.
+331 passed, 0 failed, 4 skipped. Tiers 1-3 complete, 4-level capsule hierarchy with multi-level reentrance. IIT Phi integration rewired to use causal gate states. Brian2 biological validation stack implemented.
 
 **Architectural decisions locked and implemented:**
 - Oscillatory binding: **AKOrN** (ICLR 2025) integrated into GNW
@@ -416,13 +416,13 @@ Priority order based on dependency and impact:
 - Embodiment-affect loop: **Interoceptive PAD generation** (energy/fatigue/damage -> valence/arousal/dominance deltas)
 - Trimodal tectum: **Somatosensory channel** (body schema projected onto spatial grid via learned linear map + IE fusion)
 
-**Decisions locked, not yet implemented:**
-- Spiking validation: **Brian2/NEST** offline
+- Brian2 validation: **Kuramoto parameter translation** (AKOrN to Brian2 spiking network) + synchronization curve comparison
 
 **What fails (0 tests):** Nothing.
 
-**What's skipped (1 test):**
+**What's skipped (4 tests):**
 - `test_predictive_processing.py::test_prediction_generation`: async test needs pytest-asyncio
+- `test_brian2_validation.py::TestBrian2Integration` (3 tests): Brian2 not installed (optional dep)
 
 ---
 
@@ -444,6 +444,7 @@ Priority order based on dependency and impact:
 - ~~True isomorphic visual mapping (DINOv2 + TDANN + inverse effectiveness)~~
 - ~~Wire interoceptive state into affective modulator (embodiment-affect loop)~~
 - ~~Add somatosensory channel to tectum (trimodal fusion)~~
+- ~~Brian2 Validation Stack (AKOrN parameter translation + sync curve comparison)~~
 
 ### Next Priorities (to reach 85%+ alignment)
 
@@ -463,8 +464,10 @@ Priority order based on dependency and impact:
    - PhiResult dataclass with method/metadata, TPM diagnostics, legacy deprecation warnings
    - 38 new tests
 
-4. **Brian2 Validation Stack** (LOW) **<-- NEXT**
-   - Offline biological validation of AKOrN binding patterns
+4. ~~**Brian2 Validation Stack** (LOW)~~ DONE
+   - Parameter translation (natural frequencies, coupling matrix, amplitudes) from AKOrN to Brian2 Kuramoto network
+   - Synchronization curve comparison with Pearson correlation threshold
+   - 19 tests passing (translation, simulation, interpolation), 3 skipped (Brian2 integration)
 
 5. **Python 3.10+ upgrade** (OPTIONAL)
 
@@ -754,4 +757,33 @@ Priority order based on dependency and impact:
    - `TestEdgeCases` (4): all-zero state, constant history, history length cap, 3-node TPM
 
 **Test results:** 312 passed, 0 failed, 1 skipped (up from 274). No regressions.
+
+---
+
+### 2026-03-18: Brian2 Biological Validation Stack
+
+**What was done:**
+
+1. **Created `models/validation/brian2_binding_validation.py`**:
+   - `_extract_akorn_natural_frequencies()`: extracts angular velocities from the skew-symmetric frequency matrices. For 2D oscillators (standard phase circle), reads the off-diagonal element directly. For higher dimensions, uses Frobenius norm as scalar proxy.
+   - `_extract_akorn_coupling_matrix()`: extracts the learnable pairwise coupling weights
+   - `run_akorn_simulation()`: runs KuramotoLayer step by step, recording the Kuramoto order parameter R and phase angles at each timestep. Returns a `SyncCurve` dataclass.
+   - `build_brian2_network()`: constructs a Brian2 NeuronGroup with standard Kuramoto equations (`dTheta/dt = omega + (K/N)*coupling`), Synapses with weighted sinusoidal coupling (`w * amp_pre * sin(Theta_pre - Theta_post)`), and StateMonitor. Sets pairwise weights from AKOrN's coupling matrix and per-oscillator amplitudes from bid strengths.
+   - `run_brian2_simulation()`: runs the Brian2 network for a given duration, computes R at each timestep from the recorded phases
+   - `validate_binding()`: runs both simulators with shared initial conditions (random phases on the unit circle, same seed), interpolates to common time grid, computes Pearson correlation between the two R curves. Passes if correlation exceeds threshold (default 0.85).
+   - `translate_akorn_params()`: convenience function to extract all parameters as a plain dict
+   - `ValidationResult` dataclass: contains both curves, correlation, max/mean deviation, pass/fail, and method ("brian2" or "skipped")
+   - Brian2 is a conditional import. When not installed, `validate_binding()` emits a UserWarning and returns `method="skipped"`.
+
+2. **Created `tests/test_brian2_validation.py`** (22 tests):
+   - `TestParameterTranslation` (5): 2D frequency extraction, higher-D frequency extraction, coupling matrix shape/values, translate_akorn_params keys, coupling strength type
+   - `TestAKOrNSimulation` (6): curve shape, R bounded [0,1], high coupling synchronizes, zero coupling no sync, amplitude modulation changes dynamics, times monotonic
+   - `TestInterpolation` (2): same-length curves, different-length curves
+   - `TestValidateBindingWithoutBrian2` (2): graceful skip with warning, AKOrN curve always present
+   - `TestValidationResultStructure` (1): dataclass field check
+   - `TestSyncCurve` (1): dataclass fields
+   - `TestBrian2Integration` (3, skipped without Brian2): Brian2 simulation runs, full validation passes, both curves present
+   - `TestWorkspaceBindingTranslation` (2): extract from WorkspaceBindingSystem, phase state after bind_bids
+
+**Test results:** 331 passed, 0 failed, 4 skipped (up from 312). The 3 new Brian2 integration tests are correctly skipped (optional dependency not installed), plus the existing 1 async test skip. No regressions.
 
