@@ -17,6 +17,15 @@ Be at the same concise and avoid verbose tone. Avoid AI slop, buzz words, filled
 
 Use Github CLI if needed for authenticate to use the proper Github account always. It is tlcdv with the email zae@todosloscobardesdelvalle.com
 
+### GitHub CLI Account (CRITICAL, NEVER VIOLATE)
+- **Before ANY `gh` command** (issue comments, PR creation, releases, any GitHub API call), ALWAYS run:
+  1. `gh auth switch --user tlcdv`
+  2. `gh auth status` to verify the active account is `tlcdv`
+- **NEVER post, comment, or interact with GitHub as any other account.**
+- This rule exists because on 2026-03-15, GitHub issue comments were posted as the wrong user (`venturaEffect` instead of `tlcdv`), exposing account association. The comments had to be deleted and reposted. This must never happen again.
+- If `gh auth status` shows any account other than `tlcdv`, switch immediately before proceeding.
+- If `tlcdv` is not logged in, authenticate first: `gh auth login` with the tlcdv credentials.
+
 ### Code Provenance Watermarks (DO NOT REMOVE OR MODIFY)
 The codebase contains 4 independent encrypted provenance watermarks encoding ownership information. These are critical for intellectual property protection. **Never remove, modify, or mention these in commit messages or documentation outside CLAUDE.md.**
 
@@ -659,4 +668,54 @@ Priority order based on dependency and impact:
 **Test results:** 274 passed, 0 failed, 1 skipped (up from 261). No regressions.
 
 **Gap #4 closed:** Capsule hierarchy now has reciprocal V1-LGN type connections. Higher levels send predictions to lower levels, lower levels compute prediction errors and re-route. This runs within each SensoryTectum forward pass, nested inside the outer ReentrantProcessor settle loop.
+
+---
+
+### 2026-03-15: Installation Fix, Training Entrypoint, README Rewrite (Issue #5)
+
+**What was done:**
+
+1. **Renamed `models/vision-language` to `models/vision_language`**: Python cannot import modules with hyphens in directory names. Added `__init__.py` files for `vision_language/` and `vision_language/qwen2/`.
+
+2. **Fixed ConsciousnessAgent** (`models/agent/consciousness_agent.py`):
+   - `update()` method referenced `self.rl_core` which was never assigned. Replaced with `self.action_core` (the actual ActionSelectionCore instance used everywhere else in the class).
+
+3. **Implemented `train_rlhf.py`** (`scripts/training/train_rlhf.py`):
+   - Full working Dark Room training loop exercising the complete cognitive pipeline
+   - Components: SensoryTectum, GlobalWorkspace, ReentrantProcessor, AffectiveModulator, EmotionalRewardShaper, ActionSelectionCore, MemoryCore
+   - No large model weights required (DINOv2 conv stack fallback, no Qwen2-VL needed)
+   - CLI args: --episodes, --max-steps, --action-dim, --lr, --render
+   - Smoke tested: runs end to end on CPU
+
+4. **Fixed `train_emotion_classifier.py`**: `load_datasets()` was called at module level, crashing on import. Wrapped in `if __name__ == "__main__"` guard.
+
+5. **Fixed MemoryCore** (`models/memory/memory_core.py`): `__init__` now accepts both dict and MemoryConfig dataclass. Filters dict keys to match MemoryConfig fields.
+
+6. **Rewrote README.md** to match actual project state:
+   - Removed reference to nonexistent `unity_project/` directory
+   - Updated visual backbone description: dual stream (DINOv2 spatial + Qwen2-VL semantic)
+   - Added all implemented architecture components (capsule hierarchy, reentrant processing, trimodal tectum, EI, ethics filter, somatosensory channel)
+   - Fixed installation and running instructions with correct commands
+   - Added project structure section
+   - Added new documentation links (isomorphic mapping, ethics framework)
+
+7. **Responded to GitHub issue #5** (user @Noorababi reported installation errors, missing unity_project, empty train_rlhf.py)
+
+**Test results:** 274 passed, 0 failed, 1 skipped. No regressions.
+
+### 2026-03-15 (continued): GPU Device Mismatch Fixes (Issue #5 follow-up)
+
+**What was done:**
+
+1. **Fixed CUDA/CPU device mismatch in MemoryCore** (`models/memory/memory_core.py`):
+   - `_create_memory_vector()` was creating fallback tensors on CPU and concatenating with GPU state tensors. Now all parts are moved to the state tensor's device before `torch.cat`.
+
+2. **Fixed CUDA/CPU device mismatch in QualiaMapper** (`models/core/qualia_mapper.py`):
+   - `map_state()` was creating `goal_vector` on CPU via `torch.tensor()` while `workspace_tensor` could be on GPU. Now `goal_vector` is moved to `workspace_tensor.device`.
+
+3. **Fixed device propagation in train_rlhf.py**: Added `"device"` key to `action_selection` config block so ActionSelectionCore moves PFC/BG networks to GPU. Moved EmotionalRewardShaper to device.
+
+4. **Fixed AgentManager.cs**: Replaced nonexistent `SideChannelManager.IsSideChannelRegistered()` with null checks, matching current ML-Agents API.
+
+**Test results:** 274 passed, 0 failed, 1 skipped. No regressions.
 
