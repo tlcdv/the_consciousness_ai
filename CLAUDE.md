@@ -445,6 +445,7 @@ Priority order based on dependency and impact:
 - ~~Wire interoceptive state into affective modulator (embodiment-affect loop)~~
 - ~~Add somatosensory channel to tectum (trimodal fusion)~~
 - ~~Brian2 Validation Stack (AKOrN parameter translation + sync curve comparison)~~
+- ~~Python 3.10+ type annotation upgrade~~
 
 ### Next Priorities (to reach 85%+ alignment)
 
@@ -469,7 +470,10 @@ Priority order based on dependency and impact:
    - Synchronization curve comparison with Pearson correlation threshold
    - 19 tests passing (translation, simulation, interpolation), 3 skipped (Brian2 integration)
 
-5. **Python 3.10+ upgrade** (OPTIONAL)
+5. ~~**Python 3.10+ upgrade** (OPTIONAL)~~ DONE
+   - 602 type annotations migrated across 111 files
+   - `from __future__ import annotations` added to 93 files for 3.8 runtime compat
+   - Unused typing imports cleaned from 91 files
 
 ---
 
@@ -786,4 +790,31 @@ Priority order based on dependency and impact:
    - `TestWorkspaceBindingTranslation` (2): extract from WorkspaceBindingSystem, phase state after bind_bids
 
 **Test results:** 331 passed, 0 failed, 4 skipped (up from 312). The 3 new Brian2 integration tests are correctly skipped (optional dependency not installed), plus the existing 1 async test skip. No regressions.
+
+---
+
+### 2026-03-18: Python 3.10+ Type Annotation Upgrade
+
+**What was done:**
+
+1. **Migrated 602 type annotations across 111 files** to Python 3.10+ syntax:
+   - `Optional[X]` to `X | None` (150 occurrences)
+   - `List[X]` to `list[X]` (104 occurrences)
+   - `Dict[K, V]` to `dict[K, V]` (258 occurrences)
+   - `Tuple[X, ...]` to `tuple[X, ...]` (65 occurrences)
+   - Bare `Dict`/`List`/`Tuple` without brackets (25+ additional occurrences)
+
+2. **Added `from __future__ import annotations`** to 93 files:
+   - Required for Python 3.8 runtime compatibility (local environment is 3.8.3, CI is 3.10)
+   - `__future__` annotations makes all type hints string-based, avoiding runtime `TypeError: 'type' object is not subscriptable`
+
+3. **Cleaned up typing imports** from 91 files:
+   - Removed `List`, `Dict`, `Tuple`, `Optional`, `Set`, `FrozenSet` when no longer used
+   - Preserved `Dict` import in 7 files with runtime type aliases (`Observation = Dict[str, Any]`) since these are evaluated at runtime where `__future__` annotations does not apply
+
+4. **Updated `requirements.txt`**: removed outdated `requires Python <3.10` note from mlagents section
+
+5. **Verified all 4 code provenance watermarks** untouched after migration
+
+**Test results:** 331 passed, 0 failed, 4 skipped. No regressions.
 
