@@ -4,43 +4,49 @@ import numpy as np
 from dataclasses import dataclass
 
 @dataclass
-class QualiaState:
+class PhenomenologicalState:
     """
-    Represents the geometric properties of a subjective experience.
+    Represents the geometric properties of a subjective experience proxy.
     Based on IIT's concept of the 'Shape' of information structure (MICS)
     and mapped to a 3D phenomenological space.
+
+    This is an empirical correlate proxy, not a claim about actual qualia.
     """
     intensity: float  # Magnitude/Salience (0.0 to 1.0)
     valence: float    # Emotional polarity (-1.0 to 1.0)
     complexity: float # Information density/Entropy (0.0 to 1.0)
-    
+
     def to_vector(self) -> np.ndarray:
         return np.array([self.intensity, self.valence, self.complexity], dtype=np.float32)
 
-class QualiaMapper:
+# Backward compatibility alias
+QualiaState = PhenomenologicalState
+
+class PhenomenologicalMapper:
     """
     Maps high-dimensional Global Workspace states into a low-dimensional
-    Phenomenological Space (Qualia).
-    
+    Phenomenological Space.
+
     This bridges the gap between the mathematical vector space of the AI
-    and the 'Subjective Feel' that we want to visualize/monitor.
+    and a measurable correlate of subjective experience that we can
+    visualize and monitor.
     """
-    
+
     def __init__(self, subspace_dim: int = 3):
         self.subspace_dim = subspace_dim
         # Reference vectors for alignment (can be learned over time)
         # For now, we use fixed heuristic bases.
 
-    def map_state(self, workspace_tensor: torch.Tensor, goal_vector: torch.Tensor) -> QualiaState:
+    def map_state(self, workspace_tensor: torch.Tensor, goal_vector: torch.Tensor) -> PhenomenologicalState:
         """
-        Projects the workspace state into Qualia Space.
-        
+        Projects the workspace state into Phenomenological Space.
+
         Args:
             workspace_tensor: The ignited state vector from the Global Workspace.
             goal_vector: The agent's current homeostatic goal vector (from Emotion Core).
-            
+
         Returns:
-            QualiaState object representing the 'feel' of the thought.
+            PhenomenologicalState object representing the measured correlate of the thought.
         """
         # Ensure tensor inputs on the same device
         if not isinstance(workspace_tensor, torch.Tensor):
@@ -50,13 +56,13 @@ class QualiaMapper:
             goal_vector = torch.tensor(goal_vector, dtype=torch.float32, device=device)
         else:
             goal_vector = goal_vector.to(device)
-            
+
         # 1. Intensity (L2 Norm)
         # How "loud" or salient is this thought?
         # A faint thought has low magnitude; an insight has high magnitude.
         intensity = torch.norm(workspace_tensor).item()
         # Normalize roughly to 0-1 range (assuming unit variance inputs)
-        intensity = np.tanh(intensity) 
+        intensity = np.tanh(intensity)
 
         # 2. Valence (Alignment)
         # Is this thought aligned with my goals?
@@ -70,7 +76,7 @@ class QualiaMapper:
              # Pad or truncate to match length for dot product
              min_len = min(len(flat_ws), len(flat_goal))
              valence = F.cosine_similarity(
-                 flat_ws[:min_len].unsqueeze(0), 
+                 flat_ws[:min_len].unsqueeze(0),
                  flat_goal[:min_len].unsqueeze(0)
              ).item()
         else:
@@ -87,8 +93,11 @@ class QualiaMapper:
         max_entropy = np.log(probs.numel())
         complexity = entropy / (max_entropy + 1e-9)
 
-        return QualiaState(
+        return PhenomenologicalState(
             intensity=float(intensity),
             valence=float(valence),
             complexity=float(complexity)
         )
+
+# Backward compatibility alias
+QualiaMapper = PhenomenologicalMapper

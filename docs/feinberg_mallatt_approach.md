@@ -107,11 +107,17 @@ This matches biological cortical processing (~200ms, ~10ms per relay). Easy stim
 
 Emotion shapes the competition from outside rather than participating in it — matching the biological architecture exactly.
 
-### 3.5 Nested Compositional Hierarchy → Capsule Networks (Planned)
+### 3.5 Nested Compositional Hierarchy → 4-Level Capsule Network
 
 **Biological principle:** Lower-level representations persist while being functionally bound into composites at higher levels. Color + shape + motion = one object, but color, shape, and motion continue to exist as independent features.
 
-**Our planned implementation:** Capsule Networks (Hinton) between tectum outputs and workspace. Dynamic routing by agreement implements the exact binding mechanism Feinberg-Mallatt describe — lower-level capsules "vote" for matching higher-level composites while maintaining their own representations.
+**Our implementation:** `HierarchicalCapsuleComposition` (Sabour 2017) chains 4 levels between tectum and workspace:
+- Level 1: `PrimaryCapsuleLayer` (stride-2 conv) extracts local features
+- Level 2: 16 intermediate capsules (12-D poses) for object primitives
+- Level 3: 8 higher capsules (16-D poses) for object categories
+- Level 4: 4 output capsules (16-D poses) for scene/workspace
+
+Multi-level reentrant feedback runs within the hierarchy: higher levels send predictions to lower levels, lower levels compute prediction errors and re-route. This runs inside each SensoryTectum forward pass, nested within the outer ReentrantProcessor settle loop. The biological analog is V1-LGN type reciprocal connections where predictions flow down and errors flow up.
 
 ### 3.6 Global Workspace + IIT Integration
 
@@ -193,10 +199,10 @@ If this never occurs across training, the system is not exhibiting the kind of e
 
 As of February 2026:
 
-- **156 tests passing** (99.4% pass rate)
-- **Tier 1 (Core Architecture):** ✅ Complete — AKOrN binding, sensory tectum, reentrant processing
-- **Tier 2 (Architecture Corrections):** ✅ Complete — affective modulator, phi-binding validation, proprioceptive self-model, effective information
-- **Tier 3 (Compositional Deepening):** 🔄 In progress — capsule networks, Brian2 validation
+- **331 tests passing** (100% pass rate, 4 skipped for optional deps)
+- **Tier 1 (Core Architecture):** Complete. AKOrN binding, sensory tectum, reentrant processing.
+- **Tier 2 (Architecture Corrections):** Complete. Affective modulator, phi-binding validation, proprioceptive self-model, effective information.
+- **Tier 3 (Compositional Deepening):** Complete. 4-level capsule hierarchy with multi-level reentrance, Brian2 validation, trimodal tectum, embodiment-affect loop, isomorphic visual mapping.
 
 The project is fully open-source and actively maintained at [github.com/tlcdv/the_consciousness_ai](https://github.com/tlcdv/the_consciousness_ai).
 

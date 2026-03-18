@@ -140,7 +140,7 @@ These are the properties that any conscious system must exhibit, according to Fe
 |------|--------------|--------------------|-----------------------------|
 | **Referral (Projicience)** | Experiencing sensations as belonging to the world or body, not to the neurons generating them | Isomorphic mapping: the spatial structure of neural maps IS the spatial structure of experience | **Not implemented.** Our system has no spatial maps that preserve topographic structure |
 | **Mental Unity** | Feeling like one observer of one scene, despite billions of separate neurons | Oscillatory binding (gamma synchrony) + nested hierarchies | **Weakly implemented.** The GNW competition produces "winners" but does not generate binding |
-| **Qualia** | The subjective felt quality of experience (redness, painfulness) | Emerges from the specific pattern of integrated activity across the mapped hierarchy | **Labeled but not functional.** Our `QualiaMapper` produces a 3D vector, not genuine qualitative distinctions |
+| **Qualia** | The subjective felt quality of experience (redness, painfulness) | Emerges from the specific pattern of integrated activity across the mapped hierarchy | **Labeled as proxy.** `PhenomenologicalMapper` produces a 3D correlate vector (intensity, valence, complexity), explicitly framed as a measurable proxy rather than a qualia claim |
 | **Mental Causation** | Subjective states causing physical actions | The conscious state IS the neural state — identity, not dualism. The integrated workspace state drives the motor system | **Partially implemented.** Consciousness scores influence gating and reward, which is the right structure |
 
 ---

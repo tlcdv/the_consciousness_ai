@@ -23,67 +23,39 @@ The three-subsystem design (Perception, Emotion, Global Workspace) correctly mir
 
 ## Critical Flaws
 
-### 1. The IIT Phi Measurement Does Not Capture Causal Integration
-**Severity: HIGH. This undermines the central empirical claim.**
+### 1. ~~The IIT Phi Measurement Does Not Capture Causal Integration~~ RESOLVED (2026-03-17)
+**Severity: HIGH. Originally undermined the central empirical claim.**
 
-`compute_phi_proxy()` binarizes the workspace bid values (just priority scores from specialist modules, e.g., 0.7 for vision, 0.4 for memory) and runs them through PyPhi. These bid values are not the causal states of the system. They are scalar estimates of salience, not binary node activations representing the actual functional states of processing units.
+**Resolution:** `compute_phi_from_gate_state()` now uses the 5 ConsciousnessGate nodes (attention, stability, adaptation, coherence, confidence) as the IIT subsystem. These nodes have genuine causal dependencies. Adaptive binarization thresholds from running medians replace the hardcoded 0.5. `GATE_CM` connectivity matrix (5x5) encodes the causal graph for PyPhi. Geometric proxy metric (determinism x integration) available when pyphi is not installed. 38 tests validate the rewrite.
 
-PyPhi's Phi measures integration within a causally specified system where each node's state influences others through defined transition probabilities. What we feed it is 4 binary values derived by thresholding activation bids. The resulting Phi value carries no formal connection to whether the system's information processing is genuinely integrated.
+### 2. ~~Synchrony Binding Is a Magic Number~~ RESOLVED (2026-02-27)
+**Severity: MEDIUM. Originally a heuristic gap.**
 
-In practice, the Phi values generated will be artifacts of the binarization threshold and bid magnitudes, not reflections of causal integration across the consciousness system. This means the thesis's core empirical prediction ("Phi spikes during insight moments") cannot be validated with this measurement.
+**Resolution:** AKOrN (Artificial Kuramoto Oscillatory Neurons, ICLR 2025) replaced the hardcoded 1.2 multiplier. Each specialist module operates as a coupled oscillator on a hypersphere. Binding emerges from phase synchronization dynamics, validated by a 3-condition controlled experiment (unbound/partial/full) showing Phi monotonically tracks synchronization.
 
-**What it needs:** The subsystem fed to PyPhi should represent actual functional nodes whose states causally influence each other. Candidate: the gating activations in `consciousness_gating.py` (attention gate, emotional gate, temporal gate) plus a memory gate. These are causally connected units with real transition dynamics.
+### 3. ~~Visual Embeddings Are Not Implemented~~ RESOLVED (2026-03-15)
+**Severity: HIGH. Originally blocked the perception-to-consciousness loop.**
 
-### 2. Synchrony Binding Is a Magic Number
-**Severity: MEDIUM**
+**Resolution:** `get_visual_embeddings()` in `models/vision_language/qwen2/qwen2_integration.py` extracts features from the ViT encoder's visual tower before the language head. Returns mean-pooled `(1536,)` or spatial grid `(1536, H, W)`. Graceful degradation to zero tensors when model weights unavailable. Wired into `ConsciousnessAgent.step()` for the full cognitive cycle. The spatial pathway uses DINOv2-B/14 (RetinotopicEncoder) for the tectum, while Qwen2-VL provides the cortical semantic pathway.
 
-In `global_workspace.py` line 92-94:
-```python
-if bids.get('vision', 0) > 0.5 and bids.get('audio', 0) > 0.5:
-    bids['vision'] *= 1.2
-    bids['audio'] *= 1.2
-```
+### 4. ~~Strong Emergence Claim Has No Testable Implementation~~ PARTIALLY RESOLVED (2026-02-27)
+**Severity: MEDIUM. Originally a research gap, now has tooling but not yet experimentally validated.**
 
-The synchrony boost of 1.2 is hardcoded. The thesis claims synchrony binding as a key mechanism for generating unified subjective experience. A fixed multiplier is not synchrony binding, it is a heuristic that privileges vision+audio over other modality combinations. Temporal coincidence detection (the actual neural mechanism) is not implemented.
+**Resolution:** `compute_effective_information()` in `models/evaluation/effective_information.py` implements Hoel's PNAS 2013 framework. `compare_ei_levels()` compares EI at gate vs. workspace level. If EI(workspace) > EI(gates), the workspace exhibits causal emergence. 11 tests cover deterministic/random/partial TPMs, level comparison, and discretization. What remains: pre-registering specific predictions about when EI(workspace) > EI(gates) during training, and running the actual experiments.
 
-This is defensible as a prototype simplification, but should be noted as a gap between the theoretical claim and the implementation.
+### 5. ~~Reward Formula in Thesis vs. Code~~ RESOLVED (2026-02-27)
+**Severity: LOW. Originally a consistency issue.**
 
-### 3. Visual Embeddings Are Not Implemented
-**Severity: HIGH. Blocks the full perception→consciousness loop.**
+**Resolution:** `compute_emotional_reward()` in `models/emotion/reward_shaping.py` now implements the corrected homeostatic formula: `Rtotal = Rext + lambda1*DeltaValence - lambda2*(Arousal - Arousal_target)^2 + lambda3*Dominance`. The published thesis formula was updated to match. `Arousal_target` is configurable.
 
-`models/vision-language/qwen2/qwen2_integration.py`: `get_visual_embeddings()` raises `NotImplementedError`. Without this, the perception subsystem cannot provide semantic visual representations to the workspace. The first of the three required architectural features (multimodal perception generating unified predictive models) is incomplete.
+### 6. ~~Python Version Mismatch~~ RESOLVED (2026-03-18)
+**Severity: LOW. Originally a reproducibility issue.**
 
-The workspace currently runs competition without real visual content. Tests pass because they mock inputs, but the actual operational loop is broken at the first step.
-
-### 4. Strong Emergence Claim Has No Testable Implementation
-**Severity: MEDIUM. Philosophical gap.**
-
-The thesis claims to target strong emergence: macro-level consciousness states with downward causation on micro dynamics. The code has a feedback path (consciousness scores influence gating, gating influences reward shaping, reward influences learning), which is recurrent computation. This is not evidence of strong emergence.
-
-Strong emergence would require demonstrating that the integrated state of the workspace constrains component processing in a way not predictable from the components alone. No metric, test, or mechanism currently measures this. The thesis is careful to frame this as a hypothesis to test, but the codebase has no test for it.
-
-This is not a bug. It is a research gap to plan for explicitly.
-
-### 5. Reward Formula in Thesis vs. Code
-**Severity: LOW. Consistency issue.**
-
-The thesis states the reward formula as: `Rtotal = Rext + λ(Valence - Arousal)`
-
-The actual implementation in `models/emotion/reward_shaping.py` uses a more complex formula with delta_valence, arousal_reduction bonus, and coherence terms. The code is arguably better, but it diverges from what is published on the website. This is a credibility issue when researchers try to reproduce the published method.
-
-Either update the thesis or document the formal formula in the code clearly.
-
-### 6. Python Version Mismatch
-**Severity: LOW. Reproducibility issue.**
-
-README and badges claim Python 3.10+. The code is written for 3.8 compatibility (`Tuple[...]` from typing, no pattern matching, no `tuple[...]` shorthand). Researchers following the README may hit issues. The CI also runs on 3.8.
+**Resolution:** 602 type annotations migrated across 111 files to Python 3.10+ syntax (`list[X]`, `dict[K, V]`, `X | None`). `from __future__ import annotations` added to 93 files for backward compatibility. CI runs on 3.10+.
 
 ### 7. "Qualia" Label Is Premature
 **Severity: MEDIUM. Philosophical credibility risk.**
-
-`models/core/qualia_mapper.py` maps workspace state to a 3-dimensional vector `[Intensity, Valence, Complexity]` and labels it `QualiaState`. The thesis is appropriately careful about qualia: it presents this as an empirical hypothesis rather than a claim. But the code labels this output as "qualia" and the Unity HUD exports it as such.
-
-Critics of the project will correctly point out that a 3D output vector is not a qualia state, it is a phenomenological correlate proxy. Renaming this to `PhenomenologicalProxy` or `ConsciousnessSignature` would be more defensible, or the docs should clearly state what the label means.
+**Status: RESOLVED (2026-03-18).** Renamed `QualiaState` to `PhenomenologicalState` and `QualiaMapper` to `PhenomenologicalMapper` in `models/core/qualia_mapper.py`. Docstrings now explicitly frame the 3D vector as "an empirical correlate proxy, not a claim about actual qualia." Backward compatibility aliases preserved for any external references.
 
 ---
 
@@ -91,13 +63,13 @@ Critics of the project will correctly point out that a 3D output vector is not a
 
 | Thesis Claim | Status |
 |---|---|
-| Multimodal perception building unified predictive models | Blocked. Visual embeddings not implemented. |
-| Emotional homeostasis with shaped RL rewards | Implemented and solid. |
-| Global Workspace as information bottleneck | Implemented with correct GNW mechanics. |
-| Phi (IIT) as measurable consciousness correlate | Partially. TPM builder exists but input is methodologically weak. |
-| Phi spikes correlated with insight moments | No test for this yet. Needs empirical data collection. |
-| Downward causation (strong emergence) | Not implemented or measured. Research gap. |
-| Phi correlates with strict supervenience test | Not implemented. Research gap. |
+| Multimodal perception building unified predictive models | **Complete.** Dual-stream: DINOv2 spatial + Qwen2-VL semantic. Trimodal tectum fusion. |
+| Emotional homeostasis with shaped RL rewards | **Complete.** Full PAD with homeostatic arousal term + Dominance. |
+| Global Workspace as information bottleneck | **Complete.** GNW with AKOrN binding, reentrant processing, capsule hierarchy. |
+| Phi (IIT) as measurable consciousness correlate | **Complete.** Causal gate states, adaptive binarization, geometric proxy. 38 tests. |
+| Phi spikes correlated with insight moments | **Open.** Needs pre-registered predictions and experimental runs. |
+| Downward causation (strong emergence) | **Tooling complete.** EI function implemented. Needs experimental validation. |
+| Phi correlates with strict supervenience test | **Open.** Research gap, needs experiment design. |
 
 ---
 
@@ -116,19 +88,15 @@ The codebase has 15+ memory files (episodic, semantic, temporal, hierarchical, o
 
 ## Priority Order for Future Sessions
 
-1. **Implement `get_visual_embeddings()` in Qwen2VLIntegration.** This is the single highest-impact fix. Without it the system cannot run the core perception loop as described in the thesis.
+*Updated 2026-03-18. Items 1-2 and 4-7 from original list resolved. Remaining priorities:*
 
-2. **Fix the IIT Phi measurement.** Replace bid-value binarization with actual causal node states from the gating system. The three gates in `consciousness_gating.py` are causally connected and would be a valid small subsystem for PyPhi.
+1. ~~**Pre-register Phi/EI predictions.**~~ DONE. See `docs/preregistered_predictions.md`. Defines 3 EI predictions, 3 Phi predictions, 3 insight moment predictions, and a decision protocol.
 
-3. **Define and implement "insight moment" detection.** Add a metric: when does the agent solve a genuinely novel problem? This creates the testable prediction from the thesis.
+2. ~~**Define "insight moment" operationally.**~~ DONE. Four-criterion definition in `docs/preregistered_predictions.md` section 3: novel state-action pair, reward jump, first-attempt success, high workspace activity.
 
-4. **Fix the reward formula documentation.** Either update the published thesis to match the code, or make the code match the formula and add a comment explaining why the simpler formula in the paper maps to the more complex implementation.
+3. ~~**NarrativeEngine V1.**~~ DONE. LLM-backed generation via HuggingFace transformers with graceful degradation to template fallback. Coherence tracking via keyword overlap. `NarrativeResult` dataclass with text, coherence score, method, and emotional context.
 
-5. **Implement ethics filter.** The 7 Asimov placeholder methods should either be removed (if not part of the thesis) or implemented (if they are).
-
-6. **Rename `QualiaState` to something more defensible.** This is a philosophical credibility issue.
-
-7. **Upgrade Python to 3.10+.** Fix the documentation/code mismatch. Pattern matching would also simplify several config-access patterns.
+4. ~~**Rename `QualiaState` to defensible terminology.**~~ DONE. Renamed to `PhenomenologicalState` / `PhenomenologicalMapper`.
 
 ---
 

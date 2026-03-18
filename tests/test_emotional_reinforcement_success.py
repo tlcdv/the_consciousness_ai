@@ -118,9 +118,9 @@ class TestEmotionalReinforcementSuccess(unittest.TestCase):
     def test_narrative_integration(self):
         """Test if emotional experiences generate coherent narratives"""
         input_text = "Agent showed empathy in interaction"
-        narrative = self.narrative.generate_narrative(input_text)
-        self.assertIsNotNone(narrative)
-        self.assertGreater(len(narrative), 0)
+        result = self.narrative.generate_narrative(input_text)
+        self.assertIsNotNone(result.text)
+        self.assertGreater(len(result.text), 0)
 
 
 if __name__ == '__main__':

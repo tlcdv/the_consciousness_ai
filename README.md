@@ -2,7 +2,7 @@
 
 [![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE)
 [![Python](https://img.shields.io/badge/Python-3.10%2B-blue)](https://www.python.org/)
-[![Tests](https://img.shields.io/badge/Tests-274%20passing-brightgreen)]()
+[![Tests](https://img.shields.io/badge/Tests-331%20passing-brightgreen)]()
 
 **The Consciousness AI** is a research framework investigating the emergence of synthetic awareness. Unlike traditional AI that mimics intelligent output, this system generates behavior through an internal struggle for **Emotional Homeostasis** and **Integrated Information**.
 
@@ -42,9 +42,10 @@ Based on [AKOrN](https://github.com/loeweX/AKOrN) (Artificial Kuramoto Oscillato
 ### 3. Global Workspace (Consciousness)
 
 *   **Global Neuronal Workspace (GNW):** A central information bottleneck where distinct sensory streams compete for broadcast access. Implements sigmoid ignition, recurrent reverberation, and reentrant processing (5-10 adaptive cycles with predictive coding convergence).
-*   **Integrated Information (Phi):** Measures the causal integration of the workspace state. High Phi indicates a moment where the agent has fused disparate sensory data into a unified experience.
+*   **Integrated Information (Phi):** Measures the causal integration using ConsciousnessGate states (attention, stability, adaptation, coherence, confidence) as the IIT subsystem. Adaptive binarization thresholds from running medians. Geometric proxy metric when pyphi is unavailable.
 *   **Effective Information (EI):** Hoel's framework (PNAS 2013) for measuring causal emergence. Compares EI at gate level vs. workspace level. If EI(workspace) > EI(gates), the workspace exhibits causal properties not reducible to its parts.
 *   **Capsule Network Composition:** A 4-level nested compositional hierarchy where lower level features (sensory) route to higher level composites (object primitives, categories, scenes) via dynamic routing by agreement (Sabour 2017). Includes multi-level reentrant feedback: higher capsule levels send top-down predictions to lower levels, which compute prediction errors and re-route.
+*   **Brian2 Validation:** Offline biological validation stack translating AKOrN Kuramoto parameters to Brian2 spiking networks. Compares synchronization curves between the two simulators via Pearson correlation.
 
 ### 4. Affective Core (Emotion)
 
@@ -121,7 +122,7 @@ This runs the full cognitive loop: DINOv2 retinotopic encoding -> trimodal tectu
 pytest tests/ -v
 ```
 
-274 tests pass, covering oscillatory binding, capsule routing, reentrant processing, inverse effectiveness fusion, topographic loss, affective modulation, ethics compliance, and effective information.
+331 tests pass, covering oscillatory binding, capsule routing, reentrant processing, inverse effectiveness fusion, topographic loss, affective modulation, ethics compliance, effective information, IIT Phi with causal gate states, and Brian2 biological validation.
 
 ### 4. AKOrN Binding Demo
 
@@ -162,7 +163,7 @@ the_consciousness_ai/
 │   ├── training/           # Training entrypoints (train_rlhf.py, train_emotional_agent.py)
 │   └── demos/              # AKOrN binding visualization
 ├── configs/                # YAML and Python configuration files
-├── tests/                  # 274 passing tests
+├── tests/                  # 331 passing tests
 ├── unity_scripts/          # C# scripts for Unity ML-Agents integration
 ├── docs/                   # Research docs, theory review, architecture deep dives
 └── requirements.txt

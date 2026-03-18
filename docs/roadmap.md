@@ -1,88 +1,94 @@
 # Development Roadmap
 
-This roadmap outlines the planned development phases for the The Consciousness AI.
+This roadmap outlines the planned development phases for The Consciousness AI.
 
 ## Guiding Principles
 
 - **Iterative Development:** Build and test components incrementally.
 - **Emergence-Focused:** Design for emergent properties rather than explicit programming of consciousness.
-- **Theory-Grounded:** Integrate insights from neuroscience and AI consciousness research (e.g., GNW, IIT, Higher-Order Theories).
+- **Theory-Grounded:** Integrate insights from neuroscience and AI consciousness research (GNW, IIT, Feinberg-Mallatt).
 - **Ethical Alignment:** Continuously ensure adherence to Asimov's Laws and responsible AI principles.
 
 ---
 
-## Phase 1: Foundational Setup & Core Modules (Completed/Ongoing)
+## Phase 1: Foundational Setup & Core Modules (Complete)
 
 - **Goal:** Establish the basic project structure, core AI model integrations, and initial simulation environment.
 - **Key AI Models:**
-  - LLaMA 3.3 for narrative construction.
-  - palme (open-source PaLM-E) for vision-language understanding.
-  - Whisper v3 for speech recognition and transcription.
+  - Qwen2-VL-7B for vision-language understanding (replaced PaLM-E and VideoLLaMA3).
+  - DINOv2-B/14 (frozen) for spatially faithful retinotopic encoding.
+  - Faster-Whisper for speech recognition and transcription.
 - **Deliverables:**
   - Core repository structure.
-  - Initial integration of LLaMA 3.3, palme, Whisper v3.
-  - Basic Unreal Engine 5 simulation setup.
-  - [`ConsciousnessCore`](../models/core/consciousness_core.py) V0.1 (stub).
-  - [`EmotionalProcessingCore`](../models/emotion/emotional_processing.py) V0.1 (stub).
-  - [`EmotionalMemoryCore`](../models/memory/emotional_memory_core.py) V0.1 (stub with Pinecone).
+  - [`ConsciousnessCore`](../models/core/consciousness_core.py) with GNW, gating, and ethics filter.
+  - [`EmotionalProcessingCore`](../models/emotion/emotional_processing.py) with full PAD model.
+  - [`EmotionalMemoryCore`](../models/memory/emotional_memory_core.py) with FAISS vector index.
 
-## Phase 2: Initial Integration & Basic Emotional Loop (Current Focus - S1: Instrumentation)
+## Phase 2: Core Architecture & Biologically Grounded Integration (Complete)
 
-- **Goal:** Implement a basic emotional processing loop and memory storage within simple simulations. Develop instrumentation for metric collection.
+- **Goal:** Implement the six Feinberg-Mallatt neurobiological features as computational mechanisms.
 - **Deliverables:**
-  - Basic emotional processing loop.
-  - Initial `EmotionalMemoryCore` integration.
-  - Simple survival scenarios in Unreal Engine.
-  - **Instrumentation Layer:** Develop `scripts/logging/metrics_logger.py` to capture hidden-state tensors from key modules, a prerequisite for advanced consciousness metrics. (Corresponds to Sprint S-1 from Watanabe notes)
+  - **Oscillatory binding:** AKOrN Kuramoto oscillators integrated into GNW (replaces hardcoded synchrony multiplier).
+  - **Sensory Tectum:** Topographic spatial maps with DreamerV3 RSSM world model, inverse effectiveness fusion (Stein & Meredith 1993).
+  - **Reentrant processing:** 5-10 adaptive convergence cycles with predictive coding.
+  - **Affective modulator:** Parallel valence field + arousal-threshold coupling (emotion modulates, does not compete).
+  - **Self-model:** Body schema, interoceptive state, capability model.
+  - **PAD homeostatic reward:** `Rtotal = Rext + lambda1*DeltaValence - lambda2*(Arousal - target)^2 + lambda3*Dominance`.
+  - **Effective Information:** Hoel's PNAS 2013 framework for causal emergence detection.
 
-## Phase 3: Enhanced Perception, Memory & Basic Self-Model (S2: Φ* & Ignition)
+## Phase 3: Compositional Deepening & Validation (Complete)
 
-- **Goal:** Integrate advanced perception, refine memory, and introduce a basic self-representation. Implement initial consciousness metrics.
+- **Goal:** Deepen hierarchical structure, wire embodiment-affect loop, and add biological validation.
 - **Deliverables:**
-  - Integration of VideoLLaMA3 and Whisper.
-  - More complex emotional memory indexing.
-  - Initial version of `SelfRepresentationCore`.
-  - **Φ* Calculator & Ignition Detector:**
-    Implement initial versions of `models/evaluation/iit_phi.py` (for Φ*) and `models/evaluation/gnw_metrics.py` (for GNW Ignition Index). Develop a basic dashboard (e.g., Grafana, or a custom `consciousness_dashboard.py`) for these metrics. (Corresponds to Sprint S-2 from Watanabe notes)
+  - **Capsule network hierarchy:** 4-level routing (Sabour 2017) between tectum and workspace.
+  - **Multi-level reentrant feedback:** Top-down prediction errors between capsule levels.
+  - **IIT Phi rewrite:** Causal gate states (attention, stability, adaptation, coherence, confidence) as subsystem nodes. Adaptive binarization, geometric proxy.
+  - **Brian2 validation:** Parameter translation from AKOrN to spiking Kuramoto network, synchronization curve comparison.
+  - **Trimodal tectum:** Somatosensory channel (body schema projected onto spatial grid via IE fusion).
+  - **Embodiment-affect loop:** Interoceptive PAD generation (energy/fatigue/damage drive valence signals).
+  - **Isomorphic visual mapping:** RetinotopicEncoder (DINOv2), TDANN topographic loss (Margalit 2024), inverse effectiveness.
+  - **Ethics filter:** AsimovComplianceFilter with three-law evaluation pipeline and world model trajectory prediction.
+  - **Dark Room training:** Full working training loop exercising the complete cognitive pipeline.
+  - Python 3.10+ type annotations across 111 files.
 
-## Phase 4: Advanced Social Interactions & Narrative Engine (S3: Indicator Tests)
+## Phase 4: Narrative Engine & Social Interactions (Current Focus)
 
-- **Goal:** Enable more complex social interactions, integrate narrative reasoning, and expand behavioral evaluation.
+- **Goal:** Enable LLM-backed narrative reasoning, pre-register consciousness predictions, and expand social evaluation.
 - **Deliverables:**
-  - Complex social scenarios in Unreal Engine.
-  - `NarrativeEngine` V1 for contextual reasoning.
-  - **Indicator-Property Test Suite:** Develop `models/evaluation/consciousness_metrics.py` with a substantial set of tests from the AI consciousness rubric. (Corresponds to Sprint S-3 from Watanabe notes)
-  - Refinement of emotional RL based on social feedback.
+  - ~~`NarrativeEngine` V1 with LLM-backed generation and coherence tracking.~~ DONE.
+  - ~~Pre-registered Phi/EI predictions tied to specific training milestones.~~ DONE. See `docs/preregistered_predictions.md`.
+  - ~~Operational definition of "insight moments" for empirical testing.~~ DONE. See `docs/preregistered_predictions.md` section 3.
+  - Consciousness indicator-property test suite expansion.
+  - ~~Rename `QualiaState` to defensible terminology.~~ DONE.
+  - Documentation synchronization across all docs.
 
-## Phase 5: Dynamic Self-Representation & Meta-Cognition (S4: Self-Representation)
+## Phase 5: Dynamic Self-Representation & Meta-Cognition
 
 - **Goal:** Implement a dynamic, learned self-model and explore meta-cognitive capabilities.
 - **Deliverables:**
-  - **Dynamic Self-Representation Module:** Implement the learned "self-vector" loop within `ConsciousnessCore` and `SelfRepresentationCore` as per Higher-Order theories.
+  - **Dynamic Self-Representation Module:** Learned "self-vector" loop within `ConsciousnessCore` and `SelfRepresentationCore` as per Higher-Order theories.
   - Reflective prompt templates and mechanisms for meta-cognitive evaluation.
-  - Enhanced `ConsciousnessGating` informed by the dynamic self-model. (Corresponds to Sprint S-4 from Watanabe notes)
+  - Enhanced `ConsciousnessGating` informed by the dynamic self-model.
 
-## Phase 6: Creative Simulation & Advanced Evaluation (S5: Imagination Buffer)
+## Phase 6: Creative Simulation & Advanced Evaluation
 
 - **Goal:** Introduce mechanisms for creative simulation and refine advanced consciousness metrics.
 - **Deliverables:**
-  - **Creative Imagination Buffer:** Implement the "Imagination Buffer" for generating and evaluating novel mental simulations, potentially selecting based on Φ or GNW ignition.
+  - **Creative Imagination Buffer:** Generate and evaluate novel mental simulations, selecting based on Phi or GNW ignition.
   - Reward-shaping hooks based on creative outputs.
-  - Advanced IIT metrics (e.g., CES visualization). (Corresponds to Sprint S-5 from Watanabe notes)
+  - Advanced IIT metrics (CES visualization).
 
-## Phase 7: Peer Consciousness & Robustness (S6: Peer Probes)
+## Phase 7: Peer Consciousness & Robustness
 
 - **Goal:** Explore inter-agent awareness and conduct comprehensive system validation.
 - **Deliverables:**
-  - **Peer-Consciousness Probes:** Scenarios where two consciousness agents interact and attempt to model/estimate each other's (simulated) internal states. (Corresponds to Sprint S-6 from Watanabe notes)
+  - **Peer-Consciousness Probes:** Two consciousness agents interact and model each other's internal states.
   - Comprehensive ethical review and safety testing.
   - Long-term stability and learning assessments.
 
 ## Future Directions
 
 - Full perceptual loop integration with robotics or advanced VR sensors.
-- Subjective-report alignment processes (e.g., RLHF) so the agent’s language faithfully mirrors internal states.
-- Exploration of more advanced AI consciousness theories and their computational correlates.
+- Subjective-report alignment (RLHF) so the agent's language faithfully mirrors internal states.
 - Continuous refinement of the `AsimovComplianceFilter` and ethical governance.
 - Development of `Consciousness-Metric.md` as a living spec for external contributors.
-- Discussion on licensing for any developed datasets (e.g., indicator-property dataset).

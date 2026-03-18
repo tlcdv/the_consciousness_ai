@@ -8,7 +8,7 @@ from dataclasses import dataclass
 import torch.nn.functional as F
 
 from models.evaluation.iit_phi import IITMetrics
-from models.core.qualia_mapper import QualiaMapper
+from models.core.qualia_mapper import PhenomenologicalMapper
 
 @dataclass
 class WorkspaceMessage:
@@ -67,7 +67,7 @@ class GlobalWorkspace:
         
         # Dependencies
         self.iit_metrics = IITMetrics()
-        self.qualia_mapper = QualiaMapper()
+        self.qualia_mapper = PhenomenologicalMapper()
         
         # New: AKOrN Oscillatory Binding System
         # 4 sensory/cognitive oscillators. Emotion is now a parallel modulator,
