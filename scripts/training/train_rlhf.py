@@ -32,6 +32,7 @@ from models.emotion.affective_modulator import AffectiveModulator
 from models.emotion.reward_shaping import EmotionalRewardShaper
 from models.self_model.action_selection_core import ActionSelectionCore
 from models.memory.memory_core import MemoryCore
+from models.core.semantic_pathway import SemanticPathway
 
 logging.basicConfig(
     level=logging.INFO,
@@ -98,7 +99,12 @@ def init_components(config):
         memory,
     )
 
-    return tectum, workspace, reentrant, modulator, emotion_shaper, memory, action_core
+    semantic = SemanticPathway(
+        input_dim=config.get("semantic_input_dim", 1536),
+        workspace_dim=config["workspace_dim"],
+    ).to(device)
+
+    return tectum, workspace, reentrant, modulator, emotion_shaper, memory, action_core, semantic
 
 
 def frame_to_tensor(frame: np.ndarray, device: str) -> torch.Tensor:
@@ -119,7 +125,7 @@ def evaluate_reflex_emotion(frame: np.ndarray) -> dict:
 
 
 def run_episode(episode_idx, config, tectum, workspace, reentrant,
-                modulator, emotion_shaper, action_core, env):
+                modulator, emotion_shaper, action_core, env, semantic=None):
     device = config["device"]
     max_steps = config["max_steps"]
 
@@ -136,14 +142,24 @@ def run_episode(episode_idx, config, tectum, workspace, reentrant,
 
         emotion = evaluate_reflex_emotion(obs)
 
+        # Semantic pathway: zero embedding when Qwen2-VL unavailable (bid degrades to 0)
+        semantic_embedding = torch.zeros(1, 1536, device=device)
+        if semantic is not None:
+            semantic_content, semantic_bid = semantic(semantic_embedding)
+        else:
+            semantic_content = torch.zeros(1, config["workspace_dim"], device=device)
+            semantic_bid = 0.0
+
         bids = {
             "vision": max(0.0, min(1.0, vision_bid)),
             "audio": 0.0,
             "memory": 0.1,
             "body": 0.05,
+            "semantic": max(0.0, min(1.0, semantic_bid)),
         }
         payloads = {
             "vision": {"tensor": tectum_content, "source": "tectum"},
+            "semantic": {"tensor": semantic_content, "source": "semantic"},
         }
 
         specialists = {"vision": tectum}
@@ -223,16 +239,22 @@ def main():
     parser.add_argument("--action-dim", type=int, default=2)
     parser.add_argument("--lr", type=float, default=1e-3)
     parser.add_argument("--render", action="store_true", help="Render the environment in a window")
+    parser.add_argument("--env", type=str, default="dark_room", choices=["dark_room", "navigation"],
+                        help="Environment to train in")
     args = parser.parse_args()
 
     config = build_config(args)
     device = config["device"]
     logger.info(f"Device: {device}")
 
-    tectum, workspace, reentrant, modulator, emotion_shaper, memory, action_core = init_components(config)
+    tectum, workspace, reentrant, modulator, emotion_shaper, memory, action_core, semantic = init_components(config)
 
     render_mode = "human" if args.render else "rgb_array"
-    env = SimpleVisualEnv(render_mode=render_mode, width=224, height=224)
+    if args.env == "navigation":
+        from simulations.environments.navigation_env import NavigationEnv
+        env = NavigationEnv(render_mode=render_mode, width=224, height=224)
+    else:
+        env = SimpleVisualEnv(render_mode=render_mode, width=224, height=224)
 
     logger.info(f"Starting training: {args.episodes} episodes, {args.max_steps} max steps each")
 
@@ -241,7 +263,7 @@ def main():
         logger.info(f"Episode {ep + 1}/{args.episodes}")
         ep_reward, ep_steps = run_episode(
             ep, config, tectum, workspace, reentrant,
-            modulator, emotion_shaper, action_core, env,
+            modulator, emotion_shaper, action_core, env, semantic,
         )
         rewards_history.append(ep_reward)
         avg_last_5 = np.mean(rewards_history[-5:])

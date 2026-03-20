@@ -69,12 +69,14 @@ class GlobalWorkspace:
         self.iit_metrics = IITMetrics()
         self.qualia_mapper = PhenomenologicalMapper()
         
-        # New: AKOrN Oscillatory Binding System
-        # 4 sensory/cognitive oscillators. Emotion is now a parallel modulator,
+        # AKOrN Oscillatory Binding System
+        # 5 sensory/cognitive oscillators. Emotion is a parallel modulator,
         # not a workspace competitor (Tier 2 architecture redesign).
         from models.core.oscillatory_binding import WorkspaceBindingSystem
-        self.binding_system = WorkspaceBindingSystem(num_modules=4, iterations=5)
-        self.binding_system.register_modules(['vision', 'audio', 'memory', 'body'])
+        num_modules = config.get("num_modules", 5)
+        module_names = config.get("module_names", ['vision', 'audio', 'memory', 'body', 'semantic'])
+        self.binding_system = WorkspaceBindingSystem(num_modules=num_modules, iterations=5)
+        self.binding_system.register_modules(module_names)
         
         # Affective Modulator (Tier 2): emotion modulates bids + threshold
         self.affective_modulator = None
@@ -129,7 +131,8 @@ class GlobalWorkspace:
         # Replaces the heuristic: If Vision and Audio > 0.5, multiply by 1.2
         # Now uses Kuramoto oscillators. Modules that synchronize get boosted bids.
         bound_bids, sync_order_parameter = self.binding_system.bind_bids(bids)
-        
+        self.last_sync_R = sync_order_parameter
+
         # 3. Calculate Input Energy (Max Bound Bid)
         input_energy = max(bound_bids.values()) if bound_bids else 0.0
         
