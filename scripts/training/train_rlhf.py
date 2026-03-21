@@ -33,6 +33,7 @@ from models.emotion.reward_shaping import EmotionalRewardShaper
 from models.self_model.action_selection_core import ActionSelectionCore
 from models.memory.memory_core import MemoryCore
 from models.core.semantic_pathway import SemanticPathway
+from scripts.training.metrics_logger import ConsciousnessMetricsLogger, StepMetrics
 
 logging.basicConfig(
     level=logging.INFO,
@@ -125,7 +126,8 @@ def evaluate_reflex_emotion(frame: np.ndarray) -> dict:
 
 
 def run_episode(episode_idx, config, tectum, workspace, reentrant,
-                modulator, emotion_shaper, action_core, env, semantic=None):
+                modulator, emotion_shaper, action_core, env,
+                semantic=None, metrics_logger=None, global_step_offset=0):
     device = config["device"]
     max_steps = config["max_steps"]
 
@@ -133,8 +135,14 @@ def run_episode(episode_idx, config, tectum, workspace, reentrant,
     total_reward = 0.0
     previous_broadcast = None
     steps_taken = 0
+    phi_accum = 0.0
+    conscious_steps = 0
+
+    if metrics_logger is not None:
+        metrics_logger.reset_episode_state()
 
     for step in range(max_steps):
+        global_step = global_step_offset + step
         frame_tensor = frame_to_tensor(obs, device)
 
         audio_spatial = torch.zeros(1, config["tectum_feature_dim"], 2, device=device)
@@ -174,9 +182,12 @@ def run_episode(episode_idx, config, tectum, workspace, reentrant,
         broadcast = settle_result.broadcast_content
         is_conscious = settle_result.is_conscious
         phi = settle_result.phi
+        sync_r = getattr(workspace, 'last_sync_R', 0.0)
 
         if not isinstance(broadcast, torch.Tensor):
             broadcast = torch.zeros(1, config["workspace_dim"], device=device)
+
+        broadcast_mag = float(broadcast.norm().item())
 
         arousal = emotion["arousal"]
         action, value = action_core.select_action(
@@ -217,19 +228,58 @@ def run_episode(episode_idx, config, tectum, workspace, reentrant,
         previous_broadcast = broadcast.detach().clone()
         reward_val = shaped_reward if isinstance(shaped_reward, (int, float)) else shaped_reward.item()
         total_reward += reward_val
+        phi_accum += phi
+        if is_conscious:
+            conscious_steps += 1
         obs = next_obs
         steps_taken = step + 1
 
+        # --- Metrics logging ---
+        if metrics_logger is not None:
+            # Build gate state tuple from workspace competition results
+            comp = workspace.state.competition_results
+            gate_state = tuple(comp.get(k, 0.0) for k in sorted(comp.keys())) if comp else None
+            # Workspace state from broadcast magnitude bins
+            ws_state = (broadcast_mag, phi, sync_r)
+
+            metrics_logger.log_step(StepMetrics(
+                global_step=global_step,
+                phi=phi,
+                sync_r=sync_r,
+                is_conscious=bool(is_conscious),
+                reward=reward_val,
+                broadcast_mag=broadcast_mag,
+                valence=emotion["valence"],
+                arousal=emotion["arousal"],
+                dominance=emotion["dominance"],
+                gate_state=gate_state,
+                workspace_state=ws_state,
+            ))
+
+            # Insight detection
+            state_hash = f"{int(obs.mean())}_{int(obs.std())}"
+            action_key = action if isinstance(action, (int, str)) else int(action)
+            is_insight = metrics_logger.detect_insight_moment(
+                state_hash=state_hash,
+                action=action_key,
+                reward=reward_val,
+                broadcast_mag=broadcast_mag,
+            )
+            if is_insight:
+                logger.info(f"  ** INSIGHT MOMENT at step {step} (phi={phi:.3f}, R={sync_r:.3f}) **")
+
         if step % 20 == 0:
             logger.info(
-                f"  step {step:3d} | phi={phi:.3f} | conscious={is_conscious} | "
+                f"  step {step:3d} | phi={phi:.3f} | R={sync_r:.3f} | conscious={is_conscious} | "
                 f"arousal={arousal:.2f} | reward={reward_val:.3f}"
             )
 
         if done:
             break
 
-    return total_reward, steps_taken
+    avg_phi = phi_accum / max(steps_taken, 1)
+    consciousness_ratio = conscious_steps / max(steps_taken, 1)
+    return total_reward, steps_taken, avg_phi, consciousness_ratio
 
 
 def main():
@@ -241,6 +291,9 @@ def main():
     parser.add_argument("--render", action="store_true", help="Render the environment in a window")
     parser.add_argument("--env", type=str, default="dark_room", choices=["dark_room", "navigation"],
                         help="Environment to train in")
+    parser.add_argument("--log-dir", type=str, default="runs", help="Directory for metrics logs")
+    parser.add_argument("--log-ei-every", type=int, default=50,
+                        help="Compute EI every N episodes (0 to disable)")
     args = parser.parse_args()
 
     config = build_config(args)
@@ -256,22 +309,51 @@ def main():
     else:
         env = SimpleVisualEnv(render_mode=render_mode, width=224, height=224)
 
+    metrics_logger = ConsciousnessMetricsLogger(
+        log_dir=args.log_dir, use_tensorboard=True
+    )
+
     logger.info(f"Starting training: {args.episodes} episodes, {args.max_steps} max steps each")
+    logger.info(f"Metrics logging to: {args.log_dir}")
 
     rewards_history = []
+    global_step = 0
     for ep in range(args.episodes):
         logger.info(f"Episode {ep + 1}/{args.episodes}")
-        ep_reward, ep_steps = run_episode(
+        ep_reward, ep_steps, avg_phi, consciousness_ratio = run_episode(
             ep, config, tectum, workspace, reentrant,
             modulator, emotion_shaper, action_core, env, semantic,
+            metrics_logger=metrics_logger, global_step_offset=global_step,
         )
+        global_step += ep_steps
         rewards_history.append(ep_reward)
         avg_last_5 = np.mean(rewards_history[-5:])
-        logger.info(
-            f"Episode {ep + 1} done | steps={ep_steps} | "
-            f"reward={ep_reward:.2f} | avg(last5)={avg_last_5:.2f}"
+
+        # EI computation at configured interval
+        ei_gates, ei_workspace, ei_ratio = 0.0, 0.0, 0.0
+        if args.log_ei_every > 0 and (ep + 1) % args.log_ei_every == 0:
+            ei_result = metrics_logger.compute_and_log_ei(ep)
+            ei_gates = ei_result["ei_gates"]
+            ei_workspace = ei_result["ei_workspace"]
+            ei_ratio = ei_result["ratio"]
+            logger.info(
+                f"  EI: gates={ei_gates:.4f} workspace={ei_workspace:.4f} "
+                f"ratio={ei_ratio:.2f} emergent={ei_result['emergent']}"
+            )
+
+        metrics_logger.log_episode(
+            episode=ep, total_reward=ep_reward, steps=ep_steps,
+            avg_phi=avg_phi, consciousness_ratio=consciousness_ratio,
+            ei_gates=ei_gates, ei_workspace=ei_workspace, ei_ratio=ei_ratio,
         )
 
+        logger.info(
+            f"Episode {ep + 1} done | steps={ep_steps} | "
+            f"reward={ep_reward:.2f} | avg(last5)={avg_last_5:.2f} | "
+            f"phi={avg_phi:.3f} | conscious={consciousness_ratio:.1%}"
+        )
+
+    metrics_logger.close()
     env.close()
     logger.info("Training complete.")
     logger.info(f"Final avg reward (last 5): {np.mean(rewards_history[-5:]):.2f}")
