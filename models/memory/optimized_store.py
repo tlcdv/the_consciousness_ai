@@ -233,7 +233,7 @@ class OptimizedMemoryStore:
         emotional_context: dict[str, float],
         attention_level: float,
         metadata: dict | None = None
-    ) -> str:
+    ) -> str | None:
         """Store memory with optimized indexing and consolidation."""
         # Apply attention-based gating
         if attention_level < self.config.get('attention_threshold', 0.5):
@@ -251,7 +251,9 @@ class OptimizedMemoryStore:
         )
 
         # Trigger consolidation if needed
-        self.consolidation_manager.check_consolidation(partition)
+        entries = self.emotional_index._partitions.get(partition, [])
+        if self.consolidation_manager.check_consolidation(partition, entries):
+            self.consolidate_memories(partition)
 
         return memory_id
 

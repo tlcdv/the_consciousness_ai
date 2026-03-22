@@ -138,6 +138,12 @@ def run_episode(episode_idx, config, tectum, workspace, reentrant,
     phi_accum = 0.0
     conscious_steps = 0
 
+    # Reset recurrent state between episodes
+    tectum.h_state = None
+    tectum.z_state = None
+    if hasattr(action_core, 'pfc_hidden'):
+        action_core.pfc_hidden = None
+
     if metrics_logger is not None:
         metrics_logger.reset_episode_state()
 
@@ -258,7 +264,12 @@ def run_episode(episode_idx, config, tectum, workspace, reentrant,
 
             # Insight detection
             state_hash = f"{int(obs.mean())}_{int(obs.std())}"
-            action_key = action if isinstance(action, (int, str)) else int(action)
+            if isinstance(action, (int, str)):
+                action_key = action
+            elif hasattr(action, '__len__'):
+                action_key = "_".join(str(int(a * 10)) for a in action)
+            else:
+                action_key = int(action)
             is_insight = metrics_logger.detect_insight_moment(
                 state_hash=state_hash,
                 action=action_key,

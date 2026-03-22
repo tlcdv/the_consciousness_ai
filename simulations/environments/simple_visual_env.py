@@ -42,6 +42,8 @@ class SimpleVisualEnv(gym.Env):
         # PyGame Setup
         self.window = None
         self.clock = None
+        pygame.init()
+        self._canvas = pygame.Surface((self.width, self.height))
         
     def reset(self, seed: int | None = None, options: dict | None = None) -> tuple[np.ndarray, dict]:
         super().reset(seed=seed)
@@ -89,23 +91,22 @@ class SimpleVisualEnv(gym.Env):
         return observation, reward, terminated, truncated, info
         
     def _get_obs(self) -> np.ndarray:
-        # Render the current frame to an RGB array
-        canvas = pygame.Surface((self.width, self.height))
-        canvas.fill((0, 0, 0)) # Background: Dark
-        
+        # Render the current frame to an RGB array (reuse cached surface)
+        self._canvas.fill((0, 0, 0))
+
         # Draw Light
         pygame.draw.circle(
-            canvas, (255, 255, 200), self.light_pos.astype(int), self.light_radius
+            self._canvas, (255, 255, 200), self.light_pos.astype(int), self.light_radius
         )
-        
+
         # Draw Agent
         pygame.draw.circle(
-            canvas, (0, 100, 255), self.agent_pos.astype(int), self.agent_radius
+            self._canvas, (0, 100, 255), self.agent_pos.astype(int), self.agent_radius
         )
-        
+
         # Convert to numpy
         return np.transpose(
-            np.array(pygame.surfarray.pixels3d(canvas)), axes=(1, 0, 2)
+            np.array(pygame.surfarray.pixels3d(self._canvas)), axes=(1, 0, 2)
         )
 
     def _get_info(self) -> dict:

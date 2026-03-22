@@ -179,7 +179,11 @@ class GlobalWorkspace:
             # Broadcast
             broadcast_content = {}
             for winner in winners:
-                broadcast_content.update(contents[winner])
+                payload = contents[winner]
+                if isinstance(payload, dict):
+                    broadcast_content.update(payload)
+                else:
+                    broadcast_content[winner] = payload
             
             self.state.active_content = broadcast_content
             self.state.focus_topic = f"Processing: {', '.join(winners)} (Sync: {sync_order_parameter:.2f})"

@@ -179,10 +179,14 @@ class ConsciousnessMetricsLogger:
         # Reset per-episode buffers
         self._episode_broadcast_mags.clear()
 
-    def compute_and_log_ei(self, episode: int, num_gate_states: int = 8,
+    def compute_and_log_ei(self, episode: int, num_gate_states: int = 32,
                            num_workspace_states: int = 8) -> dict:
         """
         Compute EI at gate and workspace levels from buffered trajectories.
+
+        Gate states use joint binning: each of the 5 gate dimensions is binned
+        to 2 levels, giving 2^5 = 32 joint states. This preserves multivariate
+        structure instead of collapsing to a scalar sum.
 
         Returns dict with ei_gates, ei_workspace, ratio, emergent.
         """
@@ -196,11 +200,16 @@ class ConsciousnessMetricsLogger:
         if len(self._gate_trajectory) < 10:
             return result
 
-        # Discretize gate trajectories: flatten each tuple to a single state index
-        gate_flat = [sum(g) for g in self._gate_trajectory]
-        gate_discrete = discretize_continuous(gate_flat, num_gate_states)
+        # Joint binning for gate trajectories: each dimension -> 2 bins, combined as sum(b_i * 2^i)
+        gate_discrete = []
+        for g in self._gate_trajectory:
+            joint_idx = 0
+            for i, val in enumerate(g):
+                bit = 1 if val >= 0.5 else 0
+                joint_idx += bit * (2 ** i)
+            gate_discrete.append(joint_idx)
 
-        ws_flat = [sum(w) for w in self._workspace_trajectory] if self._workspace_trajectory else gate_flat
+        ws_flat = [sum(w) for w in self._workspace_trajectory] if self._workspace_trajectory else [0.0] * len(gate_discrete)
         ws_discrete = discretize_continuous(ws_flat, num_workspace_states)
 
         ei_gates = compute_effective_information(
@@ -279,6 +288,7 @@ class ConsciousnessMetricsLogger:
         """Reset per-episode tracking (call at start of each episode)."""
         self._episode_broadcast_mags.clear()
         self._recent_rewards.clear()
+        self._seen_state_actions.clear()
 
     def close(self):
         """Flush and close all writers."""

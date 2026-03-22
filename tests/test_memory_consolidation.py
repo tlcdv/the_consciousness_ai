@@ -139,6 +139,18 @@ class TestOptimizedStoreConsolidation(unittest.TestCase):
         self.assertGreater(total_after, 0)
         self.assertLessEqual(total_after, total_before)
 
+    def test_store_below_attention_threshold(self):
+        """store_optimized should return None when attention is below threshold."""
+        store = OptimizedMemoryStore({"attention_threshold": 0.5})
+        result = store.store_optimized(
+            memory_vector=torch.randn(16),
+            emotional_context={"valence": 0.5},
+            attention_level=0.3,
+        )
+        self.assertIsNone(result)
+        total = sum(len(v) for v in store.emotional_index._partitions.values())
+        self.assertEqual(total, 0)
+
     def test_replay_batch_from_store(self):
         """get_replay_batch should work on the store."""
         for i in range(5):
