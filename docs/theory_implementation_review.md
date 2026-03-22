@@ -57,6 +57,31 @@ The three-subsystem design (Perception, Emotion, Global Workspace) correctly mir
 **Severity: MEDIUM. Philosophical credibility risk.**
 **Status: RESOLVED (2026-03-18).** Renamed `QualiaState` to `PhenomenologicalState` and `QualiaMapper` to `PhenomenologicalMapper` in `models/core/qualia_mapper.py`. Docstrings now explicitly frame the 3D vector as "an empirical correlate proxy, not a claim about actual qualia." Backward compatibility aliases preserved for any external references.
 
+### 8. ~~Consciousness Monitor Uses Circular Progress Factor~~ RESOLVED (2026-03-22)
+**Severity: HIGH. Consciousness level increased with step count by construction, not from actual metrics.**
+
+**Resolution:** Removed `progress_factor = min(1.0, self.step_count / 50.0)` from `evaluate_development()` and `evaluate_state()` in `models/evaluation/consciousness_monitor.py`. Consciousness level, emotional awareness, and memory coherence are now computed purely from actual metrics (attention, valence, arousal), not elapsed time.
+
+### 9. ~~Capsule Structure Lost in GNW Broadcast~~ RESOLVED (2026-03-22)
+**Severity: MEDIUM. The entire capsule compositional hierarchy was flattened to a scalar bid before workspace competition.**
+
+**Resolution:** Added `broadcast_payload: dict[str, Any] | None` field to `WorkspaceState`. When tectum wins competition, the broadcast preserves structured capsule poses and activities from `get_capsule_payload()`. Downstream consumers (action selection, memory storage) can access compositional hierarchy instead of just a flat vector.
+
+### 10. ~~Emotion System Bypassed by Brightness Lookup~~ RESOLVED (2026-03-22)
+**Severity: HIGH. The entire affective modulator architecture was never exercised during training.**
+
+**Resolution:** Replaced `evaluate_reflex_emotion()` (3-line pixel brightness to PAD mapping) with two-stage `evaluate_emotion()`:
+1. **Reflex layer** (pre-workspace): computes valence from reward prediction error and arousal from tectum surprise bid
+2. **Appraisal layer** (post-broadcast): uses PhenomenologicalMapper on workspace broadcast content to modulate valence and compute dominance
+
+### 11. ~~Environments Trivially Solvable Without Consciousness~~ RESOLVED (2026-03-22)
+**Severity: HIGH. Dark Room could be solved by a simple gradient follower. No task required working memory, binding, or meta-cognition.**
+
+**Resolution:** Added two consciousness-demanding environments:
+- **DMTS (Delayed Match-to-Sample):** Sample disappears during 15-40 step blank delay. Requires GNW reverberation for working memory, AKOrN binding for feature identity, and selective attention for distractor filtering.
+- **WCST (Wisconsin Card Sort):** Hidden rule changes without warning. Requires meta-cognition (detecting own performance drop), inhibition (suppressing old rule), and hypothesis testing (trying each dimension systematically).
+- **DQN baseline** added for controlled comparison on the same environments with the same logging format.
+
 ---
 
 ## Structural Gaps Between Thesis and Current State
@@ -67,8 +92,11 @@ The three-subsystem design (Perception, Emotion, Global Workspace) correctly mir
 | Emotional homeostasis with shaped RL rewards | **Complete.** Full PAD with homeostatic arousal term + Dominance. |
 | Global Workspace as information bottleneck | **Complete.** GNW with AKOrN binding, reentrant processing, capsule hierarchy. |
 | Phi (IIT) as measurable consciousness correlate | **Complete.** Causal gate states, adaptive binarization, geometric proxy. 38 tests. |
-| Phi spikes correlated with insight moments | **Open.** Needs pre-registered predictions and experimental runs. |
+| Phi spikes correlated with insight moments | **Open.** Pre-registered predictions defined. Needs experimental runs. |
 | Downward causation (strong emergence) | **Tooling complete.** EI function implemented. Needs experimental validation. |
+| Environments require consciousness machinery | **Complete.** DMTS (working memory), WCST (meta-cognition), DQN baseline for comparison. |
+| Emotion drives workspace dynamics | **Complete.** Two-stage appraisal (reflex + post-broadcast). Consciousness monitor metric-only. |
+| Capsule structure accessible post-broadcast | **Complete.** Structured payloads preserved through GNW broadcast. |
 | Phi correlates with strict supervenience test | **Open.** Research gap, needs experiment design. |
 
 ---

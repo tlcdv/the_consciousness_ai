@@ -49,7 +49,22 @@ This roadmap outlines the planned development phases for The Consciousness AI.
   - **Isomorphic visual mapping:** RetinotopicEncoder (DINOv2), TDANN topographic loss (Margalit 2024), inverse effectiveness.
   - **Ethics filter:** AsimovComplianceFilter with three-law evaluation pipeline and world model trajectory prediction.
   - **Dark Room training:** Full working training loop exercising the complete cognitive pipeline.
+  - **Navigation environment:** Multi-room grid with fog of war, colored goals, battery system.
   - Python 3.10+ type annotations across 111 files.
+
+## Phase 3.5: Alignment Fixes & Consciousness-Demanding Environments (Complete)
+
+- **Goal:** Fix structural gaps that allow trivial solutions to pass as consciousness, and build environments that genuinely require the consciousness machinery.
+- **Deliverables:**
+  - **Two-stage emotion appraisal:** Reflex layer (surprise + reward delta, pre-workspace) + appraisal layer (phenomenological state, post-broadcast). Replaces brightness lookup that bypassed the entire affective architecture.
+  - **Capsule broadcast payloads:** Structured capsule poses and activities preserved through GNW broadcast, so downstream consumers access compositional hierarchy instead of flattened scalars.
+  - **Consciousness monitor fix:** Removed circular `progress_factor` that made consciousness level increase with step count by construction.
+  - **DMTS environment:** 4-phase delayed match-to-sample (fixation, sample, delay, choice). 72 unique stimuli (6 shapes x 6 colors x 2 sizes), configurable distractor overlap (0-3 shared features), 15-40 step blank delay. Requires working memory and feature binding.
+  - **WCST environment:** Wisconsin Card Sort analog with hidden rule changes after consecutive correct sorts. Tests meta-cognition, inhibition, and hypothesis testing.
+  - **Shared stimulus renderer:** Pure numpy polygon rasterization (no pygame dependency). 6 shapes, 6 colors, card rendering.
+  - **DQN baseline:** Vanilla DQN agent (CNN + MLP, replay buffer, target network) for controlled comparison on the same environments.
+  - **Metrics logger integration:** ConsciousnessMetricsLogger wired into training loop with EI computation and insight moment detection.
+  - **Memory consolidation:** Relevance decay, cosine-similarity merge, low-relevance pruning, replay batch selection.
 
 ## Phase 4: Narrative Engine & Social Interactions (Current Focus)
 
@@ -60,6 +75,15 @@ This roadmap outlines the planned development phases for The Consciousness AI.
   - ~~Operational definition of "insight moments" for empirical testing.~~ DONE. See `docs/preregistered_predictions.md` section 3.
   - Consciousness indicator-property test suite expansion.
   - ~~Rename `QualiaState` to defensible terminology.~~ DONE.
+  - ~~Two-stage emotion appraisal (reflex + post-broadcast appraisal).~~ DONE.
+  - ~~Capsule structured payloads wired through GNW broadcast.~~ DONE.
+  - ~~Consciousness monitor circular progress_factor removed.~~ DONE.
+  - ~~Consciousness-demanding environments (DMTS, WCST).~~ DONE.
+  - ~~DQN baseline agent for controlled comparison.~~ DONE.
+  - ~~Metrics logger wired into training loop.~~ DONE.
+  - ~~Memory consolidation cycle (relevance decay, cosine merge, pruning).~~ DONE.
+  - ~~Navigation environment (multi-room, fog of war, battery).~~ DONE.
+  - ~~Semantic pathway (Qwen2-VL embeddings as 5th workspace oscillator).~~ DONE.
   - Documentation synchronization across all docs.
 
 ## Phase 5: Dynamic Self-Representation & Meta-Cognition

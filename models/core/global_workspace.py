@@ -35,6 +35,9 @@ class WorkspaceState:
     # Phenomenological State (Qualia)
     qualia_vector: np.ndarray = np.zeros(3) # [Intensity, Valence, Complexity]
 
+    # Structured payload from winning module (capsule poses, etc.)
+    broadcast_payload: dict[str, Any] | None = None
+
 class GlobalWorkspace:
     """
     Implementation of Global Neuronal Workspace (GNW) for artificial consciousness.
@@ -176,16 +179,21 @@ class GlobalWorkspace:
             qualia = self.qualia_mapper.map_state(workspace_tensor, goal_vector)
             self.state.qualia_vector = qualia.to_vector()
             
-            # Broadcast
+            # Broadcast: attach structured payload from winning modules
             broadcast_content = {}
+            structured_payload = {}
             for winner in winners:
                 payload = contents[winner]
                 if isinstance(payload, dict):
                     broadcast_content.update(payload)
+                    # Preserve structured data (capsule poses, etc.) per winner
+                    structured_payload[winner] = payload
                 else:
                     broadcast_content[winner] = payload
-            
+                    structured_payload[winner] = payload
+
             self.state.active_content = broadcast_content
+            self.state.broadcast_payload = structured_payload
             self.state.focus_topic = f"Processing: {', '.join(winners)} (Sync: {sync_order_parameter:.2f})"
             
             # History
@@ -207,6 +215,7 @@ class GlobalWorkspace:
             self.state.focus_topic = "Idle / Subconscious"
             self.state.phi_value = 0.0
             self.state.qualia_vector = np.zeros(3)
+            self.state.broadcast_payload = None
             return {}, bids
     
     def _resolve_competition(self, bids: dict[str, float]) -> list[str]:

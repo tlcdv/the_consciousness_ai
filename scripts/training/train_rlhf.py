@@ -115,14 +115,35 @@ def frame_to_tensor(frame: np.ndarray, device: str) -> torch.Tensor:
     return t.to(device)
 
 
-def evaluate_reflex_emotion(frame: np.ndarray) -> dict:
-    """Fast heuristic emotion from pixel brightness (amygdala analog)."""
-    brightness = frame.mean() / 255.0
-    if brightness < 0.3:
-        return {"valence": -0.7, "arousal": 0.8, "dominance": -0.4}
-    elif brightness > 0.6:
-        return {"valence": 0.6, "arousal": -0.2, "dominance": 0.4}
-    return {"valence": 0.0, "arousal": 0.1, "dominance": 0.0}
+def evaluate_emotion(vision_bid: float, env_reward: float, prev_reward: float,
+                     broadcast: torch.Tensor | None = None,
+                     qualia_mapper=None) -> dict:
+    """Two-stage emotion: reflex (pre-conscious) + appraisal (post-broadcast).
+
+    Stage 1 (reflex): surprise from tectum bid and reward prediction error
+    drive arousal and valence. This is fast and content-independent.
+
+    Stage 2 (appraisal): if a workspace broadcast exists, the phenomenological
+    mapper extracts valence and intensity from the broadcast content, blending
+    them into the reflex estimate. This is slower and content-specific.
+    """
+    # Reflex: tectum surprise and reward delta
+    surprise = max(0.0, vision_bid - 0.3)
+    reward_delta = env_reward - prev_reward
+    valence = float(np.clip(reward_delta * 2.0, -1.0, 1.0))
+    arousal = float(np.clip(surprise * 1.5, 0.0, 1.0))
+    dominance = 0.0
+
+    # Appraisal: phenomenological state from broadcast content
+    if broadcast is not None and qualia_mapper is not None:
+        try:
+            phenom = qualia_mapper.map_state(broadcast)
+            valence = 0.6 * valence + 0.4 * phenom.valence
+            dominance = phenom.intensity * 0.3
+        except Exception:
+            pass  # graceful fallback to reflex-only
+
+    return {"valence": valence, "arousal": arousal, "dominance": dominance}
 
 
 def run_episode(episode_idx, config, tectum, workspace, reentrant,
@@ -134,6 +155,7 @@ def run_episode(episode_idx, config, tectum, workspace, reentrant,
     obs, _ = env.reset()
     total_reward = 0.0
     previous_broadcast = None
+    prev_reward = 0.0
     steps_taken = 0
     phi_accum = 0.0
     conscious_steps = 0
@@ -154,7 +176,8 @@ def run_episode(episode_idx, config, tectum, workspace, reentrant,
         audio_spatial = torch.zeros(1, config["tectum_feature_dim"], 2, device=device)
         tectum_content, vision_bid = tectum(frame_tensor, audio_spatial)
 
-        emotion = evaluate_reflex_emotion(obs)
+        # Stage 1: reflex emotion (pre-workspace, drives affective bid modulation)
+        emotion = evaluate_emotion(vision_bid, 0.0, prev_reward)
 
         # Semantic pathway: zero embedding when Qwen2-VL unavailable (bid degrades to 0)
         semantic_embedding = torch.zeros(1, 1536, device=device)
@@ -171,8 +194,13 @@ def run_episode(episode_idx, config, tectum, workspace, reentrant,
             "body": 0.05,
             "semantic": max(0.0, min(1.0, semantic_bid)),
         }
+        # Include capsule structured payload so GNW broadcast preserves compositional info
+        vision_payload = {"tensor": tectum_content, "source": "tectum"}
+        capsule_data = tectum.get_capsule_payload()
+        if capsule_data:
+            vision_payload.update(capsule_data)
         payloads = {
-            "vision": {"tensor": tectum_content, "source": "tectum"},
+            "vision": vision_payload,
             "semantic": {"tensor": semantic_content, "source": "semantic"},
         }
 
@@ -194,6 +222,12 @@ def run_episode(episode_idx, config, tectum, workspace, reentrant,
             broadcast = torch.zeros(1, config["workspace_dim"], device=device)
 
         broadcast_mag = float(broadcast.norm().item())
+
+        # Stage 2: appraisal emotion (post-broadcast, content-specific)
+        emotion = evaluate_emotion(
+            vision_bid, 0.0, prev_reward,
+            broadcast=broadcast, qualia_mapper=workspace.qualia_mapper,
+        )
 
         arousal = emotion["arousal"]
         action, value = action_core.select_action(
@@ -233,6 +267,7 @@ def run_episode(episode_idx, config, tectum, workspace, reentrant,
 
         previous_broadcast = broadcast.detach().clone()
         reward_val = shaped_reward if isinstance(shaped_reward, (int, float)) else shaped_reward.item()
+        prev_reward = reward_val
         total_reward += reward_val
         phi_accum += phi
         if is_conscious:
@@ -300,8 +335,11 @@ def main():
     parser.add_argument("--action-dim", type=int, default=2)
     parser.add_argument("--lr", type=float, default=1e-3)
     parser.add_argument("--render", action="store_true", help="Render the environment in a window")
-    parser.add_argument("--env", type=str, default="dark_room", choices=["dark_room", "navigation"],
+    parser.add_argument("--env", type=str, default="dark_room",
+                        choices=["dark_room", "navigation", "dmts", "wcst"],
                         help="Environment to train in")
+    parser.add_argument("--difficulty", type=int, default=0,
+                        help="Distractor overlap level for DMTS (0-3)")
     parser.add_argument("--log-dir", type=str, default="runs", help="Directory for metrics logs")
     parser.add_argument("--log-ei-every", type=int, default=50,
                         help="Compute EI every N episodes (0 to disable)")
@@ -317,6 +355,16 @@ def main():
     if args.env == "navigation":
         from simulations.environments.navigation_env import NavigationEnv
         env = NavigationEnv(render_mode=render_mode, width=224, height=224)
+    elif args.env == "dmts":
+        from simulations.environments.dmts_env import DMTSEnv
+        env = DMTSEnv(render_mode=render_mode, width=224, height=224,
+                      distractor_overlap=args.difficulty)
+        # Override action dim for discrete environment
+        config["action_selection"]["action_dim"] = 5
+    elif args.env == "wcst":
+        from simulations.environments.wcst_env import WCSTEnv
+        env = WCSTEnv(render_mode=render_mode, width=224, height=224)
+        config["action_selection"]["action_dim"] = 4
     else:
         env = SimpleVisualEnv(render_mode=render_mode, width=224, height=224)
 

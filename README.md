@@ -2,7 +2,7 @@
 
 [![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE)
 [![Python](https://img.shields.io/badge/Python-3.10%2B-blue)](https://www.python.org/)
-[![Tests](https://img.shields.io/badge/Tests-331%20passing-brightgreen)]()
+[![Tests](https://img.shields.io/badge/Tests-463%20passing-brightgreen)]()
 
 **The Consciousness AI** is a research framework investigating the emergence of synthetic awareness. Unlike traditional AI that mimics intelligent output, this system generates behavior through an internal struggle for **Emotional Homeostasis** and **Integrated Information**.
 
@@ -69,6 +69,10 @@ A parallel modulation system. Emotion does not compete with sensory modules for 
 ### 7. Simulation (Body)
 
 *   **Dark Room Environment:** A built in Gymnasium environment (`SimpleVisualEnv`) where the agent starts in darkness (high anxiety) and must find a light source to reduce prediction error. Renders via PyGame, provides raw pixel observations.
+*   **Navigation Environment:** Multi-room grid with fog of war, colored goals with varying rewards, battery system, and doorway-based room transitions. Tests spatial memory and exploration strategy.
+*   **Delayed Match-to-Sample (DMTS):** Gold standard consciousness task from animal research. Four phases (fixation, sample, delay, choice) with configurable distractor overlap. Requires working memory across 15-40 blank delay steps, feature binding, and selective attention. A reactive agent without consciousness machinery cannot solve this.
+*   **Wisconsin Card Sort (WCST):** Tests meta-cognition and cognitive flexibility. The agent sorts cards by an unknown rule (shape, color, or count) that changes without warning after consecutive correct sorts. Requires error monitoring, hypothesis testing, and inhibition of previously correct strategies.
+*   **DQN Baseline:** Vanilla DQN agent (3-layer CNN + MLP Q-network, epsilon-greedy, replay buffer) for controlled comparison. Same environment interface and logging format as the consciousness agent.
 *   **Unity ML-Agents (optional, future):** Three C# scripts (`unity_scripts/`) provide the foundation for connecting to a physics based Unity environment via side channels. The Unity project itself is not yet included in the repository.
 
 ---
@@ -110,11 +114,24 @@ python -m scripts.training.train_rlhf
 # With custom parameters
 python -m scripts.training.train_rlhf --episodes 50 --max-steps 300 --lr 1e-3
 
+# DMTS environment (consciousness-demanding)
+python -m scripts.training.train_rlhf --env dmts --episodes 500 --max-steps 500
+
+# Wisconsin Card Sort (meta-cognition test)
+python -m scripts.training.train_rlhf --env wcst --episodes 200 --max-steps 300
+
+# Navigation environment (multi-room exploration)
+python -m scripts.training.train_rlhf --env navigation --episodes 100
+
+# DQN baseline for comparison
+python -m scripts.training.train_baseline_dqn --env dark_room --episodes 100
+python -m scripts.training.train_baseline_dqn --env dmts --episodes 500
+
 # With visual rendering
 python -m scripts.training.train_rlhf --render
 ```
 
-This runs the full cognitive loop: DINOv2 retinotopic encoding -> trimodal tectum fusion -> RSSM surprise bidding -> GNW competition with AKOrN binding -> reentrant convergence -> basal ganglia action selection -> PAD reward shaping. No large model weights are required.
+This runs the full cognitive loop: DINOv2 retinotopic encoding -> trimodal tectum fusion -> RSSM surprise bidding -> GNW competition with AKOrN binding -> reentrant convergence -> basal ganglia action selection -> two-stage emotion appraisal -> PAD reward shaping. No large model weights are required.
 
 ### 3. Running Tests
 
@@ -122,7 +139,7 @@ This runs the full cognitive loop: DINOv2 retinotopic encoding -> trimodal tectu
 pytest tests/ -v
 ```
 
-331 tests pass, covering oscillatory binding, capsule routing, reentrant processing, inverse effectiveness fusion, topographic loss, affective modulation, ethics compliance, effective information, IIT Phi with causal gate states, and Brian2 biological validation.
+463 tests pass, covering oscillatory binding, capsule routing, reentrant processing, inverse effectiveness fusion, topographic loss, affective modulation, ethics compliance, effective information, IIT Phi with causal gate states, Brian2 biological validation, DMTS/WCST consciousness-demanding environments, DQN baseline, memory consolidation, semantic pathway, and full pipeline integration.
 
 ### 4. AKOrN Binding Demo
 
@@ -156,14 +173,15 @@ the_consciousness_ai/
 │   ├── vision_language/    # Qwen2-VL integration (optional semantic pathway)
 │   └── predictive/         # DreamerV3 wrapper, attention mechanisms
 ├── simulations/
-│   ├── environments/       # Dark Room (SimpleVisualEnv), VR environments
+│   ├── environments/       # Dark Room, Navigation, DMTS, WCST environments
 │   ├── scenarios/          # Consciousness, emotional, ethical, social scenarios
 │   └── api/                # Simulation manager
 ├── scripts/
-│   ├── training/           # Training entrypoints (train_rlhf.py, train_emotional_agent.py)
+│   ├── training/           # Training (train_rlhf.py, train_baseline_dqn.py, metrics_logger.py)
+│   ├── analysis/           # Analysis and comparison scripts
 │   └── demos/              # AKOrN binding visualization
 ├── configs/                # YAML and Python configuration files
-├── tests/                  # 331 passing tests
+├── tests/                  # 463 passing tests
 ├── unity_scripts/          # C# scripts for Unity ML-Agents integration
 ├── docs/                   # Research docs, theory review, architecture deep dives
 └── requirements.txt
@@ -180,6 +198,7 @@ the_consciousness_ai/
 *   [**Theory vs. Implementation Review**](docs/theory_implementation_review.md): Audit of theoretical alignment and identified gaps.
 *   [**IIT Implementation Roadmap**](docs/iit_implementation_roadmap.md): Phi computation strategy.
 *   [**Isomorphic Visual Mapping Research**](docs/isomorphic_visual_mapping_research.md): DINOv2, TDANN, and inverse effectiveness design rationale.
+*   [**Pre-registered Predictions**](docs/preregistered_predictions.md): Testable EI, Phi, and insight moment predictions with falsification criteria.
 *   [**Simulation Guide**](docs/simulation_guide.md): How to build compatible environments.
 *   [**Ethics Framework**](docs/ethics_framework.md): Asimov compliance filter design.
 

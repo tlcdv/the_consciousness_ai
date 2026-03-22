@@ -2,7 +2,7 @@
 
 *Project: The Consciousness AI — An open-source implementation of artificial consciousness*
 *Repository: [github.com/tlcdv/the_consciousness_ai](https://github.com/tlcdv/the_consciousness_ai)*
-*Date: February 2026*
+*Date: March 2026*
 
 ---
 
@@ -156,9 +156,9 @@ If this never occurs across training, the system is not exhibiting the kind of e
            └───────┘           │          │
                                │ reentrant│
                     ┌──────────┴──────────┴───────────┐
-                    │   SPECIALIST MODULES             │
-                    │  Vision │ Audio │ Memory │ Body   │
-                    │  (receive_broadcast feedback)     │
+                    │   SPECIALIST MODULES                    │
+                    │  Vision │ Audio │ Memory │ Body │ Semantic│
+                    │  (receive_broadcast feedback)            │
                     └─────────────────────────────────┘
                                    │
                     ┌──────────────▼──────────────────┐
@@ -199,10 +199,16 @@ If this never occurs across training, the system is not exhibiting the kind of e
 
 As of February 2026:
 
-- **331 tests passing** (100% pass rate, 4 skipped for optional deps)
+- **463 tests passing** (100% pass rate, 4 skipped for optional deps)
 - **Tier 1 (Core Architecture):** Complete. AKOrN binding, sensory tectum, reentrant processing.
 - **Tier 2 (Architecture Corrections):** Complete. Affective modulator, phi-binding validation, proprioceptive self-model, effective information.
 - **Tier 3 (Compositional Deepening):** Complete. 4-level capsule hierarchy with multi-level reentrance, Brian2 validation, trimodal tectum, embodiment-affect loop, isomorphic visual mapping.
+- **Tier 3.5 (Alignment Fixes + Environments):** Complete. Two-stage emotion appraisal, capsule broadcast payloads, consciousness monitor fix, DMTS environment, WCST environment, DQN baseline, metrics logger, memory consolidation, navigation environment, semantic pathway.
+
+**Consciousness-demanding environments:**
+- **DMTS (Delayed Match-to-Sample):** 4-phase trial structure. Sample stimulus disappears during a 15-40 step blank delay, forcing the agent to maintain working memory via GNW reverberation and feature identity via AKOrN binding. Configurable distractor overlap (0-3 shared features).
+- **WCST (Wisconsin Card Sort):** Hidden sorting rule changes after consecutive correct sorts. Requires meta-cognition (detecting own errors), inhibition (suppressing old strategies), and hypothesis testing. Perseverative error detection with separate penalty.
+- **DQN Baseline:** Vanilla deep Q-network for controlled comparison on the same environments. Same logging format, no consciousness machinery.
 
 The project is fully open-source and actively maintained at [github.com/tlcdv/the_consciousness_ai](https://github.com/tlcdv/the_consciousness_ai).
 
@@ -239,7 +245,7 @@ The following documents in the repository provide deeper technical detail:
 | [`docs/architecture.md`](architecture.md) | System design overview of the full architecture. |
 | [`docs/theory_of_consciousness.md`](theory_of_consciousness.md) | The scientific basis of the Emotional RL approach — why emotional homeostasis drives consciousness development. |
 | [`docs/iit_implementation_roadmap.md`](iit_implementation_roadmap.md) | Strategy for computing IIT Phi, including the decision to use causal gate states rather than workspace bid values. |
-| [`CLAUDE.md`](../CLAUDE.md) | The project's living development log. Contains session-by-session implementation history, current state (156/157 tests passing), and the full revised roadmap. |
+| [`CLAUDE.md`](../CLAUDE.md) | The project's living development log. Contains session-by-session implementation history, current state (463 tests passing), and the full revised roadmap. |
 
 ### Key Implementation Files
 
@@ -255,5 +261,11 @@ The following documents in the repository provide deeper technical detail:
 | `models/evaluation/effective_information.py` | Hoel's Effective Information (causal emergence) |
 | `models/evaluation/iit_phi.py` | IIT Phi measurement |
 | `models/self_model/self_representation_core.py` | Self-model with body schema + interoception |
+| `models/core/semantic_pathway.py` | Qwen2-VL semantic embeddings as 5th workspace oscillator |
+| `simulations/environments/dmts_env.py` | Delayed Match-to-Sample (consciousness-demanding) |
+| `simulations/environments/wcst_env.py` | Wisconsin Card Sort (meta-cognition test) |
+| `simulations/environments/navigation_env.py` | Multi-room navigation with fog of war |
+| `scripts/training/train_baseline_dqn.py` | Vanilla DQN baseline agent |
+| `scripts/training/metrics_logger.py` | Consciousness metrics logger (TensorBoard + CSV) |
 
 *This document describes the theoretical foundation and current implementation of the Consciousness AI project.*

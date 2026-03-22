@@ -335,11 +335,10 @@ class ConsciousnessMonitor:
             ev = ev or current_state.get('emotion', {})
         valence = ev.get('valence', 0.5) if isinstance(ev, dict) else 0.5
         arousal = ev.get('arousal', 0.5) if isinstance(ev, dict) else 0.5
-        # Compute scores that grow with step count (simulating development)
-        progress_factor = min(1.0, self.step_count / 50.0)
-        consciousness_level = min(1.0, (attention * 0.4 + valence * 0.3 + arousal * 0.3) * (0.5 + 0.5 * progress_factor))
-        emotional_awareness = min(1.0, valence * 0.5 + arousal * 0.3 + 0.1 * progress_factor)
-        memory_coherence = min(1.0, 0.3 + 0.5 * progress_factor)
+        # Compute scores purely from input metrics, no step-count inflation
+        consciousness_level = min(1.0, attention * 0.4 + valence * 0.3 + arousal * 0.3)
+        emotional_awareness = min(1.0, valence * 0.5 + arousal * 0.3 + attention * 0.2)
+        memory_coherence = min(1.0, 0.3 + attention * 0.3 + valence * 0.2)
         consciousness_score = (consciousness_level + emotional_awareness + memory_coherence) / 3.0
         return {
             'consciousness_score': consciousness_score,
@@ -367,8 +366,7 @@ class ConsciousnessMonitor:
         else:
             valence = 0.5
             arousal = 0.5
-        progress = min(1.0, self.step_count / 50.0)
-        score = min(1.0, (attention * 0.4 + valence * 0.3 + arousal * 0.3) * (0.5 + 0.5 * progress))
+        score = min(1.0, attention * 0.4 + valence * 0.3 + arousal * 0.3)
         return {
             'consciousness_score': score,
             'consciousness_level': score,
