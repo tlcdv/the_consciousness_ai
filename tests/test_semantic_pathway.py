@@ -48,7 +48,7 @@ class TestSemanticPathway(unittest.TestCase):
         # Check that projection weights receive gradients
         embedding = torch.randn(1, 1536)
         content, _ = self.pathway(embedding)
-        loss = content.sum()
+        loss = content.pow(2).sum()
         loss.backward()
         proj_weight = self.pathway.projection[0].weight
         self.assertIsNotNone(proj_weight.grad)
