@@ -93,10 +93,10 @@ class TestInsightDetection(unittest.TestCase):
 
     def test_novel_high_reward_high_broadcast_is_insight(self):
         """All 4 criteria met should return True."""
-        # Seed recent rewards and broadcast mags
-        for i in range(10):
+        # Seed cross-episode rewards and broadcast mags (need >= 10 each)
+        for i in range(20):
             m = StepMetrics(global_step=i, phi=0.1, sync_r=0.5,
-                            is_conscious=True, reward=1.0, broadcast_mag=0.5)
+                            is_conscious=True, reward=0.5, broadcast_mag=0.5)
             self.logger.log_step(m)
 
         result = self.logger.detect_insight_moment(
@@ -106,18 +106,23 @@ class TestInsightDetection(unittest.TestCase):
 
     def test_repeated_state_action_not_insight(self):
         """Same state-action pair seen twice should not be insight."""
-        for i in range(10):
+        for i in range(20):
             m = StepMetrics(global_step=i, phi=0.1, sync_r=0.5,
-                            is_conscious=True, reward=1.0, broadcast_mag=0.5)
+                            is_conscious=True, reward=0.5, broadcast_mag=0.5)
             self.logger.log_step(m)
 
         self.logger.detect_insight_moment("s1", 1, 5.0, 0.9)
+        # Advance global step past cooldown
+        for i in range(20, 40):
+            m = StepMetrics(global_step=i, phi=0.1, sync_r=0.5,
+                            is_conscious=True, reward=0.5, broadcast_mag=0.5)
+            self.logger.log_step(m)
         result = self.logger.detect_insight_moment("s1", 1, 5.0, 0.9)
         self.assertFalse(result)
 
     def test_low_reward_not_insight(self):
         """Reward below 1.5x average should not be insight."""
-        for i in range(10):
+        for i in range(20):
             m = StepMetrics(global_step=i, phi=0.1, sync_r=0.5,
                             is_conscious=True, reward=10.0, broadcast_mag=0.5)
             self.logger.log_step(m)
@@ -135,6 +140,27 @@ class TestInsightDetection(unittest.TestCase):
 
         # Very low broadcast
         result = self.logger.detect_insight_moment("novel_s", 1, 10.0, 0.01)
+        self.assertFalse(result)
+
+    def test_insufficient_baseline_not_insight(self):
+        """With fewer than 10 reward samples, no insight can be detected."""
+        for i in range(5):
+            m = StepMetrics(global_step=i, phi=0.1, sync_r=0.5,
+                            is_conscious=True, reward=1.0, broadcast_mag=0.5)
+            self.logger.log_step(m)
+        result = self.logger.detect_insight_moment("s_new", 1, 5.0, 0.9)
+        self.assertFalse(result)
+
+    def test_cooldown_prevents_rapid_insights(self):
+        """Two insights within 10 steps should be blocked by cooldown."""
+        for i in range(20):
+            m = StepMetrics(global_step=i, phi=0.1, sync_r=0.5,
+                            is_conscious=True, reward=0.5, broadcast_mag=0.5)
+            self.logger.log_step(m)
+        first = self.logger.detect_insight_moment("s_a", 1, 5.0, 0.9)
+        self.assertTrue(first)
+        # Immediately try another (within cooldown)
+        result = self.logger.detect_insight_moment("s_b", 2, 5.0, 0.9)
         self.assertFalse(result)
 
 
@@ -184,7 +210,9 @@ class TestResetAndClose(unittest.TestCase):
             logger.log_step(m)
         logger.reset_episode_state()
         self.assertEqual(len(logger._episode_broadcast_mags), 0)
-        self.assertEqual(len(logger._recent_rewards), 0)
+        self.assertEqual(len(logger._seen_state_actions), 0)
+        # Cross-episode rewards are preserved across resets
+        self.assertEqual(len(logger._cross_episode_rewards), 5)
         logger.close()
 
     def test_close_idempotent(self):

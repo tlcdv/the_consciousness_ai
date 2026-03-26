@@ -87,8 +87,10 @@ class ConsciousnessMetricsLogger:
 
         # Insight detection state
         self._seen_state_actions: set[str] = set()
-        self._recent_rewards: deque[float] = deque(maxlen=50)
+        self._cross_episode_rewards: deque[float] = deque(maxlen=500)
         self._episode_broadcast_mags: list[float] = []
+        self._last_insight_step: int = -100
+        self._global_insight_step: int = 0
 
         # Trajectory buffers for EI computation
         self._gate_trajectory: list[tuple[float, ...]] = []
@@ -136,8 +138,9 @@ class ConsciousnessMetricsLogger:
             self.writer.add_scalar("emotion/dominance", metrics.dominance, step)
 
         # Buffer for insight detection
-        self._recent_rewards.append(metrics.reward)
+        self._cross_episode_rewards.append(metrics.reward)
         self._episode_broadcast_mags.append(metrics.broadcast_mag)
+        self._global_insight_step += 1
 
         # Buffer for EI
         if metrics.gate_state is not None:
@@ -252,10 +255,14 @@ class ConsciousnessMetricsLogger:
         Detect an insight moment using the 4-criterion operational definition.
 
         1. Novel state-action pair
-        2. Reward >= 1.5x running average
+        2. Reward >= 1.5x running average (with minimum absolute threshold)
         3. First attempt in this state (same as criterion 1 for hash-based)
         4. Broadcast magnitude above 75th percentile
         """
+        # Cooldown: skip if an insight was detected too recently (50 steps minimum gap)
+        if self._last_insight_step >= 0 and (self._global_insight_step - self._last_insight_step) < 50:
+            return False
+
         sa_key = f"{state_hash}_{action}"
 
         # Criterion 1 & 3: novel state-action pair
@@ -265,29 +272,45 @@ class ConsciousnessMetricsLogger:
         if not is_novel:
             return False
 
-        # Criterion 2: reward jump
-        if len(self._recent_rewards) > 0:
-            avg_reward = np.mean(self._recent_rewards)
-            reward_jump = reward >= 1.5 * avg_reward if avg_reward > 0 else reward > 0
+        # Criterion 2: reward jump with minimum absolute threshold
+        # Require reward > 0.5 AND >= 2x running average (positive portion)
+        if reward < 0.5:
+            return False
+
+        if len(self._cross_episode_rewards) >= 200:
+            positive_rewards = [r for r in self._cross_episode_rewards if r > 0]
+            if positive_rewards:
+                avg_positive = np.mean(positive_rewards)
+                reward_jump = reward >= 2.0 * avg_positive
+            else:
+                reward_jump = True  # first positive reward ever
         else:
-            reward_jump = reward > 0
+            # Not enough data to establish baseline
+            return False
 
         if not reward_jump:
             return False
 
         # Criterion 4: high broadcast magnitude (above 75th percentile)
-        if len(self._episode_broadcast_mags) >= 4:
+        if len(self._episode_broadcast_mags) >= 10:
             threshold = np.percentile(self._episode_broadcast_mags, 75)
             high_broadcast = broadcast_mag >= threshold
         else:
-            high_broadcast = broadcast_mag > 0
+            return False
+
+        if high_broadcast:
+            self._last_insight_step = self._global_insight_step
 
         return high_broadcast
 
     def reset_episode_state(self):
-        """Reset per-episode tracking (call at start of each episode)."""
+        """Reset per-episode tracking (call at start of each episode).
+
+        Cross-episode rewards are preserved to maintain a stable baseline
+        for insight detection. Only per-episode state-action novelty and
+        broadcast magnitude buffers are cleared.
+        """
         self._episode_broadcast_mags.clear()
-        self._recent_rewards.clear()
         self._seen_state_actions.clear()
 
     def close(self):

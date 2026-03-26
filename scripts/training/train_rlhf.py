@@ -105,7 +105,19 @@ def init_components(config):
         workspace_dim=config["workspace_dim"],
     ).to(device)
 
-    return tectum, workspace, reentrant, modulator, emotion_shaper, memory, action_core, semantic
+    # Optimizer for tectum parameters (retinotopic encoder, RSSM, capsules)
+    # so that phi and sync_R can evolve during training
+    tectum_optimizer = torch.optim.Adam(tectum.parameters(), lr=config.get("tectum_lr", 3e-4))
+
+    # Auxiliary reward predictor: maps tectum content to scalar reward estimate
+    reward_predictor = torch.nn.Sequential(
+        torch.nn.Linear(config["workspace_dim"], 64),
+        torch.nn.ReLU(),
+        torch.nn.Linear(64, 1),
+    ).to(device)
+    reward_optimizer = torch.optim.Adam(reward_predictor.parameters(), lr=1e-3)
+
+    return tectum, workspace, reentrant, modulator, emotion_shaper, memory, action_core, semantic, tectum_optimizer, reward_predictor, reward_optimizer
 
 
 def frame_to_tensor(frame: np.ndarray, device: str) -> torch.Tensor:
@@ -128,10 +140,11 @@ def evaluate_emotion(vision_bid: float, env_reward: float, prev_reward: float,
     them into the reflex estimate. This is slower and content-specific.
     """
     # Reflex: tectum surprise and reward delta
-    surprise = max(0.0, vision_bid - 0.3)
+    # Arousal requires bid > 0.5 to activate (baseline bids are ~0.2-0.5)
+    surprise = max(0.0, vision_bid - 0.5)
     reward_delta = env_reward - prev_reward
     valence = float(np.clip(reward_delta * 2.0, -1.0, 1.0))
-    arousal = float(np.clip(surprise * 1.5, 0.0, 1.0))
+    arousal = float(np.clip(surprise + abs(reward_delta) * 0.5, 0.0, 1.0))
     dominance = 0.0
 
     # Appraisal: phenomenological state from broadcast content
@@ -148,7 +161,8 @@ def evaluate_emotion(vision_bid: float, env_reward: float, prev_reward: float,
 
 def run_episode(episode_idx, config, tectum, workspace, reentrant,
                 modulator, emotion_shaper, action_core, env,
-                semantic=None, metrics_logger=None, global_step_offset=0):
+                semantic=None, metrics_logger=None, global_step_offset=0,
+                tectum_optimizer=None, reward_predictor=None, reward_optimizer=None):
     device = config["device"]
     max_steps = config["max_steps"]
 
@@ -237,6 +251,21 @@ def run_episode(episode_idx, config, tectum, workspace, reentrant,
         next_obs, env_reward, terminated, truncated, _ = env.step(action)
         done = terminated or truncated
 
+        # --- Tectum + reward predictor auxiliary training ---
+        # Gives gradient signal to tectum parameters so phi/sync_R can evolve.
+        # Reward prediction loss backprops through tectum_content into the
+        # retinotopic encoder, RSSM, and capsule parameters.
+        if tectum_optimizer is not None and reward_predictor is not None and step % 5 == 0:
+            pred_reward = reward_predictor(tectum_content)
+            reward_target = torch.tensor([[env_reward]], device=device)
+            pred_loss = torch.nn.functional.mse_loss(pred_reward, reward_target)
+
+            tectum_optimizer.zero_grad()
+            reward_optimizer.zero_grad()
+            pred_loss.backward(retain_graph=True)
+            tectum_optimizer.step()
+            reward_optimizer.step()
+
         if hasattr(emotion_shaper, 'compute_emotional_reward'):
             emotion_values = {
                 "valence": emotion["valence"],
@@ -297,12 +326,13 @@ def run_episode(episode_idx, config, tectum, workspace, reentrant,
                 workspace_state=ws_state,
             ))
 
-            # Insight detection
-            state_hash = f"{int(obs.mean())}_{int(obs.std())}"
+            # Insight detection (coarse hashing to prevent every step being "novel")
+            state_hash = f"{int(obs.mean() / 10)}_{int(obs.std() / 10)}"
             if isinstance(action, (int, str)):
                 action_key = action
             elif hasattr(action, '__len__'):
-                action_key = "_".join(str(int(a * 10)) for a in action)
+                # Round continuous actions to nearest integer for coarse binning
+                action_key = "_".join(str(round(float(a))) for a in action)
             else:
                 action_key = int(action)
             is_insight = metrics_logger.detect_insight_moment(
@@ -349,7 +379,7 @@ def main():
     device = config["device"]
     logger.info(f"Device: {device}")
 
-    tectum, workspace, reentrant, modulator, emotion_shaper, memory, action_core, semantic = init_components(config)
+    tectum, workspace, reentrant, modulator, emotion_shaper, memory, action_core, semantic, tectum_optimizer, reward_predictor, reward_optimizer = init_components(config)
 
     render_mode = "human" if args.render else "rgb_array"
     if args.env == "navigation":
@@ -383,6 +413,9 @@ def main():
             ep, config, tectum, workspace, reentrant,
             modulator, emotion_shaper, action_core, env, semantic,
             metrics_logger=metrics_logger, global_step_offset=global_step,
+            tectum_optimizer=tectum_optimizer,
+            reward_predictor=reward_predictor,
+            reward_optimizer=reward_optimizer,
         )
         global_step += ep_steps
         rewards_history.append(ep_reward)

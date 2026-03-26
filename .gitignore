@@ -46,6 +46,9 @@ pdf_to_text.py
 memory_state.pkl
 *.pkl
 
+# Training runs (large, reproducible)
+runs/
+
 CLAUDE.md
 
 # Provenance verification (local only)
