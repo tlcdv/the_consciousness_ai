@@ -21,7 +21,7 @@ from __future__ import annotations
 
 # Semantic categories for bid modulation by valence
 APPROACH_MODULES = {"vision", "audio", "memory", "body"}
-THREAT_MODULES = {"body", "vision"}
+THREAT_MODULES = {"body", "vision", "audio"}
 
 
 class AffectiveModulator:

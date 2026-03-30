@@ -93,8 +93,8 @@ class TestInsightDetection(unittest.TestCase):
 
     def test_novel_high_reward_high_broadcast_is_insight(self):
         """All 4 criteria met should return True."""
-        # Seed cross-episode rewards and broadcast mags (need >= 10 each)
-        for i in range(20):
+        # Seed cross-episode rewards (need >= 200) and broadcast mags (need >= 10)
+        for i in range(210):
             m = StepMetrics(global_step=i, phi=0.1, sync_r=0.5,
                             is_conscious=True, reward=0.5, broadcast_mag=0.5)
             self.logger.log_step(m)
@@ -106,14 +106,14 @@ class TestInsightDetection(unittest.TestCase):
 
     def test_repeated_state_action_not_insight(self):
         """Same state-action pair seen twice should not be insight."""
-        for i in range(20):
+        for i in range(210):
             m = StepMetrics(global_step=i, phi=0.1, sync_r=0.5,
                             is_conscious=True, reward=0.5, broadcast_mag=0.5)
             self.logger.log_step(m)
 
         self.logger.detect_insight_moment("s1", 1, 5.0, 0.9)
         # Advance global step past cooldown
-        for i in range(20, 40):
+        for i in range(210, 270):
             m = StepMetrics(global_step=i, phi=0.1, sync_r=0.5,
                             is_conscious=True, reward=0.5, broadcast_mag=0.5)
             self.logger.log_step(m)
@@ -121,8 +121,8 @@ class TestInsightDetection(unittest.TestCase):
         self.assertFalse(result)
 
     def test_low_reward_not_insight(self):
-        """Reward below 1.5x average should not be insight."""
-        for i in range(20):
+        """Reward below 2x positive average should not be insight."""
+        for i in range(210):
             m = StepMetrics(global_step=i, phi=0.1, sync_r=0.5,
                             is_conscious=True, reward=10.0, broadcast_mag=0.5)
             self.logger.log_step(m)
@@ -132,10 +132,10 @@ class TestInsightDetection(unittest.TestCase):
 
     def test_low_broadcast_not_insight(self):
         """Broadcast below 75th percentile should not be insight."""
-        for i in range(20):
+        for i in range(210):
             m = StepMetrics(global_step=i, phi=0.1, sync_r=0.5,
-                            is_conscious=True, reward=1.0,
-                            broadcast_mag=0.1 + i * 0.04)
+                            is_conscious=True, reward=0.5,
+                            broadcast_mag=0.1 + (i % 20) * 0.04)
             self.logger.log_step(m)
 
         # Very low broadcast
@@ -152,8 +152,8 @@ class TestInsightDetection(unittest.TestCase):
         self.assertFalse(result)
 
     def test_cooldown_prevents_rapid_insights(self):
-        """Two insights within 10 steps should be blocked by cooldown."""
-        for i in range(20):
+        """Two insights within 50 steps should be blocked by cooldown."""
+        for i in range(210):
             m = StepMetrics(global_step=i, phi=0.1, sync_r=0.5,
                             is_conscious=True, reward=0.5, broadcast_mag=0.5)
             self.logger.log_step(m)

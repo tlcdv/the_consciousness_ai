@@ -26,7 +26,12 @@ class GatingState:
 
 class ConsciousnessGate(nn.Module):
     def __init__(self, config):
-        """Sets up gating parameters and neural networks."""
+        """Sets up gating parameters and neural networks.
+
+        Produces 5 continuous gate values that serve as causal nodes for
+        IIT Phi computation and EI measurement. All 5 networks take the
+        workspace broadcast as input and produce sigmoid-bounded [0,1] output.
+        """
         super().__init__()
         # Support both dict and attribute-style config
         if isinstance(config, dict):
@@ -58,6 +63,22 @@ class ConsciousnessGate(nn.Module):
             nn.Sigmoid()
         )
 
+        # Coherence network: meta-memory consistency signal.
+        self.coherence_net = nn.Sequential(
+            nn.Linear(self.hidden_size, self.hidden_size),
+            nn.GELU(),
+            nn.Linear(self.hidden_size, 1),
+            nn.Sigmoid()
+        )
+
+        # Confidence network: narrator certainty about current state.
+        self.confidence_net = nn.Sequential(
+            nn.Linear(self.hidden_size, self.hidden_size),
+            nn.GELU(),
+            nn.Linear(self.hidden_size, 1),
+            nn.Sigmoid()
+        )
+
         self.state = GatingState()
 
     def forward(
@@ -69,6 +90,8 @@ class ConsciousnessGate(nn.Module):
         """Processes input through gating networks and updates the gating state."""
         attention_level = self.attention_net(input_state)
         stability_score = self.stability_net(input_state)
+        coherence = self.coherence_net(input_state)
+        confidence = self.confidence_net(input_state)
 
         adaptation_rate = self._calculate_adaptation_rate(
             stability_score,
@@ -85,7 +108,9 @@ class ConsciousnessGate(nn.Module):
             attention_level,
             stability_score,
             adaptation_rate,
-            narrator_state
+            coherence,
+            confidence,
+            narrator_state,
         )
 
         return gated_output, self.state
@@ -122,17 +147,19 @@ class ConsciousnessGate(nn.Module):
         attention_level: torch.Tensor,
         stability_score: torch.Tensor,
         adaptation_rate: float,
-        narrator_state: dict | None
+        coherence: torch.Tensor,
+        confidence: torch.Tensor,
+        narrator_state: dict | None = None,
     ) -> None:
         """Updates the gating state with new information."""
         self.state.attention_level = float(attention_level.mean().item())
         self.state.stability_score = float(stability_score.mean().item())
         self.state.adaptation_rate = adaptation_rate
-        self.state.meta_memory_coherence = 0.0  # Placeholder; integrate as needed.
+        self.state.meta_memory_coherence = float(coherence.mean().item())
         if narrator_state and 'confidence' in narrator_state:
             self.state.narrator_confidence = float(narrator_state['confidence'])
         else:
-            self.state.narrator_confidence = 0.0
+            self.state.narrator_confidence = float(confidence.mean().item())
 
 
 class ConsciousnessGating:

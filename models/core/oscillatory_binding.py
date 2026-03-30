@@ -194,4 +194,7 @@ class WorkspaceBindingSystem(nn.Module):
             boost_factor = 1.0 + (0.5 * align_val)
             bound_bids[name] = orig_bid * boost_factor
             
+        # Store differentiable tensor for gradient-based optimization
+        self.last_sync_R_tensor = sync_R
+
         return bound_bids, sync_R.item()

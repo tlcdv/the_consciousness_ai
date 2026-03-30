@@ -7,7 +7,10 @@ import pygame
 import time
 from typing import Any
 
-class SimpleVisualEnv(gym.Env):
+from simulations.environments.audio_mixin import DarkRoomAudioMixin
+
+
+class SimpleVisualEnv(DarkRoomAudioMixin, gym.Env):
     """
     A lightweight, visual environment for testing Artificial Consciousness.
     Rendered via PyGame to provide raw pixel input to Vision Models (Qwen2-VL).
@@ -84,10 +87,13 @@ class SimpleVisualEnv(gym.Env):
         
         observation = self._get_obs()
         info = self._get_info()
-        
+
+        # Generate audio waveform from environment state (DarkRoomAudioMixin)
+        info["audio_waveform"] = self._generate_audio(info)
+
         if self.render_mode == "human":
             self.render()
-            
+
         return observation, reward, terminated, truncated, info
         
     def _get_obs(self) -> np.ndarray:
@@ -110,9 +116,12 @@ class SimpleVisualEnv(gym.Env):
         )
 
     def _get_info(self) -> dict:
+        dist = float(np.linalg.norm(self.agent_pos - self.light_pos))
+        in_light = dist < (self.light_radius + self.agent_radius)
         return {
-            "distance_to_light": np.linalg.norm(self.agent_pos - self.light_pos),
-            "battery": self.battery
+            "distance_to_light": dist,
+            "in_light": in_light,
+            "battery": self.battery,
         }
 
     def render(self):

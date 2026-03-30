@@ -83,6 +83,9 @@ class GlobalWorkspace:
         
         # Affective Modulator (Tier 2): emotion modulates bids + threshold
         self.affective_modulator = None
+        # ConsciousnessGate: when set, phi is computed from gate state instead
+        # of the deprecated bid-based proxy
+        self.consciousness_gate = None
         
     def register_specialist(self, name: str, module: Any) -> None:
         """Register a specialist cognitive module"""
@@ -135,6 +138,7 @@ class GlobalWorkspace:
         # Now uses Kuramoto oscillators. Modules that synchronize get boosted bids.
         bound_bids, sync_order_parameter = self.binding_system.bind_bids(bids)
         self.last_sync_R = sync_order_parameter
+        self.last_sync_R_tensor = self.binding_system.last_sync_R_tensor
 
         # 3. Calculate Input Energy (Max Bound Bid)
         input_energy = max(bound_bids.values()) if bound_bids else 0.0
@@ -165,14 +169,26 @@ class GlobalWorkspace:
         if self.state.is_conscious:
             # Create Abstract Activation Tensor
             workspace_tensor = self._bids_to_tensor(bound_bids)
-            
-            # Calculate Phi (Using Proxy for now, will upgrade to Empirical later)
-            phi = self.iit_metrics.compute_phi_proxy(workspace_tensor)
-            
-            # Bonus: The binding itself increases information integration
-            # We add a fraction of the Kuramoto synchronization parameter to Phi
+
+            # Calculate Phi from ConsciousnessGate causal states (preferred)
+            # or fall back to proxy if no gate is attached
+            if self.consciousness_gate is not None:
+                gate_input = workspace_tensor.unsqueeze(0) if workspace_tensor.dim() == 1 else workspace_tensor
+                # Pad or truncate to gate hidden_size
+                hs = self.consciousness_gate.hidden_size
+                if gate_input.shape[-1] < hs:
+                    gate_input = F.pad(gate_input, (0, hs - gate_input.shape[-1]))
+                elif gate_input.shape[-1] > hs:
+                    gate_input = gate_input[..., :hs]
+                _, gate_state = self.consciousness_gate(gate_input)
+                phi_result = self.iit_metrics.compute_phi_from_gate_state(gate_state)
+                phi = phi_result.phi
+            else:
+                phi = self.iit_metrics.compute_phi_proxy(workspace_tensor)
+
+            # Binding increases information integration
             phi += (sync_order_parameter * 0.1)
-            
+
             self.state.phi_value = phi
             
             # Map to Qualia (Phenomenology)

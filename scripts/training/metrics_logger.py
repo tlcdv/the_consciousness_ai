@@ -204,11 +204,15 @@ class ConsciousnessMetricsLogger:
             return result
 
         # Joint binning for gate trajectories: each dimension -> 2 bins, combined as sum(b_i * 2^i)
+        # Use per-dimension median as threshold (adaptive) instead of fixed 0.5,
+        # because adaptation_rate lives in [0.004, 0.006] and would always bin to 0
+        gate_arr = np.array(self._gate_trajectory)
+        medians = np.median(gate_arr, axis=0) if len(gate_arr) > 0 else np.full(gate_arr.shape[1], 0.5)
         gate_discrete = []
         for g in self._gate_trajectory:
             joint_idx = 0
             for i, val in enumerate(g):
-                bit = 1 if val >= 0.5 else 0
+                bit = 1 if val >= medians[i] else 0
                 joint_idx += bit * (2 ** i)
             gate_discrete.append(joint_idx)
 

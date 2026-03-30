@@ -28,6 +28,7 @@ from simulations.environments.simple_visual_env import SimpleVisualEnv
 from models.core.sensory_tectum import SensoryTectum
 from models.core.global_workspace import GlobalWorkspace
 from models.core.reentrant_processor import ReentrantProcessor
+from models.core.consciousness_gating import ConsciousnessGate
 from models.emotion.affective_modulator import AffectiveModulator
 from models.emotion.reward_shaping import EmotionalRewardShaper
 from models.self_model.action_selection_core import ActionSelectionCore
@@ -72,6 +73,9 @@ def build_config(args):
         "memory": {},
         "episodes": args.episodes,
         "max_steps": args.max_steps,
+        "enable_audio": getattr(args, "enable_audio", False),
+        "audio_sample_rate": 16000,
+        "audio_num_bands": 64,
     }
 
 
@@ -105,9 +109,24 @@ def init_components(config):
         workspace_dim=config["workspace_dim"],
     ).to(device)
 
-    # Optimizer for tectum parameters (retinotopic encoder, RSSM, capsules)
-    # so that phi and sync_R can evolve during training
-    tectum_optimizer = torch.optim.Adam(tectum.parameters(), lr=config.get("tectum_lr", 3e-4))
+    # ConsciousnessGate: produces 5 continuous gate values (attention, stability,
+    # adaptation, coherence, confidence) from workspace broadcast. These are the
+    # causal nodes for IIT Phi computation and EI measurement.
+    gate = ConsciousnessGate({
+        "hidden_size": config["workspace_dim"],
+        "gating": {
+            "attention_threshold": 0.5,
+            "stability_threshold": 0.6,
+            "base_adaptation_rate": 0.01,
+        },
+    }).to(device)
+
+    # Optimizer for tectum + gate parameters (retinotopic encoder, RSSM, capsules,
+    # attention/stability networks) so that phi and sync_R evolve during training
+    tectum_optimizer = torch.optim.Adam(
+        list(tectum.parameters()) + list(gate.parameters()),
+        lr=config.get("tectum_lr", 3e-4),
+    )
 
     # Auxiliary reward predictor: maps tectum content to scalar reward estimate
     reward_predictor = torch.nn.Sequential(
@@ -117,7 +136,24 @@ def init_components(config):
     ).to(device)
     reward_optimizer = torch.optim.Adam(reward_predictor.parameters(), lr=1e-3)
 
-    return tectum, workspace, reentrant, modulator, emotion_shaper, memory, action_core, semantic, tectum_optimizer, reward_predictor, reward_optimizer
+    # Workspace binding optimizer: optimizes KuramotoLayer coupling_weights and
+    # natural_frequencies so sync_R becomes reward-correlated (dopamine modulates
+    # gamma synchrony). Without this, sync_R stays static at ~0.22.
+    workspace_optimizer = torch.optim.Adam(
+        workspace.binding_system.parameters(), lr=config.get("workspace_lr", 1e-4)
+    )
+
+    # Auditory specialist: cochlear pipeline (gammatone -> hair cell -> tonotopic
+    # encoder -> workspace projection). Only instantiated when --enable-audio is set.
+    auditory_specialist = None
+    if config.get("enable_audio", False):
+        from models.audio.auditory_specialist import AuditorySpecialist
+        auditory_specialist = AuditorySpecialist(config).to(device)
+        logger.info("Auditory specialist enabled (cochlear pipeline)")
+
+    return (tectum, workspace, reentrant, modulator, emotion_shaper, memory,
+            action_core, semantic, gate, tectum_optimizer, reward_predictor,
+            reward_optimizer, workspace_optimizer, auditory_specialist)
 
 
 def frame_to_tensor(frame: np.ndarray, device: str) -> torch.Tensor:
@@ -161,12 +197,13 @@ def evaluate_emotion(vision_bid: float, env_reward: float, prev_reward: float,
 
 def run_episode(episode_idx, config, tectum, workspace, reentrant,
                 modulator, emotion_shaper, action_core, env,
-                semantic=None, metrics_logger=None, global_step_offset=0,
-                tectum_optimizer=None, reward_predictor=None, reward_optimizer=None):
+                semantic=None, gate=None, metrics_logger=None, global_step_offset=0,
+                tectum_optimizer=None, reward_predictor=None, reward_optimizer=None,
+                workspace_optimizer=None, auditory_specialist=None):
     device = config["device"]
     max_steps = config["max_steps"]
 
-    obs, _ = env.reset()
+    obs, info = env.reset()
     total_reward = 0.0
     previous_broadcast = None
     prev_reward = 0.0
@@ -187,11 +224,35 @@ def run_episode(episode_idx, config, tectum, workspace, reentrant,
         global_step = global_step_offset + step
         frame_tensor = frame_to_tensor(obs, device)
 
-        audio_spatial = torch.zeros(1, config["tectum_feature_dim"], 2, device=device)
+        # Audio processing: cochlear pipeline when enabled, zero stub otherwise
+        audio_affect = None
+        if auditory_specialist is not None and isinstance(obs, np.ndarray):
+            audio_waveform = info.get("audio_waveform") if isinstance(info, dict) else None
+            if audio_waveform is not None:
+                waveform_t = torch.from_numpy(audio_waveform).float().unsqueeze(0).unsqueeze(0).to(device)
+                audio_content, audio_bid_raw = auditory_specialist(waveform_t)
+                audio_spatial = auditory_specialist.get_spatial_for_tectum()
+                audio_affect = auditory_specialist.get_affect_output()
+            else:
+                audio_content = torch.zeros(1, config["workspace_dim"], device=device)
+                audio_bid_raw = 0.0
+                audio_spatial = torch.zeros(1, config["tectum_feature_dim"], 2, device=device)
+        else:
+            audio_content = torch.zeros(1, config["workspace_dim"], device=device)
+            audio_bid_raw = 0.0
+            audio_spatial = torch.zeros(1, config["tectum_feature_dim"], 2, device=device)
+
         tectum_content, vision_bid = tectum(frame_tensor, audio_spatial)
 
         # Stage 1: reflex emotion (pre-workspace, drives affective bid modulation)
+        # Audio startle reflex: spectral flux and roughness drive arousal spike
         emotion = evaluate_emotion(vision_bid, 0.0, prev_reward)
+        if audio_affect is not None:
+            af = audio_affect["acoustic_features"]
+            spectral_flux = af[0, 4].item() if af.shape[1] > 4 else 0.0
+            roughness = af[0, 2].item() if af.shape[1] > 2 else 0.0
+            emotion["arousal"] = float(np.clip(emotion["arousal"] + spectral_flux * 0.3, 0, 1))
+            emotion["valence"] = float(np.clip(emotion["valence"] - roughness * 0.2, -1, 1))
 
         # Semantic pathway: zero embedding when Qwen2-VL unavailable (bid degrades to 0)
         semantic_embedding = torch.zeros(1, 1536, device=device)
@@ -203,7 +264,7 @@ def run_episode(episode_idx, config, tectum, workspace, reentrant,
 
         bids = {
             "vision": max(0.0, min(1.0, vision_bid)),
-            "audio": 0.0,
+            "audio": max(0.0, min(1.0, audio_bid_raw)),
             "memory": 0.1,
             "body": 0.05,
             "semantic": max(0.0, min(1.0, semantic_bid)),
@@ -215,10 +276,13 @@ def run_episode(episode_idx, config, tectum, workspace, reentrant,
             vision_payload.update(capsule_data)
         payloads = {
             "vision": vision_payload,
+            "audio": {"tensor": audio_content, "source": "audio"},
             "semantic": {"tensor": semantic_content, "source": "semantic"},
         }
 
         specialists = {"vision": tectum}
+        if auditory_specialist is not None and audio_bid_raw > 0.0:
+            specialists["audio"] = auditory_specialist
         settle_result = reentrant.settle(
             workspace=workspace,
             specialists=specialists,
@@ -229,13 +293,26 @@ def run_episode(episode_idx, config, tectum, workspace, reentrant,
 
         broadcast = settle_result.broadcast_content
         is_conscious = settle_result.is_conscious
-        phi = settle_result.phi
         sync_r = getattr(workspace, 'last_sync_R', 0.0)
 
         if not isinstance(broadcast, torch.Tensor):
             broadcast = torch.zeros(1, config["workspace_dim"], device=device)
 
         broadcast_mag = float(broadcast.norm().item())
+
+        # ConsciousnessGate: compute 5 causal gate values from broadcast
+        # These drive IIT Phi (via empirical TPM) and EI measurement
+        if gate is not None:
+            gate_input = broadcast.detach().view(-1)[:config["workspace_dim"]]
+            if gate_input.shape[0] < config["workspace_dim"]:
+                gate_input = torch.nn.functional.pad(
+                    gate_input, (0, config["workspace_dim"] - gate_input.shape[0])
+                )
+            _, gate_state_obj = gate(gate_input.unsqueeze(0))
+            phi_result = workspace.iit_metrics.compute_phi_from_gate_state(gate_state_obj)
+            phi = phi_result.phi + (sync_r * 0.1)
+        else:
+            phi = settle_result.phi
 
         # Stage 2: appraisal emotion (post-broadcast, content-specific)
         emotion = evaluate_emotion(
@@ -248,7 +325,12 @@ def run_episode(episode_idx, config, tectum, workspace, reentrant,
             broadcast, emotion_arousal=arousal, rpe_cache=0.0
         )
 
-        next_obs, env_reward, terminated, truncated, _ = env.step(action)
+        # Discrete environments (DMTS, WCST): convert continuous action to int
+        env_action = action
+        if hasattr(env, 'action_space') and hasattr(env.action_space, 'n'):
+            env_action = int(np.argmax(action[:env.action_space.n]))
+
+        next_obs, env_reward, terminated, truncated, info = env.step(env_action)
         done = terminated or truncated
 
         # --- Tectum + reward predictor auxiliary training ---
@@ -265,6 +347,20 @@ def run_episode(episode_idx, config, tectum, workspace, reentrant,
             pred_loss.backward(retain_graph=True)
             tectum_optimizer.step()
             reward_optimizer.step()
+
+        # --- Workspace binding optimizer ---
+        # Reward-correlated sync: maximize sync_R when reward is positive,
+        # penalize when negative. Biologically grounded: dopamine modulates
+        # gamma-band synchronization (Benchenane et al. 2010).
+        if workspace_optimizer is not None and step % 10 == 0:
+            sync_tensor = getattr(workspace, 'last_sync_R_tensor', None)
+            if sync_tensor is not None and sync_tensor.requires_grad:
+                # Loss: -reward_signal * sync_R (maximize sync when reward positive)
+                reward_signal = float(np.clip(env_reward, -1.0, 1.0))
+                sync_loss = -reward_signal * sync_tensor.squeeze()
+                workspace_optimizer.zero_grad()
+                sync_loss.backward(retain_graph=True)
+                workspace_optimizer.step()
 
         if hasattr(emotion_shaper, 'compute_emotional_reward'):
             emotion_values = {
@@ -306,9 +402,17 @@ def run_episode(episode_idx, config, tectum, workspace, reentrant,
 
         # --- Metrics logging ---
         if metrics_logger is not None:
-            # Build gate state tuple from workspace competition results
-            comp = workspace.state.competition_results
-            gate_state = tuple(comp.get(k, 0.0) for k in sorted(comp.keys())) if comp else None
+            # Gate state from ConsciousnessGate (5 causal node values)
+            if gate is not None:
+                gs = gate.state
+                gate_state = (
+                    gs.attention_level, gs.stability_score,
+                    gs.adaptation_rate, gs.meta_memory_coherence,
+                    gs.narrator_confidence,
+                )
+            else:
+                comp = workspace.state.competition_results
+                gate_state = tuple(comp.get(k, 0.0) for k in sorted(comp.keys())) if comp else None
             # Workspace state from broadcast magnitude bins
             ws_state = (broadcast_mag, phi, sync_r)
 
@@ -327,7 +431,8 @@ def run_episode(episode_idx, config, tectum, workspace, reentrant,
             ))
 
             # Insight detection (coarse hashing to prevent every step being "novel")
-            state_hash = f"{int(obs.mean() / 10)}_{int(obs.std() / 10)}"
+            # Use downsampled pixel sum for cheap hashing (avoids float64 alloc from np.std)
+            state_hash = f"{int(obs[::4, ::4].sum() / 1000)}"
             if isinstance(action, (int, str)):
                 action_key = action
             elif hasattr(action, '__len__'):
@@ -373,15 +478,26 @@ def main():
     parser.add_argument("--log-dir", type=str, default="runs", help="Directory for metrics logs")
     parser.add_argument("--log-ei-every", type=int, default=50,
                         help="Compute EI every N episodes (0 to disable)")
+    parser.add_argument("--enable-audio", action="store_true",
+                        help="Enable cochlear auditory pipeline")
     args = parser.parse_args()
 
     config = build_config(args)
     device = config["device"]
     logger.info(f"Device: {device}")
 
-    tectum, workspace, reentrant, modulator, emotion_shaper, memory, action_core, semantic, tectum_optimizer, reward_predictor, reward_optimizer = init_components(config)
-
+    # Override action dim for discrete environments BEFORE init_components
+    # so ActionSelectionCore is built with the correct output dimension
     render_mode = "human" if args.render else "rgb_array"
+    if args.env == "dmts":
+        config["action_selection"]["action_dim"] = 5
+    elif args.env == "wcst":
+        config["action_selection"]["action_dim"] = 4
+
+    (tectum, workspace, reentrant, modulator, emotion_shaper, memory,
+     action_core, semantic, gate, tectum_optimizer, reward_predictor,
+     reward_optimizer, workspace_optimizer, auditory_specialist) = init_components(config)
+
     if args.env == "navigation":
         from simulations.environments.navigation_env import NavigationEnv
         env = NavigationEnv(render_mode=render_mode, width=224, height=224)
@@ -389,12 +505,9 @@ def main():
         from simulations.environments.dmts_env import DMTSEnv
         env = DMTSEnv(render_mode=render_mode, width=224, height=224,
                       distractor_overlap=args.difficulty)
-        # Override action dim for discrete environment
-        config["action_selection"]["action_dim"] = 5
     elif args.env == "wcst":
         from simulations.environments.wcst_env import WCSTEnv
         env = WCSTEnv(render_mode=render_mode, width=224, height=224)
-        config["action_selection"]["action_dim"] = 4
     else:
         env = SimpleVisualEnv(render_mode=render_mode, width=224, height=224)
 
@@ -412,10 +525,13 @@ def main():
         ep_reward, ep_steps, avg_phi, consciousness_ratio = run_episode(
             ep, config, tectum, workspace, reentrant,
             modulator, emotion_shaper, action_core, env, semantic,
+            gate=gate,
             metrics_logger=metrics_logger, global_step_offset=global_step,
             tectum_optimizer=tectum_optimizer,
             reward_predictor=reward_predictor,
             reward_optimizer=reward_optimizer,
+            workspace_optimizer=workspace_optimizer,
+            auditory_specialist=auditory_specialist,
         )
         global_step += ep_steps
         rewards_history.append(ep_reward)

@@ -74,19 +74,18 @@ class TestAffectiveModulator(unittest.TestCase):
         pad = {"valence": -0.8, "arousal": 0.0, "dominance": 0.0}
         modulated, _ = self.modulator.modulate(dict(self.base_bids), pad)
 
-        # Body and vision are threat modules
-        for name in ("body", "vision"):
+        # Body, vision, and audio are threat modules (auditory startle reflex)
+        for name in ("body", "vision", "audio"):
             self.assertGreater(
                 modulated[name], self.base_bids[name],
                 f"{name} bid should be boosted by negative valence"
             )
 
-        # Audio and memory are NOT threat modules, should be unchanged
-        for name in ("audio", "memory"):
-            self.assertAlmostEqual(
-                modulated[name], self.base_bids[name], places=5,
-                msg=f"{name} bid should not change with negative valence"
-            )
+        # Memory is NOT a threat module, should be unchanged
+        self.assertAlmostEqual(
+            modulated["memory"], self.base_bids["memory"], places=5,
+            msg="memory bid should not change with negative valence"
+        )
 
     def test_high_dominance_boosts_all_bids(self):
         """Positive dominance should slightly boost all bids."""

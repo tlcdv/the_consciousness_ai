@@ -29,7 +29,7 @@ opencv-python>=4.10.0
 Pillow>=10.4.0
 librosa>=0.10.0
 soundfile>=0.12.0
-openai-whisper>=20231117
+# Audio uses cochlear gammatone pipeline (scipy + torch, no external model weights)
 
 # -------------------------------------------------------
 # Memory & Vector Storage
