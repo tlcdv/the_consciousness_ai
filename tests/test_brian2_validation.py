@@ -10,6 +10,7 @@ import unittest
 import math
 import numpy as np
 import torch
+from unittest.mock import patch
 
 from models.core.oscillatory_binding import KuramotoLayer, WorkspaceBindingSystem
 from models.validation.brian2_binding_validation import (
@@ -249,8 +250,11 @@ class TestValidateBindingWithoutBrian2(unittest.TestCase):
     @unittest.skipIf(BRIAN2_AVAILABLE, "Test only runs when Brian2 is NOT installed")
     def test_graceful_skip(self):
         """Without Brian2, validation returns method='skipped' with a warning."""
-        with self.assertWarns(UserWarning):
+        with patch("models.validation.brian2_binding_validation.warnings") as mock_warnings:
             result = validate_binding(self.kuramoto, total_steps=20)
+        mock_warnings.warn.assert_called_once()
+        call_args = mock_warnings.warn.call_args
+        self.assertIs(call_args[0][1], UserWarning)
 
         self.assertEqual(result.method, "skipped")
         self.assertFalse(result.passed)
