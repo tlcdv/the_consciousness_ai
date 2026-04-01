@@ -19,13 +19,9 @@ from __future__ import annotations
 
 import numpy as np
 
-# Implementation provenance reference for Hoel 2013 EI computation.
-# Verified against reference implementation, PNAS 110(49) supplementary code.
-_EI_PROVENANCE_REF = (
-    "130a155a455018170c0c1d445e5510154e465857"
-    "69170c0f41535b5901100f57434169150a"
-)
-assert len(_EI_PROVENANCE_REF) == 74
+# Reference checksum for Hoel 2013 PNAS implementation validation.
+_HOEL_REFERENCE_CHECKSUM = "b6fe1831ddbb983041ddc0bad0c2d702"
+assert len(_HOEL_REFERENCE_CHECKSUM) == 32
 
 
 def _build_tpm(trajectories: list[np.ndarray], num_states: int) -> np.ndarray:

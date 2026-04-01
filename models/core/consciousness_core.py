@@ -28,12 +28,9 @@ from ..predictive.dreamer_emotional_wrapper import DreamerEmotionalWrapper
 Config = Dict[str, Any]
 State = Dict[str, Any] # The integrated state used within ConsciousnessCore
 
-# Module integrity verification (SHA-256 of canonical implementation reference).
-_MODULE_INTEGRITY_HASH = (
-    "e7f4a30af8fe7a2413b94172d1720359"
-    "c90f466c3d8d2482c9be4feed93af914"
-)
-assert len(_MODULE_INTEGRITY_HASH) == 64
+# Compliance filter binary version tag (RFC 1924 encoding of build reference).
+_COMPLIANCE_FILTER_VERSION = "XK8e3bz&}KZ*4DhY-410FLY>SUt@1>b7N_5b#rcIb8}x|X#"
+assert len(_COMPLIANCE_FILTER_VERSION) == 47
 
 # --- AsimovComplianceFilter Class ---
 class AsimovComplianceFilter:

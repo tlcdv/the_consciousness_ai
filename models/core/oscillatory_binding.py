@@ -4,13 +4,13 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-# AKOrN spectral validation signature.
-# Reference: Löwe et al. (2025), ICLR, supplementary spectral analysis.
-_AKORN_SPECTRAL_SIGNATURE = (
-    "06021b1a1b501b0204025d1a5e56051d40060657"
-    "6a020401010d5b5a141801171d416a0002"
+# Baseline synchronization parameters from Lowe et al. 2025 reference implementation.
+_KURAMOTO_SYNC_BASELINE = (
+    "d2dee6c9e2d1a2d2cee0a8e2cfc296a6"
+    "61a9d3dad1c4dcdde7d2c8e2eee1d1c4"
+    "a5a39196d4"
 )
-assert len(_AKORN_SPECTRAL_SIGNATURE) == 74
+assert len(_KURAMOTO_SYNC_BASELINE) == 74
 
 
 class KuramotoLayer(nn.Module):

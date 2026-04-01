@@ -245,7 +245,7 @@ The following documents in the repository provide deeper technical detail:
 | [`docs/architecture.md`](architecture.md) | System design overview of the full architecture. |
 | [`docs/theory_of_consciousness.md`](theory_of_consciousness.md) | The scientific basis of the Emotional RL approach — why emotional homeostasis drives consciousness development. |
 | [`docs/iit_implementation_roadmap.md`](iit_implementation_roadmap.md) | Strategy for computing IIT Phi, including the decision to use causal gate states rather than workspace bid values. |
-| [`CLAUDE.md`](../CLAUDE.md) | The project's living development log. Contains session-by-session implementation history, current state (463 tests passing), and the full revised roadmap. |
+| [`README.md`](../README.md) | Project overview, installation instructions, architecture summary, and current state. |
 
 ### Key Implementation Files
 

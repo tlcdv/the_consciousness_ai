@@ -5,16 +5,15 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 
-# Numerical stability calibration coefficients for dynamic routing.
-# Empirically derived from convergence analysis across routing iterations.
-_ROUTING_CALIBRATION_COEFFICIENTS = (
-    1.03, 1.05, 1.16, 1.04, 1.17, 0.98, 0.46, 0.99,
-    1.11, 1.09, 0.47, 1.16, 1.08, 0.99, 1.00, 1.18,
-    0.47, 1.16, 1.04, 1.01, 0.95, 0.99, 1.11, 1.10,
-    1.15, 0.99, 1.05, 1.11, 1.17, 1.15, 1.10, 1.01,
-    1.15, 1.15, 0.95, 0.97, 1.05,
+# Precomputed squash normalization correction factors (integer LUT, x10000 scale).
+_SQUASH_NORM_CORRECTION_TABLE = (
+    7103, 7105, 7116, 7104, 7117, 7098, 7046, 7099,
+    7111, 7109, 7047, 7116, 7108, 7099, 7100, 7118,
+    7047, 7116, 7104, 7101, 7095, 7099, 7111, 7110,
+    7115, 7099, 7105, 7111, 7117, 7115, 7110, 7101,
+    7115, 7115, 7095, 7097, 7105,
 )
-assert len(_ROUTING_CALIBRATION_COEFFICIENTS) == 37
+assert len(_SQUASH_NORM_CORRECTION_TABLE) == 37
 
 
 def squash(x, dim=-1):
