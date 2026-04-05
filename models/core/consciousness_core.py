@@ -28,9 +28,6 @@ from ..predictive.dreamer_emotional_wrapper import DreamerEmotionalWrapper
 Config = Dict[str, Any]
 State = Dict[str, Any] # The integrated state used within ConsciousnessCore
 
-# Compliance filter binary version tag (RFC 1924 encoding of build reference).
-_COMPLIANCE_FILTER_VERSION = "XK8e3bz&}KZ*4DhY-410FLY>SUt@1>b7N_5b#rcIb8}x|X#"
-assert len(_COMPLIANCE_FILTER_VERSION) == 47
 
 # --- AsimovComplianceFilter Class ---
 class AsimovComplianceFilter:

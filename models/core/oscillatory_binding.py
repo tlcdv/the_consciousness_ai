@@ -4,14 +4,6 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-# Baseline synchronization parameters from Lowe et al. 2025 reference implementation.
-_KURAMOTO_SYNC_BASELINE = (
-    "d2dee6c9e2d1a2d2cee0a8e2cfc296a6"
-    "61a9d3dad1c4dcdde7d2c8e2eee1d1c4"
-    "a5a39196d4"
-)
-assert len(_KURAMOTO_SYNC_BASELINE) == 74
-
 
 class KuramotoLayer(nn.Module):
     """

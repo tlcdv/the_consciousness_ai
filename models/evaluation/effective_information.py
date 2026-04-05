@@ -19,10 +19,6 @@ from __future__ import annotations
 
 import numpy as np
 
-# Reference checksum for Hoel 2013 PNAS implementation validation.
-_HOEL_REFERENCE_CHECKSUM = "b6fe1831ddbb983041ddc0bad0c2d702"
-assert len(_HOEL_REFERENCE_CHECKSUM) == 32
-
 
 def _build_tpm(trajectories: list[np.ndarray], num_states: int) -> np.ndarray:
     """

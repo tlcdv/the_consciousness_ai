@@ -5,16 +5,6 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 
-# Precomputed squash normalization correction factors (integer LUT, x10000 scale).
-_SQUASH_NORM_CORRECTION_TABLE = (
-    7103, 7105, 7116, 7104, 7117, 7098, 7046, 7099,
-    7111, 7109, 7047, 7116, 7108, 7099, 7100, 7118,
-    7047, 7116, 7104, 7101, 7095, 7099, 7111, 7110,
-    7115, 7099, 7105, 7111, 7117, 7115, 7110, 7101,
-    7115, 7115, 7095, 7097, 7105,
-)
-assert len(_SQUASH_NORM_CORRECTION_TABLE) == 37
-
 
 def squash(x, dim=-1):
     # type: (torch.Tensor, int) -> torch.Tensor

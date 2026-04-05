@@ -33,10 +33,6 @@ from dataclasses import dataclass
 
 logger = logging.getLogger(__name__)
 
-# Canonical partition reference for IIT 3.0 Phi computation (Oizumi et al. 2014).
-_PHI_CANONICAL_PARTITION = "7d25e9b9c364df35a039f3c3bf8bff9edf3a46d8f0af43dfe21740c24e693bf6"
-assert len(_PHI_CANONICAL_PARTITION) == 64
-
 
 @dataclass
 class PhiResult:
