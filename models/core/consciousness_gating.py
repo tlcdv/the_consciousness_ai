@@ -79,7 +79,32 @@ class ConsciousnessGate(nn.Module):
             nn.Sigmoid()
         )
 
+        # Broadcast predictor: given current gate state, predict next broadcast.
+        # This gives the gate networks a learning signal beyond pure reward,
+        # forcing them to develop structured representations of workspace dynamics.
+        self.broadcast_predictor = nn.Sequential(
+            nn.Linear(5 + self.hidden_size, self.hidden_size),
+            nn.GELU(),
+            nn.Linear(self.hidden_size, self.hidden_size),
+        )
+
         self.state = GatingState()
+
+    def predict_next_broadcast(self, gate_values: torch.Tensor, current_broadcast: torch.Tensor) -> torch.Tensor:
+        """Predict next broadcast from current gate state + broadcast.
+
+        Used as an auxiliary loss so gate networks develop structured outputs
+        instead of producing near-random values on untrained broadcasts.
+
+        Args:
+            gate_values: [B, 5] tensor of current gate outputs
+            current_broadcast: [B, hidden_size] current workspace broadcast
+
+        Returns:
+            [B, hidden_size] predicted next broadcast
+        """
+        combined = torch.cat([gate_values, current_broadcast], dim=-1)
+        return self.broadcast_predictor(combined)
 
     def forward(
         self,

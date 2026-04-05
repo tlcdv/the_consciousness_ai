@@ -16,9 +16,16 @@ from models.narrative.narrative_engine import NarrativeEngine
 from models.memory.memory_core import MemoryCore
 from models.predictive.dreamerv3_wrapper import DreamerV3Wrapper as DreamerV3
 from simulations.environments.vr_environment import VREnvironment
-from models.cognitive.chain_of_thought import ChainOfThought
-from models.ace_core.ace_agent import ACEConsciousAgent
-from models.ace_core.ace_config import ACEConfig
+try:
+    from models.cognitive.chain_of_thought import ChainOfThought
+except ImportError:
+    ChainOfThought = None  # type: ignore[assignment, misc]
+try:
+    from models.ace_core.ace_agent import ACEConsciousAgent
+    from models.ace_core.ace_config import ACEConfig
+except ImportError:
+    ACEConsciousAgent = None  # type: ignore[assignment, misc]
+    ACEConfig = None  # type: ignore[assignment, misc]
 # VideoLLaMA3 has been removed (2026-02-27). Visual backbone is Qwen2-VL exclusively.
 from models.memory.emotional_memory_core import EmotionalMemoryCore
 from models.core.consciousness_core import ConsciousnessCore

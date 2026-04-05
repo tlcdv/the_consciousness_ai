@@ -448,11 +448,15 @@ class TestEdgeCases(unittest.TestCase):
         self.assertTrue(np.all(np.isfinite(tpm)))
 
     def test_history_len_respected(self):
-        """History should not exceed configured length."""
-        metrics = IITMetrics(history_len=10)
+        """History should not exceed configured lengths.
+
+        state_history is bounded by tpm_window (sliding window for TPM),
+        _raw_history is bounded by history_len (for adaptive thresholds).
+        """
+        metrics = IITMetrics(history_len=10, tpm_window=15)
         for _ in range(50):
             metrics.update_from_gate_state(GatingState(attention_level=0.8))
-        self.assertLessEqual(len(metrics.state_history), 10)
+        self.assertLessEqual(len(metrics.state_history), 15)
         self.assertLessEqual(len(metrics._raw_history), 10)
 
     def test_three_node_tpm(self):

@@ -182,14 +182,16 @@ class ConsciousnessMetricsLogger:
         # Reset per-episode buffers
         self._episode_broadcast_mags.clear()
 
-    def compute_and_log_ei(self, episode: int, num_gate_states: int = 32,
+    def compute_and_log_ei(self, episode: int, num_gate_states: int = 243,
                            num_workspace_states: int = 8) -> dict:
         """
         Compute EI at gate and workspace levels from buffered trajectories.
 
-        Gate states use joint binning: each of the 5 gate dimensions is binned
-        to 2 levels, giving 2^5 = 32 joint states. This preserves multivariate
-        structure instead of collapsing to a scalar sum.
+        Gate states use tertile quantile binning: each of the 5 gate dimensions
+        is binned to 3 levels (low/mid/high), giving 3^5 = 243 joint states.
+        This captures more structure than the previous 2-bin median split (32 states),
+        which produced near-identical distributions every window because gate outputs
+        clustered around 0.5.
 
         Returns dict with ei_gates, ei_workspace, ratio, emergent.
         """
@@ -203,17 +205,21 @@ class ConsciousnessMetricsLogger:
         if len(self._gate_trajectory) < 10:
             return result
 
-        # Joint binning for gate trajectories: each dimension -> 2 bins, combined as sum(b_i * 2^i)
-        # Use per-dimension median as threshold (adaptive) instead of fixed 0.5,
-        # because adaptation_rate lives in [0.004, 0.006] and would always bin to 0
+        # Tertile quantile binning: each dimension -> 3 bins via 33rd/67th percentiles
         gate_arr = np.array(self._gate_trajectory)
-        medians = np.median(gate_arr, axis=0) if len(gate_arr) > 0 else np.full(gate_arr.shape[1], 0.5)
+        p33 = np.percentile(gate_arr, 33, axis=0)
+        p67 = np.percentile(gate_arr, 67, axis=0)
         gate_discrete = []
         for g in self._gate_trajectory:
             joint_idx = 0
             for i, val in enumerate(g):
-                bit = 1 if val >= medians[i] else 0
-                joint_idx += bit * (2 ** i)
+                if val < p33[i]:
+                    trit = 0
+                elif val < p67[i]:
+                    trit = 1
+                else:
+                    trit = 2
+                joint_idx += trit * (3 ** i)
             gate_discrete.append(joint_idx)
 
         ws_flat = [sum(w) for w in self._workspace_trajectory] if self._workspace_trajectory else [0.0] * len(gate_discrete)

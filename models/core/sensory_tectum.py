@@ -314,7 +314,9 @@ class SensoryTectum(nn.Module):
 
         # 1. Create Egocentric Topographic Map (inverse effectiveness fusion)
         obs_map = self.topo_map(vision_features, audio_spatial, body_schema=body_schema)
-        
+        # Cache spatial features for topographic loss computation in training loop
+        self._last_obs_map = obs_map
+
         # 2. Update RSSM World Model
         h_t, z_t, prior_logits, post_logits = self.rssm.step(obs_map, self.h_state, self.z_state)
         

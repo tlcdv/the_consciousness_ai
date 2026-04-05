@@ -80,14 +80,17 @@ class IITMetrics:
     structure is returned instead.
     """
 
-    def __init__(self, history_len: int = 200, logger=None):
+    def __init__(self, history_len: int = 200, tpm_window: int = 100, logger=None):
         self.logger = logger or logging.getLogger(__name__)
         self.history_len = history_len
+        self.tpm_window = tpm_window
 
         # Raw continuous gate values for adaptive thresholding
         self._raw_history = deque(maxlen=history_len)
-        # Binarized state history for TPM construction
-        self.state_history = deque(maxlen=history_len)
+        # Binarized state history for TPM construction.
+        # Uses tpm_window (not history_len) so the TPM reflects recent dynamics
+        # instead of converging to a fixed point from all-time averages.
+        self.state_history = deque(maxlen=tpm_window)
 
         # Adaptive thresholds (updated from running medians)
         self._thresholds = np.array([0.5, 0.5, 0.01, 0.5, 0.5])
@@ -99,6 +102,14 @@ class IITMetrics:
         if pyphi is not None:
             pyphi.config.PROGRESS_BARS = False
             pyphi.config.PARALLEL_CUTS = False
+
+    def reset_tpm(self) -> None:
+        """Clear binarized state history for a fresh TPM window.
+
+        Call at episode boundaries so phi reflects within-episode dynamics
+        instead of averaging across episodes.
+        """
+        self.state_history.clear()
 
     def _gate_state_to_raw(self, gate_state) -> np.ndarray:
         """Extract raw continuous values from a GatingState dataclass."""

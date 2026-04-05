@@ -32,8 +32,10 @@ from models.core.consciousness_gating import ConsciousnessGate
 from models.emotion.affective_modulator import AffectiveModulator
 from models.emotion.reward_shaping import EmotionalRewardShaper
 from models.self_model.action_selection_core import ActionSelectionCore
+from models.self_model.self_representation_core import SelfRepresentationCore
 from models.memory.memory_core import MemoryCore
 from models.core.semantic_pathway import SemanticPathway
+from models.core.topographic_loss import topographic_spatial_loss
 from scripts.training.metrics_logger import ConsciousnessMetricsLogger, StepMetrics
 
 logging.basicConfig(
@@ -121,6 +123,11 @@ def init_components(config):
         },
     }).to(device)
 
+    # Self-model: tracks body schema, interoceptive state, capability model.
+    # Provides internal drive signals (energy/fatigue/damage) that feed the
+    # affective modulator, closing the embodiment-affect loop.
+    self_model = SelfRepresentationCore(config.get("self_model", {}))
+
     # Optimizer for tectum + gate parameters (retinotopic encoder, RSSM, capsules,
     # attention/stability networks) so that phi and sync_R evolve during training
     tectum_optimizer = torch.optim.Adam(
@@ -153,7 +160,7 @@ def init_components(config):
 
     return (tectum, workspace, reentrant, modulator, emotion_shaper, memory,
             action_core, semantic, gate, tectum_optimizer, reward_predictor,
-            reward_optimizer, workspace_optimizer, auditory_specialist)
+            reward_optimizer, workspace_optimizer, auditory_specialist, self_model)
 
 
 def frame_to_tensor(frame: np.ndarray, device: str) -> torch.Tensor:
@@ -197,9 +204,11 @@ def evaluate_emotion(vision_bid: float, env_reward: float, prev_reward: float,
 
 def run_episode(episode_idx, config, tectum, workspace, reentrant,
                 modulator, emotion_shaper, action_core, env,
-                semantic=None, gate=None, metrics_logger=None, global_step_offset=0,
+                semantic=None, gate=None, memory=None,
+                metrics_logger=None, global_step_offset=0,
                 tectum_optimizer=None, reward_predictor=None, reward_optimizer=None,
-                workspace_optimizer=None, auditory_specialist=None):
+                workspace_optimizer=None, auditory_specialist=None,
+                self_model=None):
     device = config["device"]
     max_steps = config["max_steps"]
 
@@ -219,6 +228,10 @@ def run_episode(episode_idx, config, tectum, workspace, reentrant,
 
     if metrics_logger is not None:
         metrics_logger.reset_episode_state()
+
+    # Reset TPM at episode start so phi tracks within-episode dynamics
+    if hasattr(workspace, 'iit_metrics'):
+        workspace.iit_metrics.reset_tpm()
 
     for step in range(max_steps):
         global_step = global_step_offset + step
@@ -254,21 +267,78 @@ def run_episode(episode_idx, config, tectum, workspace, reentrant,
             emotion["arousal"] = float(np.clip(emotion["arousal"] + spectral_flux * 0.3, 0, 1))
             emotion["valence"] = float(np.clip(emotion["valence"] - roughness * 0.2, -1, 1))
 
-        # Semantic pathway: zero embedding when Qwen2-VL unavailable (bid degrades to 0)
-        semantic_embedding = torch.zeros(1, 1536, device=device)
+        # Semantic pathway: use global-pooled tectum content as lightweight semantic
+        # signal when Qwen2-VL is unavailable. This gives the 5th oscillator a
+        # non-zero bid so it actually participates in workspace competition.
         if semantic is not None:
-            semantic_content, semantic_bid = semantic(semantic_embedding)
+            # Tectum content is [1, workspace_dim]. Pad/truncate to 1536 for SemanticPathway input.
+            sem_input = tectum_content.detach().view(1, -1)
+            if sem_input.shape[1] < 1536:
+                sem_input = torch.nn.functional.pad(sem_input, (0, 1536 - sem_input.shape[1]))
+            else:
+                sem_input = sem_input[:, :1536]
+            semantic_content, semantic_bid = semantic(sem_input)
         else:
             semantic_content = torch.zeros(1, config["workspace_dim"], device=device)
             semantic_bid = 0.0
 
-        bids = {
+        # Memory retrieval: use previous broadcast to find similar past experiences
+        # Memory bid scales with retrieval relevance (more relevant = higher bid)
+        memory_bid = 0.1
+        if memory is not None and previous_broadcast is not None:
+            try:
+                query = previous_broadcast.detach().view(-1)
+                similar = memory.get_similar_experiences(query, emotion, k=1)
+                if similar and similar[0].get("score", 0.0) > 0.0:
+                    memory_bid = min(0.6, 0.1 + similar[0]["score"] * 0.5)
+            except Exception:
+                pass  # graceful fallback to default bid
+
+        raw_bids = {
             "vision": max(0.0, min(1.0, vision_bid)),
             "audio": max(0.0, min(1.0, audio_bid_raw)),
-            "memory": 0.1,
-            "body": 0.05,
+            "memory": memory_bid,
+            "body": 0.15 if (self_model is not None and
+                              self_model.state.interoceptive_state.get("energy", 1.0) < 0.4) else 0.05,
             "semantic": max(0.0, min(1.0, semantic_bid)),
         }
+
+        # --- Affective modulation: emotion shapes which modules win ---
+        # Valence field biases bids (positive -> approach, negative -> threat)
+        # Arousal-threshold coupling adjusts GNW ignition threshold
+        # Build interoceptive state: prefer self-model (tracks homeostatic dynamics
+        # across steps), fall back to env info for environments that report battery.
+        interoceptive_state = None
+        if self_model is not None:
+            action_np = np.array(action) if action is not None and not isinstance(action, np.ndarray) else action
+            self_model.update_self_model(
+                current_state={},
+                attention_level=phi,
+                action=action_np,
+                emotional_state=emotion,
+            )
+            interoceptive_state = dict(self_model.state.interoceptive_state)
+            # Sync env battery into self-model energy when available
+            if isinstance(info, dict) and "battery" in info:
+                interoceptive_state["energy"] = float(info["battery"])
+                self_model.state.interoceptive_state["energy"] = float(info["battery"])
+        elif isinstance(info, dict):
+            if "interoceptive_state" in info:
+                interoceptive_state = info["interoceptive_state"]
+            elif "battery" in info:
+                battery = float(info["battery"])
+                interoceptive_state = {
+                    "energy": battery,
+                    "fatigue": max(0.0, 1.0 - battery) * 0.5,
+                    "damage": 0.0,
+                }
+
+        bids, adjusted_threshold = modulator.modulate(
+            raw_bids, emotion,
+            interoceptive_state=interoceptive_state,
+        )
+        workspace.ignition_threshold = adjusted_threshold
+
         # Include capsule structured payload so GNW broadcast preserves compositional info
         vision_payload = {"tensor": tectum_content, "source": "tectum"}
         capsule_data = tectum.get_capsule_payload()
@@ -301,16 +371,28 @@ def run_episode(episode_idx, config, tectum, workspace, reentrant,
         broadcast_mag = float(broadcast.norm().item())
 
         # ConsciousnessGate: compute 5 causal gate values from broadcast
-        # These drive IIT Phi (via empirical TPM) and EI measurement
+        # These drive IIT Phi (via empirical TPM) and EI measurement.
+        # Gate forward uses detached broadcast (phi is a metric, not a loss target).
+        # Gate reconstruction loss (below) provides the actual gradient signal.
+        gate_values_tensor = None
         if gate is not None:
             gate_input = broadcast.detach().view(-1)[:config["workspace_dim"]]
             if gate_input.shape[0] < config["workspace_dim"]:
                 gate_input = torch.nn.functional.pad(
                     gate_input, (0, config["workspace_dim"] - gate_input.shape[0])
                 )
-            _, gate_state_obj = gate(gate_input.unsqueeze(0))
+            gate_input_batched = gate_input.unsqueeze(0)
+            _, gate_state_obj = gate(gate_input_batched)
             phi_result = workspace.iit_metrics.compute_phi_from_gate_state(gate_state_obj)
             phi = phi_result.phi + (sync_r * 0.1)
+            # Collect gate values as tensor for reconstruction loss
+            gate_values_tensor = torch.tensor([
+                gate_state_obj.attention_level,
+                gate_state_obj.stability_score,
+                gate_state_obj.adaptation_rate,
+                gate_state_obj.meta_memory_coherence,
+                gate_state_obj.narrator_confidence,
+            ], device=device).unsqueeze(0)
         else:
             phi = settle_result.phi
 
@@ -320,9 +402,14 @@ def run_episode(episode_idx, config, tectum, workspace, reentrant,
             broadcast=broadcast, qualia_mapper=workspace.qualia_mapper,
         )
 
+        # Phi-weighted exploration: high phi = more exploitation, low phi = more exploration.
+        # This creates a causal pathway: phi -> behavior -> reward -> phi changes.
+        # phi is typically in [0, 0.1] range, so we scale by 10x to get a meaningful effect.
         arousal = emotion["arousal"]
+        phi_exploration_scale = max(0.2, 1.0 - phi * 10.0)  # phi=0.05 -> scale=0.5
+        effective_arousal = arousal * phi_exploration_scale
         action, value = action_core.select_action(
-            broadcast, emotion_arousal=arousal, rpe_cache=0.0
+            broadcast, emotion_arousal=effective_arousal, rpe_cache=0.0
         )
 
         # Discrete environments (DMTS, WCST): convert continuous action to int
@@ -342,9 +429,17 @@ def run_episode(episode_idx, config, tectum, workspace, reentrant,
             reward_target = torch.tensor([[env_reward]], device=device)
             pred_loss = torch.nn.functional.mse_loss(pred_reward, reward_target)
 
+            # TDANN topographic loss: enforce spatial self-organization on tectum features
+            topo_loss = torch.tensor(0.0, device=device)
+            obs_map = getattr(tectum, '_last_obs_map', None)
+            if obs_map is not None and obs_map.shape[-1] >= 4:
+                topo_loss = topographic_spatial_loss(obs_map, alpha=0.25)
+
+            total_tectum_loss = pred_loss + topo_loss
+
             tectum_optimizer.zero_grad()
             reward_optimizer.zero_grad()
-            pred_loss.backward(retain_graph=True)
+            total_tectum_loss.backward(retain_graph=True)
             tectum_optimizer.step()
             reward_optimizer.step()
 
@@ -362,6 +457,41 @@ def run_episode(episode_idx, config, tectum, workspace, reentrant,
                 sync_loss.backward(retain_graph=True)
                 workspace_optimizer.step()
 
+        # --- Gate reconstruction loss ---
+        # Gate predicts next broadcast from current gate state + broadcast.
+        # This gives gate networks a learning signal so their outputs develop
+        # structured transitions instead of staying near-random (~0.49-0.51).
+        if (gate is not None and gate_values_tensor is not None
+                and previous_broadcast is not None and step % 5 == 0):
+            prev_bc = previous_broadcast.view(1, -1)[:, :config["workspace_dim"]]
+            if prev_bc.shape[1] < config["workspace_dim"]:
+                prev_bc = torch.nn.functional.pad(
+                    prev_bc, (0, config["workspace_dim"] - prev_bc.shape[1])
+                )
+            # Re-run gate with gradients enabled for the predictor
+            gate_input_grad = broadcast.detach().view(-1)[:config["workspace_dim"]].unsqueeze(0)
+            if gate_input_grad.shape[1] < config["workspace_dim"]:
+                gate_input_grad = torch.nn.functional.pad(
+                    gate_input_grad, (0, config["workspace_dim"] - gate_input_grad.shape[1])
+                )
+            # Get gate values with gradient (re-forward through gate nets)
+            attn = gate.attention_net(gate_input_grad)
+            stab = gate.stability_net(gate_input_grad)
+            cohe = gate.coherence_net(gate_input_grad)
+            conf = gate.confidence_net(gate_input_grad)
+            adapt_val = torch.tensor([[gate_state_obj.adaptation_rate]], device=device)
+            gv = torch.cat([attn, stab, adapt_val, cohe, conf], dim=-1)
+            predicted_next = gate.predict_next_broadcast(gv, prev_bc)
+            target_bc = broadcast.detach().view(1, -1)[:, :config["workspace_dim"]]
+            if target_bc.shape[1] < config["workspace_dim"]:
+                target_bc = torch.nn.functional.pad(
+                    target_bc, (0, config["workspace_dim"] - target_bc.shape[1])
+                )
+            gate_loss = torch.nn.functional.mse_loss(predicted_next, target_bc)
+            tectum_optimizer.zero_grad()
+            gate_loss.backward()
+            tectum_optimizer.step()
+
         if hasattr(emotion_shaper, 'compute_emotional_reward'):
             emotion_values = {
                 "valence": emotion["valence"],
@@ -374,6 +504,17 @@ def run_episode(episode_idx, config, tectum, workspace, reentrant,
             )
         else:
             shaped_reward = env_reward
+
+        # Store experience in memory (consciousness-gated: only store when ignited)
+        if memory is not None and is_conscious:
+            action_t = torch.tensor(action, dtype=torch.float, device=device) if not isinstance(action, torch.Tensor) else action
+            memory.store_experience(
+                state=broadcast.detach().view(-1),
+                action=action_t.view(-1),
+                reward=float(shaped_reward) if isinstance(shaped_reward, (int, float)) else shaped_reward.item(),
+                emotion_values=emotion,
+                attention_level=phi,
+            )
 
         prev = previous_broadcast if previous_broadcast is not None else broadcast
         action_core.step(
@@ -496,7 +637,8 @@ def main():
 
     (tectum, workspace, reentrant, modulator, emotion_shaper, memory,
      action_core, semantic, gate, tectum_optimizer, reward_predictor,
-     reward_optimizer, workspace_optimizer, auditory_specialist) = init_components(config)
+     reward_optimizer, workspace_optimizer, auditory_specialist,
+     self_model) = init_components(config)
 
     if args.env == "navigation":
         from simulations.environments.navigation_env import NavigationEnv
@@ -525,13 +667,14 @@ def main():
         ep_reward, ep_steps, avg_phi, consciousness_ratio = run_episode(
             ep, config, tectum, workspace, reentrant,
             modulator, emotion_shaper, action_core, env, semantic,
-            gate=gate,
+            gate=gate, memory=memory,
             metrics_logger=metrics_logger, global_step_offset=global_step,
             tectum_optimizer=tectum_optimizer,
             reward_predictor=reward_predictor,
             reward_optimizer=reward_optimizer,
             workspace_optimizer=workspace_optimizer,
             auditory_specialist=auditory_specialist,
+            self_model=self_model,
         )
         global_step += ep_steps
         rewards_history.append(ep_reward)
