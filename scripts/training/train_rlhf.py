@@ -233,6 +233,9 @@ def run_episode(episode_idx, config, tectum, workspace, reentrant,
     if hasattr(workspace, 'iit_metrics'):
         workspace.iit_metrics.reset_tpm()
 
+    prev_action = None
+    prev_phi = 0.0
+
     for step in range(max_steps):
         global_step = global_step_offset + step
         frame_tensor = frame_to_tensor(obs, device)
@@ -310,10 +313,10 @@ def run_episode(episode_idx, config, tectum, workspace, reentrant,
         # across steps), fall back to env info for environments that report battery.
         interoceptive_state = None
         if self_model is not None:
-            action_np = np.array(action) if action is not None and not isinstance(action, np.ndarray) else action
+            action_np = np.array(prev_action) if prev_action is not None and not isinstance(prev_action, np.ndarray) else prev_action
             self_model.update_self_model(
                 current_state={},
-                attention_level=phi,
+                attention_level=prev_phi,
                 action=action_np,
                 emotional_state=emotion,
             )
@@ -532,6 +535,8 @@ def run_episode(episode_idx, config, tectum, workspace, reentrant,
             action_core.update_policy()
 
         previous_broadcast = broadcast.detach().clone()
+        prev_action = action
+        prev_phi = phi
         reward_val = shaped_reward if isinstance(shaped_reward, (int, float)) else shaped_reward.item()
         prev_reward = reward_val
         total_reward += reward_val
