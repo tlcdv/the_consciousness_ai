@@ -2,7 +2,7 @@
 
 [![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE)
 [![Python](https://img.shields.io/badge/Python-3.10%2B-blue)](https://www.python.org/)
-[![Tests](https://img.shields.io/badge/Tests-463%20passing-brightgreen)]()
+[![Tests](https://img.shields.io/badge/Tests-529%20passing-brightgreen)]()
 
 **The Consciousness AI** is a research framework investigating the emergence of synthetic awareness. Unlike traditional AI that mimics intelligent output, this system generates behavior through an internal struggle for **Emotional Homeostasis** and **Integrated Information**.
 
@@ -30,7 +30,14 @@ A multisensory spatial integration layer modeled after the biological optic tect
 
 *   **Visual Pathway (Spatial):** [DINOv2-B/14](https://github.com/facebookresearch/dinov2) (frozen). Provides spatially faithful patch tokens with direct retinotopic correspondence. Each patch token at grid position (i,j) maps to a fixed 14x14 pixel region. Falls back to a 4-layer convolutional stack when model weights are unavailable (CI/testing).
 *   **Visual Pathway (Semantic):** [Qwen2-VL-7B](https://huggingface.co/Qwen/Qwen2-VL-7B-Instruct) (4-bit quantized, optional). Provides high level scene understanding and language grounded perception. Not required for training.
-*   **Auditory Cortex:** [Faster-Whisper](https://github.com/SYSTRAN/faster-whisper). Real time transcription of environmental audio.
+*   **Auditory Pipeline (Cochlear):** A biologically grounded auditory system replacing the former Whisper transcription stubs. Models the mammalian auditory pathway from basilar membrane through auditory cortex:
+    *   **Gammatone Filterbank** (frozen, 64 ERB bands, Patterson 1992): decomposes raw waveforms into frequency channels matching human cochlear resolution. Frozen parameters, paralleling DINOv2 in the visual pathway.
+    *   **Inner Hair Cell Model:** half-wave rectification + temporal smoothing extracts envelope (rate code for loudness) and temporal fine structure (phase code for pitch).
+    *   **Tonotopic Encoder** (trainable): 3-layer 1D conv stack preserving frequency-to-spatial-position mapping. Outputs `[B, 64, 16]` features for tectum grid integration.
+    *   **Spatial Audio:** ITD (interaural time difference) and ILD (interaural level difference) binaural cues for sound source localization, fed into tectum inverse effectiveness fusion.
+    *   **Acoustic Affect Extraction:** 6 features (spectral centroid, loudness variability, roughness, pitch contour slope, spectral flux, harmonic-to-noise ratio) mapped to PAD emotional state + paralinguistic classification (speech, laughter, crying, screaming, growling, sighing, silence).
+    *   **Auditory Specialist:** chains all modules into a workspace competitor (oscillator #2). Competes for Global Workspace broadcast alongside vision, memory, body, and semantic modules. Supports reentrant top-down feedback.
+    *   **Environment Audio Synthesis:** All four environments (Dark Room, Navigation, DMTS, WCST) generate procedural audio via FM synthesis and ADSR envelopes. Enabled with `--enable-audio` during training.
 *   **Somatosensory Channel:** Body schema projected onto the spatial grid via learned linear mapping, enabling proprioceptive integration as a third sensory modality.
 *   **Topographic Loss:** TDANN spatial loss (Margalit et al. 2024, Neuron) enforces topographic self-organization during training.
 *   **RSSM World Model:** DreamerV3 style recurrent state space model maintains temporal predictions and generates surprise based bidding for workspace access.
@@ -127,11 +134,14 @@ python -m scripts.training.train_rlhf --env navigation --episodes 100
 python -m scripts.training.train_baseline_dqn --env dark_room --episodes 100
 python -m scripts.training.train_baseline_dqn --env dmts --episodes 500
 
+# With cochlear auditory pipeline enabled
+python -m scripts.training.train_rlhf --env dark_room --enable-audio --episodes 100
+
 # With visual rendering
 python -m scripts.training.train_rlhf --render
 ```
 
-This runs the full cognitive loop: DINOv2 retinotopic encoding -> trimodal tectum fusion -> RSSM surprise bidding -> GNW competition with AKOrN binding -> reentrant convergence -> basal ganglia action selection -> two-stage emotion appraisal -> PAD reward shaping. No large model weights are required.
+This runs the full cognitive loop: DINOv2 retinotopic encoding -> cochlear auditory encoding (optional, via `--enable-audio`) -> trimodal tectum fusion -> RSSM surprise bidding -> GNW competition with AKOrN binding -> reentrant convergence -> basal ganglia action selection -> two-stage emotion appraisal -> PAD reward shaping. No large model weights are required.
 
 ### 3. Running Tests
 
@@ -139,7 +149,7 @@ This runs the full cognitive loop: DINOv2 retinotopic encoding -> trimodal tectu
 pytest tests/ -v
 ```
 
-463 tests pass, covering oscillatory binding, capsule routing, reentrant processing, inverse effectiveness fusion, topographic loss, affective modulation, ethics compliance, effective information, IIT Phi with causal gate states, Brian2 biological validation, DMTS/WCST consciousness-demanding environments, DQN baseline, memory consolidation, semantic pathway, and full pipeline integration.
+529 tests pass, covering oscillatory binding, capsule routing, reentrant processing, inverse effectiveness fusion, topographic loss, affective modulation, ethics compliance, effective information, IIT Phi with causal gate states, Brian2 biological validation, cochlear auditory pipeline (gammatone, hair cell, tonotopic, spatial, affect extraction), environment audio synthesis, DMTS/WCST consciousness demanding environments, DQN baseline, memory consolidation, semantic pathway, and full pipeline integration.
 
 ### 4. AKOrN Binding Demo
 
@@ -168,8 +178,11 @@ the_consciousness_ai/
 │   ├── emotion/            # Affective modulator, reward shaping, PAD model
 │   ├── evaluation/         # Phi (IIT), effective information (EI), consciousness metrics
 │   ├── memory/             # FAISS backed emotional memory, episodic store
+│   ├── audio/              # Cochlear auditory pipeline (gammatone, hair cell, tonotopic, spatial, affect)
 │   ├── self_model/         # Action selection (basal ganglia), body schema, self-representation
 │   ├── agent/              # ConsciousnessAgent (orchestrates the full cognitive loop)
+│   ├── narrative/          # NarrativeEngine (LLM-backed with template fallback)
+│   ├── validation/         # Brian2 biological validation stack
 │   ├── vision_language/    # Qwen2-VL integration (optional semantic pathway)
 │   └── predictive/         # DreamerV3 wrapper, attention mechanisms
 ├── simulations/
@@ -181,7 +194,7 @@ the_consciousness_ai/
 │   ├── analysis/           # Analysis and comparison scripts
 │   └── demos/              # AKOrN binding visualization
 ├── configs/                # YAML and Python configuration files
-├── tests/                  # 463 passing tests
+├── tests/                  # 529 passing tests
 ├── unity_scripts/          # C# scripts for Unity ML-Agents integration
 ├── docs/                   # Research docs, theory review, architecture deep dives
 └── requirements.txt
@@ -199,6 +212,8 @@ the_consciousness_ai/
 *   [**IIT Implementation Roadmap**](docs/iit_implementation_roadmap.md): Phi computation strategy.
 *   [**Isomorphic Visual Mapping Research**](docs/isomorphic_visual_mapping_research.md): DINOv2, TDANN, and inverse effectiveness design rationale.
 *   [**Pre-registered Predictions**](docs/preregistered_predictions.md): Testable EI, Phi, and insight moment predictions with falsification criteria.
+*   [**Auditory System Design**](docs/auditory_system_design.md): Cochlear inspired audio pipeline design and biological rationale.
+*   [**Experiment Results**](docs/results/experiment_comparison.md): Multi-environment training comparison (consciousness agent vs DQN baseline).
 *   [**Simulation Guide**](docs/simulation_guide.md): How to build compatible environments.
 *   [**Ethics Framework**](docs/ethics_framework.md): Asimov compliance filter design.
 

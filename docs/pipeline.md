@@ -6,7 +6,7 @@ This document outlines the typical flow of information and processing within The
 
 1.  **Perception:**
     *   Raw sensor data (video, audio, text) from the simulation environment (Unreal Engine 5 via [`SimulationManager`](simulations/api/simulation_manager.py)) is received.
-    *   Specialized models ([`VideoLLaMA3Integration`](models/integration/video_llama3_integration.py), Whisper) process this data into structured representations (e.g., object detections, scene descriptions, transcribed speech).
+    *   Specialized models process this data into structured representations. DINOv2 retinotopic encoder handles spatial vision, Qwen2-VL provides semantic understanding, and the cochlear auditory pipeline (gammatone filterbank, inner hair cell model, tonotopic encoder) processes audio into frequency decomposed features and affect signals.
 
 2.  **State Update & Integration (`ConsciousnessCore`):**
     *   The [`ConsciousnessCore`](models/core/consciousness_core.py) receives the processed perceptual information.

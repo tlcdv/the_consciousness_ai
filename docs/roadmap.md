@@ -17,7 +17,7 @@ This roadmap outlines the planned development phases for The Consciousness AI.
 - **Key AI Models:**
   - Qwen2-VL-7B for vision-language understanding (replaced PaLM-E and VideoLLaMA3).
   - DINOv2-B/14 (frozen) for spatially faithful retinotopic encoding.
-  - Faster-Whisper for speech recognition and transcription.
+  - Cochlear auditory pipeline (gammatone filterbank, inner hair cell model, tonotopic encoder, acoustic affect extraction).
 - **Deliverables:**
   - Core repository structure.
   - [`ConsciousnessCore`](../models/core/consciousness_core.py) with GNW, gating, and ethics filter.

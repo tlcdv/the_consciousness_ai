@@ -8,7 +8,7 @@ The system architecture is designed to foster **emergent consciousness** through
 
 1.  **Perception (The Senses):**
     *   **Vision:** **Qwen2-VL-7B** (4-bit quantized). Processes high-fidelity visual streams to provide semantic scene understanding and object recognition.
-    *   **Audio:** **Faster-Whisper**. Transcribes environmental audio in real-time.
+    *   **Audio:** Cochlear inspired auditory pipeline. Gammatone filterbank (64 ERB bands, frozen) decomposes waveforms into frequency channels, inner hair cell model extracts envelope and temporal fine structure, tonotopic encoder (trainable) produces spatial features for tectum integration, and acoustic affect extraction maps 6 spectral features to PAD emotional state.
     *   **Integration:** These streams are fused into a multimodal state vector.
 
 2.  **Reinforcement & Emotion (The Drives):**
