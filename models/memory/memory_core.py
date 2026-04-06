@@ -169,7 +169,8 @@ class MemoryCore:
         reward: float,
         emotion_values: dict[str, float],
         attention_level: float,
-        narrative: str | None = None
+        narrative: str | None = None,
+        priority: float = 1.0,
     ) -> str:
         """
         Store an experience with emotional context in the vector store
@@ -212,7 +213,8 @@ class MemoryCore:
             "attention": attention_level,
             "reward": reward,
             "narrative": narrative,
-            "vector": memory_vector
+            "vector": memory_vector,
+            "priority": priority,
         })
 
         self.update_metrics()

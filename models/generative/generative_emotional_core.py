@@ -17,7 +17,13 @@ from __future__ import annotations
 import torch
 import numpy as np
 from dataclasses import dataclass
-from transformers import LlamaTokenizer, LlamaForCausalLM
+try:
+    from transformers import LlamaTokenizer, LlamaForCausalLM
+    _HAS_TRANSFORMERS = True
+except ImportError:
+    LlamaTokenizer = None
+    LlamaForCausalLM = None
+    _HAS_TRANSFORMERS = False
 from models.emotion.tgnn.emotional_graph import EmotionalGraphNetwork
 from models.memory.emotional_memory_core import EmotionalMemoryCore
 import logging

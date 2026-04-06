@@ -17,7 +17,13 @@ from __future__ import annotations
 import torch
 import torch.nn as nn
 from dataclasses import dataclass
-from transformers import AutoModel, AutoTokenizer
+try:
+    from transformers import AutoModel, AutoTokenizer
+    _HAS_TRANSFORMERS = True
+except ImportError:
+    AutoModel = None
+    AutoTokenizer = None
+    _HAS_TRANSFORMERS = False
 from models.emotion.tgnn.emotional_graph import EmotionalGraphNetwork
 from models.memory.emotional_memory_core import EmotionalMemoryCore
 from models.generative.generative_emotional_core import GenerativeEmotionalCore

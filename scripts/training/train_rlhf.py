@@ -36,6 +36,7 @@ from models.self_model.self_representation_core import SelfRepresentationCore
 from models.memory.memory_core import MemoryCore
 from models.core.semantic_pathway import SemanticPathway
 from models.core.topographic_loss import topographic_spatial_loss
+from models.core.rnd_curiosity import RNDCuriosity
 from scripts.training.metrics_logger import ConsciousnessMetricsLogger, StepMetrics
 
 logging.basicConfig(
@@ -150,6 +151,12 @@ def init_components(config):
         workspace.binding_system.parameters(), lr=config.get("workspace_lr", 1e-4)
     )
 
+    # RND curiosity: intrinsic reward from prediction error on workspace broadcast.
+    # Operates on broadcast (not raw pixels), so consciousness quality drives
+    # exploration quality. Target network frozen, predictor trained.
+    rnd = RNDCuriosity(input_dim=config["workspace_dim"], feature_dim=64).to(device)
+    rnd_optimizer = torch.optim.Adam(rnd.predictor_network.parameters(), lr=1e-3)
+
     # Auditory specialist: cochlear pipeline (gammatone -> hair cell -> tonotopic
     # encoder -> workspace projection). Only instantiated when --enable-audio is set.
     auditory_specialist = None
@@ -160,7 +167,8 @@ def init_components(config):
 
     return (tectum, workspace, reentrant, modulator, emotion_shaper, memory,
             action_core, semantic, gate, tectum_optimizer, reward_predictor,
-            reward_optimizer, workspace_optimizer, auditory_specialist, self_model)
+            reward_optimizer, workspace_optimizer, auditory_specialist, self_model,
+            rnd, rnd_optimizer)
 
 
 def frame_to_tensor(frame: np.ndarray, device: str) -> torch.Tensor:
@@ -208,7 +216,7 @@ def run_episode(episode_idx, config, tectum, workspace, reentrant,
                 metrics_logger=None, global_step_offset=0,
                 tectum_optimizer=None, reward_predictor=None, reward_optimizer=None,
                 workspace_optimizer=None, auditory_specialist=None,
-                self_model=None):
+                self_model=None, rnd=None, rnd_optimizer=None):
     device = config["device"]
     max_steps = config["max_steps"]
 
@@ -373,13 +381,12 @@ def run_episode(episode_idx, config, tectum, workspace, reentrant,
 
         broadcast_mag = float(broadcast.norm().item())
 
-        # ConsciousnessGate: compute 5 causal gate values from broadcast
+        # ConsciousnessGate: compute 5 causal gate values from broadcast.
         # These drive IIT Phi (via empirical TPM) and EI measurement.
-        # Gate forward uses detached broadcast (phi is a metric, not a loss target).
-        # Gate reconstruction loss (below) provides the actual gradient signal.
+        # Broadcast gradients flow through the gate so action loss trains gate nets.
         gate_values_tensor = None
         if gate is not None:
-            gate_input = broadcast.detach().view(-1)[:config["workspace_dim"]]
+            gate_input = broadcast.view(-1)[:config["workspace_dim"]]
             if gate_input.shape[0] < config["workspace_dim"]:
                 gate_input = torch.nn.functional.pad(
                     gate_input, (0, config["workspace_dim"] - gate_input.shape[0])
@@ -399,7 +406,8 @@ def run_episode(episode_idx, config, tectum, workspace, reentrant,
         else:
             phi = settle_result.phi
 
-        # Stage 2: appraisal emotion (post-broadcast, content-specific)
+        # Stage 2: appraisal emotion (post-broadcast, content-specific).
+        # Runs BEFORE action selection so the full conscious emotion drives the action.
         emotion = evaluate_emotion(
             vision_bid, 0.0, prev_reward,
             broadcast=broadcast, qualia_mapper=workspace.qualia_mapper,
@@ -460,39 +468,29 @@ def run_episode(episode_idx, config, tectum, workspace, reentrant,
                 sync_loss.backward(retain_graph=True)
                 workspace_optimizer.step()
 
-        # --- Gate reconstruction loss ---
-        # Gate predicts next broadcast from current gate state + broadcast.
-        # This gives gate networks a learning signal so their outputs develop
-        # structured transitions instead of staying near-random (~0.49-0.51).
-        if (gate is not None and gate_values_tensor is not None
-                and previous_broadcast is not None and step % 5 == 0):
-            prev_bc = previous_broadcast.view(1, -1)[:, :config["workspace_dim"]]
-            if prev_bc.shape[1] < config["workspace_dim"]:
-                prev_bc = torch.nn.functional.pad(
-                    prev_bc, (0, config["workspace_dim"] - prev_bc.shape[1])
-                )
-            # Re-run gate with gradients enabled for the predictor
-            gate_input_grad = broadcast.detach().view(-1)[:config["workspace_dim"]].unsqueeze(0)
+        # --- Gate diversity loss ---
+        # Penalize gate outputs near 0.5 (encourage decisiveness).
+        # Sigmoid outputs naturally cluster at 0.5, producing uniform binary
+        # state distributions that make the TPM trivial. This regularizer
+        # pushes outputs toward 0 or 1, increasing state diversity.
+        if gate is not None and gate_values_tensor is not None and step % 5 == 0:
+            # Re-forward gate with gradients to get differentiable outputs
+            gate_input_grad = broadcast.view(-1)[:config["workspace_dim"]].unsqueeze(0)
             if gate_input_grad.shape[1] < config["workspace_dim"]:
                 gate_input_grad = torch.nn.functional.pad(
                     gate_input_grad, (0, config["workspace_dim"] - gate_input_grad.shape[1])
                 )
-            # Get gate values with gradient (re-forward through gate nets)
             attn = gate.attention_net(gate_input_grad)
             stab = gate.stability_net(gate_input_grad)
             cohe = gate.coherence_net(gate_input_grad)
             conf = gate.confidence_net(gate_input_grad)
-            adapt_val = torch.tensor([[gate_state_obj.adaptation_rate]], device=device)
-            gv = torch.cat([attn, stab, adapt_val, cohe, conf], dim=-1)
-            predicted_next = gate.predict_next_broadcast(gv, prev_bc)
-            target_bc = broadcast.detach().view(1, -1)[:, :config["workspace_dim"]]
-            if target_bc.shape[1] < config["workspace_dim"]:
-                target_bc = torch.nn.functional.pad(
-                    target_bc, (0, config["workspace_dim"] - target_bc.shape[1])
-                )
-            gate_loss = torch.nn.functional.mse_loss(predicted_next, target_bc)
+            gv = torch.cat([attn, stab, cohe, conf], dim=-1)
+            # Diversity loss: -log(|g - 0.5|) penalizes values near 0.5
+            gate_diversity_loss = -torch.log(torch.abs(gv - 0.5).clamp(min=0.01)).mean()
+            gate_loss = 0.05 * gate_diversity_loss
             tectum_optimizer.zero_grad()
             gate_loss.backward()
+            torch.nn.utils.clip_grad_norm_(gate.parameters(), 1.0)
             tectum_optimizer.step()
 
         if hasattr(emotion_shaper, 'compute_emotional_reward'):
@@ -508,8 +506,26 @@ def run_episode(episode_idx, config, tectum, workspace, reentrant,
         else:
             shaped_reward = env_reward
 
-        # Store experience in memory (consciousness-gated: only store when ignited)
-        if memory is not None and is_conscious:
+        # Phi-delta intrinsic reward: reward the agent for increasing
+        # information integration, creating the causal loop:
+        # action -> state change -> phi change -> reward -> policy update
+        delta_phi = phi - prev_phi
+        shaped_reward = shaped_reward + 0.5 * delta_phi
+
+        # RND curiosity: intrinsic reward from prediction error on broadcast.
+        # Novel workspace states produce high error = high curiosity reward.
+        if rnd is not None:
+            curiosity_score, rnd_loss = rnd(broadcast.detach())
+            shaped_reward = shaped_reward + 0.1 * curiosity_score
+            # Train predictor every 5 steps (target stays frozen)
+            if rnd_optimizer is not None and step % 5 == 0:
+                rnd_optimizer.zero_grad()
+                rnd_loss.backward()
+                rnd_optimizer.step()
+
+        # Store ALL experiences (not just conscious ones). Consciousness level
+        # is stored as priority for future prioritized replay.
+        if memory is not None:
             action_t = torch.tensor(action, dtype=torch.float, device=device) if not isinstance(action, torch.Tensor) else action
             memory.store_experience(
                 state=broadcast.detach().view(-1),
@@ -517,6 +533,7 @@ def run_episode(episode_idx, config, tectum, workspace, reentrant,
                 reward=float(shaped_reward) if isinstance(shaped_reward, (int, float)) else shaped_reward.item(),
                 emotion_values=emotion,
                 attention_level=phi,
+                priority=phi,
             )
 
         prev = previous_broadcast if previous_broadcast is not None else broadcast
@@ -643,7 +660,7 @@ def main():
     (tectum, workspace, reentrant, modulator, emotion_shaper, memory,
      action_core, semantic, gate, tectum_optimizer, reward_predictor,
      reward_optimizer, workspace_optimizer, auditory_specialist,
-     self_model) = init_components(config)
+     self_model, rnd, rnd_optimizer) = init_components(config)
 
     if args.env == "navigation":
         from simulations.environments.navigation_env import NavigationEnv
@@ -680,6 +697,8 @@ def main():
             workspace_optimizer=workspace_optimizer,
             auditory_specialist=auditory_specialist,
             self_model=self_model,
+            rnd=rnd,
+            rnd_optimizer=rnd_optimizer,
         )
         global_step += ep_steps
         rewards_history.append(ep_reward)

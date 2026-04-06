@@ -1,6 +1,6 @@
 # filepath: examples/emotional_agent_example.py
 
-from models.self_model.reinforcement_core import ReinforcementCore
+from models.self_model.action_selection_core import ActionSelectionCore
 from models.emotion.reward_shaping import EmotionalRewardShaper
 from models.memory.emotional_memory_core import EmotionalMemoryCore
 from simulations.scenarios.emotional_scenarios import EmotionalScenario
@@ -16,8 +16,8 @@ def run_emotional_rl():
     emotion_shaper = EmotionalRewardShaper(reward_config)
 
     # Configure RL
-    rl_config = {"gamma": 0.95}
-    rl_core = ReinforcementCore(rl_config, emotion_shaper)
+    rl_config = {"gamma": 0.95, "workspace_dim": 256, "action_dim": 2, "context_dim": 128}
+    rl_core = ActionSelectionCore(rl_config, emotion_shaper)
 
     mem_config = {"capacity": 5000}
     memory_core = EmotionalMemoryCore(mem_config)

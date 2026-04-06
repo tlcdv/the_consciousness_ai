@@ -111,7 +111,7 @@ class EmotionalProcessingCore(EmotionProcessingInterface):
         # 4. Novelty increases arousal
         novelty = perception.get("novelty", 0.0)
         if float(novelty) > 0:
-            a = self._ema(a, _clamp(a + float(novelty) * 0.3))
+            a = self._ema(a, _clamp(float(novelty) * 0.3))
 
         # 5. Social valence (positive social interaction raises valence and dominance)
         social = perception.get("social_valence", 0.0)

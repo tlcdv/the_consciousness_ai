@@ -1,5 +1,5 @@
 import torch
-from models.vision.dual_patchnorm import DualPatchNormConfig, DualPatchNorm
+from models.vision_language.dual_patchnorm import DualPatchNormConfig, DualPatchNorm
 
 def main():
     """Example usage of DualPatchNorm"""

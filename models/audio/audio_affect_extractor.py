@@ -108,7 +108,8 @@ class AudioAffectExtractor(nn.Module):
 
         # 2. Loudness variability: temporal dynamics
         frame_loudness = envelope.pow(2).sum(dim=1)  # [B, T]
-        loudness_var = frame_loudness.std(dim=1, keepdim=True) / (frame_loudness.mean(dim=1, keepdim=True) + 1e-8)
+        loudness_std = frame_loudness.std(dim=1, keepdim=True).nan_to_num(0.0)
+        loudness_var = loudness_std / (frame_loudness.mean(dim=1, keepdim=True) + 1e-8)
         loudness_var = loudness_var.clamp(0, 5.0) / 5.0  # normalize to ~[0, 1]
 
         # 3. Roughness: energy in AM range (15-300 Hz)

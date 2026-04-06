@@ -1,5 +1,13 @@
+"""
+Deprecated: ConsciousnessAgent is superseded by scripts/training/train_rlhf.py
+which uses individual components directly (SensoryTectum, GlobalWorkspace,
+ReentrantProcessor, ActionSelectionCore, ConsciousnessGate, etc.).
+
+This module is preserved for backward compatibility with existing tests.
+"""
 from __future__ import annotations
 
+import warnings
 import torch
 import numpy as np
 import logging
@@ -30,9 +38,13 @@ class ConsciousnessAgent:
     4. Action (PPO) -> Behavior
     """
     def __init__(self, config: dict[str, Any]):
+        warnings.warn(
+            "ConsciousnessAgent is deprecated. Use scripts/training/train_rlhf.py instead.",
+            DeprecationWarning, stacklevel=2,
+        )
         self.config = config
         self.device = config.get("device", "cuda" if torch.cuda.is_available() else "cpu")
-        
+
         logger.info("Initializing Consciousness Agent...")
         
         # 1. Perception (The Senses)

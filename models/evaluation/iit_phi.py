@@ -80,10 +80,12 @@ class IITMetrics:
     structure is returned instead.
     """
 
-    def __init__(self, history_len: int = 200, tpm_window: int = 100, logger=None):
+    def __init__(self, history_len: int = 200, tpm_window: int = 200,
+                 tpm_decay: float = 0.995, logger=None):
         self.logger = logger or logging.getLogger(__name__)
         self.history_len = history_len
         self.tpm_window = tpm_window
+        self.tpm_decay = tpm_decay
 
         # Raw continuous gate values for adaptive thresholding
         self._raw_history = deque(maxlen=history_len)
@@ -161,8 +163,9 @@ class IITMetrics:
         """
         Build a state-by-node TPM from observed transitions.
 
-        Uses Laplace smoothing (alpha=1) so every row sums to valid
-        probabilities even for unvisited states.
+        Uses reduced Laplace smoothing (alpha=0.1) and exponential decay on
+        transition counts so recent transitions dominate. This prevents TPM
+        saturation that makes phi converge to a fixed point.
 
         Args:
             num_nodes: Number of nodes (default 5 for the gate subsystem).
@@ -171,16 +174,17 @@ class IITMetrics:
             TPM of shape (2^N, N) in state-by-node format.
         """
         num_states = 2 ** num_nodes
-        # Laplace smoothing: 1 count for ON, 1 for OFF per node per state
-        tpm_counts = np.ones((num_states, num_nodes))
-        state_visit_counts = np.ones(num_states) * 2
+        # Reduced Laplace smoothing (alpha=0.1 instead of 1.0)
+        tpm_counts = np.full((num_states, num_nodes), 0.1)
+        state_visit_counts = np.full(num_states, 0.2)
 
         if len(self.state_history) < 2:
             # Uniform TPM when no transitions observed
             return np.full((num_states, num_nodes), 0.5)
 
         history = list(self.state_history)
-        for i in range(len(history) - 1):
+        num_transitions = len(history) - 1
+        for i in range(num_transitions):
             state_t = history[i]
             state_next = history[i + 1]
 
@@ -192,10 +196,14 @@ class IITMetrics:
             if state_idx >= num_states:
                 continue
 
-            state_visit_counts[state_idx] += 1
+            # Exponential decay: recent transitions weigh more.
+            # Transition i has weight decay^(num_transitions - 1 - i).
+            weight = self.tpm_decay ** (num_transitions - 1 - i)
+
+            state_visit_counts[state_idx] += weight
             for node_idx in range(num_nodes):
                 if state_next[node_idx] == 1:
-                    tpm_counts[state_idx, node_idx] += 1
+                    tpm_counts[state_idx, node_idx] += weight
 
         tpm = tpm_counts / state_visit_counts[:, None]
         return tpm

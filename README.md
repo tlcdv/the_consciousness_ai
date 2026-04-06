@@ -1,6 +1,6 @@
 # The Consciousness AI
 
-[![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE)
+[![License](https://img.shields.io/badge/License-Non--Commercial-blue.svg)](LICENSE.md)
 [![Python](https://img.shields.io/badge/Python-3.10%2B-blue)](https://www.python.org/)
 [![Tests](https://img.shields.io/badge/Tests-529%20passing-brightgreen)]()
 
@@ -223,4 +223,4 @@ We welcome contributions from researchers in AI, Neuroscience, and Cognitive Sci
 
 ## License
 
-Apache 2.0. See [LICENSE](LICENSE) for details.
+Non-Commercial Open Source. See [LICENSE](LICENSE.md) for details.
