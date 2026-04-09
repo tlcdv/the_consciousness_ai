@@ -29,6 +29,9 @@ repo_structure_omni2.yaml
 flattened_repo_omni_2.txt
 masataka_watanabe_generative_model_law.md
 mcp.json
+pytest_out.txt
+pytest_out2.txt
+
 
 
 acm_iit_gnw_explanation.pdf

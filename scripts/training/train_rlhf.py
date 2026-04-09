@@ -211,8 +211,8 @@ def evaluate_emotion(vision_bid: float, env_reward: float, prev_reward: float,
 
 
 def run_episode(episode_idx, config, tectum, workspace, reentrant,
-                modulator, emotion_shaper, action_core, env,
-                semantic=None, gate=None, memory=None,
+                modulator, action_core, env,
+                gate=None, memory=None,
                 metrics_logger=None, global_step_offset=0,
                 tectum_optimizer=None, reward_predictor=None, reward_optimizer=None,
                 workspace_optimizer=None, auditory_specialist=None,
@@ -223,7 +223,6 @@ def run_episode(episode_idx, config, tectum, workspace, reentrant,
     obs, info = env.reset()
     total_reward = 0.0
     previous_broadcast = None
-    prev_reward = 0.0
     steps_taken = 0
     phi_accum = 0.0
     conscious_steps = 0
@@ -243,6 +242,7 @@ def run_episode(episode_idx, config, tectum, workspace, reentrant,
 
     prev_action = None
     prev_phi = 0.0
+    prev_env_reward = 0.0  # actual env reward (not shaped) for emotion delta
 
     for step in range(max_steps):
         global_step = global_step_offset + step
@@ -269,8 +269,8 @@ def run_episode(episode_idx, config, tectum, workspace, reentrant,
         tectum_content, vision_bid = tectum(frame_tensor, audio_spatial)
 
         # Stage 1: reflex emotion (pre-workspace, drives affective bid modulation)
-        # Audio startle reflex: spectral flux and roughness drive arousal spike
-        emotion = evaluate_emotion(vision_bid, 0.0, prev_reward)
+        # Uses prev_env_reward (actual env reward, not shaped) for reward delta
+        emotion = evaluate_emotion(vision_bid, 0.0, prev_env_reward)
         if audio_affect is not None:
             af = audio_affect["acoustic_features"]
             spectral_flux = af[0, 4].item() if af.shape[1] > 4 else 0.0
@@ -278,20 +278,12 @@ def run_episode(episode_idx, config, tectum, workspace, reentrant,
             emotion["arousal"] = float(np.clip(emotion["arousal"] + spectral_flux * 0.3, 0, 1))
             emotion["valence"] = float(np.clip(emotion["valence"] - roughness * 0.2, -1, 1))
 
-        # Semantic pathway: use global-pooled tectum content as lightweight semantic
-        # signal when Qwen2-VL is unavailable. This gives the 5th oscillator a
-        # non-zero bid so it actually participates in workspace competition.
-        if semantic is not None:
-            # Tectum content is [1, workspace_dim]. Pad/truncate to 1536 for SemanticPathway input.
-            sem_input = tectum_content.detach().view(1, -1)
-            if sem_input.shape[1] < 1536:
-                sem_input = torch.nn.functional.pad(sem_input, (0, 1536 - sem_input.shape[1]))
-            else:
-                sem_input = sem_input[:, :1536]
-            semantic_content, semantic_bid = semantic(sem_input)
-        else:
-            semantic_content = torch.zeros(1, config["workspace_dim"], device=device)
-            semantic_bid = 0.0
+        # Semantic pathway: requires Qwen2-VL embeddings to produce a meaningful
+        # signal. Without Qwen2-VL loaded, the semantic channel bids 0 and does
+        # not participate in workspace competition. Padding tectum content to
+        # 1536-D would be circular (competing against itself).
+        semantic_content = torch.zeros(1, config["workspace_dim"], device=device)
+        semantic_bid = 0.0
 
         # Memory retrieval: use previous broadcast to find similar past experiences
         # Memory bid scales with retrieval relevance (more relevant = higher bid)
@@ -383,7 +375,8 @@ def run_episode(episode_idx, config, tectum, workspace, reentrant,
 
         # ConsciousnessGate: compute 5 causal gate values from broadcast.
         # These drive IIT Phi (via empirical TPM) and EI measurement.
-        # Broadcast gradients flow through the gate so action loss trains gate nets.
+        # gate.last_gate_values_tensor preserves gradients so action loss
+        # can backprop through the gate networks.
         gate_values_tensor = None
         if gate is not None:
             gate_input = broadcast.view(-1)[:config["workspace_dim"]]
@@ -395,21 +388,16 @@ def run_episode(episode_idx, config, tectum, workspace, reentrant,
             _, gate_state_obj = gate(gate_input_batched)
             phi_result = workspace.iit_metrics.compute_phi_from_gate_state(gate_state_obj)
             phi = phi_result.phi + (sync_r * 0.1)
-            # Collect gate values as tensor for reconstruction loss
-            gate_values_tensor = torch.tensor([
-                gate_state_obj.attention_level,
-                gate_state_obj.stability_score,
-                gate_state_obj.adaptation_rate,
-                gate_state_obj.meta_memory_coherence,
-                gate_state_obj.narrator_confidence,
-            ], device=device).unsqueeze(0)
+            # Use the differentiable tensor directly from the gate (preserves grads)
+            gate_values_tensor = gate.last_gate_values_tensor
         else:
             phi = settle_result.phi
 
         # Stage 2: appraisal emotion (post-broadcast, content-specific).
         # Runs BEFORE action selection so the full conscious emotion drives the action.
+        # env_reward=0.0 is correct here: reward is unknown before acting.
         emotion = evaluate_emotion(
-            vision_bid, 0.0, prev_reward,
+            vision_bid, 0.0, prev_env_reward,
             broadcast=broadcast, qualia_mapper=workspace.qualia_mapper,
         )
 
@@ -470,80 +458,66 @@ def run_episode(episode_idx, config, tectum, workspace, reentrant,
 
         # --- Gate diversity loss ---
         # Penalize gate outputs near 0.5 (encourage decisiveness).
-        # Sigmoid outputs naturally cluster at 0.5, producing uniform binary
-        # state distributions that make the TPM trivial. This regularizer
-        # pushes outputs toward 0 or 1, increasing state diversity.
+        # Uses the differentiable gate_values_tensor from the forward pass
+        # (preserves causal structure, no need to re-forward individual nets).
         if gate is not None and gate_values_tensor is not None and step % 5 == 0:
-            # Re-forward gate with gradients to get differentiable outputs
-            gate_input_grad = broadcast.view(-1)[:config["workspace_dim"]].unsqueeze(0)
-            if gate_input_grad.shape[1] < config["workspace_dim"]:
-                gate_input_grad = torch.nn.functional.pad(
-                    gate_input_grad, (0, config["workspace_dim"] - gate_input_grad.shape[1])
-                )
-            attn = gate.attention_net(gate_input_grad)
-            stab = gate.stability_net(gate_input_grad)
-            cohe = gate.coherence_net(gate_input_grad)
-            conf = gate.confidence_net(gate_input_grad)
-            gv = torch.cat([attn, stab, cohe, conf], dim=-1)
-            # Diversity loss: -log(|g - 0.5|) penalizes values near 0.5
-            gate_diversity_loss = -torch.log(torch.abs(gv - 0.5).clamp(min=0.01)).mean()
+            gate_diversity_loss = -torch.log(
+                torch.abs(gate_values_tensor - 0.5).clamp(min=0.01)
+            ).mean()
             gate_loss = 0.05 * gate_diversity_loss
             tectum_optimizer.zero_grad()
-            gate_loss.backward()
+            gate_loss.backward(retain_graph=True)
             torch.nn.utils.clip_grad_norm_(gate.parameters(), 1.0)
             tectum_optimizer.step()
 
-        if hasattr(emotion_shaper, 'compute_emotional_reward'):
-            emotion_values = {
-                "valence": emotion["valence"],
-                "arousal": emotion["arousal"],
-                "dominance": emotion["dominance"],
-            }
-            shaped_reward = emotion_shaper.compute_emotional_reward(
-                emotion_values=emotion_values,
-                base_reward=env_reward,
-            )
-        else:
-            shaped_reward = env_reward
+        # --- Post-action emotion update (C5 fix) ---
+        # Re-evaluate emotion with actual env_reward for memory storage
+        # and next step's prev_reward. The pre-action emotion (computed above)
+        # correctly drove action selection without future knowledge.
+        emotion_post = evaluate_emotion(
+            vision_bid, env_reward, prev_env_reward,
+            broadcast=broadcast, qualia_mapper=workspace.qualia_mapper,
+        )
 
-        # Phi-delta intrinsic reward: reward the agent for increasing
-        # information integration, creating the causal loop:
-        # action -> state change -> phi change -> reward -> policy update
+        # --- Reward shaping (single pass, C4 fix) ---
+        # Phi-delta intrinsic reward: consciousness integration change
         delta_phi = phi - prev_phi
-        shaped_reward = shaped_reward + 0.5 * delta_phi
-
-        # RND curiosity: intrinsic reward from prediction error on broadcast.
-        # Novel workspace states produce high error = high curiosity reward.
+        # RND curiosity: novel broadcast states drive exploration
+        curiosity_score = 0.0
         if rnd is not None:
             curiosity_score, rnd_loss = rnd(broadcast.detach())
-            shaped_reward = shaped_reward + 0.1 * curiosity_score
-            # Train predictor every 5 steps (target stays frozen)
             if rnd_optimizer is not None and step % 5 == 0:
                 rnd_optimizer.zero_grad()
                 rnd_loss.backward()
                 rnd_optimizer.step()
 
-        # Store ALL experiences (not just conscious ones). Consciousness level
-        # is stored as priority for future prioritized replay.
+        # Additive intrinsic bonuses applied to env_reward. These go into
+        # action_core.step() which applies emotion shaping ONCE internally.
+        intrinsic_bonus = 0.5 * delta_phi + 0.1 * curiosity_score
+        reward_for_action_core = env_reward + intrinsic_bonus
+
+        # Store ALL experiences with post-action emotion and phi priority
         if memory is not None:
             action_t = torch.tensor(action, dtype=torch.float, device=device) if not isinstance(action, torch.Tensor) else action
             memory.store_experience(
                 state=broadcast.detach().view(-1),
                 action=action_t.view(-1),
-                reward=float(shaped_reward) if isinstance(shaped_reward, (int, float)) else shaped_reward.item(),
-                emotion_values=emotion,
+                reward=float(reward_for_action_core),
+                emotion_values=emotion_post,
                 attention_level=phi,
                 priority=phi,
             )
 
+        # Pass env_reward + intrinsic bonuses to action_core, which applies
+        # emotion shaping internally (single pass, no double shaping).
         prev = previous_broadcast if previous_broadcast is not None else broadcast
         action_core.step(
             workspace_broadcast=prev,
             action=action,
-            raw_reward=shaped_reward,
+            raw_reward=reward_for_action_core,
             next_broadcast=broadcast,
             done=done,
-            emotion_state=emotion,
+            emotion_state=emotion_post,
             attention_level=phi,
             narrative="",
         )
@@ -554,8 +528,9 @@ def run_episode(episode_idx, config, tectum, workspace, reentrant,
         previous_broadcast = broadcast.detach().clone()
         prev_action = action
         prev_phi = phi
-        reward_val = shaped_reward if isinstance(shaped_reward, (int, float)) else shaped_reward.item()
-        prev_reward = reward_val
+        # Track actual env_reward for next step's emotion delta (not shaped)
+        prev_env_reward = env_reward
+        reward_val = reward_for_action_core if isinstance(reward_for_action_core, (int, float)) else reward_for_action_core.item()
         total_reward += reward_val
         phi_accum += phi
         if is_conscious:
@@ -688,7 +663,7 @@ def main():
         logger.info(f"Episode {ep + 1}/{args.episodes}")
         ep_reward, ep_steps, avg_phi, consciousness_ratio = run_episode(
             ep, config, tectum, workspace, reentrant,
-            modulator, emotion_shaper, action_core, env, semantic,
+            modulator, action_core, env,
             gate=gate, memory=memory,
             metrics_logger=metrics_logger, global_step_offset=global_step,
             tectum_optimizer=tectum_optimizer,

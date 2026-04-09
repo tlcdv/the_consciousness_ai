@@ -34,7 +34,7 @@ from models.predictive.dreamer_emotional_wrapper import DreamerEmotionalWrapper
 from models.memory.attention_schema import AttentionSchema
 from models.perception.predictive_processor import PredictiveProcessor
 from models.core.global_workspace import GlobalWorkspace, WorkspaceMessage
-from models.core.consciousness_gating import ConsciousnessGate, ConsciousnessGating
+from models.core.consciousness_gating import ConsciousnessGate
 
 try:
     import unreal
@@ -104,11 +104,9 @@ class SimulationManager:
         }
         try:
             self.consciousness_gate = ConsciousnessGate(gating_config)
-            self.global_gating = ConsciousnessGating({'gating_threshold': 0.5})
         except Exception as e:
             logging.warning("Could not initialize gating: %s", e)
             self.consciousness_gate = None
-            self.global_gating = None
 
     def run_interaction(self, agent, environment, max_steps=None) -> dict[str, Any]:
         """Synchronous interaction loop for testing."""

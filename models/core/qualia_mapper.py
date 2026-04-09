@@ -6,11 +6,12 @@ from dataclasses import dataclass
 @dataclass
 class PhenomenologicalState:
     """
-    Represents the geometric properties of a subjective experience proxy.
-    Based on IIT's concept of the 'Shape' of information structure (MICS)
-    and mapped to a 3D phenomenological space.
+    Empirical proxy for phenomenological state, mapping workspace activations
+    to three operational measures (intensity, valence, complexity).
 
-    This is an empirical correlate proxy, not a claim about actual qualia.
+    This is a heuristic approximation using standard signal metrics (L2 norm,
+    cosine similarity, Shannon entropy), not derived from IIT's mathematical
+    framework or its MICS geometric structure.
     """
     intensity: float  # Magnitude/Salience (0.0 to 1.0)
     valence: float    # Emotional polarity (-1.0 to 1.0)

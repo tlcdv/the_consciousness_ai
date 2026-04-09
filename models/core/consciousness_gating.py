@@ -1,12 +1,18 @@
 """
-Consciousness gating mechanism that controls information flow and adaptation
-in the consciousness system. Controls learning rates and meta-memory stability.
+Consciousness gating mechanism that controls information flow and adaptation.
 
-Key components:
-- Attention-based gating for information flow
-- Meta-memory stability tracking
-- Controlled adaptation
-- Narrator confidence tracking
+Produces 5 continuous gate values (attention, stability, adaptation, coherence,
+confidence) that serve as causal nodes for IIT Phi computation and EI measurement.
+
+The gate networks have explicit causal routing matching GATE_CM in iit_phi.py:
+  attention -> stability (attention output feeds stability input)
+  stability -> adaptation (stability modulates adaptation rate)
+  coherence -> adaptation (coherence modulates adaptation rate)
+  confidence -> attention (confidence feeds next step's attention via feedback)
+
+forward() returns both a GatingState (float snapshot for logging) and a
+differentiable gate_values tensor [B, 5] that preserves gradients for
+backpropagation through the phi computation chain.
 """
 from __future__ import annotations
 
@@ -14,9 +20,10 @@ import torch
 import torch.nn as nn
 from dataclasses import dataclass
 
+
 @dataclass
 class GatingState:
-    """Track gating mechanism state."""
+    """Track gating mechanism state (float snapshot for logging/metrics)."""
     attention_level: float = 0.0
     stability_score: float = 0.0
     adaptation_rate: float = 0.0
@@ -26,44 +33,46 @@ class GatingState:
 
 class ConsciousnessGate(nn.Module):
     def __init__(self, config):
-        """Sets up gating parameters and neural networks.
+        """Sets up gating parameters and causally connected gate networks.
 
-        Produces 5 continuous gate values that serve as causal nodes for
-        IIT Phi computation and EI measurement. All 5 networks take the
-        workspace broadcast as input and produce sigmoid-bounded [0,1] output.
+        Each gate network takes a different input depending on its position
+        in the causal graph, so that perturbing one gate's output changes
+        downstream gate outputs through real architectural connections.
         """
         super().__init__()
-        # Support both dict and attribute-style config
         if isinstance(config, dict):
             gating = config.get('gating', {})
             self.attention_threshold = gating.get('attention_threshold', 0.5)
             self.stability_threshold = gating.get('stability_threshold', 0.6)
-            self.adaptation_rate = gating.get('base_adaptation_rate', 0.01)
+            self.base_adaptation_rate = gating.get('base_adaptation_rate', 0.01)
             self.hidden_size = config.get('hidden_size', 128)
         else:
             gating = getattr(config, 'gating', config)
             self.attention_threshold = getattr(gating, 'attention_threshold', 0.5)
             self.stability_threshold = getattr(gating, 'stability_threshold', 0.6)
-            self.adaptation_rate = getattr(gating, 'base_adaptation_rate', 0.01)
+            self.base_adaptation_rate = getattr(gating, 'base_adaptation_rate', 0.01)
             self.hidden_size = getattr(config, 'hidden_size', 128)
 
-        # Attention gating.
+        # --- Causal gate networks ---
+        # Each network takes enriched input PLUS the output of its causal parent.
+
+        # Attention: receives enriched + prev_confidence (confidence->attention loop)
         self.attention_net = nn.Sequential(
-            nn.Linear(self.hidden_size, self.hidden_size),
+            nn.Linear(self.hidden_size + 1, self.hidden_size),
             nn.GELU(),
             nn.Linear(self.hidden_size, 1),
             nn.Sigmoid()
         )
 
-        # Stability gating.
+        # Stability: receives enriched + attention_output (attention->stability)
         self.stability_net = nn.Sequential(
-            nn.Linear(self.hidden_size, self.hidden_size),
+            nn.Linear(self.hidden_size + 1, self.hidden_size),
             nn.GELU(),
             nn.Linear(self.hidden_size, 1),
             nn.Sigmoid()
         )
 
-        # Coherence network: meta-memory consistency signal.
+        # Coherence: receives enriched only (independent input, no causal parent)
         self.coherence_net = nn.Sequential(
             nn.Linear(self.hidden_size, self.hidden_size),
             nn.GELU(),
@@ -71,22 +80,28 @@ class ConsciousnessGate(nn.Module):
             nn.Sigmoid()
         )
 
-        # Confidence network: narrator certainty about current state.
+        # Confidence: receives enriched + coherence_output (coherence->confidence)
         self.confidence_net = nn.Sequential(
-            nn.Linear(self.hidden_size, self.hidden_size),
+            nn.Linear(self.hidden_size + 1, self.hidden_size),
             nn.GELU(),
             nn.Linear(self.hidden_size, 1),
             nn.Sigmoid()
         )
 
-        # Gate feedback: projects previous 5 gate values back into hidden space.
-        # Creates temporal causal structure matching GATE_CM in iit_phi.py:
-        # attention->stability, stability->adaptation, coherence->adaptation,
-        # confidence->attention. Without this, all gates are independent MLPs
-        # taking the same input, producing near-identical outputs (~0.5).
+        # Adaptation: differentiable scalar from stability + coherence
+        # (stability->adaptation, coherence->adaptation)
+        self.adaptation_net = nn.Sequential(
+            nn.Linear(2, 8),
+            nn.GELU(),
+            nn.Linear(8, 1),
+            nn.Sigmoid()
+        )
+
+        # Temporal feedback: projects previous 5 gate values into hidden space.
+        # Provides the confidence->attention cross-step connection.
         self.gate_feedback = nn.Linear(5, self.hidden_size)
 
-        # Buffer for previous gate values (detached, used as conditioning)
+        # Buffer for previous gate values (detached for conditioning only)
         self.prev_gate_values: torch.Tensor | None = None
 
         self.state = GatingState()
@@ -97,60 +112,68 @@ class ConsciousnessGate(nn.Module):
         meta_memory_context: dict | None = None,
         narrator_state: dict | None = None
     ) -> tuple[torch.Tensor, GatingState]:
-        """Processes input through gating networks and updates the gating state.
+        """Run causal gate computation. Returns (gated_output, state).
 
-        Gate networks receive enriched input that includes previous gate values,
-        creating temporal causal dependencies matching GATE_CM.
+        After calling forward(), access self.last_gate_values_tensor for the
+        differentiable [B, 5] tensor (attention, stability, adaptation,
+        coherence, confidence) that preserves gradients for phi computation.
         """
-        # Enrich input with previous gate values for temporal causal structure
+        # Temporal feedback from previous step's gate values
         if self.prev_gate_values is not None:
             feedback = self.gate_feedback(self.prev_gate_values.to(input_state.device))
             enriched = input_state + feedback
         else:
             enriched = input_state
 
-        attention_level = self.attention_net(enriched)
-        stability_score = self.stability_net(enriched)
+        # Extract previous confidence for the confidence->attention connection.
+        # On first call, use 0.5 (neutral).
+        if self.prev_gate_values is not None:
+            prev_conf = self.prev_gate_values[4:5].to(input_state.device)
+        else:
+            prev_conf = torch.tensor([0.5], device=input_state.device)
+
+        # Expand prev_conf to match batch dimension
+        if enriched.dim() == 2:
+            prev_conf = prev_conf.unsqueeze(0).expand(enriched.shape[0], -1)
+
+        # --- Causal chain ---
+        # 1. Attention <- enriched + prev_confidence
+        attention = self.attention_net(torch.cat([enriched, prev_conf], dim=-1))
+
+        # 2. Coherence <- enriched (independent)
         coherence = self.coherence_net(enriched)
-        confidence = self.confidence_net(enriched)
 
-        adaptation_rate = self._calculate_adaptation_rate(
-            stability_score,
-            meta_memory_context
+        # 3. Stability <- enriched + attention (attention->stability)
+        stability = self.stability_net(
+            torch.cat([enriched, attention], dim=-1)
         )
 
-        gated_output = self._apply_gating(
-            input_state,
-            attention_level,
-            stability_score
+        # 4. Confidence <- enriched + coherence (coherence->confidence)
+        confidence = self.confidence_net(
+            torch.cat([enriched, coherence], dim=-1)
         )
 
+        # 5. Adaptation <- stability + coherence (both feed adaptation)
+        adaptation = self.adaptation_net(
+            torch.cat([stability, coherence], dim=-1)
+        ) * self.base_adaptation_rate * 2.0  # scale to reasonable rate range
+
+        # --- Differentiable gate values tensor (preserves gradients) ---
+        gate_values = torch.cat(
+            [attention, stability, adaptation, coherence, confidence], dim=-1
+        )
+        self.last_gate_values_tensor = gate_values
+
+        # --- Gated output ---
+        gated_output = self._apply_gating(input_state, attention, stability)
+
+        # --- Update float snapshot for logging/metrics ---
         self._update_state(
-            attention_level,
-            stability_score,
-            adaptation_rate,
-            coherence,
-            confidence,
+            attention, stability, adaptation, coherence, confidence,
             narrator_state,
         )
 
         return gated_output, self.state
-
-    def _calculate_adaptation_rate(
-        self,
-        stability_score: torch.Tensor,
-        meta_memory_context: dict | None
-    ) -> float:
-        """Calculates a learning rate multiplier based on stability and meta-memory."""
-        base_rate = self.adaptation_rate
-        if meta_memory_context:
-            if meta_memory_context.get('stable_patterns'):
-                base_rate *= 0.5
-            if meta_memory_context.get('novel_experiences'):
-                base_rate *= 2.0
-
-        # Multiply by average stability for final rate.
-        return base_rate * float(stability_score.mean().item())
 
     def _apply_gating(
         self,
@@ -158,24 +181,25 @@ class ConsciousnessGate(nn.Module):
         attention_level: torch.Tensor,
         stability_score: torch.Tensor
     ) -> torch.Tensor:
-        """Applies gating logic to the input state based on attention and stability."""
+        """Applies gating to input based on attention and stability."""
         mask = (attention_level > self.attention_threshold).float()
         gated = input_state * mask
-        # Guard against NaN/Inf from upstream numerical issues
         return torch.nan_to_num(gated, nan=0.0, posinf=1.0, neginf=0.0)
 
     def _update_state(
         self,
-        attention_level: torch.Tensor,
-        stability_score: torch.Tensor,
-        adaptation_rate: float,
+        attention: torch.Tensor,
+        stability: torch.Tensor,
+        adaptation: torch.Tensor,
         coherence: torch.Tensor,
         confidence: torch.Tensor,
         narrator_state: dict | None = None,
     ) -> None:
-        """Updates the gating state with new information."""
-        att_val = float(attention_level.mean().item())
-        stab_val = float(stability_score.mean().item())
+        """Snapshots gate values as floats for logging. Also stores detached
+        tensor for temporal feedback on the next forward call."""
+        att_val = float(attention.mean().item())
+        stab_val = float(stability.mean().item())
+        adapt_val = float(adaptation.mean().item())
         coh_val = float(coherence.mean().item())
         conf_val = float(confidence.mean().item())
         if narrator_state and 'confidence' in narrator_state:
@@ -183,40 +207,10 @@ class ConsciousnessGate(nn.Module):
 
         self.state.attention_level = att_val
         self.state.stability_score = stab_val
-        self.state.adaptation_rate = adaptation_rate
+        self.state.adaptation_rate = adapt_val
         self.state.meta_memory_coherence = coh_val
         self.state.narrator_confidence = conf_val
 
-        # Store current gate values for temporal feedback on next forward call
         self.prev_gate_values = torch.tensor(
-            [att_val, stab_val, adaptation_rate, coh_val, conf_val]
+            [att_val, stab_val, adapt_val, coh_val, conf_val]
         ).detach()
-
-
-class ConsciousnessGating:
-    """
-    Implements an attention control mechanism that decides whether sensory inputs
-    trigger enhanced processing based on a gating threshold.
-    
-    Args:
-        config (dict): Contains configuration parameters.
-    """
-    def __init__(self, config: dict):
-        self.config = config
-        self.gating_threshold = config.get("gating_threshold", 0.5)
-
-    def update_attention(self, sensory_input: list) -> bool:
-        """
-        Computes the attention level from a list of sensory measurements and
-        determines if it meets the threshold.
-
-        Args:
-            sensory_input (list): list of numeric sensory values.
-
-        Returns:
-            bool: True if attention level exceeds the threshold, otherwise False.
-        """
-        if not sensory_input:
-            return False
-        attention = sum(sensory_input) / len(sensory_input)
-        return attention >= self.gating_threshold

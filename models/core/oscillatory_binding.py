@@ -7,13 +7,12 @@ import torch.nn.functional as F
 
 class KuramotoLayer(nn.Module):
     """
-    Artificial Kuramoto Oscillatory Neurons (AKOrN)
-    
-    Implements discrete-time Kuramoto oscillator synchronization to solve
-    the representation binding problem. Objects/features that synchronize
-    their phases are functionally "bound" together.
-    
-    Ref: Löwe et al., "Artificial Kuramoto Oscillatory Neurons", ICLR 2025.
+    Oscillatory binding via Kuramoto dynamics on the N-sphere.
+
+    Inspired by Löwe et al., "Artificial Kuramoto Oscillatory Neurons",
+    ICLR 2025. Coupling uses the tangent-plane projection from the
+    N-sphere Kuramoto model: for each oscillator i, the pull from j is
+    projected onto the tangent plane at i before accumulation.
     """
     def __init__(self, 
                  num_oscillators: int, 
@@ -85,25 +84,25 @@ class KuramotoLayer(nn.Module):
         omega = self.natural_frequencies - self.natural_frequencies.transpose(-1, -2)
         
         for _ in range(iterations):
-            # Compute interactions
-            # Phase differences: dot products of vectors on the sphere
-            # We want to pull phases closer if they have high weights/amplitudes
-            
             # [B, N, N] interaction matrix = Amplitudes * LearnableWeights
             interaction_strength = torch.einsum('bi,ij,bj->bij', amplitudes, self.coupling_weights, amplitudes)
-            
-            # For each oscillator i, calculate the pull from all others j
-            # pull = sum_j (interaction_{i,j} * phase_j)
-            pull = torch.einsum('bij,bjd->bid', interaction_strength, current_phases)
-            
+
+            # Tangent-plane projection: for each oscillator i, project phase_j
+            # onto the tangent plane at phase_i before computing the pull.
+            # proj_j = phase_j - <phase_j, phase_i> * phase_i
+            # This is the correct N-sphere Kuramoto coupling.
+            # dot_ij[b,i,j] = <phase_i, phase_j>
+            dot_ij = torch.einsum('bid,bjd->bij', current_phases, current_phases)
+            # projected[b,i,j,d] = phase_j[b,j,d] - dot_ij[b,i,j] * phase_i[b,i,d]
+            projected = current_phases.unsqueeze(1) - dot_ij.unsqueeze(-1) * current_phases.unsqueeze(2)
+            # pull[b,i,d] = sum_j interaction[b,i,j] * projected[b,i,j,d]
+            pull = torch.einsum('bij,bijd->bid', interaction_strength, projected)
+
             # Natural rotation (omega * phase)
-            # omega is [N, D, D], phase is [B, N, D]
             rotation = torch.einsum('ndd,bnd->bnd', omega, current_phases)
-            
+
             # Update: phase + dt * (rotation + K * pull)
             dp = self.dt * (rotation + self.K * pull)
-            
-            # Apply update and re-project to the sphere
             current_phases = current_phases + dp
             current_phases = F.normalize(current_phases, p=2, dim=-1)
             
