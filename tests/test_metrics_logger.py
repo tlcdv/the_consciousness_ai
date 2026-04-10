@@ -121,7 +121,7 @@ class TestInsightDetection(unittest.TestCase):
         self.assertFalse(result)
 
     def test_low_reward_not_insight(self):
-        """Reward below 2x positive average should not be insight."""
+        """Reward below 1.5x positive average should not be insight."""
         for i in range(210):
             m = StepMetrics(global_step=i, phi=0.1, sync_r=0.5,
                             is_conscious=True, reward=10.0, broadcast_mag=0.5)

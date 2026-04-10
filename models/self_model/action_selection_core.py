@@ -374,9 +374,98 @@ class ActionSelectionCore:
         self.optimizer.step()
         
         self.rollout_buffer = []
-        
+
         return {
             "policy_loss": actor_loss.item(),
             "value_loss": value_loss.item(),
             "total_loss": total_loss.item()
+        }
+
+    def replay_update(self, experiences: list[dict]) -> dict[str, float]:
+        """Policy update from replayed memory experiences.
+
+        Unlike update_policy(), replay entries lack hidden states, next_states,
+        and done flags. We reconstruct PFC states from zero hidden and compute
+        simple discounted returns without bootstrapping. Loss is scaled by 0.5
+        to prevent replay from overwhelming online learning.
+        """
+        valid = [e for e in experiences
+                 if "state" in e and "action" in e and "reward" in e]
+        if len(valid) < 4:
+            return {}
+
+        self.pfc.train()
+        self.bg.train()
+
+        # Reconstruct states: ensure [B, workspace_dim]
+        states = []
+        for e in valid:
+            s = e["state"]
+            if isinstance(s, np.ndarray):
+                s = torch.tensor(s, dtype=torch.float, device=self.device)
+            elif isinstance(s, torch.Tensor):
+                s = s.to(device=self.device, dtype=torch.float)
+            if s.dim() == 1:
+                s = s.unsqueeze(0)
+            states.append(s)
+        states = torch.cat(states, dim=0)
+
+        # Zero hidden for replay (no recurrent context)
+        hiddens = torch.zeros(len(valid), self.context_dim, device=self.device)
+
+        rewards = torch.tensor(
+            [float(e["reward"]) for e in valid], device=self.device
+        ).unsqueeze(1)
+
+        actions = []
+        for e in valid:
+            a = e["action"]
+            if isinstance(a, np.ndarray):
+                a = torch.tensor(a, dtype=torch.float, device=self.device)
+            elif isinstance(a, torch.Tensor):
+                a = a.to(device=self.device, dtype=torch.float)
+            actions.append(a)
+        actions = torch.stack(actions)
+
+        # Discounted returns (no bootstrapping, single sequence assumption)
+        returns_list: list[float] = []
+        R = 0.0
+        for r in reversed(rewards):
+            R = r.item() + self.gamma * R
+            returns_list.insert(0, R)
+        returns = torch.tensor(returns_list, device=self.device).unsqueeze(1)
+
+        # Forward through PFC + BG
+        pfc_states, _ = self.pfc(states, hiddens)
+        _, values = self.bg(pfc_states)
+
+        advantage = returns - values.detach()
+        value_loss = nn.MSELoss()(values, returns)
+
+        # Go/No-Go losses (same pattern as update_policy)
+        go_signal = self.bg.direct_pathway(pfc_states)
+        no_go_signal = self.bg.indirect_pathway(pfc_states)
+
+        target_go = actions * (advantage > 0).float() - actions * (advantage < 0).float()
+        go_loss = nn.MSELoss()(go_signal, target_go.detach())
+
+        target_nogo = (advantage < 0).float().expand_as(no_go_signal)
+        nogo_loss = nn.BCELoss()(no_go_signal, target_nogo.detach())
+
+        stn_output = self.bg.stn_pathway(pfc_states)
+        stn_target = torch.tanh(torch.abs(advantage).detach())
+        stn_loss = nn.MSELoss()(stn_output, stn_target)
+
+        actor_loss = go_loss + nogo_loss + 0.3 * stn_loss
+        # Scale by 0.5 so replay doesn't dominate online learning
+        total_loss = 0.5 * (actor_loss + 0.5 * value_loss)
+
+        self.optimizer.zero_grad()
+        total_loss.backward()
+        self.optimizer.step()
+
+        return {
+            "replay_policy_loss": actor_loss.item(),
+            "replay_value_loss": value_loss.item(),
+            "replay_total_loss": total_loss.item(),
         }

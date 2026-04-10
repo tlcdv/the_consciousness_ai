@@ -187,11 +187,11 @@ class ConsciousnessMetricsLogger:
         """
         Compute EI at gate and workspace levels from buffered trajectories.
 
-        Gate states use tertile quantile binning: each of the 5 gate dimensions
-        is binned to 3 levels (low/mid/high), giving 3^5 = 243 joint states.
-        This captures more structure than the previous 2-bin median split (32 states),
-        which produced near-identical distributions every window because gate outputs
-        clustered around 0.5.
+        Gate states use fixed tertile boundaries [1/3, 2/3]: each of the 5 gate
+        dimensions (sigmoid-bounded [0, 1]) is binned to 3 levels (low/mid/high),
+        giving 3^5 = 243 joint states. Fixed thresholds avoid the bias of computing
+        percentiles from the same trajectory being discretized, which guarantees
+        roughly uniform distributions and inflates EI artificially.
 
         Returns dict with ei_gates, ei_workspace, ratio, emergent.
         """
@@ -205,17 +205,14 @@ class ConsciousnessMetricsLogger:
         if len(self._gate_trajectory) < 10:
             return result
 
-        # Tertile quantile binning: each dimension -> 3 bins via 33rd/67th percentiles
-        gate_arr = np.array(self._gate_trajectory)
-        p33 = np.percentile(gate_arr, 33, axis=0)
-        p67 = np.percentile(gate_arr, 67, axis=0)
+        # Fixed tertile boundaries: gate outputs are sigmoid-bounded [0, 1]
         gate_discrete = []
         for g in self._gate_trajectory:
             joint_idx = 0
             for i, val in enumerate(g):
-                if val < p33[i]:
+                if val < 1 / 3:
                     trit = 0
-                elif val < p67[i]:
+                elif val < 2 / 3:
                     trit = 1
                 else:
                     trit = 2
@@ -283,7 +280,7 @@ class ConsciousnessMetricsLogger:
             return False
 
         # Criterion 2: reward jump with minimum absolute threshold
-        # Require reward > 0.5 AND >= 2x running average (positive portion)
+        # Require reward > 0.5 AND >= 1.5x running average (positive portion)
         if reward < 0.5:
             return False
 
@@ -291,7 +288,7 @@ class ConsciousnessMetricsLogger:
             positive_rewards = [r for r in self._cross_episode_rewards if r > 0]
             if positive_rewards:
                 avg_positive = np.mean(positive_rewards)
-                reward_jump = reward >= 2.0 * avg_positive
+                reward_jump = reward >= 1.5 * avg_positive
             else:
                 reward_jump = True  # first positive reward ever
         else:

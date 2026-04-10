@@ -37,6 +37,7 @@ from models.memory.memory_core import MemoryCore
 from models.core.semantic_pathway import SemanticPathway
 from models.core.topographic_loss import topographic_spatial_loss
 from models.core.rnd_curiosity import RNDCuriosity
+from models.memory.optimized_store import MemoryConsolidationManager
 from scripts.training.metrics_logger import ConsciousnessMetricsLogger, StepMetrics
 
 logging.basicConfig(
@@ -165,10 +166,16 @@ def init_components(config):
         auditory_specialist = AuditorySpecialist(config).to(device)
         logger.info("Auditory specialist enabled (cochlear pipeline)")
 
+    consolidation_mgr = MemoryConsolidationManager({
+        "merge_threshold": 0.9,
+        "prune_threshold": 0.05,
+        "relevance_decay": 0.99,
+    })
+
     return (tectum, workspace, reentrant, modulator, emotion_shaper, memory,
             action_core, semantic, gate, tectum_optimizer, reward_predictor,
             reward_optimizer, workspace_optimizer, auditory_specialist, self_model,
-            rnd, rnd_optimizer)
+            rnd, rnd_optimizer, consolidation_mgr)
 
 
 def frame_to_tensor(frame: np.ndarray, device: str) -> torch.Tensor:
@@ -490,6 +497,10 @@ def run_episode(episode_idx, config, tectum, workspace, reentrant,
                 rnd_optimizer.zero_grad()
                 rnd_loss.backward()
                 rnd_optimizer.step()
+            # Zero curiosity when agent receives positive external reward so
+            # exploration drive doesn't pull agent away from rewarding states.
+            if env_reward > 0:
+                curiosity_score = 0.0
 
         # Additive intrinsic bonuses applied to env_reward. These go into
         # action_core.step() which applies emotion shaping ONCE internally.
@@ -568,9 +579,11 @@ def run_episode(episode_idx, config, tectum, workspace, reentrant,
                 workspace_state=ws_state,
             ))
 
-            # Insight detection (coarse hashing to prevent every step being "novel")
-            # Use downsampled pixel sum for cheap hashing (avoids float64 alloc from np.std)
-            state_hash = f"{int(obs[::4, ::4].sum() / 1000)}"
+            # Insight detection: hash broadcast embedding for meaningful novelty signal
+            # round(1) prevents float noise from making every state unique
+            state_hash = str(hash(tuple(
+                broadcast.detach().cpu().numpy().flatten().round(1)
+            )))
             if isinstance(action, (int, str)):
                 action_key = action
             elif hasattr(action, '__len__'):
@@ -635,7 +648,7 @@ def main():
     (tectum, workspace, reentrant, modulator, emotion_shaper, memory,
      action_core, semantic, gate, tectum_optimizer, reward_predictor,
      reward_optimizer, workspace_optimizer, auditory_specialist,
-     self_model, rnd, rnd_optimizer) = init_components(config)
+     self_model, rnd, rnd_optimizer, consolidation_mgr) = init_components(config)
 
     if args.env == "navigation":
         from simulations.environments.navigation_env import NavigationEnv
@@ -676,6 +689,28 @@ def main():
             rnd_optimizer=rnd_optimizer,
         )
         global_step += ep_steps
+
+        # --- Memory consolidation: decay relevance, merge similar, prune ---
+        if memory is not None and memory.recent_experiences:
+            for exp in memory.recent_experiences:
+                exp.setdefault("id", f"exp_{id(exp)}")
+                exp.setdefault("relevance", max(0.2, exp.get("priority", 1.0)))
+            memory.recent_experiences = consolidation_mgr.consolidate(
+                memory.recent_experiences
+            )
+
+        # --- Memory replay: phi-prioritized policy update every 10 episodes ---
+        if (ep + 1) % 10 == 0 and memory is not None and memory.recent_experiences:
+            batch = consolidation_mgr.get_replay_batch(
+                memory.recent_experiences, k=16
+            )
+            if batch:
+                replay_metrics = action_core.replay_update(batch)
+                if replay_metrics:
+                    logger.info(
+                        f"  Replay update: loss={replay_metrics.get('replay_total_loss', 0):.4f}"
+                    )
+
         rewards_history.append(ep_reward)
         avg_last_5 = np.mean(rewards_history[-5:])
 

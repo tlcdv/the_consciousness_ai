@@ -207,6 +207,7 @@ class MemoryCore:
             )
 
         self.recent_experiences.append({
+            "id": self._generate_memory_id(),
             "state": state,
             "action": action,
             "emotion": emotion_values,
