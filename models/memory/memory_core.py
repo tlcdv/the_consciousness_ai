@@ -333,8 +333,21 @@ class MemoryCore:
 
         coherence_scores = []
         for i in range(len(recent) - 1):
-            curr_vec = recent[i]["vector"].unsqueeze(0)
-            next_vec = recent[i + 1]["vector"].unsqueeze(0)
+            curr_vec = recent[i]["vector"]
+            next_vec = recent[i + 1]["vector"]
+
+            # Convert to torch tensors if needed
+            if isinstance(curr_vec, np.ndarray):
+                curr_vec = torch.from_numpy(curr_vec).float()
+            if isinstance(next_vec, np.ndarray):
+                next_vec = torch.from_numpy(next_vec).float()
+
+            # Ensure correct shape for cosine_similarity
+            if curr_vec.dim() == 1:
+                curr_vec = curr_vec.unsqueeze(0)
+            if next_vec.dim() == 1:
+                next_vec = next_vec.unsqueeze(0)
+
             sim = torch.cosine_similarity(curr_vec, next_vec).item()
             coherence_scores.append(sim)
 

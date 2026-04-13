@@ -180,17 +180,16 @@ class MemoryConsolidationManager:
             if len(group_indices) == 1:
                 result.append(entries[i])
             else:
-                # Merge: average vectors, sum relevance, keep highest-relevance metadata
+                # Merge: average vectors, sum relevance, preserve all fields from best entry
                 avg_vec = np.mean([vectors[idx] for idx in group_indices], axis=0)
                 total_relevance = sum(entries[idx].get("relevance", 1.0) for idx in group_indices)
                 best_idx = max(group_indices, key=lambda idx: entries[idx].get("relevance", 1.0))
-                merged_entry = {
-                    "id": entries[best_idx]["id"],
-                    "vector": avg_vec,
-                    "relevance": total_relevance,
-                    "metadata": entries[best_idx].get("metadata"),
-                    "merged_count": len(group_indices),
-                }
+
+                # Start with all fields from the highest-relevance entry
+                merged_entry = dict(entries[best_idx])
+                merged_entry["vector"] = avg_vec
+                merged_entry["relevance"] = total_relevance
+                merged_entry["merged_count"] = len(group_indices)
                 result.append(merged_entry)
 
         return result

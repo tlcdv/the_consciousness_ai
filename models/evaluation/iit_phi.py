@@ -247,14 +247,24 @@ class IITMetrics:
         """
         Geometric proxy for Phi when pyphi is not available.
 
-        Measures two properties that correlate with integration:
+        **WARNING: UNVALIDATED APPROXIMATION**
+        This proxy has NO published basis and has NOT been validated against
+        the actual Phi computed by PyPhi. It is a heuristic that combines
+        TPM determinism and integration metrics, but the formula
+        determinism * (1 + integration) is arbitrary.
+
+        Use ONLY as a fallback when PyPhi is unavailable. To properly validate
+        this proxy, correlate it against pyphi.compute_phi() on the same TPM
+        over 100+ timesteps and report Pearson r.
+
+        Measures two properties:
         1. Determinism: how far TPM rows are from uniform (0.5).
            High determinism means the system has strong causal structure.
         2. Integration: variance of determinism across rows.
            A system where all rows are equally deterministic is less
            integrated than one with heterogeneous causal structure.
 
-        Returns a value in [0, ~2] that tracks with actual Phi.
+        Returns a value in [0, ~2].
         """
         num_nodes = tpm.shape[1]
 

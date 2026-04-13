@@ -52,7 +52,7 @@ class ReentrantProcessor:
         config = config or {}
         self.min_cycles = config.get("min_cycles", 2)
         self.max_cycles = config.get("max_cycles", 10)
-        self.convergence_threshold = config.get("convergence_threshold", 0.01)
+        self.convergence_threshold = config.get("convergence_threshold", 0.05)
         
         # Tracking
         self.last_settle_result: SettleResult | None = None

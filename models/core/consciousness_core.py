@@ -1,6 +1,21 @@
 """
-Core consciousness system that uses a base narrative model,
-emotional memory, and controlled adaptation for experience processing.
+Core consciousness system orchestrator (INCOMPLETE SHELL).
+
+WARNING: ConsciousnessCore is an orchestrator skeleton for future integration work.
+It does NOT participate in the current training loop. The active consciousness pipeline
+is implemented in consciousness_gating.py, global_workspace.py, and train_rlhf.py.
+
+Current limitations:
+- goal management (_get_active_goals) returns hardcoded example
+- order reception (_get_active_orders) returns empty list
+- agent status (_get_agent_status) relies on self_model (not fully hooked)
+- NOT called during training; components used directly via ConsciousnessGate
+
+AsimovComplianceFilter (Law 1/2/3 ethics evaluation) IS functional and can be
+attached to an ActionSelectionCore if needed.
+
+Future work: Integrate ConsciousnessCore into training loop as a central orchestrator
+that manages goals, orders, and coordinates with the consciousness metrics pipeline.
 """
 from __future__ import annotations
 
@@ -726,7 +741,7 @@ class ConsciousnessCore:
                         attention = 0.0
                         valence = 0.0
                         arousal = 0.0
-                   self.consciousness_score = min(1.0, (attention + valence + arousal) / 3.0)
+                   self.consciousness_score = max(0.0, min(1.0, (attention + valence + arousal) / 3.0))
                    self.state = state_dict
                    self.emotional_state = es
                    self.attention_level = attention
@@ -778,7 +793,7 @@ class ConsciousnessCore:
               def __init__(self, score):
                    self.consciousness_score = score
          # Higher stress leads to higher attention / consciousness activation
-         consciousness_score = min(1.0, 0.3 + stress_level * 0.5)
+         consciousness_score = max(0.0, min(1.0, 0.3 + stress_level * 0.5))
          self.current_internal_state['attention_level'] = consciousness_score
          return _AttentionResult(consciousness_score)
 

@@ -55,6 +55,23 @@ class AffectiveModulator:
         # Interoceptive gain: how strongly homeostatic imbalance affects PAD
         self.intero_gain = config.get("intero_gain", 0.4)
 
+        # Interoceptive PAD coefficients: scales from homeostatic drives to PAD deltas
+        # fatigue_valence: how much fatigue affects valence (default 0.5)
+        # fatigue_arousal: how much fatigue affects arousal (default 0.8, higher = more sluggishness)
+        # damage_valence: how much damage affects valence (default 2.0, strong negative)
+        # damage_arousal: how much damage affects arousal (default 1.5, pain alarm)
+        self.fatigue_valence_coeff = config.get("fatigue_valence_coeff", 0.5)
+        self.fatigue_arousal_coeff = config.get("fatigue_arousal_coeff", 0.8)
+        self.damage_valence_coeff = config.get("damage_valence_coeff", 2.0)
+        self.damage_arousal_coeff = config.get("damage_arousal_coeff", 1.5)
+        self.damage_dominance_coeff = config.get("damage_dominance_coeff", 1.0)
+
+        # Module sets for valence field modulation
+        # approach_modules: boosted by positive valence (exploration, resource acquisition)
+        # threat_modules: boosted by negative valence (threat detection, withdrawal)
+        self.approach_modules = set(config.get("approach_modules", APPROACH_MODULES))
+        self.threat_modules = set(config.get("threat_modules", THREAT_MODULES))
+
     def interoceptive_to_pad(
         self,
         interoceptive_state: dict[str, float],
@@ -86,15 +103,15 @@ class AffectiveModulator:
         energy_valence = min(0.0, (energy - 0.5) * self.intero_gain)
 
         # Fatigue: negative valence and suppressed arousal
-        fatigue_valence = -fatigue * self.intero_gain * 0.5
-        fatigue_arousal = -fatigue * self.intero_gain * 0.8
+        fatigue_valence = -fatigue * self.intero_gain * self.fatigue_valence_coeff
+        fatigue_arousal = -fatigue * self.intero_gain * self.fatigue_arousal_coeff
 
         # Damage: strong negative valence, arousal spike (pain alarm)
-        damage_valence = -damage * self.intero_gain * 2.0
-        damage_arousal = damage * self.intero_gain * 1.5
+        damage_valence = -damage * self.intero_gain * self.damage_valence_coeff
+        damage_arousal = damage * self.intero_gain * self.damage_arousal_coeff
 
         # Damage also reduces dominance (feeling vulnerable)
-        damage_dominance = -damage * self.intero_gain
+        damage_dominance = -damage * self.intero_gain * self.damage_dominance_coeff
 
         return {
             "valence": max(-1.0, energy_valence + fatigue_valence + damage_valence),
@@ -139,11 +156,11 @@ class AffectiveModulator:
 
             if valence > 0:
                 # Positive valence: boost approach-relevant modules
-                if name in APPROACH_MODULES:
+                if name in self.approach_modules:
                     delta = valence * self.valence_gain
             elif valence < 0:
                 # Negative valence: boost threat-relevant modules
-                if name in THREAT_MODULES:
+                if name in self.threat_modules:
                     delta = abs(valence) * self.valence_gain
 
             # Dominance: high dominance slightly raises all bids
