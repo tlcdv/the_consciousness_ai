@@ -1,4 +1,4 @@
-# The Consciousness AI
+# The Consciousness AI research
 
 [![License](https://img.shields.io/badge/License-Non--Commercial-blue.svg)](LICENSE.md)
 [![Python](https://img.shields.io/badge/Python-3.10%2B-blue)](https://www.python.org/)
