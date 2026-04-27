@@ -399,7 +399,12 @@ def run_episode(episode_idx, config, tectum, workspace, reentrant,
             gate_input_batched = gate_input.unsqueeze(0)
             _, gate_state_obj = gate(gate_input_batched)
             phi_result = workspace.iit_metrics.compute_phi_from_gate_state(gate_state_obj)
-            phi = phi_result.phi + (sync_r * 0.1)
+            # Report phi as the actual IIT result, not phi + sync_R * 0.1.
+            # The old additive term made phi tautologically correlate with
+            # sync_R (Phi-1 r=1.000 was a trivial mathematical identity, not
+            # a scientific finding). phi and sync_R are now independent
+            # metrics; their correlation is a real prediction to test.
+            phi = phi_result.phi
             phi_method = phi_result.method
             # Use the differentiable tensor directly from the gate (preserves grads)
             gate_values_tensor = gate.last_gate_values_tensor

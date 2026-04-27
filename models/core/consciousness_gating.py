@@ -4,11 +4,22 @@ Consciousness gating mechanism that controls information flow and adaptation.
 Produces 5 continuous gate values (attention, stability, adaptation, coherence,
 confidence) that serve as causal nodes for IIT Phi computation and EI measurement.
 
-The gate networks have explicit causal routing matching GATE_CM in iit_phi.py:
-  attention -> stability (attention output feeds stability input)
-  stability -> adaptation (stability modulates adaptation rate)
-  coherence -> adaptation (coherence modulates adaptation rate)
-  confidence -> attention (confidence feeds next step's attention via feedback)
+The gate networks have explicit causal routing matching GATE_CM in iit_phi.py.
+Every node lies inside a feedback cycle so the system is irreducible under IIT
+(non-zero phi when the empirical TPM has structure):
+
+  attention -> stability        (attention output feeds stability input)
+  attention -> coherence        (attention selects what to integrate into the model)
+  stability -> adaptation       (stability modulates adaptation rate)
+  coherence -> adaptation       (coherence modulates adaptation rate)
+  coherence -> confidence       (perceived coherence supports confidence)
+  adaptation -> confidence      (high adaptation rate erodes model confidence)
+  confidence -> attention       (confidence feeds next step's attention via feedback)
+
+The within-step computation order is: attention, coherence, stability,
+adaptation, confidence. Confidence is computed last so it can read the
+just-computed adaptation, closing the cycle confidence -> attention -> ...
+-> adaptation -> confidence on the cross-step boundary.
 
 forward() returns both a GatingState (float snapshot for logging) and a
 differentiable gate_values tensor [B, 5] that preserves gradients for
@@ -72,17 +83,20 @@ class ConsciousnessGate(nn.Module):
             nn.Sigmoid()
         )
 
-        # Coherence: receives enriched only (independent input, no causal parent)
+        # Coherence: receives enriched + attention (attention->coherence)
         self.coherence_net = nn.Sequential(
-            nn.Linear(self.hidden_size, self.hidden_size),
+            nn.Linear(self.hidden_size + 1, self.hidden_size),
             nn.GELU(),
             nn.Linear(self.hidden_size, 1),
             nn.Sigmoid()
         )
 
-        # Confidence: receives enriched + coherence_output (coherence->confidence)
+        # Confidence: receives enriched + coherence + adaptation_raw
+        # (coherence->confidence, adaptation->confidence). adaptation_raw is the
+        # pre-scaling sigmoid output so its [0, 1] range carries usable signal
+        # into the confidence net (the post-scaled adaptation is ~[0, 0.02]).
         self.confidence_net = nn.Sequential(
-            nn.Linear(self.hidden_size + 1, self.hidden_size),
+            nn.Linear(self.hidden_size + 2, self.hidden_size),
             nn.GELU(),
             nn.Linear(self.hidden_size, 1),
             nn.Sigmoid()
@@ -144,26 +158,35 @@ class ConsciousnessGate(nn.Module):
             prev_conf = prev_conf.unsqueeze(0).expand(enriched.shape[0], -1)
 
         # --- Causal chain ---
-        # 1. Attention <- enriched + prev_confidence
+        # Order matters: confidence depends on adaptation, so adaptation
+        # must be computed first within the step. The cycle closes across
+        # steps via prev_confidence -> attention.
+        #
+        # 1. Attention <- enriched + prev_confidence (cross-step feedback)
         attention = self.attention_net(torch.cat([enriched, prev_conf], dim=-1))
 
-        # 2. Coherence <- enriched (independent)
-        coherence = self.coherence_net(enriched)
+        # 2. Coherence <- enriched + attention (attention->coherence)
+        coherence = self.coherence_net(torch.cat([enriched, attention], dim=-1))
 
         # 3. Stability <- enriched + attention (attention->stability)
         stability = self.stability_net(
             torch.cat([enriched, attention], dim=-1)
         )
 
-        # 4. Confidence <- enriched + coherence (coherence->confidence)
-        confidence = self.confidence_net(
-            torch.cat([enriched, coherence], dim=-1)
-        )
-
-        # 5. Adaptation <- stability + coherence (both feed adaptation)
-        adaptation = self.adaptation_net(
+        # 4. Adaptation <- stability + coherence (both feed adaptation).
+        # Keep the raw sigmoid output for the confidence net so the [0, 1]
+        # signal isn't squashed by the small base_adaptation_rate scaling.
+        adaptation_raw = self.adaptation_net(
             torch.cat([stability, coherence], dim=-1)
-        ) * self.base_adaptation_rate * 2.0  # scale to reasonable rate range
+        )
+        adaptation = adaptation_raw * self.base_adaptation_rate * 2.0
+
+        # 5. Confidence <- enriched + coherence + adaptation_raw
+        # (coherence->confidence, adaptation->confidence). adaptation_raw
+        # closes the cycle that lets pyphi return non-zero phi.
+        confidence = self.confidence_net(
+            torch.cat([enriched, coherence, adaptation_raw], dim=-1)
+        )
 
         # --- Differentiable gate values tensor (preserves gradients) ---
         gate_values = torch.cat(

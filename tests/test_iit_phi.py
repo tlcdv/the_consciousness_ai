@@ -223,13 +223,40 @@ class TestConnectivityMatrix(unittest.TestCase):
         """Attention (node 0) should connect to stability (node 1)."""
         self.assertEqual(GATE_CM[0, 1], 1)
 
+    def test_attention_drives_coherence(self):
+        """Attention (node 0) should connect to coherence (node 3)."""
+        self.assertEqual(GATE_CM[0, 3], 1)
+
     def test_stability_drives_adaptation(self):
         """Stability (node 1) should connect to adaptation (node 2)."""
         self.assertEqual(GATE_CM[1, 2], 1)
 
+    def test_adaptation_drives_confidence(self):
+        """Adaptation (node 2) should connect to confidence (node 4).
+        This edge closes the cycle so the system is irreducible under IIT."""
+        self.assertEqual(GATE_CM[2, 4], 1)
+
+    def test_coherence_drives_adaptation(self):
+        """Coherence (node 3) should connect to adaptation (node 2)."""
+        self.assertEqual(GATE_CM[3, 2], 1)
+
+    def test_coherence_drives_confidence(self):
+        """Coherence (node 3) should connect to confidence (node 4)."""
+        self.assertEqual(GATE_CM[3, 4], 1)
+
     def test_confidence_drives_attention(self):
         """Confidence (node 4) should connect back to attention (node 0)."""
         self.assertEqual(GATE_CM[4, 0], 1)
+
+    def test_every_node_has_in_and_out_degree(self):
+        """For phi > 0 under IIT, every node must lie inside a directed
+        cycle, which requires in-degree >= 1 and out-degree >= 1."""
+        in_degrees = GATE_CM.sum(axis=0)
+        out_degrees = GATE_CM.sum(axis=1)
+        self.assertTrue(np.all(in_degrees >= 1),
+                        msg=f"in-degrees: {in_degrees}")
+        self.assertTrue(np.all(out_degrees >= 1),
+                        msg=f"out-degrees: {out_degrees}")
 
     def test_node_labels_match_cm_size(self):
         """Label count should match CM dimension."""
@@ -470,6 +497,52 @@ class TestEdgeCases(unittest.TestCase):
         self.assertEqual(tpm.shape, (8, 3))
         self.assertTrue(np.all(tpm >= 0.0))
         self.assertTrue(np.all(tpm <= 1.0))
+
+
+class TestPhiVariesWithVariedInput(unittest.TestCase):
+    """Locks the R2 invariant: when gates receive varied inputs, the
+    binarized state history visits multiple states and the empirical
+    TPM has structure. With the cyclic GATE_CM, phi is non-zero on at
+    least some steps."""
+
+    def test_varied_input_produces_state_diversity_and_phi_signal(self):
+        import torch as _torch
+        from models.core.consciousness_gating import ConsciousnessGate
+
+        _torch.manual_seed(0)
+        np.random.seed(0)
+
+        gate = ConsciousnessGate({"hidden_size": 64})
+        metrics = IITMetrics()
+
+        unique_states = set()
+        phi_values = []
+        for _ in range(80):
+            inp = _torch.randn(1, 64) * 2.0
+            _, gs = gate(inp)
+            r = metrics.compute_phi_from_gate_state(gs)
+            unique_states.add(r.current_state)
+            phi_values.append(r.phi)
+
+        # Varied input must make the gates visit multiple binary states.
+        # Without diversity the TPM has no structure and phi is trivially 0.
+        self.assertGreater(
+            len(unique_states), 4,
+            msg=f"Only {len(unique_states)} unique states visited",
+        )
+
+        # If pyphi is installed and the cyclic GATE_CM is doing its job,
+        # at least one step in a varied sequence should produce phi > 0.
+        # If pyphi is unavailable we get the proxy, which also varies on
+        # structured TPMs. Either way phi should not be a flat zero.
+        max_phi = max(phi_values)
+        std_phi = float(np.std(phi_values))
+        self.assertTrue(
+            max_phi > 1e-5 or std_phi > 1e-5,
+            msg=f"Phi was identically zero across 80 varied steps. "
+                f"max={max_phi:.6e}, std={std_phi:.6e}. "
+                f"Either GATE_CM is reducible or the proxy is broken.",
+        )
 
 
 if __name__ == "__main__":

@@ -48,13 +48,25 @@ class PhiResult:
 # Causal connectivity matrix for the 5-node gate subsystem.
 # Row i, col j = 1 means node i causally influences node j.
 # Nodes: [attention, stability, adaptation, coherence, confidence]
+#
+# Every node has in-degree >= 1 and out-degree >= 1, and every node
+# lies inside a directed cycle, so the system is irreducible under IIT.
+# pyphi.compute.sia returns non-zero phi when the empirical TPM has
+# structure. Cycles include:
+#     att -> stb -> adp -> conf -> att
+#     att -> coh -> adp -> conf -> att
+#     att -> coh -> conf -> att
+#
+# Verified against ConsciousnessGate.forward() in
+# models/core/consciousness_gating.py: every edge below has a matching
+# input concatenation in the gate networks.
 GATE_CM = np.array([
     # att  stb  adp  coh  conf
     [0,    1,   0,   1,   0],   # attention -> stability, coherence
     [0,    0,   1,   0,   0],   # stability -> adaptation
-    [0,    0,   0,   0,   0],   # adaptation (output node)
-    [0,    0,   1,   0,   0],   # coherence -> adaptation
-    [1,    0,   0,   0,   0],   # confidence -> attention
+    [0,    0,   0,   0,   1],   # adaptation -> confidence (closes cycle)
+    [0,    0,   1,   0,   1],   # coherence -> adaptation, confidence
+    [1,    0,   0,   0,   0],   # confidence -> attention (cross-step feedback)
 ], dtype=int)
 
 GATE_NODE_LABELS = (
