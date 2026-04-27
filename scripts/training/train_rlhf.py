@@ -240,6 +240,11 @@ def run_episode(episode_idx, config, tectum, workspace, reentrant,
     if hasattr(action_core, 'pfc_hidden'):
         action_core.pfc_hidden = None
 
+    # Clear cross-episode gate state so feedback into attention doesn't
+    # carry the previous episode's last gate values.
+    if gate is not None and hasattr(gate, 'reset_episode'):
+        gate.reset_episode()
+
     if metrics_logger is not None:
         metrics_logger.reset_episode_state()
 
@@ -395,10 +400,12 @@ def run_episode(episode_idx, config, tectum, workspace, reentrant,
             _, gate_state_obj = gate(gate_input_batched)
             phi_result = workspace.iit_metrics.compute_phi_from_gate_state(gate_state_obj)
             phi = phi_result.phi + (sync_r * 0.1)
+            phi_method = phi_result.method
             # Use the differentiable tensor directly from the gate (preserves grads)
             gate_values_tensor = gate.last_gate_values_tensor
         else:
             phi = settle_result.phi
+            phi_method = "no_gate"
 
         # Stage 2: appraisal emotion (post-broadcast, content-specific).
         # Runs BEFORE action selection so the full conscious emotion drives the action.
@@ -577,6 +584,7 @@ def run_episode(episode_idx, config, tectum, workspace, reentrant,
                 dominance=emotion["dominance"],
                 gate_state=gate_state,
                 workspace_state=ws_state,
+                phi_method=phi_method,
             ))
 
             # Insight detection: hash broadcast embedding for meaningful novelty signal

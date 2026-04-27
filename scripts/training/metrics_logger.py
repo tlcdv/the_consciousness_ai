@@ -48,6 +48,12 @@ class StepMetrics:
     dominance: float = 0.0
     gate_state: tuple[float, ...] | None = None
     workspace_state: tuple[float, ...] | None = None
+    # Which phi computation produced the value: "pyphi" (exact),
+    # "proxy" (unvalidated geometric heuristic), "insufficient_data"
+    # (early TPM, returns 0.0), or "" when not produced via the gate
+    # pathway. Logged so post-hoc analysis can tell whether a phi
+    # value is scientifically grounded.
+    phi_method: str = ""
 
 
 class ConsciousnessMetricsLogger:
@@ -102,6 +108,7 @@ class ConsciousnessMetricsLogger:
         self._csv_writer.writerow([
             "global_step", "phi", "sync_r", "is_conscious", "reward",
             "broadcast_mag", "valence", "arousal", "dominance",
+            "phi_method",
         ])
 
     def _init_episode_csv(self):
@@ -123,6 +130,7 @@ class ConsciousnessMetricsLogger:
             f"{metrics.broadcast_mag:.6f}",
             f"{metrics.valence:.4f}", f"{metrics.arousal:.4f}",
             f"{metrics.dominance:.4f}",
+            metrics.phi_method,
         ])
         self._csv_file.flush()
 

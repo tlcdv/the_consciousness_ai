@@ -285,9 +285,17 @@ class SensoryTectum(nn.Module):
     def reset_state(self, batch_size: int = 1):
         device = next(self.parameters()).device
         self.h_state = torch.zeros(batch_size, self.feature_dim, self.grid_size, self.grid_size, device=device)
-        self.z_state = torch.zeros(batch_size, self.rssm.categories, self.rssm.classes, self.grid_size, self.grid_size, device=device)
-        # Initialize Z randomly
-        self.z_state[:, :, 0, :, :] = 1.0 
+        # Uniform categorical prior: every class equally likely. Avoids the
+        # pre-fix bias where every episode started with class 0 peaked, which
+        # gave the world model the same arbitrary initial belief on every
+        # reset and biased ablation comparisons.
+        uniform_p = 1.0 / self.rssm.classes
+        self.z_state = torch.full(
+            (batch_size, self.rssm.categories, self.rssm.classes,
+             self.grid_size, self.grid_size),
+            uniform_p,
+            device=device,
+        )
         
     def forward(self, vision_features: torch.Tensor, audio_spatial: torch.Tensor,
                 body_schema: torch.Tensor | None = None) -> tuple[torch.Tensor, float]:

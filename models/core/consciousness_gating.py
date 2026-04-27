@@ -106,6 +106,13 @@ class ConsciousnessGate(nn.Module):
 
         self.state = GatingState()
 
+    def reset_episode(self) -> None:
+        """Clear cross-episode state. Call at the start of every episode so
+        episode N+1's first attention is not conditioned on episode N's last
+        gate output."""
+        self.prev_gate_values = None
+        self.state = GatingState()
+
     def forward(
         self,
         input_state: torch.Tensor,
