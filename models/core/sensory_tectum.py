@@ -276,12 +276,21 @@ class SensoryTectum(nn.Module):
         self.register_buffer('h_state', None)
         self.register_buffer('z_state', None)
 
+        # Truncated BPTT window. The previous behavior of detaching every
+        # step severed the gradient at every recurrent step, making the
+        # RSSM a one-step encoder despite being labeled a world model.
+        # With bptt_window=K, gradient flows through K consecutive RSSM
+        # steps before being detached, so a loss at step t can update
+        # the RSSM weights based on the previous K-1 hidden states.
+        self.bptt_window = config.get("bptt_window", 8)
+        self._steps_since_detach = 0
+
         # Cache for reentrant feedback
         self._last_content = None
         self._last_raw_bid = 0.0
         self._last_capsule_poses = None
         self._last_capsule_activities = None
-        
+
     def reset_state(self, batch_size: int = 1):
         device = next(self.parameters()).device
         self.h_state = torch.zeros(batch_size, self.feature_dim, self.grid_size, self.grid_size, device=device)
@@ -296,6 +305,9 @@ class SensoryTectum(nn.Module):
             uniform_p,
             device=device,
         )
+        # Episode boundary: reset the BPTT cycle counter so the new
+        # episode starts with a fresh K-step window.
+        self._steps_since_detach = 0
         
     def forward(self, vision_features: torch.Tensor, audio_spatial: torch.Tensor,
                 body_schema: torch.Tensor | None = None) -> tuple[torch.Tensor, float]:
@@ -327,10 +339,18 @@ class SensoryTectum(nn.Module):
 
         # 2. Update RSSM World Model
         h_t, z_t, prior_logits, post_logits = self.rssm.step(obs_map, self.h_state, self.z_state)
-        
-        # Save state
-        self.h_state = h_t.detach()
-        self.z_state = z_t.detach()
+
+        # 2b. Truncated BPTT save. Detach every bptt_window steps so the
+        # graph stays bounded but a loss at the end of the window can flow
+        # gradient back through up to (window - 1) RSSM steps.
+        self._steps_since_detach += 1
+        if self._steps_since_detach >= self.bptt_window:
+            self.h_state = h_t.detach()
+            self.z_state = z_t.detach()
+            self._steps_since_detach = 0
+        else:
+            self.h_state = h_t
+            self.z_state = z_t
         
         # 3. Calculate Prediction Error (Surprise)
         # KL Divergence: KL(posterior || prior) = sum q * log(q/p)

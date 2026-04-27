@@ -465,6 +465,18 @@ def run_episode(episode_idx, config, tectum, workspace, reentrant,
             total_tectum_loss.backward(retain_graph=True)
             tectum_optimizer.step()
             reward_optimizer.step()
+            # Force-detach recurrent state immediately after the optimizer
+            # mutates tectum parameters in-place. Without this, a later
+            # backward call through the BPTT-retained graph would reference
+            # the pre-step parameter version and raise:
+            # "variable needed for gradient computation has been modified
+            # by an inplace operation". This effectively closes the BPTT
+            # window at every tectum optimizer step regardless of bptt_window.
+            if tectum.h_state is not None:
+                tectum.h_state = tectum.h_state.detach()
+            if tectum.z_state is not None:
+                tectum.z_state = tectum.z_state.detach()
+            tectum._steps_since_detach = 0
 
         # --- Workspace binding optimizer ---
         # Reward-correlated sync: maximize sync_R when reward is positive,
