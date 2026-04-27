@@ -97,6 +97,10 @@ def init_components(config):
     reentrant = ReentrantProcessor(config["reentrant"])
 
     modulator = AffectiveModulator()
+    # Attach so workspace.run_competition can apply the modulator on every
+    # reentrant cycle when pad_state is passed through. Without this attachment
+    # the new explicit-arg modulation path is silently inert.
+    workspace.affective_modulator = modulator
 
     emotion_shaper = EmotionalRewardShaper(config["emotion"]).to(device)
 
@@ -348,11 +352,10 @@ def run_episode(episode_idx, config, tectum, workspace, reentrant,
                     "damage": 0.0,
                 }
 
-        bids, adjusted_threshold = modulator.modulate(
-            raw_bids, emotion,
-            interoceptive_state=interoceptive_state,
-        )
-        workspace.ignition_threshold = adjusted_threshold
+        # Affective modulation now happens inside the workspace's
+        # run_competition (called per cycle from reentrant.settle), driven by
+        # the explicit pad_state and interoceptive_state we pass through.
+        # raw_bids is passed straight in; workspace handles the modulation.
 
         # Include capsule structured payload so GNW broadcast preserves compositional info
         vision_payload = {"tensor": tectum_content, "source": "tectum"}
@@ -371,9 +374,11 @@ def run_episode(episode_idx, config, tectum, workspace, reentrant,
         settle_result = reentrant.settle(
             workspace=workspace,
             specialists=specialists,
-            initial_bids=bids,
+            initial_bids=raw_bids,
             payloads=payloads,
             goal_vector=torch.tensor([1.0, -1.0, 1.0], device=device),
+            pad_state=emotion,
+            interoceptive_state=interoceptive_state,
         )
 
         broadcast = settle_result.broadcast_content

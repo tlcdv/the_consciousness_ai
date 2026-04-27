@@ -246,19 +246,97 @@ class TestAffectiveModulatorIntegration(unittest.TestCase):
         modulator = AffectiveModulator()
         gnw.affective_modulator = modulator
 
-        # Run competition with PAD state set
-        gnw._current_pad_state = {"valence": 0.5, "arousal": 0.6, "dominance": 0.3}
-
         bids = {"vision": 0.7, "audio": 0.4, "memory": 0.5, "body": 0.3}
         payloads = {k: {"data": k} for k in bids}
         goal = torch.zeros(3)
 
+        # Pass PAD state explicitly via the new run_competition kwarg.
+        # The previous _current_pad_state magic attribute was removed because
+        # production code never set it: the modulator pathway was silently
+        # inert for the entire project history.
         broadcast, result_bids = gnw.run_competition(
-            inputs={}, goal_vector=goal, bids=bids, payloads=payloads
+            inputs={}, goal_vector=goal, bids=bids, payloads=payloads,
+            pad_state={"valence": 0.5, "arousal": 0.6, "dominance": 0.3},
         )
 
         # Should complete without error
         self.assertIsInstance(result_bids, dict)
+
+
+class TestValenceBidModulationValues(unittest.TestCase):
+    """Numeric guarantees for the valence field modulation.
+
+    Distinct from the shape tests in TestAffectiveModulator: these assert
+    threshold-based percentage shifts, locking the contract that the
+    modulator actually moves bids in the documented direction by a
+    documented amount. Brought forward from peaceful-conjuring-castle
+    Task 3 test #5.
+    """
+
+    def setUp(self):
+        # Use a memory module: it is in APPROACH_MODULES but not THREAT_MODULES,
+        # giving a clean read on each direction without overlap.
+        self.modulator = AffectiveModulator({"valence_gain": 0.15,
+                                             "dominance_gain": 0.0})
+        self.bids = {"vision": 0.5, "audio": 0.5, "memory": 0.5, "body": 0.5}
+
+    def test_negative_valence_boosts_threat_modules(self):
+        neutral, _ = self.modulator.modulate(
+            dict(self.bids),
+            pad_state={"valence": 0.0, "arousal": 0.0, "dominance": 0.0},
+        )
+        negative, _ = self.modulator.modulate(
+            dict(self.bids),
+            pad_state={"valence": -0.8, "arousal": 0.0, "dominance": 0.0},
+        )
+        # body is in THREAT_MODULES; assert > 5% relative boost
+        rel_change = (negative["body"] - neutral["body"]) / neutral["body"]
+        self.assertGreater(
+            rel_change, 0.05,
+            msg=f"negative valence only changed body bid by {rel_change*100:.2f}%",
+        )
+
+    def test_positive_valence_boosts_approach_modules(self):
+        neutral, _ = self.modulator.modulate(
+            dict(self.bids),
+            pad_state={"valence": 0.0, "arousal": 0.0, "dominance": 0.0},
+        )
+        positive, _ = self.modulator.modulate(
+            dict(self.bids),
+            pad_state={"valence": 0.8, "arousal": 0.0, "dominance": 0.0},
+        )
+        # memory is in APPROACH_MODULES but NOT THREAT_MODULES: clean signal
+        rel_change = (positive["memory"] - neutral["memory"]) / neutral["memory"]
+        self.assertGreater(
+            rel_change, 0.05,
+            msg=f"positive valence only changed memory bid by {rel_change*100:.2f}%",
+        )
+
+    def test_neutral_valence_does_not_modulate_memory(self):
+        neutral, _ = self.modulator.modulate(
+            dict(self.bids),
+            pad_state={"valence": 0.0, "arousal": 0.0, "dominance": 0.0},
+        )
+        self.assertAlmostEqual(neutral["memory"], 0.5, places=6)
+
+    def test_explicit_None_pad_is_noop_at_workspace_level(self):
+        """When run_competition gets pad_state=None it must not modulate.
+        Locks the explicit-arg contract that replaced the magic attribute."""
+        from models.core.global_workspace import GlobalWorkspace
+        import torch
+
+        gnw = GlobalWorkspace({"ignition_threshold": 0.6, "ignition_gain": 10.0})
+        gnw.affective_modulator = AffectiveModulator()
+        threshold_before = gnw.ignition_threshold
+
+        bids = dict(self.bids)
+        gnw.run_competition(
+            inputs={}, goal_vector=torch.zeros(3),
+            bids=bids, payloads={k: {"data": k} for k in bids},
+            pad_state=None,
+        )
+        # No pad_state -> no threshold shift
+        self.assertEqual(gnw.ignition_threshold, threshold_before)
 
 
 if __name__ == "__main__":

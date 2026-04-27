@@ -91,19 +91,27 @@ class GlobalWorkspace:
         """Register a specialist cognitive module"""
         self.specialist_modules[name] = module
     
-    def run_competition(self, 
-                        inputs: dict[str, Any], 
-                        goal_vector: torch.Tensor, 
-                        bids: dict[str, float] | None = None, 
-                        payloads: dict[str, Any] | None = None) -> tuple[dict[str, Any], dict[str, float]]:
+    def run_competition(self,
+                        inputs: dict[str, Any],
+                        goal_vector: torch.Tensor,
+                        bids: dict[str, float] | None = None,
+                        payloads: dict[str, Any] | None = None,
+                        pad_state: dict[str, float] | None = None,
+                        interoceptive_state: dict[str, float] | None = None) -> tuple[dict[str, Any], dict[str, float]]:
         """
         Run GNW competition with Non-linear Ignition, Reverberation, and AKOrN Binding.
-        
+
         Args:
             inputs: Legacy payload dictionary
             goal_vector: Homeostasis target
             bids: Explicit scalar bid values to enter competition (replaces polling if provided)
             payloads: The semantic content associated with the bids
+            pad_state: Current PAD emotion {"valence", "arousal", "dominance"} for the
+                affective modulator. When None and a modulator is registered, no
+                modulation is applied (no silent failure: the caller is expected to
+                pass this explicitly when the modulator is used).
+            interoceptive_state: Optional homeostatic drives {"energy", "fatigue", "damage"}.
+                Passed through to AffectiveModulator.modulate.
         """
         if bids is None or payloads is None:
             # Legacy mode: Poll registered modules
@@ -119,19 +127,18 @@ class GlobalWorkspace:
         contents = payloads
         
         # 1b. Affective Modulation (Tier 2)
-        # If a modulator is present, apply valence field to bids and
-        # adjust ignition threshold before competition.
-        if self.affective_modulator is not None and hasattr(self.affective_modulator, 'modulate'):
-            pad_state = self.affective_modulator._current_pad_state \
-                if hasattr(self.affective_modulator, '_current_pad_state') \
-                else getattr(self, '_current_pad_state', {})
-            if pad_state:
-                intero = getattr(self.affective_modulator, '_current_interoceptive_state', None) \
-                    or getattr(self, '_current_interoceptive_state', None)
-                bids, adjusted_threshold = self.affective_modulator.modulate(
-                    bids, pad_state, interoceptive_state=intero
-                )
-                self.ignition_threshold = adjusted_threshold
+        # If a modulator is present and the caller passed pad_state, apply the
+        # valence field to bids and adjust the ignition threshold. pad_state is
+        # an explicit parameter so missing affect data fails loudly via a None
+        # check here instead of via the silent magic-attribute fallback that
+        # used to live in this block.
+        if (self.affective_modulator is not None
+                and hasattr(self.affective_modulator, 'modulate')
+                and pad_state is not None):
+            bids, adjusted_threshold = self.affective_modulator.modulate(
+                bids, pad_state, interoceptive_state=interoceptive_state,
+            )
+            self.ignition_threshold = adjusted_threshold
         
         # 2. Oscillatory Binding (AKOrN - ICLR 2025)
         # Replaces the heuristic: If Vision and Audio > 0.5, multiply by 1.2

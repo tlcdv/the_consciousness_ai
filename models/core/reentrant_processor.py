@@ -64,17 +64,22 @@ class ReentrantProcessor:
         initial_bids: dict[str, float],
         payloads: dict[str, Any],
         goal_vector: torch.Tensor,
+        pad_state: dict[str, float] | None = None,
+        interoceptive_state: dict[str, float] | None = None,
     ) -> SettleResult:
         """
         Run the reentrant convergence loop.
-        
+
         Args:
             workspace: GlobalWorkspace instance
             specialists: dict mapping module names to objects with receive_broadcast()
             initial_bids: Starting bid values from the first forward pass
             payloads: Semantic content payloads for each module
             goal_vector: Homeostasis target tensor
-            
+            pad_state: Optional PAD emotion to drive the workspace's affective
+                modulator on every cycle.
+            interoceptive_state: Optional homeostatic drives, paired with pad_state.
+
         Returns:
             SettleResult with final broadcast, convergence metrics, etc.
         """
@@ -92,7 +97,9 @@ class ReentrantProcessor:
                 inputs={},
                 goal_vector=goal_vector,
                 bids=current_bids,
-                payloads=payloads
+                payloads=payloads,
+                pad_state=pad_state,
+                interoceptive_state=interoceptive_state,
             )
             
             # --- Compute prediction error ---

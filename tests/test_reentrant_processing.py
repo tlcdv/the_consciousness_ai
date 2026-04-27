@@ -34,13 +34,14 @@ class MockWorkspace:
         
         self.state = State()
         
-    def run_competition(self, inputs, goal_vector, bids=None, payloads=None):
+    def run_competition(self, inputs, goal_vector, bids=None, payloads=None,
+                        pad_state=None, interoceptive_state=None):
         self._call_count += 1
         # Return the broadcast, potentially with slight noise each cycle
         # to simulate convergence
         noise_scale = max(0, 1.0 - self._call_count * 0.3)  # Decreasing noise
         noisy_broadcast = self._broadcast + torch.randn_like(self._broadcast) * noise_scale * 0.01
-        
+
         if self.state.is_conscious:
             return noisy_broadcast, bids or {}
         else:
