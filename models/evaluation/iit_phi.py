@@ -103,7 +103,7 @@ class IITMetrics:
         # PyPhi config
         if pyphi is not None:
             pyphi.config.PROGRESS_BARS = False
-            pyphi.config.PARALLEL_CUTS = False
+            pyphi.config.PARALLEL_CUT_EVALUATION = False
 
     def reset_tpm(self) -> None:
         """Clear binarized state history for a fresh TPM window.
@@ -235,8 +235,8 @@ class IITMetrics:
 
             network = pyphi.Network(tpm, cm=cm)
             subsystem = pyphi.Subsystem(network, current_state)
-            sia = subsystem.sia()
-            return float(sia.phi) if sia else 0.0
+            sia = pyphi.compute.sia(subsystem)
+            return float(sia.phi) if sia is not None else 0.0
 
         except Exception as e:
             self.logger.debug("Phi computation error: %s", e)
