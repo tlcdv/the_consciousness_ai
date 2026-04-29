@@ -106,6 +106,10 @@ class MemoryConsolidationManager:
         self.merge_threshold = config.get("merge_threshold", 0.9)
         self.prune_threshold = config.get("prune_threshold", 0.1)
         self.decay_rate = config.get("relevance_decay", 0.99)
+        # Legacy merge: only preserve id/vector/relevance/metadata on merge,
+        # dropping state/action/emotion fields. Reproduces the bug fixed in
+        # commit deef672 so the impact of that fix can be measured.
+        self.use_legacy_merge = config.get("use_legacy_merge", False)
         self._consolidation_count = 0
 
     def check_consolidation(self, partition: str, entries: list[dict] | None = None) -> bool:
@@ -136,7 +140,10 @@ class MemoryConsolidationManager:
             entry["relevance"] *= self.decay_rate
 
         # 2. Merge similar entries
-        entries = self._merge_similar(entries)
+        if self.use_legacy_merge:
+            entries = self._merge_similar_legacy(entries)
+        else:
+            entries = self._merge_similar(entries)
 
         # 3. Prune low-relevance
         entries = [e for e in entries if e.get("relevance", 0.0) >= self.prune_threshold]
@@ -190,6 +197,61 @@ class MemoryConsolidationManager:
                 merged_entry["vector"] = avg_vec
                 merged_entry["relevance"] = total_relevance
                 merged_entry["merged_count"] = len(group_indices)
+                result.append(merged_entry)
+
+        return result
+
+    def _merge_similar_legacy(self, entries: list[dict]) -> list[dict]:
+        """Pre-deef672 _merge_similar: only preserves id/vector/relevance/metadata.
+
+        Other fields (state, action, reward, emotion_values, ...) are dropped
+        from the merged entry, which broke action_core.replay_update because
+        it expected those fields. Used only under the ablate-consolidation-fix
+        flag to measure the impact of the deef672 fix.
+        """
+        if len(entries) < 2:
+            return entries
+
+        vectors = []
+        for e in entries:
+            v = e["vector"]
+            if isinstance(v, torch.Tensor):
+                v = v.detach().cpu().numpy().flatten()
+            else:
+                v = np.array(v).flatten()
+            vectors.append(v)
+
+        norms = [np.linalg.norm(v) for v in vectors]
+        normed = [v / max(n, 1e-8) for v, n in zip(vectors, norms)]
+
+        merged_mask = [False] * len(entries)
+        result = []
+
+        for i in range(len(entries)):
+            if merged_mask[i]:
+                continue
+            group_indices = [i]
+            for j in range(i + 1, len(entries)):
+                if merged_mask[j]:
+                    continue
+                sim = float(np.dot(normed[i], normed[j]))
+                if sim > self.merge_threshold:
+                    group_indices.append(j)
+                    merged_mask[j] = True
+
+            if len(group_indices) == 1:
+                result.append(entries[i])
+            else:
+                avg_vec = np.mean([vectors[idx] for idx in group_indices], axis=0)
+                total_relevance = sum(entries[idx].get("relevance", 1.0) for idx in group_indices)
+                best_idx = max(group_indices, key=lambda idx: entries[idx].get("relevance", 1.0))
+                merged_entry = {
+                    "id": entries[best_idx].get("id"),
+                    "vector": avg_vec,
+                    "relevance": total_relevance,
+                    "metadata": entries[best_idx].get("metadata"),
+                    "merged_count": len(group_indices),
+                }
                 result.append(merged_entry)
 
         return result

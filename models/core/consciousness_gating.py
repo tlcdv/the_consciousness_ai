@@ -57,12 +57,14 @@ class ConsciousnessGate(nn.Module):
             self.stability_threshold = gating.get('stability_threshold', 0.6)
             self.base_adaptation_rate = gating.get('base_adaptation_rate', 0.01)
             self.hidden_size = config.get('hidden_size', 128)
+            self.ablate_feedback = config.get('ablate_feedback', False)
         else:
             gating = getattr(config, 'gating', config)
             self.attention_threshold = getattr(gating, 'attention_threshold', 0.5)
             self.stability_threshold = getattr(gating, 'stability_threshold', 0.6)
             self.base_adaptation_rate = getattr(gating, 'base_adaptation_rate', 0.01)
             self.hidden_size = getattr(config, 'hidden_size', 128)
+            self.ablate_feedback = getattr(config, 'ablate_feedback', False)
 
         # --- Causal gate networks ---
         # Each network takes enriched input PLUS the output of its causal parent.
@@ -139,8 +141,11 @@ class ConsciousnessGate(nn.Module):
         differentiable [B, 5] tensor (attention, stability, adaptation,
         coherence, confidence) that preserves gradients for phi computation.
         """
-        # Temporal feedback from previous step's gate values
-        if self.prev_gate_values is not None:
+        # Temporal feedback from previous step's gate values.
+        # Skipped under the ablate_feedback flag so the broadband feedback
+        # projection's contribution to gate dynamics can be measured. The
+        # narrower confidence -> attention path below stays in either case.
+        if self.prev_gate_values is not None and not self.ablate_feedback:
             feedback = self.gate_feedback(self.prev_gate_values.to(input_state.device))
             enriched = input_state + feedback
         else:

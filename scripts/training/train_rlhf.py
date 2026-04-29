@@ -80,17 +80,29 @@ def build_config(args):
         "enable_audio": getattr(args, "enable_audio", False),
         "audio_sample_rate": 16000,
         "audio_num_bands": 64,
+        # Ablation flags (off by default). Each reverts exactly one Phase 3
+        # or 2026-04-27 change so the cause of any regression can be isolated.
+        "ablate_memory_replay": getattr(args, "ablate_memory_replay", False),
+        "ablate_consolidation_fix": getattr(args, "ablate_consolidation_fix", False),
+        "ablate_rnd_zero_on_reward": getattr(args, "ablate_rnd_zero_on_reward", False),
+        "ablate_gate_diversity": getattr(args, "ablate_gate_diversity", False),
+        "ablate_gate_feedback": getattr(args, "ablate_gate_feedback", False),
+        "ablate_pad_loop": getattr(args, "ablate_pad_loop", False),
+        "ablate_bptt": getattr(args, "ablate_bptt", False),
     }
 
 
 def init_components(config):
     device = config["device"]
 
-    tectum = SensoryTectum({
+    tectum_config = {
         "tectum_feature_dim": config["tectum_feature_dim"],
         "tectum_grid_size": config["tectum_grid_size"],
         "workspace_dim": config["workspace_dim"],
-    }).to(device)
+    }
+    if config.get("ablate_bptt"):
+        tectum_config["bptt_window"] = 1
+    tectum = SensoryTectum(tectum_config).to(device)
 
     workspace = GlobalWorkspace(config["workspace"])
 
@@ -122,6 +134,7 @@ def init_components(config):
     # causal nodes for IIT Phi computation and EI measurement.
     gate = ConsciousnessGate({
         "hidden_size": config["workspace_dim"],
+        "ablate_feedback": config.get("ablate_gate_feedback", False),
         "gating": {
             "attention_threshold": 0.5,
             "stability_threshold": 0.6,
@@ -174,6 +187,7 @@ def init_components(config):
         "merge_threshold": 0.9,
         "prune_threshold": 0.05,
         "relevance_decay": 0.99,
+        "use_legacy_merge": config.get("ablate_consolidation_fix", False),
     })
 
     return (tectum, workspace, reentrant, modulator, emotion_shaper, memory,
@@ -371,14 +385,19 @@ def run_episode(episode_idx, config, tectum, workspace, reentrant,
         specialists = {"vision": tectum}
         if auditory_specialist is not None and audio_bid_raw > 0.0:
             specialists["audio"] = auditory_specialist
+        # Ablation: pass None for both PAD signals so the workspace's
+        # affective modulator and reentrant cycles run without embodiment
+        # input. Tests whether the embodiment-affect loop wired in 2026-04-27
+        # has measurable effect on phi/EI/reward dynamics.
+        ablate_pad = config.get("ablate_pad_loop", False)
         settle_result = reentrant.settle(
             workspace=workspace,
             specialists=specialists,
             initial_bids=raw_bids,
             payloads=payloads,
             goal_vector=torch.tensor([1.0, -1.0, 1.0], device=device),
-            pad_state=emotion,
-            interoceptive_state=interoceptive_state,
+            pad_state=None if ablate_pad else emotion,
+            interoceptive_state=None if ablate_pad else interoceptive_state,
         )
 
         broadcast = settle_result.broadcast_content
@@ -496,7 +515,12 @@ def run_episode(episode_idx, config, tectum, workspace, reentrant,
         # Penalize gate outputs near 0.5 (encourage decisiveness).
         # Uses the differentiable gate_values_tensor from the forward pass
         # (preserves causal structure, no need to re-forward individual nets).
-        if gate is not None and gate_values_tensor is not None and step % 5 == 0:
+        # Ablation: skip the loss entirely so the gate is shaped only by
+        # task gradients (reward predictor + RND), testing whether the
+        # diversity prior helps or hurts emergent gate dynamics.
+        if (gate is not None and gate_values_tensor is not None
+                and step % 5 == 0
+                and not config.get("ablate_gate_diversity", False)):
             gate_diversity_loss = -torch.log(
                 torch.abs(gate_values_tensor - 0.5).clamp(min=0.01)
             ).mean()
@@ -528,7 +552,10 @@ def run_episode(episode_idx, config, tectum, workspace, reentrant,
                 rnd_optimizer.step()
             # Zero curiosity when agent receives positive external reward so
             # exploration drive doesn't pull agent away from rewarding states.
-            if env_reward > 0:
+            # Ablation: let RND fire even on rewarding states, restoring the
+            # pre-eeaec28 behavior so the impact of the suppression can be
+            # measured.
+            if env_reward > 0 and not config.get("ablate_rnd_zero_on_reward", False):
                 curiosity_score = 0.0
 
         # Additive intrinsic bonuses applied to env_reward. These go into
@@ -661,6 +688,23 @@ def main():
                         help="Compute EI every N episodes (0 to disable)")
     parser.add_argument("--enable-audio", action="store_true",
                         help="Enable cochlear auditory pipeline")
+
+    # Ablation flags. Each reverts exactly one Phase 3 or 2026-04-27 change.
+    parser.add_argument("--ablate-memory-replay", action="store_true",
+                        help="Skip the memory consolidation + replay block")
+    parser.add_argument("--ablate-consolidation-fix", action="store_true",
+                        help="Use legacy _merge_similar that drops state/action/emotion fields")
+    parser.add_argument("--ablate-rnd-zero-on-reward", action="store_true",
+                        help="Let RND curiosity fire even when env_reward > 0")
+    parser.add_argument("--ablate-gate-diversity", action="store_true",
+                        help="Skip the -log(|g-0.5|) gate diversity loss")
+    parser.add_argument("--ablate-gate-feedback", action="store_true",
+                        help="Zero the gate_feedback projection in ConsciousnessGate.forward")
+    parser.add_argument("--ablate-pad-loop", action="store_true",
+                        help="Pass None for pad_state and interoceptive_state into reentrant.settle")
+    parser.add_argument("--ablate-bptt", action="store_true",
+                        help="Set tectum bptt_window=1 (one-step encoder, no truncated BPTT)")
+
     args = parser.parse_args()
 
     config = build_config(args)
@@ -699,6 +743,12 @@ def main():
 
     logger.info(f"Starting training: {args.episodes} episodes, {args.max_steps} max steps each")
     logger.info(f"Metrics logging to: {args.log_dir}")
+    active_ablations = [k for k in (
+        "ablate_memory_replay", "ablate_consolidation_fix",
+        "ablate_rnd_zero_on_reward", "ablate_gate_diversity",
+        "ablate_gate_feedback", "ablate_pad_loop", "ablate_bptt",
+    ) if config.get(k)]
+    logger.info(f"Active ablations: {active_ablations if active_ablations else 'none'}")
 
     rewards_history = []
     global_step = 0
@@ -720,26 +770,31 @@ def main():
         )
         global_step += ep_steps
 
-        # --- Memory consolidation: decay relevance, merge similar, prune ---
-        if memory is not None and memory.recent_experiences:
-            for exp in memory.recent_experiences:
-                exp.setdefault("id", f"exp_{id(exp)}")
-                exp.setdefault("relevance", max(0.2, exp.get("priority", 1.0)))
-            memory.recent_experiences = consolidation_mgr.consolidate(
-                memory.recent_experiences
-            )
+        # Ablation: skip consolidation + replay entirely so the policy only
+        # learns from the online action_core.update_policy() calls. Tests
+        # whether the memory replay loop is load-bearing for reward and
+        # phi dynamics.
+        if not config.get("ablate_memory_replay", False):
+            # --- Memory consolidation: decay relevance, merge similar, prune ---
+            if memory is not None and memory.recent_experiences:
+                for exp in memory.recent_experiences:
+                    exp.setdefault("id", f"exp_{id(exp)}")
+                    exp.setdefault("relevance", max(0.2, exp.get("priority", 1.0)))
+                memory.recent_experiences = consolidation_mgr.consolidate(
+                    memory.recent_experiences
+                )
 
-        # --- Memory replay: phi-prioritized policy update every 10 episodes ---
-        if (ep + 1) % 10 == 0 and memory is not None and memory.recent_experiences:
-            batch = consolidation_mgr.get_replay_batch(
-                memory.recent_experiences, k=16
-            )
-            if batch:
-                replay_metrics = action_core.replay_update(batch)
-                if replay_metrics:
-                    logger.info(
-                        f"  Replay update: loss={replay_metrics.get('replay_total_loss', 0):.4f}"
-                    )
+            # --- Memory replay: phi-prioritized policy update every 10 episodes ---
+            if (ep + 1) % 10 == 0 and memory is not None and memory.recent_experiences:
+                batch = consolidation_mgr.get_replay_batch(
+                    memory.recent_experiences, k=16
+                )
+                if batch:
+                    replay_metrics = action_core.replay_update(batch)
+                    if replay_metrics:
+                        logger.info(
+                            f"  Replay update: loss={replay_metrics.get('replay_total_loss', 0):.4f}"
+                        )
 
         rewards_history.append(ep_reward)
         avg_last_5 = np.mean(rewards_history[-5:])
