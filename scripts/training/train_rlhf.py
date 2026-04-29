@@ -400,11 +400,33 @@ def run_episode(episode_idx, config, tectum, workspace, reentrant,
             interoceptive_state=None if ablate_pad else interoceptive_state,
         )
 
-        broadcast = settle_result.broadcast_content
+        broadcast_content = settle_result.broadcast_content
         is_conscious = settle_result.is_conscious
         sync_r = getattr(workspace, 'last_sync_R', 0.0)
 
-        if not isinstance(broadcast, torch.Tensor):
+        # GlobalWorkspace.run_competition returns broadcast_content as a dict
+        # built from each winning module's payload (see global_workspace.py
+        # lines 205-219). Vision payload is {"tensor": tectum_content,
+        # "source": "tectum", "capsule_poses": ..., "capsule_activities": ...},
+        # so the actual content tensor lives under the "tensor" key.
+        # Subconscious cycles return {} -> zero broadcast.
+        #
+        # Detach: the extracted tensor still carries gradient history back into
+        # the RSSM via tectum_content. Without detach, the tectum optimizer's
+        # in-place parameter step (every 5 steps) invalidates the BPTT graph
+        # for the gate diversity backward that runs after it, raising
+        # "variable needed for gradient computation has been modified by an
+        # inplace operation". The gate is trained by its own diversity loss
+        # (operating on gate_values_tensor, which has its own clean graph
+        # rooted at gate.parameters()), and the reward predictor trains the
+        # tectum directly via tectum_content. So the broadcast does not need
+        # to carry gradient into downstream consumers.
+        if isinstance(broadcast_content, torch.Tensor):
+            broadcast = broadcast_content.detach()
+        elif (isinstance(broadcast_content, dict)
+              and isinstance(broadcast_content.get("tensor"), torch.Tensor)):
+            broadcast = broadcast_content["tensor"].detach()
+        else:
             broadcast = torch.zeros(1, config["workspace_dim"], device=device)
 
         broadcast_mag = float(broadcast.norm().item())

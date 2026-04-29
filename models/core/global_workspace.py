@@ -193,9 +193,13 @@ class GlobalWorkspace:
             else:
                 phi = self.iit_metrics.compute_phi_proxy(workspace_tensor)
 
-            # Binding increases information integration
-            phi += (sync_order_parameter * 0.1)
-
+            # Phi is reported as the actual IIT result. The previous
+            # `phi += sync_order_parameter * 0.1` line was the duplicate
+            # of the train_rlhf.py:402 identity that 2026-04-27 commit
+            # 06f96db removed; it survived here, polluting state.phi_value
+            # whenever anything read the workspace state directly. Phi and
+            # sync_R are independent metrics; their correlation is a real
+            # prediction to test, not a built-in identity.
             self.state.phi_value = phi
             
             # Map to Qualia (Phenomenology)
