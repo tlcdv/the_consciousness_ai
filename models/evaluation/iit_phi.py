@@ -118,12 +118,25 @@ class IITMetrics:
             pyphi.config.PARALLEL_CUT_EVALUATION = False
 
     def reset_tpm(self) -> None:
-        """Clear binarized state history for a fresh TPM window.
+        """No-op kept for backward compatibility.
 
-        Call at episode boundaries so phi reflects within-episode dynamics
-        instead of averaging across episodes.
+        Previously cleared state_history at episode boundaries. That made
+        the empirical TPM rebuild from <=5 transitions every episode start,
+        with Laplace alpha=0.1 dominating the 27 unvisited rows of the
+        32-state TPM. pyphi then returned phi values <5e-7 (truncated to
+        0 by 6-decimal CSV logging) for ~99% of calls.
+
+        Exponential decay (tpm_decay=0.995) on the rolling window already
+        handles cross-episode staleness: a transition from 200 steps ago
+        contributes 0.995^200 = 0.367 of its original weight, and one from
+        500 steps ago drops to 0.082. Keeping state_history rolling yields
+        a TPM with ~6-11 reliably-visited rows instead of 1-3 sparse rows.
+
+        Diagnostic chain in scripts/analysis/diagnose_phi_zero_v[2,3,4].py
+        confirmed the cause and verified pyphi runs cleanly on the rolling
+        TPM.
         """
-        self.state_history.clear()
+        return
 
     def _gate_state_to_raw(self, gate_state) -> np.ndarray:
         """Extract raw continuous values from a GatingState dataclass."""

@@ -123,9 +123,13 @@ class ConsciousnessMetricsLogger:
         """Log a single training step."""
         step = metrics.global_step
 
-        # CSV
+        # CSV. phi uses scientific notation because realized values can be
+        # below 5e-7 (which 6-decimal float would truncate to 0.000000).
+        # The pre-fix ablation runs all logged phi=0.0 not because pyphi
+        # returned zero but because the values were sub-microsecond and
+        # got rounded away.
         self._csv_writer.writerow([
-            step, f"{metrics.phi:.6f}", f"{metrics.sync_r:.6f}",
+            step, f"{metrics.phi:.6e}", f"{metrics.sync_r:.6f}",
             int(metrics.is_conscious), f"{metrics.reward:.6f}",
             f"{metrics.broadcast_mag:.6f}",
             f"{metrics.valence:.4f}", f"{metrics.arousal:.4f}",
@@ -170,7 +174,7 @@ class ConsciousnessMetricsLogger:
         """Log episode-level summary."""
         # CSV
         self._ep_csv_writer.writerow([
-            episode, f"{total_reward:.4f}", steps, f"{avg_phi:.6f}",
+            episode, f"{total_reward:.4f}", steps, f"{avg_phi:.6e}",
             f"{consciousness_ratio:.4f}",
             f"{ei_gates:.6f}", f"{ei_workspace:.6f}", f"{ei_ratio:.4f}",
         ])
