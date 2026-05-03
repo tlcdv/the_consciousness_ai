@@ -142,6 +142,14 @@ def init_components(config):
         },
     }).to(device)
 
+    # Attach the trained gate to the workspace so workspace.run_competition
+    # uses it for phi instead of falling back to compute_phi_proxy. Without
+    # this, the proxy path writes 4-tuple states (topk(4)) into the shared
+    # iit_metrics.state_history alongside the gate's 5-tuple states. The
+    # mismatched arities make build_empirical_tpm skip ~67% of transitions,
+    # leaving the TPM too sparse for pyphi to find any structure (phi=0).
+    workspace.consciousness_gate = gate
+
     # Self-model: tracks body schema, interoceptive state, capability model.
     # Provides internal drive signals (energy/fatigue/damage) that feed the
     # affective modulator, closing the embodiment-affect loop.

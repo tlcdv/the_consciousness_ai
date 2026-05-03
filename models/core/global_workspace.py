@@ -177,8 +177,16 @@ class GlobalWorkspace:
             # Create Abstract Activation Tensor
             workspace_tensor = self._bids_to_tensor(bound_bids)
 
-            # Calculate Phi from ConsciousnessGate causal states (preferred)
-            # or fall back to proxy if no gate is attached
+            # Calculate Phi from ConsciousnessGate causal states. The legacy
+            # compute_phi_proxy fallback was REMOVED because it called
+            # _extract_subsystem_state which writes 4-tuple states (topk(4))
+            # into iit_metrics.state_history, while compute_phi_from_gate_state
+            # writes 5-tuple states. The mixed history then has rows of two
+            # different arities; build_empirical_tpm skips the 4-tuples via
+            # `if len(state_t) != num_nodes: continue`, leaving the TPM with
+            # only ~33 transitions out of 200, and pyphi correctly returned 0.
+            # If no gate is attached, phi is reported as 0.0 and no state is
+            # written to history. Attach a ConsciousnessGate to get real phi.
             if self.consciousness_gate is not None:
                 gate_input = workspace_tensor.unsqueeze(0) if workspace_tensor.dim() == 1 else workspace_tensor
                 # Pad or truncate to gate hidden_size
@@ -191,7 +199,7 @@ class GlobalWorkspace:
                 phi_result = self.iit_metrics.compute_phi_from_gate_state(gate_state)
                 phi = phi_result.phi
             else:
-                phi = self.iit_metrics.compute_phi_proxy(workspace_tensor)
+                phi = 0.0
 
             # Phi is reported as the actual IIT result. The previous
             # `phi += sync_order_parameter * 0.1` line was the duplicate
