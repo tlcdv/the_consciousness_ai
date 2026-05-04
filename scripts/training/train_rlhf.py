@@ -89,6 +89,11 @@ def build_config(args):
         "ablate_gate_feedback": getattr(args, "ablate_gate_feedback", False),
         "ablate_pad_loop": getattr(args, "ablate_pad_loop", False),
         "ablate_bptt": getattr(args, "ablate_bptt", False),
+        # pyphi sampling cadence: compute phi every Nth step instead of
+        # every step. State history still accumulates every step so the
+        # TPM stays warm. Cuts pyphi MIP calls N-fold to avoid the ~91k
+        # call segfault threshold observed in pyphi 1.x Cython internals.
+        "phi_sample_every": getattr(args, "phi_sample_every", 5),
     }
 
 
@@ -142,13 +147,17 @@ def init_components(config):
         },
     }).to(device)
 
-    # Attach the trained gate to the workspace so workspace.run_competition
-    # uses it for phi instead of falling back to compute_phi_proxy. Without
-    # this, the proxy path writes 4-tuple states (topk(4)) into the shared
-    # iit_metrics.state_history alongside the gate's 5-tuple states. The
-    # mismatched arities make build_empirical_tpm skip ~67% of transitions,
-    # leaving the TPM too sparse for pyphi to find any structure (phi=0).
-    workspace.consciousness_gate = gate
+    # workspace.consciousness_gate is intentionally NOT attached. With the
+    # gate attached, workspace.run_competition() runs pyphi on every
+    # reentrant cycle (~5x per training step), and over a 200-episode run
+    # that hits the ~91k-call segfault threshold in pyphi's Cython
+    # internals around episode 76. The 4-tuple-pollution bug that the
+    # earlier attachment was meant to prevent is no longer reachable: the
+    # legacy compute_phi_proxy fallback in global_workspace.py was removed
+    # in commit 8a322f9, so an unattached gate now means phi=0 with no
+    # state_history write (instead of the proxy writing 4-tuples). Phi is
+    # computed once per step in run_episode below, and sampled every Nth
+    # step via --phi-sample-every (see argparse).
 
     # Self-model: tracks body schema, interoceptive state, capability model.
     # Provides internal drive signals (energy/fatigue/damage) that feed the
@@ -281,6 +290,11 @@ def run_episode(episode_idx, config, tectum, workspace, reentrant,
     prev_action = None
     prev_phi = 0.0
     prev_env_reward = 0.0  # actual env reward (not shaped) for emotion delta
+    # Phi-sampling state: pyphi runs only every Nth step; in between we
+    # carry forward the last sampled value so logging stays well-defined.
+    # phi_method is set explicitly in both branches ("pyphi"/"skipped") so
+    # it does not need to be carried.
+    last_phi = 0.0
 
     for step in range(max_steps):
         global_step = global_step_offset + step
@@ -452,14 +466,27 @@ def run_episode(episode_idx, config, tectum, workspace, reentrant,
                 )
             gate_input_batched = gate_input.unsqueeze(0)
             _, gate_state_obj = gate(gate_input_batched)
-            phi_result = workspace.iit_metrics.compute_phi_from_gate_state(gate_state_obj)
-            # Report phi as the actual IIT result, not phi + sync_R * 0.1.
-            # The old additive term made phi tautologically correlate with
-            # sync_R (Phi-1 r=1.000 was a trivial mathematical identity, not
-            # a scientific finding). phi and sync_R are now independent
-            # metrics; their correlation is a real prediction to test.
-            phi = phi_result.phi
-            phi_method = phi_result.method
+            # Sampled pyphi: run the expensive Big Phi computation every
+            # Nth step only. The TPM still updates every step via
+            # update_from_gate_state. On non-sampled steps phi carries
+            # forward; phi_method = "skipped" marks the row so analysis
+            # can filter. See plan i-need-you-first-goofy-church for
+            # the segfault-threshold rationale.
+            sample_every = max(1, config.get("phi_sample_every", 5))
+            if step % sample_every == 0:
+                phi_result = workspace.iit_metrics.compute_phi_from_gate_state(gate_state_obj)
+                # Report phi as the actual IIT result, not phi + sync_R * 0.1.
+                # The old additive term made phi tautologically correlate
+                # with sync_R (Phi-1 r=1.000 was a trivial identity, not a
+                # scientific finding). Phi and sync_R are now independent.
+                phi = phi_result.phi
+                phi_method = phi_result.method
+                last_phi = phi
+            else:
+                # Keep TPM warm without paying the pyphi MIP cost.
+                workspace.iit_metrics.update_from_gate_state(gate_state_obj)
+                phi = last_phi
+                phi_method = "skipped"
             # Use the differentiable tensor directly from the gate (preserves grads)
             gate_values_tensor = gate.last_gate_values_tensor
         else:
@@ -734,6 +761,11 @@ def main():
                         help="Pass None for pad_state and interoceptive_state into reentrant.settle")
     parser.add_argument("--ablate-bptt", action="store_true",
                         help="Set tectum bptt_window=1 (one-step encoder, no truncated BPTT)")
+    parser.add_argument("--phi-sample-every", type=int, default=5,
+                        help="Run pyphi only every Nth step. State history "
+                             "still updated every step so the TPM stays warm. "
+                             "Cuts pyphi MIP calls N-fold to avoid the ~91k-call "
+                             "segfault threshold in pyphi 1.x. Default 5.")
 
     args = parser.parse_args()
 
