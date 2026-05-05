@@ -2,7 +2,7 @@
 
 [![License](https://img.shields.io/badge/License-Non--Commercial-blue.svg)](LICENSE.md)
 [![Python](https://img.shields.io/badge/Python-3.10%2B-blue)](https://www.python.org/)
-[![Tests](https://img.shields.io/badge/Tests-529%20passing-brightgreen)]()
+[![Tests](https://img.shields.io/badge/Tests-565%20passing-brightgreen)]()
 
 **The Consciousness AI** is a research framework investigating the emergence of synthetic awareness. Unlike traditional AI that mimics intelligent output, this system generates behavior through an internal struggle for **Emotional Homeostasis** and **Integrated Information**.
 
@@ -121,6 +121,10 @@ python -m scripts.training.train_rlhf
 # With custom parameters
 python -m scripts.training.train_rlhf --episodes 50 --max-steps 300 --lr 1e-3
 
+# Long runs: sample pyphi every 5th step to stay under the ~91k-call segfault threshold
+python -m scripts.training.train_rlhf --episodes 200 --max-steps 200 \
+  --ablate-gate-diversity --phi-sample-every 5
+
 # DMTS environment (consciousness-demanding)
 python -m scripts.training.train_rlhf --env dmts --episodes 500 --max-steps 500
 
@@ -149,7 +153,7 @@ This runs the full cognitive loop: DINOv2 retinotopic encoding -> cochlear audit
 pytest tests/ -v
 ```
 
-529 tests pass, covering oscillatory binding, capsule routing, reentrant processing, inverse effectiveness fusion, topographic loss, affective modulation, ethics compliance, effective information, IIT Phi with causal gate states, Brian2 biological validation, cochlear auditory pipeline (gammatone, hair cell, tonotopic, spatial, affect extraction), environment audio synthesis, DMTS/WCST consciousness demanding environments, DQN baseline, memory consolidation, semantic pathway, and full pipeline integration.
+565 tests pass, covering oscillatory binding, capsule routing, reentrant processing, inverse effectiveness fusion, topographic loss, affective modulation, ethics compliance, effective information, IIT Phi with causal gate states, Brian2 biological validation, cochlear auditory pipeline (gammatone, hair cell, tonotopic, spatial, affect extraction), environment audio synthesis, DMTS/WCST consciousness demanding environments, DQN baseline, memory consolidation, semantic pathway, and full pipeline integration.
 
 ### 4. AKOrN Binding Demo
 
@@ -194,7 +198,7 @@ the_consciousness_ai/
 │   ├── analysis/           # Analysis and comparison scripts
 │   └── demos/              # AKOrN binding visualization
 ├── configs/                # YAML and Python configuration files
-├── tests/                  # 529 passing tests
+├── tests/                  # 565 passing tests
 ├── unity_scripts/          # C# scripts for Unity ML-Agents integration
 ├── docs/                   # Research docs, theory review, architecture deep dives
 └── requirements.txt
