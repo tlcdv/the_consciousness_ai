@@ -105,6 +105,11 @@ class IITMetrics:
         # Uses tpm_window (not history_len) so the TPM reflects recent dynamics
         # instead of converging to a fixed point from all-time averages.
         self.state_history = deque(maxlen=tpm_window)
+        # Detached continuous gate values for the temporal variance loss in
+        # train_rlhf.py. Mirrors the rolling-window pattern of state_history
+        # (no per-episode reset) so the diversity pressure and the TPM track
+        # the same window of gate dynamics.
+        self._gate_buffer: deque = deque(maxlen=32)
 
         # Adaptive thresholds (updated from running medians)
         self._thresholds = np.array([0.5, 0.5, 0.01, 0.5, 0.5])
@@ -161,6 +166,16 @@ class IITMetrics:
     def _binarize(self, raw: np.ndarray) -> tuple[int, ...]:
         """Binarize raw gate values using adaptive thresholds."""
         return tuple(int(v > t) for v, t in zip(raw, self._thresholds))
+
+    def push_gate_values(self, gate_values_tensor: torch.Tensor) -> None:
+        """Append detached continuous gate values to the rolling buffer.
+
+        Used by the temporal variance loss in scripts/training/train_rlhf.py
+        as the historical-mean target. The current step's live tensor stays
+        outside the buffer (only its detached value is stored) so gradient
+        only flows through the current step, not through past steps.
+        """
+        self._gate_buffer.append(gate_values_tensor.detach().squeeze(0).cpu())
 
     def update_from_gate_state(self, gate_state) -> tuple[int, ...]:
         """

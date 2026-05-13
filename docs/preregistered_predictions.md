@@ -135,3 +135,65 @@ After 5000 training episodes:
 3. **Phi confirmed but EI fails:** Macro-level causal power is not emerging despite integration. Investigate whether the discretization is too coarse or whether the workspace is degenerate.
 4. **Both fail:** The architecture does not produce measurable emergence or integration. Fundamental redesign needed (different binding mechanism, different gate structure, or abandon the strong emergence claim and reframe as weak emergence).
 5. **Insight predictions fail while EI/Phi confirm:** Emergence is present but not functionally useful. Add a mechanism that routes high-Phi states preferentially to action selection.
+
+---
+
+## 6. First Honest Baseline (added 2026-05-13)
+
+The 2026-04-14 Phase 3 result of **Phi-1 PASS at r=1.000 is RETRACTED**. That
+correlation was an algebraic tautology: in `scripts/training/train_rlhf.py`
+prior to commit `06f96db` the reported phi value was literally
+`phi_result.phi + sync_R * 0.1`. With `phi_result.phi` pinned at 0 by other
+defects in the pipeline (see CLAUDE.md 2026-04-27 session log), the reported
+"phi" was numerically equal to `sync_R / 10`, so any Pearson correlation
+with `sync_R` was guaranteed to be 1.000. This was a measurement artifact,
+not a finding.
+
+### First measurement under the fixed pipeline
+
+Source: `runs/baseline_sampled_200` (200 episodes × 200 steps, `dark_room`,
+`--ablate-gate-diversity --phi-sample-every 5`), reported via
+`scripts/analysis/analyze_experiment.py` on 2026-05-05.
+
+| Prediction | Verdict | Result |
+|------------|---------|--------|
+| EI-1 (emergence onset 500-2000) | FAIL | First emergence at episode 49 |
+| EI-2 (ratio stabilization) | INCONCLUSIVE | Insufficient data |
+| EI-3 (reward correlation r > 0.3) | INCONCLUSIVE | Insufficient data |
+| Phi-1 (r > 0.4 with sync_R) | **FAIL** | **r = -0.105, p = 0.000** |
+| Phi-2 (zombie mode drop > 40%) | INCONCLUSIVE | Insufficient data |
+| Phi-3 (reentrant monotonicity) | INCONCLUSIVE | Not testable from logged columns |
+| IM-1 (phi spike at insight) | FAIL | Insight phi mean = 1e-04, threshold = 5e-04 |
+| IM-2 (EI frequency at insight) | INCONCLUSIVE | Not testable from logged columns |
+| IM-3 (R > 0.7 at insight) | FAIL | 0.0% of insights have R > 0.7 |
+
+**Summary: 0 PASS, 4 FAIL, 5 INCONCLUSIVE.**
+
+Phi mean = 1.0e-04, std = 3.0e-04 over 487 unique values. By episode 200 phi
+has converged to a fixed point of ~6.5e-05. The INCONCLUSIVE verdicts are
+all downstream of insufficient phi variance — the IIT pipeline is producing
+measurable but very small phi values.
+
+### Failed entropy experiment (2026-05-13)
+
+Hypothesis: augment the per-neuron `-log(|g-0.5|)` loss with a temporal
+diversity term to prevent gate state collapse. Two designs tested at
+5-episode dark_room smoke scale:
+
+| condition (5 ep × 50 steps) | phi nunique | phi std |
+|-----------------------------|-------------|---------|
+| Per-neuron only (head)      | 49-50       | 2.2e-04 - 8.1e-04 |
+| Per-neuron + variance loss  | 42          | 1.9e-04 |
+| Per-neuron + firing-rate entropy | 42     | 3.3e-04 |
+
+Both new terms reduced diversity by ~15% through destructive interference
+with the binarization push. **Code reverted**. The dormant infrastructure
+(`IITMetrics._gate_buffer`, `push_gate_values()`, `--ablate-gate-entropy`
+flag) is preserved for future experimentation.
+
+### Open empirical question
+
+Whether any architectural ablation moves Phi-1 toward r > 0 is the question
+for the peaceful-castle ablation campaign (Runs A, C, D, E, F, G in the next
+session's plan). The original predictions remain unchanged — no thresholds
+are revised post hoc, per the pre-registration commitment in section 5.

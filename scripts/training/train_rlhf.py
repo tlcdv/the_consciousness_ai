@@ -86,6 +86,7 @@ def build_config(args):
         "ablate_consolidation_fix": getattr(args, "ablate_consolidation_fix", False),
         "ablate_rnd_zero_on_reward": getattr(args, "ablate_rnd_zero_on_reward", False),
         "ablate_gate_diversity": getattr(args, "ablate_gate_diversity", False),
+        "ablate_gate_entropy": getattr(args, "ablate_gate_entropy", False),
         "ablate_gate_feedback": getattr(args, "ablate_gate_feedback", False),
         "ablate_pad_loop": getattr(args, "ablate_pad_loop", False),
         "ablate_bptt": getattr(args, "ablate_bptt", False),
@@ -578,6 +579,29 @@ def run_episode(episode_idx, config, tectum, workspace, reentrant,
         if (gate is not None and gate_values_tensor is not None
                 and step % 5 == 0
                 and not config.get("ablate_gate_diversity", False)):
+            # Per-neuron binarization (weight 0.05). Pushes each gate output
+            # toward {0, 1}. Necessary because IIT operates on binary states
+            # and the empirical TPM needs sharp transitions; a gate that
+            # stays near 0.5 produces low-entropy binarization with no
+            # useful structure.
+            #
+            # 2026-05-13 attempt to AUGMENT this with a temporal diversity
+            # term failed smoke testing. Two designs were tried, both at
+            # 5-episode dark_room scale:
+            #   1. -var(current vs buffer mean): 42 unique vs 49 ablated.
+            #   2. Per-neuron firing-rate entropy: 42 unique vs 50 ablated.
+            # Both designs reduce diversity by ~15% at smoke scale because
+            # they fight the binarization push. Reverting to per-neuron
+            # alone. The IITMetrics._gate_buffer infrastructure is kept in
+            # iit_phi.py for future experiments. The --ablate-gate-entropy
+            # CLI flag is also kept (no-op currently) so the ablation
+            # campaign command lines stay forward-compatible.
+            #
+            # The 200-episode phi collapse to 6.5e-05 observed in
+            # runs/baseline_sampled_200 must be caused by something other
+            # than the loss design. The ablation campaign will test which
+            # of {memory replay, consolidation fix, gate feedback, RND
+            # zero-on-reward} is the load-bearing component.
             gate_diversity_loss = -torch.log(
                 torch.abs(gate_values_tensor - 0.5).clamp(min=0.01)
             ).mean()
@@ -754,7 +778,12 @@ def main():
     parser.add_argument("--ablate-rnd-zero-on-reward", action="store_true",
                         help="Let RND curiosity fire even when env_reward > 0")
     parser.add_argument("--ablate-gate-diversity", action="store_true",
-                        help="Skip the -log(|g-0.5|) gate diversity loss")
+                        help="Skip ALL gate diversity losses (binarization + variance)")
+    parser.add_argument("--ablate-gate-entropy", action="store_true",
+                        help="Skip only the temporal variance term, keep the "
+                             "per-neuron binarization push. Use to isolate "
+                             "the contribution of the new variance loss "
+                             "from the existing -log(|g-0.5|) term.")
     parser.add_argument("--ablate-gate-feedback", action="store_true",
                         help="Zero the gate_feedback projection in ConsciousnessGate.forward")
     parser.add_argument("--ablate-pad-loop", action="store_true",

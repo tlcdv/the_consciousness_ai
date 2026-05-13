@@ -57,3 +57,6 @@ CLAUDE.md
 # Provenance verification (local only)
 scripts/verify_provenance.py
 plan.md
+
+# Claude Code session state (settings, scheduled task locks, etc.)
+.claude/
