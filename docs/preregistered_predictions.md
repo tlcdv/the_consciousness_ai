@@ -191,9 +191,46 @@ with the binarization push. **Code reverted**. The dormant infrastructure
 (`IITMetrics._gate_buffer`, `push_gate_values()`, `--ablate-gate-entropy`
 flag) is preserved for future experimentation.
 
-### Open empirical question
+---
 
-Whether any architectural ablation moves Phi-1 toward r > 0 is the question
-for the peaceful-castle ablation campaign (Runs A, C, D, E, F, G in the next
-session's plan). The original predictions remain unchanged — no thresholds
-are revised post hoc, per the pre-registration commitment in section 5.
+## 7. Ablation Campaign Verdicts (added 2026-05-14)
+
+The peaceful-castle 6-run ablation campaign answered the open question from
+§ 6. Full details and counter-intuitive findings are in
+[ablation_2026_05_14.md](results/ablation_2026_05_14.md).
+
+### Phi-1 verdict per run
+
+| Run | CLI flag | Phi-1 r | Verdict |
+|-----|----------|---------|---------|
+| A_current | (none, head) | +0.060 | FAIL |
+| C_no_replay | `--ablate-memory-replay` | +0.023 | FAIL |
+| D_no_consfix | `--ablate-consolidation-fix` | (crashed at ep 1) | MISSING DATA |
+| E_no_div | `--ablate-gate-diversity` | +0.050 | FAIL |
+| F_no_fb | `--ablate-gate-feedback` | +0.089 (best) | FAIL |
+| G_no_rnd_zero | `--ablate-rnd-zero-on-reward` | +0.061 | FAIL |
+
+**None of 5 architectural variants achieves Phi-1 r > 0.4.** Best is
+F_no_fb at +0.089, ~5× below threshold. The Phi-1 prediction was made
+under the pre-registration commitment in § 5; the FAIL stands and no
+threshold is revised post hoc.
+
+### Full per-prediction verdict (same for every successful run)
+
+All 5 successful runs produce the same verdict pattern: **0 PASS, 4 FAIL,
+5 INCONCLUSIVE** out of 9 pre-registered predictions. The 4 FAILs are
+EI-1, Phi-1, IM-1, IM-3. The 5 INCONCLUSIVEs are EI-2, EI-3, Phi-2, Phi-3,
+IM-2 (all reduce to insufficient data or not testable from current logs).
+
+### Decision protocol outcome
+
+Per § 5, the campaign result maps to **outcome 4**: "Both fail. The
+architecture does not produce measurable emergence or integration.
+Fundamental redesign needed (different binding mechanism, different gate
+structure, or abandon the strong emergence claim and reframe as weak
+emergence)."
+
+This is now the empirical state of the project. Candidate next directions
+(RIIU integration, multi-seed of the counter-intuitive single-seed
+observations) are documented in
+[ablation_2026_05_14.md § Hypotheses for future work](results/ablation_2026_05_14.md#hypotheses-for-future-work).

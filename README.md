@@ -89,7 +89,7 @@ A parallel modulation system. Emotion does not compete with sensory modules for 
 The development validates emergent properties through:
 
 1.  **Emotional Bootstrapping:** Train agents using intrinsic motivation. The agent explores to reduce prediction error (anxiety), not to accumulate external reward.
-2.  **Binding Validation:** Phi measurement must correlate with oscillatory binding state (validated via 3-condition test: unbound, partial, full binding).
+2.  **Binding Validation (under empirical test):** The 2026-02-21 3-condition synthetic test demonstrated phi monotonicity with binding strength on a controlled stimulus. The 2026-05-14 ablation campaign tested whether phi-sync_R correlation emerges during training across 5 architectural variants ([docs/results/ablation_2026_05_14.md](docs/results/ablation_2026_05_14.md)): correlation r ranged from +0.023 to +0.089, all failing the pre-registered r > 0.4 prediction. The relationship between binding and integration during learning remains an open question.
 3.  **Reentrant Settling:** Conscious content emerges from iterative convergence (5-10 cycles), not single pass processing. Capsule hierarchy adds nested reentrant feedback within each settling cycle.
 4.  **Complexity Scaling:** Gradual increase of environment complexity forces the agent to develop higher order world models.
 5.  **Measurement:** Continuous monitoring of Phi (IIT), ignition events (GNW), oscillatory synchronization (AKOrN order parameter R), and Effective Information (EI) for causal emergence detection.
