@@ -54,6 +54,11 @@ class StepMetrics:
     # pathway. Logged so post-hoc analysis can tell whether a phi
     # value is scientifically grounded.
     phi_method: str = ""
+    # Parallel phi from the RIIU pathway (sliding-window SVD residual).
+    # Computed alongside the pyphi value when --enable-riiu is on, zero
+    # otherwise. Lets the analysis script compare both phi pathways on
+    # the same trajectory. See docs/decisions/2026_05_16_riiu_license.md.
+    phi_riiu: float = 0.0
 
 
 class ConsciousnessMetricsLogger:
@@ -108,7 +113,7 @@ class ConsciousnessMetricsLogger:
         self._csv_writer.writerow([
             "global_step", "phi", "sync_r", "is_conscious", "reward",
             "broadcast_mag", "valence", "arousal", "dominance",
-            "phi_method",
+            "phi_method", "phi_riiu",
         ])
 
     def _init_episode_csv(self):
@@ -134,7 +139,7 @@ class ConsciousnessMetricsLogger:
             f"{metrics.broadcast_mag:.6f}",
             f"{metrics.valence:.4f}", f"{metrics.arousal:.4f}",
             f"{metrics.dominance:.4f}",
-            metrics.phi_method,
+            metrics.phi_method, f"{metrics.phi_riiu:.6e}",
         ])
         self._csv_file.flush()
 
@@ -148,6 +153,8 @@ class ConsciousnessMetricsLogger:
             self.writer.add_scalar("emotion/valence", metrics.valence, step)
             self.writer.add_scalar("emotion/arousal", metrics.arousal, step)
             self.writer.add_scalar("emotion/dominance", metrics.dominance, step)
+            if metrics.phi_riiu != 0.0:
+                self.writer.add_scalar("consciousness/phi_riiu", metrics.phi_riiu, step)
 
         # Buffer for insight detection
         self._cross_episode_rewards.append(metrics.reward)

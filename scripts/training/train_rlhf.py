@@ -18,6 +18,7 @@ import sys
 import os
 import argparse
 import logging
+import random
 
 import numpy as np
 import torch
@@ -37,6 +38,7 @@ from models.memory.memory_core import MemoryCore
 from models.core.semantic_pathway import SemanticPathway
 from models.core.topographic_loss import topographic_spatial_loss
 from models.core.rnd_curiosity import RNDCuriosity
+from models.evaluation.phi_riiu import RIIUPhi
 from models.memory.optimized_store import MemoryConsolidationManager
 from scripts.training.metrics_logger import ConsciousnessMetricsLogger, StepMetrics
 
@@ -45,6 +47,28 @@ logging.basicConfig(
     format='%(asctime)s %(levelname)s %(name)s: %(message)s'
 )
 logger = logging.getLogger(__name__)
+
+
+def _set_global_seed(seed: int) -> None:
+    """Seed all RNG sources used by the training loop.
+
+    Sets python `random`, `numpy.random`, `torch` (CPU and CUDA), and
+    `PYTHONHASHSEED`. Also enables deterministic algorithms with a warn-only
+    fallback so the run does not crash if a non-deterministic op is used in
+    a path we haven't audited. Exact bit-for-bit reproducibility across
+    PyTorch versions is not promised; the goal is "two runs with seed=42
+    should produce statistically comparable metrics", not byte equivalence.
+    """
+    os.environ["PYTHONHASHSEED"] = str(seed)
+    random.seed(seed)
+    np.random.seed(seed)
+    torch.manual_seed(seed)
+    if torch.cuda.is_available():
+        torch.cuda.manual_seed_all(seed)
+    try:
+        torch.use_deterministic_algorithms(True, warn_only=True)
+    except (AttributeError, RuntimeError):
+        pass
 
 
 def build_config(args):
@@ -95,6 +119,19 @@ def build_config(args):
         # TPM stays warm. Cuts pyphi MIP calls N-fold to avoid the ~91k
         # call segfault threshold observed in pyphi 1.x Cython internals.
         "phi_sample_every": getattr(args, "phi_sample_every", 5),
+        # RIIU parallel phi pathway (sliding-window SVD residual on broadcast).
+        # Runs alongside pyphi each step, logged as phi_riiu. When enabled,
+        # the phi-delta reward source switches from pyphi to RIIU so the
+        # reward signal tracks the variance phi pathway. See plan
+        # let-s-plan-the-next-misty-parasol.md and the upstream paper
+        # arxiv:2506.13825 (Apache-2.0).
+        "riiu_enabled": getattr(args, "enable_riiu", False),
+        "riiu_rank": getattr(args, "riiu_rank", 16),
+        "riiu_window": getattr(args, "riiu_window", 64),
+        # Global seed for reproducibility. None means inherit ambient RNG state
+        # (matches pre-RIIU behavior). Setting an int seeds python/numpy/torch
+        # and the env.reset call on the first episode.
+        "seed": getattr(args, "seed", None),
     }
 
 
@@ -208,10 +245,26 @@ def init_components(config):
         "use_legacy_merge": config.get("ablate_consolidation_fix", False),
     })
 
+    # RIIU parallel phi pathway. Consumes the workspace broadcast (256-D) and
+    # computes a sliding-window SVD residual phi. Differentiable in principle
+    # but used here as a detached reward signal. See models/evaluation/phi_riiu.py.
+    riiu_phi = None
+    if config.get("riiu_enabled", False):
+        riiu_phi = RIIUPhi(
+            dim=config["workspace_dim"],
+            rank=config.get("riiu_rank", 16),
+            window=config.get("riiu_window", 64),
+            device=device,
+        )
+        logger.info(
+            f"RIIU phi pathway enabled (dim={config['workspace_dim']}, "
+            f"rank={config.get('riiu_rank', 16)}, window={config.get('riiu_window', 64)})"
+        )
+
     return (tectum, workspace, reentrant, modulator, emotion_shaper, memory,
             action_core, semantic, gate, tectum_optimizer, reward_predictor,
             reward_optimizer, workspace_optimizer, auditory_specialist, self_model,
-            rnd, rnd_optimizer, consolidation_mgr)
+            rnd, rnd_optimizer, consolidation_mgr, riiu_phi)
 
 
 def frame_to_tensor(frame: np.ndarray, device: str) -> torch.Tensor:
@@ -259,7 +312,8 @@ def run_episode(episode_idx, config, tectum, workspace, reentrant,
                 metrics_logger=None, global_step_offset=0,
                 tectum_optimizer=None, reward_predictor=None, reward_optimizer=None,
                 workspace_optimizer=None, auditory_specialist=None,
-                self_model=None, rnd=None, rnd_optimizer=None):
+                self_model=None, rnd=None, rnd_optimizer=None,
+                riiu_phi=None):
     device = config["device"]
     max_steps = config["max_steps"]
 
@@ -290,6 +344,7 @@ def run_episode(episode_idx, config, tectum, workspace, reentrant,
 
     prev_action = None
     prev_phi = 0.0
+    prev_phi_riiu = 0.0  # parallel pathway, separate from pyphi prev_phi
     prev_env_reward = 0.0  # actual env reward (not shaped) for emotion delta
     # Phi-sampling state: pyphi runs only every Nth step; in between we
     # carry forward the last sampled value so logging stays well-defined.
@@ -453,6 +508,16 @@ def run_episode(episode_idx, config, tectum, workspace, reentrant,
             broadcast = torch.zeros(1, config["workspace_dim"], device=device)
 
         broadcast_mag = float(broadcast.norm().item())
+
+        # RIIU parallel phi: push broadcast into the sliding window and compute
+        # the SVD-residual phi. Zero before the buffer is warm (first `rank+1`
+        # pushes). Detached, used as a logged metric and (optionally) the
+        # phi-delta reward source.
+        phi_riiu_val = 0.0
+        if riiu_phi is not None:
+            riiu_phi.push(broadcast.view(-1))
+            if riiu_phi.is_warm:
+                phi_riiu_val = riiu_phi.compute_value()
 
         # ConsciousnessGate: compute 5 causal gate values from broadcast.
         # These drive IIT Phi (via empirical TPM) and EI measurement.
@@ -621,8 +686,15 @@ def run_episode(episode_idx, config, tectum, workspace, reentrant,
         )
 
         # --- Reward shaping (single pass, C4 fix) ---
-        # Phi-delta intrinsic reward: consciousness integration change
+        # Phi-delta intrinsic reward: consciousness integration change.
+        # When RIIU is enabled, the reward source switches from pyphi-phi to
+        # RIIU-phi so the policy learns from the high-variance pathway.
+        # pyphi-phi continues to be computed and logged unchanged.
         delta_phi = phi - prev_phi
+        if riiu_phi is not None:
+            delta_phi_reward = phi_riiu_val - prev_phi_riiu
+        else:
+            delta_phi_reward = delta_phi
         # RND curiosity: novel broadcast states drive exploration
         curiosity_score = 0.0
         if rnd is not None:
@@ -641,7 +713,9 @@ def run_episode(episode_idx, config, tectum, workspace, reentrant,
 
         # Additive intrinsic bonuses applied to env_reward. These go into
         # action_core.step() which applies emotion shaping ONCE internally.
-        intrinsic_bonus = 0.5 * delta_phi + 0.1 * curiosity_score
+        # delta_phi_reward equals delta_phi when RIIU is disabled, otherwise
+        # it equals the RIIU phi delta.
+        intrinsic_bonus = 0.5 * delta_phi_reward + 0.1 * curiosity_score
         reward_for_action_core = env_reward + intrinsic_bonus
 
         # Store ALL experiences with post-action emotion and phi priority
@@ -676,6 +750,7 @@ def run_episode(episode_idx, config, tectum, workspace, reentrant,
         previous_broadcast = broadcast.detach().clone()
         prev_action = action
         prev_phi = phi
+        prev_phi_riiu = phi_riiu_val
         # Track actual env_reward for next step's emotion delta (not shaped)
         prev_env_reward = env_reward
         reward_val = reward_for_action_core if isinstance(reward_for_action_core, (int, float)) else reward_for_action_core.item()
@@ -715,6 +790,7 @@ def run_episode(episode_idx, config, tectum, workspace, reentrant,
                 gate_state=gate_state,
                 workspace_state=ws_state,
                 phi_method=phi_method,
+                phi_riiu=phi_riiu_val,
             ))
 
             # Insight detection: hash broadcast embedding for meaningful novelty signal
@@ -796,7 +872,29 @@ def main():
                              "Cuts pyphi MIP calls N-fold to avoid the ~91k-call "
                              "segfault threshold in pyphi 1.x. Default 5.")
 
+    # RIIU parallel phi pathway flags
+    parser.add_argument("--enable-riiu", action="store_true",
+                        help="Enable RIIU phi pathway (sliding-window SVD residual "
+                             "on broadcast). When on, the phi-delta reward source "
+                             "switches from pyphi to RIIU; pyphi-phi is still "
+                             "logged for comparison. See docs/decisions/"
+                             "2026_05_16_riiu_license.md.")
+    parser.add_argument("--riiu-rank", type=int, default=16,
+                        help="Truncated-SVD rank for RIIU. Default 16.")
+    parser.add_argument("--riiu-window", type=int, default=64,
+                        help="Sliding-window length for RIIU. Default 64. "
+                             "Must exceed --riiu-rank.")
+
+    parser.add_argument("--seed", type=int, default=None,
+                        help="Global RNG seed. None inherits ambient state. "
+                             "Setting an int seeds python/numpy/torch and the "
+                             "env.reset call on episode 0.")
+
     args = parser.parse_args()
+
+    if args.seed is not None:
+        _set_global_seed(args.seed)
+        logger.info(f"Global seed set to {args.seed}")
 
     config = build_config(args)
     device = config["device"]
@@ -813,7 +911,8 @@ def main():
     (tectum, workspace, reentrant, modulator, emotion_shaper, memory,
      action_core, semantic, gate, tectum_optimizer, reward_predictor,
      reward_optimizer, workspace_optimizer, auditory_specialist,
-     self_model, rnd, rnd_optimizer, consolidation_mgr) = init_components(config)
+     self_model, rnd, rnd_optimizer, consolidation_mgr,
+     riiu_phi) = init_components(config)
 
     if args.env == "navigation":
         from simulations.environments.navigation_env import NavigationEnv
@@ -858,6 +957,7 @@ def main():
             self_model=self_model,
             rnd=rnd,
             rnd_optimizer=rnd_optimizer,
+            riiu_phi=riiu_phi,
         )
         global_step += ep_steps
 
