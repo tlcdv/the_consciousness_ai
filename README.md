@@ -227,4 +227,6 @@ We welcome contributions from researchers in AI, Neuroscience, and Cognitive Sci
 
 ## License
 
-Non-Commercial Open Source. See [LICENSE](LICENSE.md) for details.
+This project is open source for non-commercial use. **Commercial use, including selling, licensing for profit, incorporating into commercial products, or using for commercial services, is strictly prohibited without explicit prior written permission from the copyright holder.** Attribution to the original author is required in all copies and derivative works. See [LICENSE.md](LICENSE.md) for the full terms.
+
+For commercial licensing inquiries, contact the copyright holder via GitHub: [github.com/tlcdv](https://github.com/tlcdv).
