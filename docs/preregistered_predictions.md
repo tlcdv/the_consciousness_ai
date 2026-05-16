@@ -234,3 +234,32 @@ This is now the empirical state of the project. Candidate next directions
 (RIIU integration, multi-seed of the counter-intuitive single-seed
 observations) are documented in
 [ablation_2026_05_14.md § Hypotheses for future work](results/ablation_2026_05_14.md#hypotheses-for-future-work).
+
+## 8. RIIU experiment (added 2026-05-16)
+
+The "Try RIIU integration" hypothesis from the 2026-05-14 follow-up list was
+tested in a single-seed 200-episode comparison run. Result:
+
+| Run | substrate | r(phi, sync_R) full run | Verdict |
+|-----|-----------|-------------------------|---------|
+| `runs/riiu_compare_seed42` | broadcast (256-D) | +0.0754 | FAIL |
+
+**RIIU FAILs Phi-1 over the full run with r=+0.0754, which is worse than
+pyphi's best of +0.089 from the 2026-05-14 ablation campaign.** A transient
+peak of r=+0.267 appeared during steps 11000-16000 (episodes 55-80) before
+the correlation collapsed to near-zero. The phase transition was not
+sustained.
+
+The other go/no-go criteria from the 2026-05-16 plan: variance unlock
+(FAIL, ratio 0.78x), signal alive (FAIL, mean 2.75e-04 below the 1e-3
+floor), no reward regression (PASS on between-run comparison but the
+within-run trajectory showed +29.4 to +17.3 reward decay).
+
+Full details, the per-window correlation trajectory, and the full
+distribution summary are in
+[riiu_compare_2026_05_16.md](results/riiu_compare_2026_05_16.md).
+
+The pre-registered Phi-1 threshold of r > 0.4 remains the standard. No
+threshold is revised post hoc. The RIIU pathway is kept in the codebase
+behind `--enable-riiu` (default off) as a diagnostic, not as a default
+reward source.
