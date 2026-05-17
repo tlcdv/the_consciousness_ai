@@ -56,6 +56,16 @@ def _default_args(**overrides):
         riiu_source="broadcast",
         riiu_probe_all=False,
         seed=42,
+        # Phase A defaults (added 2026-05-17)
+        broadcast_mode="winner_take_all",
+        attention_temperature=0.5,
+        attention_floor=0.05,
+        # Phase C defaults (added 2026-05-17)
+        gate_diversity_loss="off",
+        gate_feedback="off",
+        # Phase D defaults (added 2026-05-17)
+        enable_mock_semantic=False,
+        phi1_min_active_modules=0,
     )
     for k, v in overrides.items():
         setattr(base, k, v)
@@ -66,8 +76,17 @@ def test_probe_all_instantiates_three_riiu():
     """With --riiu-probe-all, init_components returns a 3-entry RIIUPhi dict."""
     config = build_config(_default_args(riiu_probe_all=True))
     components = init_components(config)
-    riiu_phis = components[-1]
-    assert isinstance(riiu_phis, dict), f"expected dict, got {type(riiu_phis)}"
+    # Find the RIIUPhi-dict component by type (position-independent so future
+    # additions to the returned tuple do not break this test).
+    riiu_phis = next(
+        (c for c in components if isinstance(c, dict)
+         and c and all(isinstance(v, RIIUPhi) for v in c.values())),
+        None,
+    )
+    assert riiu_phis is not None, (
+        f"no RIIUPhi dict found in components; got types: "
+        f"{[type(c).__name__ for c in components]}"
+    )
     assert set(riiu_phis.keys()) == {"broadcast", "tectum", "audio"}, (
         f"unexpected keys: {set(riiu_phis.keys())}"
     )

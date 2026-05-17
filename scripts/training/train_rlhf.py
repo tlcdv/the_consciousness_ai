@@ -38,6 +38,7 @@ from models.memory.memory_core import MemoryCore
 from models.core.semantic_pathway import SemanticPathway
 from models.core.topographic_loss import topographic_spatial_loss
 from models.core.rnd_curiosity import RNDCuriosity
+from models.core.mock_semantic import MockSemanticModule
 from models.evaluation.phi_riiu import RIIUPhi
 from models.memory.optimized_store import MemoryConsolidationManager
 from scripts.training.metrics_logger import ConsciousnessMetricsLogger, StepMetrics
@@ -157,6 +158,9 @@ def build_config(args):
         # reward source picks the one named by riiu_source.
         "riiu_source": getattr(args, "riiu_source", "broadcast"),
         "riiu_probe_all": getattr(args, "riiu_probe_all", False),
+        # Phase D: mock semantic + Phi-1 pre-flight gate
+        "enable_mock_semantic": getattr(args, "enable_mock_semantic", False),
+        "phi1_min_active_modules": getattr(args, "phi1_min_active_modules", 0),
         # Global seed for reproducibility. None means inherit ambient RNG state
         # (matches pre-RIIU behavior). Setting an int seeds python/numpy/torch
         # and the env.reset call on the first episode.
@@ -309,10 +313,20 @@ def init_components(config):
             f"window={config.get('riiu_window', 64)})"
         )
 
+    # Phase D of 2026-05-17 plan: deterministic semantic embedder for
+    # multi-modal Phi-1 testability. Only instantiated when the flag is
+    # set; otherwise the semantic channel keeps its zero stub.
+    mock_semantic = None
+    if config.get("enable_mock_semantic", False):
+        mock_semantic = MockSemanticModule(
+            embedding_dim=config.get("semantic_input_dim", 1536)
+        )
+        logger.info("Mock semantic module enabled (deterministic 1536-D embeddings)")
+
     return (tectum, workspace, reentrant, modulator, emotion_shaper, memory,
             action_core, semantic, gate, tectum_optimizer, reward_predictor,
             reward_optimizer, workspace_optimizer, auditory_specialist, self_model,
-            rnd, rnd_optimizer, consolidation_mgr, riiu_phis)
+            rnd, rnd_optimizer, consolidation_mgr, riiu_phis, mock_semantic)
 
 
 def frame_to_tensor(frame: np.ndarray, device: str) -> torch.Tensor:
@@ -362,7 +376,8 @@ def run_episode(episode_idx, config, tectum, workspace, reentrant,
                 workspace_optimizer=None, auditory_specialist=None,
                 self_model=None, rnd=None, rnd_optimizer=None,
                 riiu_phis: dict | None = None,
-                riiu_source: str = "broadcast"):
+                riiu_source: str = "broadcast",
+                mock_semantic=None):
     device = config["device"]
     max_steps = config["max_steps"]
 
@@ -441,6 +456,22 @@ def run_episode(episode_idx, config, tectum, workspace, reentrant,
         # 1536-D would be circular (competing against itself).
         semantic_content = torch.zeros(1, config["workspace_dim"], device=device)
         semantic_bid = 0.0
+        # Phase D of 2026-05-17 plan: deterministic semantic embedder
+        # replaces the zero stub when --enable-mock-semantic is set, so
+        # the semantic channel carries non-zero bid + content. Required for
+        # AKOrN to bind across more than one modality on dark_room.
+        if mock_semantic is not None and isinstance(obs, np.ndarray):
+            sem_embedding = mock_semantic.embed(obs)  # [1536]
+            semantic_bid = mock_semantic.bid_from_embedding(sem_embedding)
+            # Project 1536 -> workspace_dim by truncation, then unsqueeze batch
+            wsdim = config["workspace_dim"]
+            if sem_embedding.shape[0] >= wsdim:
+                proj = sem_embedding[:wsdim]
+            else:
+                proj = torch.nn.functional.pad(
+                    sem_embedding, (0, wsdim - sem_embedding.shape[0])
+                )
+            semantic_content = proj.unsqueeze(0).to(device)
 
         # Memory retrieval: use previous broadcast to find similar past experiences
         # Memory bid scales with retrieval relevance (more relevant = higher bid)
@@ -462,6 +493,37 @@ def run_episode(episode_idx, config, tectum, workspace, reentrant,
                               self_model.state.interoceptive_state.get("energy", 1.0) < 0.4) else 0.05,
             "semantic": max(0.0, min(1.0, semantic_bid)),
         }
+
+        # Phase D pre-flight: track which modules cross bid > 0.1 in the
+        # first 20 steps of episode 0. If fewer than the required number do,
+        # abort with a clear error so the user does not waste hours on a
+        # configuration where Phi-1 is physically untestable (only one
+        # active module = nothing for AKOrN to bind across).
+        min_active = config.get("phi1_min_active_modules", 0)
+        if min_active > 0 and episode_idx == 0 and step < 20:
+            if not hasattr(run_episode, "_active_modules_seen"):
+                run_episode._active_modules_seen = set()
+            for m, b in raw_bids.items():
+                if b > 0.1:
+                    run_episode._active_modules_seen.add(m)
+            if step == 19:
+                n_active = len(run_episode._active_modules_seen)
+                if n_active < min_active:
+                    raise RuntimeError(
+                        f"Phi-1 pre-flight FAILED: only {n_active} module(s) "
+                        f"produced bid > 0.1 in the first 20 steps "
+                        f"({sorted(run_episode._active_modules_seen)}). "
+                        f"Required: {min_active}. AKOrN binding cannot produce "
+                        f"meaningful sync_R with one active module. Enable "
+                        f"--enable-audio and/or --enable-mock-semantic to "
+                        f"activate more modalities, or lower "
+                        f"--phi1-min-active-modules if this is intentional."
+                    )
+                else:
+                    logger.info(
+                        f"Phi-1 pre-flight OK: {n_active} active modules "
+                        f"({sorted(run_episode._active_modules_seen)})"
+                    )
 
         # --- Affective modulation: emotion shapes which modules win ---
         # Valence field biases bids (positive -> approach, negative -> threat)
@@ -1021,6 +1083,22 @@ def main():
                         help="Minimum bound_bid for a module to be eligible "
                              "for fusion. Default 0.05.")
 
+    # Phase D of 2026-05-17 Phi-1 retest plan: enable a deterministic
+    # mock semantic module so the semantic channel produces non-zero bids
+    # without requiring Qwen2-VL to be loaded. Necessary for AKOrN binding
+    # to have more than one active modality on dark_room.
+    parser.add_argument("--enable-mock-semantic", action="store_true",
+                        help="Use a deterministic MockSemanticModule so the "
+                             "semantic channel produces non-zero bids and "
+                             "embeddings without Qwen2-VL. Required for "
+                             "Phi-1 testability on dark_room.")
+    parser.add_argument("--phi1-min-active-modules", type=int, default=0,
+                        help="Pre-flight gate: abort if fewer than N modules "
+                             "produce bid > 0.1 in the first 20 steps. "
+                             "Default 0 (no gate). Set to 3 when running "
+                             "the Phi-1 retest experiment to make the "
+                             "testability condition explicit.")
+
     args = parser.parse_args()
 
     if args.seed is not None:
@@ -1043,7 +1121,7 @@ def main():
      action_core, semantic, gate, tectum_optimizer, reward_predictor,
      reward_optimizer, workspace_optimizer, auditory_specialist,
      self_model, rnd, rnd_optimizer, consolidation_mgr,
-     riiu_phis) = init_components(config)
+     riiu_phis, mock_semantic) = init_components(config)
 
     if args.env == "navigation":
         from simulations.environments.navigation_env import NavigationEnv
@@ -1090,6 +1168,7 @@ def main():
             rnd_optimizer=rnd_optimizer,
             riiu_phis=riiu_phis,
             riiu_source=config.get("riiu_source", "broadcast"),
+            mock_semantic=mock_semantic,
         )
         global_step += ep_steps
 
