@@ -154,21 +154,51 @@ class ReentrantProcessor:
         if prev_broadcast is None:
             return 1.0  # First cycle: no prediction exists
             
-        # Tensor broadcasts (from SensoryTectum)
-        if isinstance(curr_broadcast, torch.Tensor) and isinstance(prev_broadcast, torch.Tensor):
-            diff = torch.norm(curr_broadcast - prev_broadcast)
-            # Normalize by broadcast magnitude to get relative error
-            magnitude = torch.norm(curr_broadcast) + 1e-8
+        def _extract_tensor(b):
+            """Extract a tensor from a broadcast that is either a tensor or a
+            dict (with "_fused" or "tensor" key). Returns None if neither."""
+            if isinstance(b, torch.Tensor):
+                return b
+            if isinstance(b, dict):
+                t = b.get("_fused")
+                if isinstance(t, torch.Tensor):
+                    return t
+                t = b.get("tensor")
+                if isinstance(t, torch.Tensor):
+                    return t
+            return None
+
+        # Tensor PE path: works for raw tensors and for dict broadcasts that
+        # contain a "_fused" (Phase A) or "tensor" (legacy) key. This handles
+        # the attention_weighted fusion mode where broadcast_content is
+        # {"_fused": tensor, "_weights": dict} instead of a bare tensor.
+        curr_t = _extract_tensor(curr_broadcast)
+        prev_t = _extract_tensor(prev_broadcast)
+        if curr_t is not None and prev_t is not None:
+            # Flatten and align shapes; broadcasts may differ in dim across cycles
+            cf, pf = curr_t.view(-1), prev_t.view(-1)
+            if cf.shape != pf.shape:
+                n = min(cf.shape[0], pf.shape[0])
+                cf, pf = cf[:n], pf[:n]
+            diff = torch.norm(cf - pf)
+            magnitude = torch.norm(cf) + 1e-8
             return (diff / magnitude).item()
-        
-        # Dict broadcasts
+
+        # Dict-only path (no extractable tensor): compare key sets safely
         if isinstance(curr_broadcast, dict) and isinstance(prev_broadcast, dict):
-            # Compare key sets and values
-            if curr_broadcast == prev_broadcast:
-                return 0.0
-            # Count changed keys
             all_keys = set(list(curr_broadcast.keys()) + list(prev_broadcast.keys()))
-            changed = sum(1 for k in all_keys if curr_broadcast.get(k) != prev_broadcast.get(k))
+            if not all_keys:
+                return 0.0
+            # Skip tensor values to avoid the ambiguous-truth-value bug; compare
+            # only scalar/string keys.
+            def _scalar_eq(a, b):
+                if isinstance(a, torch.Tensor) or isinstance(b, torch.Tensor):
+                    return False  # tensors handled above; treat as changed here
+                return a == b
+            changed = sum(
+                1 for k in all_keys
+                if not _scalar_eq(curr_broadcast.get(k), prev_broadcast.get(k))
+            )
             return changed / (len(all_keys) + 1e-8)
         
         # Fallback: if types differ or are strings, binary comparison

@@ -405,14 +405,33 @@ class SensoryTectum(nn.Module):
         Returns:
             Updated bid value incorporating top-down context
         """
-        if not isinstance(broadcast_content, torch.Tensor) or self._last_content is None:
-            # If broadcast is not a tensor (subconscious/empty), maintain baseline
-            return current_bid * 0.95  # Slight decay
-        
+        # Workspace returns one of: raw tensor; dict with "_fused" key
+        # (Phase A attention-weighted fusion); dict with "tensor" key (legacy
+        # winner-take-all vision payload). Extract a tensor or decay.
+        if isinstance(broadcast_content, torch.Tensor):
+            bc_tensor = broadcast_content
+        elif isinstance(broadcast_content, dict):
+            bc_tensor = broadcast_content.get("_fused")
+            if not isinstance(bc_tensor, torch.Tensor):
+                bc_tensor = broadcast_content.get("tensor")
+            if not isinstance(bc_tensor, torch.Tensor):
+                return current_bid * 0.95  # subconscious/empty broadcast
+        else:
+            return current_bid * 0.95
+
+        if self._last_content is None:
+            return current_bid * 0.95
+
         # Compute prediction error: how different is the broadcast from what we sent?
         with torch.no_grad():
-            diff = torch.norm(broadcast_content - self._last_content)
-            magnitude = torch.norm(self._last_content) + 1e-8
+            bc_flat = bc_tensor.view(-1)
+            last_flat = self._last_content.view(-1)
+            if bc_flat.shape != last_flat.shape:
+                n = min(bc_flat.shape[0], last_flat.shape[0])
+                bc_flat = bc_flat[:n]
+                last_flat = last_flat[:n]
+            diff = torch.norm(bc_flat - last_flat)
+            magnitude = torch.norm(last_flat) + 1e-8
             pe = (diff / magnitude).item()
         
         # High PE = broadcast diverges from our content = need to push harder

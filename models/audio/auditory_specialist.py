@@ -189,8 +189,32 @@ class AuditorySpecialist(nn.Module):
         if self._last_content is None:
             return current_bid
 
-        diff = torch.norm(broadcast_content - self._last_content)
-        magnitude = torch.norm(self._last_content) + 1e-8
+        # Extract a tensor from broadcast_content. Workspace returns one of:
+        # - raw torch.Tensor (legacy)
+        # - dict with "_fused" key (Phase A attention-weighted fusion)
+        # - dict with "tensor" key (legacy winner-take-all vision payload)
+        # If none of those, no PE can be computed and we return current_bid.
+        if isinstance(broadcast_content, torch.Tensor):
+            bc_tensor = broadcast_content
+        elif isinstance(broadcast_content, dict):
+            bc_tensor = broadcast_content.get("_fused")
+            if not isinstance(bc_tensor, torch.Tensor):
+                bc_tensor = broadcast_content.get("tensor")
+            if not isinstance(bc_tensor, torch.Tensor):
+                return current_bid
+        else:
+            return current_bid
+
+        # Align shapes: bc_tensor may be [1, D] or [D]; _last_content may differ.
+        bc_flat = bc_tensor.detach().view(-1)
+        last_flat = self._last_content.view(-1)
+        if bc_flat.shape != last_flat.shape:
+            n = min(bc_flat.shape[0], last_flat.shape[0])
+            bc_flat = bc_flat[:n]
+            last_flat = last_flat[:n]
+
+        diff = torch.norm(bc_flat - last_flat)
+        magnitude = torch.norm(last_flat) + 1e-8
         pe = (diff / magnitude).item()
 
         if pe > 0.3:
