@@ -67,6 +67,22 @@ class GlobalWorkspace:
         self.ignition_gain = config.get("ignition_gain", 10.0) # Steepness of sigmoid
         self.reverberation_alpha = config.get("reverberation_alpha", 0.7) # Decay rate
         self.max_history = config.get("max_history", 100)
+
+        # Broadcast assembly mode (Phase A of the 2026-05-17 Phi-1 retest plan).
+        # Legacy default 'winner_take_all' iterates winners and merges their
+        # payloads via .update(); this decouples broadcast content from
+        # AKOrN sync_R because the winning module's payload is just its own
+        # representation, not an integration.
+        # 'attention_weighted' computes broadcast as a softmax-weighted sum of
+        # all eligible module payloads, with weights derived from bound_bids.
+        # Phi computed on this broadcast is structurally downstream of sync_R.
+        self.broadcast_mode = config.get("broadcast_mode", "winner_take_all")
+        self.attention_temperature = config.get("attention_temperature", 0.5)
+        self.attention_floor = config.get("attention_floor", 0.05)
+        # workspace_dim is the target tensor size for fusion. Payload tensors
+        # (tectum, audio, semantic) are typically 256-D; the bid-to-tensor
+        # mapping uses only 8 slots and is unrelated.
+        self.workspace_dim = config.get("workspace_dim", 256)
         
         # Dependencies
         self.iit_metrics = IITMetrics()
@@ -214,18 +230,43 @@ class GlobalWorkspace:
             qualia = self.qualia_mapper.map_state(workspace_tensor, goal_vector)
             self.state.qualia_vector = qualia.to_vector()
             
-            # Broadcast: attach structured payload from winning modules
+            # Broadcast assembly. Two modes per Phase A of the 2026-05-17 plan.
             broadcast_content = {}
             structured_payload = {}
-            for winner in winners:
-                payload = contents[winner]
-                if isinstance(payload, dict):
-                    broadcast_content.update(payload)
-                    # Preserve structured data (capsule poses, etc.) per winner
-                    structured_payload[winner] = payload
-                else:
-                    broadcast_content[winner] = payload
-                    structured_payload[winner] = payload
+            if self.broadcast_mode == "attention_weighted":
+                # Phase A path: softmax-weighted fusion of all eligible modules.
+                # Eligibility is by AKOrN bound_bid (post-binding amplitude),
+                # NOT by the legacy ignition_threshold winners. This makes the
+                # broadcast a true integration across modules whenever their
+                # post-binding bids are non-trivial, so phi-on-broadcast is
+                # structurally downstream of sync_R.
+                eligible = {m: contents[m] for m in contents
+                            if bound_bids.get(m, 0.0) >= self.attention_floor}
+                if eligible:
+                    scores = torch.tensor(
+                        [bound_bids[m] for m in eligible],
+                        dtype=torch.float32,
+                    ) / max(self.attention_temperature, 1e-6)
+                    weights = F.softmax(scores, dim=0)
+                    fused = self._fuse_tensor_payloads(
+                        eligible, weights, self.workspace_dim,
+                    )
+                    broadcast_content = {
+                        "_fused": fused,
+                        "_weights": {m: float(w) for m, w in zip(eligible.keys(), weights)},
+                    }
+                    # Preserve structured per-module data (capsule poses, etc.)
+                    structured_payload = {m: contents[m] for m in eligible}
+            else:
+                # Legacy winner-take-all path. Default, unchanged behavior.
+                for winner in winners:
+                    payload = contents[winner]
+                    if isinstance(payload, dict):
+                        broadcast_content.update(payload)
+                        structured_payload[winner] = payload
+                    else:
+                        broadcast_content[winner] = payload
+                        structured_payload[winner] = payload
 
             self.state.active_content = broadcast_content
             self.state.broadcast_payload = structured_payload
@@ -268,6 +309,60 @@ class GlobalWorkspace:
         for i, v in enumerate(vals):
             if i < slots: data[i] = v
         return data
+
+    def _payload_to_tensor(self, payload: Any, target_dim: int) -> torch.Tensor:
+        """Extract a 1-D tensor of shape [target_dim] from a module payload.
+
+        Payloads come in three flavors:
+          - dict with "tensor" key: use that tensor (Phase A common case)
+          - raw torch.Tensor: use directly
+          - dict without "tensor" key: return zero vector (graceful degradation)
+
+        Pad or truncate to target_dim along the last axis. Batched tensors
+        ([B, D]) are reduced to [D] by mean over the batch dim so the
+        fusion produces a single broadcast vector per step.
+        """
+        if isinstance(payload, dict):
+            tensor = payload.get("tensor")
+            if not isinstance(tensor, torch.Tensor):
+                return torch.zeros(target_dim)
+        elif isinstance(payload, torch.Tensor):
+            tensor = payload
+        else:
+            return torch.zeros(target_dim)
+
+        # Reduce batched tensors to 1-D
+        if tensor.dim() > 1:
+            tensor = tensor.mean(dim=tuple(range(tensor.dim() - 1)))
+
+        # Pad or truncate to target_dim
+        if tensor.shape[-1] < target_dim:
+            tensor = F.pad(tensor, (0, target_dim - tensor.shape[-1]))
+        elif tensor.shape[-1] > target_dim:
+            tensor = tensor[..., :target_dim]
+        return tensor
+
+    def _fuse_tensor_payloads(
+        self,
+        eligible: dict[str, Any],
+        weights: torch.Tensor,
+        target_dim: int,
+    ) -> torch.Tensor:
+        """Weighted sum of payload tensors per Phase A spec.
+
+        Args:
+            eligible: dict mapping module-name to payload (dict-or-tensor)
+            weights: 1-D tensor of shape [len(eligible)] summing to 1.0
+            target_dim: dimensionality of the output fused tensor
+
+        Returns:
+            1-D tensor [target_dim] = sum_i(weights[i] * payload_i_as_tensor)
+        """
+        tensors = torch.stack([
+            self._payload_to_tensor(p, target_dim) for p in eligible.values()
+        ], dim=0)
+        # tensors: [N, target_dim]; weights: [N]; output: [target_dim]
+        return (weights.unsqueeze(-1) * tensors).sum(dim=0)
 
     def get_unity_metrics(self) -> tuple[float, bool, str, list[float]]:
         """

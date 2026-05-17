@@ -82,6 +82,15 @@ def build_config(args):
             "ignition_gain": 5.0,
             "reverberation_alpha": 0.8,
             "workspace_dim": 256,
+            # Phase A of 2026-05-17 plan: broadcast assembly mode.
+            # 'winner_take_all' (legacy) iterates winners and .update()s
+            # their payloads, decoupling broadcast from sync_R.
+            # 'attention_weighted' computes softmax-weighted fusion of all
+            # eligible module payloads, making broadcast structurally
+            # downstream of AKOrN sync_R.
+            "broadcast_mode": getattr(args, "broadcast_mode", "winner_take_all"),
+            "attention_temperature": getattr(args, "attention_temperature", 0.5),
+            "attention_floor": getattr(args, "attention_floor", 0.05),
         },
         "reentrant": {
             "max_cycles": 5,
@@ -528,6 +537,14 @@ def run_episode(episode_idx, config, tectum, workspace, reentrant,
         if isinstance(broadcast_content, torch.Tensor):
             broadcast = broadcast_content.detach()
         elif (isinstance(broadcast_content, dict)
+              and isinstance(broadcast_content.get("_fused"), torch.Tensor)):
+            # Phase A path: attention-weighted fusion produces a single
+            # _fused tensor that integrates all eligible module payloads.
+            fused = broadcast_content["_fused"]
+            if fused.dim() == 1:
+                fused = fused.unsqueeze(0)
+            broadcast = fused.detach().to(device)
+        elif (isinstance(broadcast_content, dict)
               and isinstance(broadcast_content.get("tensor"), torch.Tensor)):
             broadcast = broadcast_content["tensor"].detach()
         else:
@@ -952,6 +969,25 @@ def main():
                         help="Global RNG seed. None inherits ambient state. "
                              "Setting an int seeds python/numpy/torch and the "
                              "env.reset call on episode 0.")
+
+    # Phase A of 2026-05-17 Phi-1 retest plan: attention-weighted broadcast
+    # fusion. Default 'winner_take_all' preserves all existing test outputs
+    # and reproducibility of prior runs.
+    parser.add_argument("--broadcast-mode", type=str, default="winner_take_all",
+                        choices=["winner_take_all", "attention_weighted"],
+                        help="Workspace broadcast assembly mode. "
+                             "'winner_take_all' (legacy default) iterates ignition "
+                             "winners and merges their payloads. "
+                             "'attention_weighted' computes a softmax-weighted "
+                             "sum of all eligible module payloads, with weights "
+                             "from AKOrN bound_bids. Makes phi-on-broadcast "
+                             "structurally downstream of sync_R.")
+    parser.add_argument("--attention-temperature", type=float, default=0.5,
+                        help="Softmax temperature for attention-weighted fusion. "
+                             "Lower = sharper, higher = more uniform. Default 0.5.")
+    parser.add_argument("--attention-floor", type=float, default=0.05,
+                        help="Minimum bound_bid for a module to be eligible "
+                             "for fusion. Default 0.05.")
 
     args = parser.parse_args()
 
