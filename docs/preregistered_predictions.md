@@ -291,3 +291,122 @@ Meta-Cognition). The Phi-1 prediction stands FAILED across pathways
 (pyphi, RIIU) AND substrates (broadcast, tectum, audio).
 
 Full details in [riiu_substrate_probe_2026_05_17.md](results/riiu_substrate_probe_2026_05_17.md).
+
+## 10. Phi-1 retest under revised architecture (pre-registered 2026-05-17)
+
+**Status:** PRE-REGISTERED, UNTESTED at registration time
+**Architecture commit hash:** `42fe78b` (head of main at registration)
+**Plan:** `~/.claude/plans/let-s-plan-the-next-misty-parasol.md`
+
+### Why this is a new pre-registration, not a re-test
+
+The original Phi-1 (sections 2 and 7-9 above) stands FAILED. It was tested
+under an architecture that had FIVE structural reasons for the failure,
+each verified in code on 2026-05-17:
+
+1. Winner-take-all broadcast (`models/core/global_workspace.py:217-231`):
+   `broadcast_content` was just the winning module's payload; AKOrN
+   `bound_bids` only determined WHO wins, never weighted content.
+2. AKOrN binds phases not content (`models/core/oscillatory_binding.py:140-191`).
+3. Reentrant feedback updates bids only (`models/core/reentrant_processor.py:121-128`).
+4. Gate-state collapse to 2-3 of 32 binarized states (diversity loss
+   caused it; gate_feedback anti-correlated phi with sync_R; adaptation
+   binarization floor was above the running median).
+5. Dark_room is single-modality (only vision active; AKOrN binding has
+   nothing to bind across).
+
+This new pre-registration is for a DIFFERENT architecture, with addresses
+for failure modes 1, 4, and 5 (Phase A, C, D of the plan). Failure modes 2
+and 3 (Phase B: content-level binding via AKOrN-modulated cross-attention)
+are addressed only if Phase F2 with Phase A alone produces 0 <= r < 0.15.
+
+### Architecture under test
+
+- Commits 967fe2a (Phase A), fafd581 (Phase C), 42fe78b (Phase D)
+- Phase A: attention-weighted broadcast fusion behind `--broadcast-mode attention_weighted`
+- Phase C: diversity loss OFF (default flipped); gate_feedback OFF (default flipped); adaptation binarization floor lowered from 0.001 to 1e-5
+- Phase D: `MockSemanticModule` enabled via `--enable-mock-semantic`; `--enable-audio` enabled; Phi-1 pre-flight gate `--phi1-min-active-modules 3` requires 3+ active modules
+
+### Config (frozen at registration time)
+
+```bash
+PYPHI_WELCOME_OFF=yes python -m scripts.training.train_rlhf \
+    --env dark_room --enable-audio --enable-mock-semantic \
+    --episodes 200 --max-steps 200 --seed 42 \
+    --broadcast-mode attention_weighted \
+    --gate-diversity-loss off --gate-feedback off \
+    --phi-sample-every 5 --log-ei-every 50 \
+    --phi1-min-active-modules 3 \
+    --log-dir runs/phi1_retest_v1_seed42
+```
+
+### Prediction
+
+**Pearson r > 0.4 between pyphi-phi and AKOrN sync_R across training
+episodes**, single seed first (F2), 3 seeds for confirmation (F3, seeds 43/44/45).
+
+### Falsification criterion
+
+r <= 0.4 on the 3-seed confirmation set, with non-degenerate variances:
+
+- `phi_std > 0.01` AND
+- `sync_R_std > 0.02`
+
+Degenerate variance (either std below threshold) triggers a re-run, not a
+re-pre-registration. The r > 0.4 threshold matches the original Phi-1 and is
+NOT revised post-hoc.
+
+### Architectural justification
+
+The current architecture has a STRUCTURAL reason for Phi-1 to be testable
+where the prior one did not:
+
+1. **Phi-on-broadcast is now downstream of sync_R.** Phase A's
+   attention-weighted fusion makes the broadcast a softmax-weighted sum of
+   all eligible module payloads, with weights from AKOrN `bound_bids`.
+   When sync_R is high (modules synchronized), weights distribute across
+   multiple modules and the broadcast is an integration; phi computed on
+   the gate driven by this broadcast should reflect that integration.
+2. **Gate dynamics can vary across timesteps.** Phase C removed the
+   diversity-loss-driven binarization collapse and lowered the adaptation
+   floor so adaptation actually contributes to the 5-bit TPM state.
+3. **AKOrN has multiple modalities to bind across.** Phase D makes the
+   semantic channel non-zero (mock embedder) and enables audio; the
+   pre-flight gate aborts if fewer than 3 modules are active so the
+   testability condition is enforced explicitly, not silently violated.
+
+Whether these structural fixes produce the predicted r > 0.4 is an
+empirical question. The plan honestly states the result space:
+
+- r >= 0.4: thesis confirmed under revised architecture; Phase 5 proceeds
+  with strong-emergence claim intact
+- 0.15 <= r < 0.4: partial signal; Phase B (content-level binding) may
+  close the gap or may not; document either way
+- r < 0.15: even structurally correct fusion is not enough; honest finding
+  that the architecture's binding+phi story is harder than addressed
+
+The original Phi-1 stays FAILED regardless of this retest's outcome.
+
+### Critical-gate evidence (collected at registration time)
+
+A controlled synthetic-oscillator test in `tests/test_attention_broadcast.py:96-179`
+drives 4 oscillators with alternating balanced (high sync_R) and dominant
+(low sync_R) bid patterns. It asserts Pearson |r(||fused||, sync_R)| > 0.3
+over 50 timesteps. **This test passes.** It is not a proof that Phi-1 will
+clear r > 0.4 in training, but it is direct evidence that the fusion
+machinery delivers what it claims: broadcast magnitude varies in step with
+sync_R when bids are driven to vary in step with sync_R. Without this
+machinery (legacy winner-take-all), the broadcast is the winning module's
+payload regardless of sync_R, and no such correlation can exist.
+
+### Results (filled when F3 completes)
+
+| Seed | n_rows | phi_mean | phi_std | sync_R_std | r(phi, sync_R) | p | verdict |
+|------|--------|----------|---------|------------|----------------|---|---------|
+| 42 (F2 single) | — | — | — | — | — | — | TBD |
+| 43 (F3) | — | — | — | — | — | — | TBD |
+| 44 (F3) | — | — | — | — | — | — | TBD |
+| 45 (F3) | — | — | — | — | — | — | TBD |
+
+Final cross-seed verdict and verdict doc will live at
+`docs/results/phi1_retest_2026_05_17.md`.
