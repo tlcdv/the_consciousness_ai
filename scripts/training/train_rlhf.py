@@ -128,6 +128,12 @@ def build_config(args):
         "riiu_enabled": getattr(args, "enable_riiu", False),
         "riiu_rank": getattr(args, "riiu_rank", 16),
         "riiu_window": getattr(args, "riiu_window", 64),
+        # Substrate selection for the RIIU reward source. When riiu_probe_all
+        # is True, three RIIUPhi pipelines run in parallel and all three phi
+        # values are logged (phi_riiu, phi_riiu_tectum, phi_riiu_audio); the
+        # reward source picks the one named by riiu_source.
+        "riiu_source": getattr(args, "riiu_source", "broadcast"),
+        "riiu_probe_all": getattr(args, "riiu_probe_all", False),
         # Global seed for reproducibility. None means inherit ambient RNG state
         # (matches pre-RIIU behavior). Setting an int seeds python/numpy/torch
         # and the env.reset call on the first episode.
@@ -245,26 +251,45 @@ def init_components(config):
         "use_legacy_merge": config.get("ablate_consolidation_fix", False),
     })
 
-    # RIIU parallel phi pathway. Consumes the workspace broadcast (256-D) and
-    # computes a sliding-window SVD residual phi. Differentiable in principle
-    # but used here as a detached reward signal. See models/evaluation/phi_riiu.py.
-    riiu_phi = None
+    # RIIU parallel phi pathway. Consumes one or more 256-D activation
+    # substrates and computes a sliding-window SVD residual phi per substrate.
+    # Returned as a dict {substrate_name: RIIUPhi} so the run_episode loop can
+    # iterate substrates uniformly. In single-substrate mode the dict has one
+    # entry; in --riiu-probe-all mode it has three.
+    riiu_phis: dict | None = None
     if config.get("riiu_enabled", False):
-        riiu_phi = RIIUPhi(
-            dim=config["workspace_dim"],
-            rank=config.get("riiu_rank", 16),
-            window=config.get("riiu_window", 64),
-            device=device,
-        )
+        substrates = ["broadcast", "tectum", "audio"] if config.get("riiu_probe_all", False) \
+            else [config.get("riiu_source", "broadcast")]
+        if config.get("riiu_probe_all", False) and not config.get("enable_audio", False):
+            import warnings as _warnings
+            _warnings.warn(
+                "--riiu-probe-all is on but --enable-audio is off. The 'audio' "
+                "substrate will see a zero-vector input every step and report "
+                "phi_riiu_audio=0.0. Re-run with --enable-audio for a real "
+                "audio-substrate measurement.",
+                RuntimeWarning,
+                stacklevel=2,
+            )
+        riiu_phis = {
+            name: RIIUPhi(
+                dim=config["workspace_dim"],
+                rank=config.get("riiu_rank", 16),
+                window=config.get("riiu_window", 64),
+                device=device,
+            )
+            for name in substrates
+        }
         logger.info(
-            f"RIIU phi pathway enabled (dim={config['workspace_dim']}, "
-            f"rank={config.get('riiu_rank', 16)}, window={config.get('riiu_window', 64)})"
+            f"RIIU phi pathway enabled (substrates={substrates}, "
+            f"reward_source={config.get('riiu_source', 'broadcast')}, "
+            f"dim={config['workspace_dim']}, rank={config.get('riiu_rank', 16)}, "
+            f"window={config.get('riiu_window', 64)})"
         )
 
     return (tectum, workspace, reentrant, modulator, emotion_shaper, memory,
             action_core, semantic, gate, tectum_optimizer, reward_predictor,
             reward_optimizer, workspace_optimizer, auditory_specialist, self_model,
-            rnd, rnd_optimizer, consolidation_mgr, riiu_phi)
+            rnd, rnd_optimizer, consolidation_mgr, riiu_phis)
 
 
 def frame_to_tensor(frame: np.ndarray, device: str) -> torch.Tensor:
@@ -313,7 +338,8 @@ def run_episode(episode_idx, config, tectum, workspace, reentrant,
                 tectum_optimizer=None, reward_predictor=None, reward_optimizer=None,
                 workspace_optimizer=None, auditory_specialist=None,
                 self_model=None, rnd=None, rnd_optimizer=None,
-                riiu_phi=None):
+                riiu_phis: dict | None = None,
+                riiu_source: str = "broadcast"):
     device = config["device"]
     max_steps = config["max_steps"]
 
@@ -512,12 +538,31 @@ def run_episode(episode_idx, config, tectum, workspace, reentrant,
         # RIIU parallel phi: push broadcast into the sliding window and compute
         # the SVD-residual phi. Zero before the buffer is warm (first `rank+1`
         # pushes). Detached, used as a logged metric and (optionally) the
-        # phi-delta reward source.
-        phi_riiu_val = 0.0
-        if riiu_phi is not None:
-            riiu_phi.push(broadcast.view(-1))
-            if riiu_phi.is_warm:
-                phi_riiu_val = riiu_phi.compute_value()
+        # phi-delta reward source. When riiu_phis has multiple substrates
+        # (--riiu-probe-all), each gets pushed independently from a
+        # different activation source: broadcast (post-GNW), tectum_content
+        # (pre-binding sensory), or audio_content (cochlear, requires
+        # --enable-audio).
+        phi_riiu_vals: dict[str, float] = {}
+        if riiu_phis is not None:
+            substrate_tensors = {
+                "broadcast": broadcast,
+                "tectum": tectum_content,
+                "audio": audio_content,
+            }
+            for name, riiu_instance in riiu_phis.items():
+                src_tensor = substrate_tensors.get(name)
+                if src_tensor is None:
+                    phi_riiu_vals[name] = 0.0
+                    continue
+                riiu_instance.push(src_tensor.view(-1))
+                phi_riiu_vals[name] = (
+                    riiu_instance.compute_value() if riiu_instance.is_warm else 0.0
+                )
+        # Reward source: whichever substrate the CLI flag selected.
+        # Fall back to 0.0 if that substrate is not active (e.g. requested
+        # 'tectum' without --riiu-probe-all and not as the sole source).
+        phi_riiu_val = phi_riiu_vals.get(riiu_source, 0.0)
 
         # ConsciousnessGate: compute 5 causal gate values from broadcast.
         # These drive IIT Phi (via empirical TPM) and EI measurement.
@@ -691,7 +736,7 @@ def run_episode(episode_idx, config, tectum, workspace, reentrant,
         # RIIU-phi so the policy learns from the high-variance pathway.
         # pyphi-phi continues to be computed and logged unchanged.
         delta_phi = phi - prev_phi
-        if riiu_phi is not None:
+        if riiu_phis is not None:
             delta_phi_reward = phi_riiu_val - prev_phi_riiu
         else:
             delta_phi_reward = delta_phi
@@ -791,6 +836,9 @@ def run_episode(episode_idx, config, tectum, workspace, reentrant,
                 workspace_state=ws_state,
                 phi_method=phi_method,
                 phi_riiu=phi_riiu_val,
+                phi_riiu_broadcast=phi_riiu_vals.get("broadcast", 0.0),
+                phi_riiu_tectum=phi_riiu_vals.get("tectum", 0.0),
+                phi_riiu_audio=phi_riiu_vals.get("audio", 0.0),
             ))
 
             # Insight detection: hash broadcast embedding for meaningful novelty signal
@@ -884,6 +932,21 @@ def main():
     parser.add_argument("--riiu-window", type=int, default=64,
                         help="Sliding-window length for RIIU. Default 64. "
                              "Must exceed --riiu-rank.")
+    parser.add_argument("--riiu-source", type=str, default="broadcast",
+                        choices=["broadcast", "tectum", "audio"],
+                        help="Which activation substrate drives the RIIU "
+                             "phi-delta reward. Default 'broadcast' (the "
+                             "post-GNW workspace broadcast tensor). 'tectum' "
+                             "uses pre-binding sensory features; 'audio' "
+                             "uses cochlear features and requires "
+                             "--enable-audio.")
+    parser.add_argument("--riiu-probe-all", action="store_true",
+                        help="Instantiate three RIIUPhi pipelines (broadcast, "
+                             "tectum, audio) in parallel and log all three "
+                             "phi values per step. The --riiu-source flag "
+                             "still selects which one drives reward. Used "
+                             "for the 2026-05-17 substrate-probe experiment "
+                             "(see ~/.claude/plans/let-s-plan-the-next-misty-parasol.md).")
 
     parser.add_argument("--seed", type=int, default=None,
                         help="Global RNG seed. None inherits ambient state. "
@@ -912,7 +975,7 @@ def main():
      action_core, semantic, gate, tectum_optimizer, reward_predictor,
      reward_optimizer, workspace_optimizer, auditory_specialist,
      self_model, rnd, rnd_optimizer, consolidation_mgr,
-     riiu_phi) = init_components(config)
+     riiu_phis) = init_components(config)
 
     if args.env == "navigation":
         from simulations.environments.navigation_env import NavigationEnv
@@ -957,7 +1020,8 @@ def main():
             self_model=self_model,
             rnd=rnd,
             rnd_optimizer=rnd_optimizer,
-            riiu_phi=riiu_phi,
+            riiu_phis=riiu_phis,
+            riiu_source=config.get("riiu_source", "broadcast"),
         )
         global_step += ep_steps
 

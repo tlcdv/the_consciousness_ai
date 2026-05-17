@@ -263,3 +263,31 @@ The pre-registered Phi-1 threshold of r > 0.4 remains the standard. No
 threshold is revised post hoc. The RIIU pathway is kept in the codebase
 behind `--enable-riiu` (default off) as a diagnostic, not as a default
 reward source.
+
+## 9. RIIU substrate probe (added 2026-05-17)
+
+The "broadcast may be too smooth" hypothesis from the 2026-05-16 plan's
+risk register was tested with a single-seed 50-episode parallel probe
+that ran three RIIUPhi instances (broadcast, tectum, audio) simultaneously
+on the same training trajectory. Result:
+
+| Substrate | std | ratio to broadcast | r(phi, sync_R) | criterion 1 (2x var) | criterion 2 (binding) | win |
+|-----------|-----|--------------------|----------------|----------------------|-----------------------|-----|
+| broadcast | 7.13e-05 | 1.000x | +0.1536 | FAIL | PASS | NO |
+| tectum    | 7.13e-05 | 1.000x | +0.1536 | FAIL | PASS | NO |
+| audio     | 0.000   | 0.000x | +0.0000 | FAIL | FAIL | NO |
+
+**No substrate won.** Direct CSV inspection showed `phi_riiu_broadcast`
+and `phi_riiu_tectum` are bit-identical to all 9000 valid rows
+(max |diff| = 0.0). Cause: when the vision module wins workspace
+competition in dark_room (the dominant case), the broadcast tensor IS
+the tectum_content tensor. The substrate hypothesis disproved itself
+through this structural finding.
+
+Per the decision gate in `~/.claude/plans/let-s-plan-the-next-misty-parasol.md`
+Phase B, the 3-seed verification (Phase C) is SKIPPED. The project moves
+forward to Phase 5 of `docs/roadmap.md` (Dynamic Self-Representation &
+Meta-Cognition). The Phi-1 prediction stands FAILED across pathways
+(pyphi, RIIU) AND substrates (broadcast, tectum, audio).
+
+Full details in [riiu_substrate_probe_2026_05_17.md](results/riiu_substrate_probe_2026_05_17.md).

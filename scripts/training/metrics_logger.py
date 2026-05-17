@@ -58,7 +58,15 @@ class StepMetrics:
     # Computed alongside the pyphi value when --enable-riiu is on, zero
     # otherwise. Lets the analysis script compare both phi pathways on
     # the same trajectory. See docs/decisions/2026_05_16_riiu_license.md.
+    #
+    # `phi_riiu` is whichever substrate the --riiu-source flag picked as
+    # the reward source (backward-compat alias). When --riiu-probe-all is
+    # on, all three explicit per-substrate fields below carry the value
+    # from their substrate, regardless of which one drives reward.
     phi_riiu: float = 0.0
+    phi_riiu_broadcast: float = 0.0
+    phi_riiu_tectum: float = 0.0
+    phi_riiu_audio: float = 0.0
 
 
 class ConsciousnessMetricsLogger:
@@ -114,6 +122,7 @@ class ConsciousnessMetricsLogger:
             "global_step", "phi", "sync_r", "is_conscious", "reward",
             "broadcast_mag", "valence", "arousal", "dominance",
             "phi_method", "phi_riiu",
+            "phi_riiu_broadcast", "phi_riiu_tectum", "phi_riiu_audio",
         ])
 
     def _init_episode_csv(self):
@@ -140,6 +149,8 @@ class ConsciousnessMetricsLogger:
             f"{metrics.valence:.4f}", f"{metrics.arousal:.4f}",
             f"{metrics.dominance:.4f}",
             metrics.phi_method, f"{metrics.phi_riiu:.6e}",
+            f"{metrics.phi_riiu_broadcast:.6e}",
+            f"{metrics.phi_riiu_tectum:.6e}", f"{metrics.phi_riiu_audio:.6e}",
         ])
         self._csv_file.flush()
 
@@ -155,6 +166,12 @@ class ConsciousnessMetricsLogger:
             self.writer.add_scalar("emotion/dominance", metrics.dominance, step)
             if metrics.phi_riiu != 0.0:
                 self.writer.add_scalar("consciousness/phi_riiu", metrics.phi_riiu, step)
+            if metrics.phi_riiu_broadcast != 0.0:
+                self.writer.add_scalar("consciousness/phi_riiu_broadcast", metrics.phi_riiu_broadcast, step)
+            if metrics.phi_riiu_tectum != 0.0:
+                self.writer.add_scalar("consciousness/phi_riiu_tectum", metrics.phi_riiu_tectum, step)
+            if metrics.phi_riiu_audio != 0.0:
+                self.writer.add_scalar("consciousness/phi_riiu_audio", metrics.phi_riiu_audio, step)
 
         # Buffer for insight detection
         self._cross_episode_rewards.append(metrics.reward)

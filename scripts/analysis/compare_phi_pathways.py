@@ -36,6 +36,16 @@ from scipy import stats
 
 MIN_STEP = 1000  # plan Phase 7: analyze steps 1000+ (post-warmup)
 
+# Map --substrate CLI value to the CSV column emitted by metrics_logger.
+# The probe-all run (post-2026-05-17) writes all three explicitly. Older
+# CSVs from pre-probe runs only have `phi_riiu` (whichever was the reward
+# source) and treat 'broadcast' as the default; we fall back to that.
+SUBSTRATE_COLUMN = {
+    "broadcast": "phi_riiu_broadcast",
+    "tectum": "phi_riiu_tectum",
+    "audio": "phi_riiu_audio",
+}
+
 
 @dataclass
 class Verdict:
@@ -44,7 +54,15 @@ class Verdict:
     detail: str
 
 
-def load_metrics(run_dir: str) -> pd.DataFrame:
+def load_metrics(run_dir: str, substrate: str = "broadcast") -> pd.DataFrame:
+    """Load metrics.csv and overwrite `phi_riiu` with the chosen substrate.
+
+    The returned DataFrame always has `phi_riiu` as the column being analyzed,
+    which keeps all downstream criterion functions substrate-agnostic. The
+    column resolution falls back to the legacy `phi_riiu` (= the reward
+    source from that run) when the requested explicit substrate column is
+    missing or all-zero; a one-line note is printed in that case.
+    """
     path = os.path.join(run_dir, "metrics.csv")
     if not os.path.exists(path):
         print(f"ERROR: {path} not found")
@@ -55,6 +73,15 @@ def load_metrics(run_dir: str) -> pd.DataFrame:
     if missing:
         print(f"ERROR: {path} missing columns: {missing}")
         sys.exit(1)
+    explicit_col = SUBSTRATE_COLUMN[substrate]
+    if explicit_col in df.columns and df[explicit_col].abs().sum() > 0:
+        df["phi_riiu"] = df[explicit_col]
+    elif substrate != "broadcast":
+        print(
+            f"NOTE: column {explicit_col!r} missing or all-zero in {path}; "
+            f"falling back to legacy phi_riiu column (interpreted as the "
+            f"reward-source substrate from that run)."
+        )
     return df
 
 
@@ -247,11 +274,19 @@ def main():
                         help="Directory with metrics.csv from --enable-riiu run")
     parser.add_argument("--baseline-dir", default=None,
                         help="Reference run for criterion D (reward regression)")
+    parser.add_argument("--substrate", default="broadcast",
+                        choices=["broadcast", "tectum", "audio"],
+                        help="Which RIIU substrate column to evaluate. The "
+                             "selected per-substrate column is treated as "
+                             "`phi_riiu` for criteria A, B, C. Falls back to "
+                             "the legacy reward-source column if the explicit "
+                             "one is missing or all-zero (older runs). Default "
+                             "broadcast.")
     parser.add_argument("--output", default=None,
                         help="Path to write markdown report. If omitted, prints to stdout.")
     args = parser.parse_args()
 
-    df = load_metrics(args.run_dir)
+    df = load_metrics(args.run_dir, substrate=args.substrate)
     valid = filter_valid(df)
 
     if len(valid) == 0:
@@ -268,7 +303,7 @@ def main():
     distribution_summary = summarize_distributions(df, valid)
 
     print("=" * 70)
-    print(f"Run: {args.run_dir}")
+    print(f"Run: {args.run_dir}  (substrate: {args.substrate})")
     print("=" * 70)
     for v in verdicts:
         verdict_str = "PASS" if v.passed else "FAIL"

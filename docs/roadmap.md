@@ -88,7 +88,11 @@ This roadmap outlines the planned development phases for The Consciousness AI.
 
 ### Status 2026-05-17
 
-Pre-registered Phi-1 prediction (Pearson r > 0.4 between phi and AKOrN sync_R during training) FAILED in the 2026-05-14 pyphi ablation campaign (best r=+0.089 across 5 architectural variants, `docs/results/ablation_2026_05_14.md`) and the 2026-05-16 RIIU single-seed run on broadcast substrate (full-run r=+0.075, transient peak +0.267, `docs/results/riiu_compare_2026_05_16.md`). Per the decision protocol in `docs/preregistered_predictions.md` section 5, this is outcome 4 (fundamental redesign needed). Next focus: alternative-substrate RIIU probe (`tectum_content`, `audio_content`) before any further reward-coupled phi work, then progress to Phase 5 (Dynamic Self-Representation & Meta-Cognition) regardless of substrate-probe outcome.
+Pre-registered Phi-1 prediction (Pearson r > 0.4 between phi and AKOrN sync_R during training) FAILED in the 2026-05-14 pyphi ablation campaign (best r=+0.089 across 5 architectural variants, `docs/results/ablation_2026_05_14.md`) and the 2026-05-16 RIIU single-seed run on broadcast substrate (full-run r=+0.075, transient peak +0.267, `docs/results/riiu_compare_2026_05_16.md`). Per the decision protocol in `docs/preregistered_predictions.md` section 5, this is outcome 4 (fundamental redesign needed).
+
+The 2026-05-17 follow-up tested the substrate hypothesis with a parallel RIIUPhi probe (broadcast, tectum, audio simultaneously, single seed, 50 episodes; see `docs/results/riiu_substrate_probe_2026_05_17.md`). Outcome: NO WINNER. Tectum and broadcast substrates produced bit-identical phi (max |diff| = 0.0 across 9000 rows) because the broadcast tensor IS the tectum payload when the vision module wins workspace competition. Audio was degenerate without `--enable-audio`. The plan's Phase C 3-seed verification was SKIPPED per decision gate.
+
+Phi-1 stands FAILED across pathways (pyphi, RIIU) AND substrates (broadcast, tectum, audio). The project proceeds to Phase 5 (Dynamic Self-Representation & Meta-Cognition). The RIIU code path remains available behind `--enable-riiu` as a diagnostic.
 
 ## Phase 5: Dynamic Self-Representation & Meta-Cognition
 
