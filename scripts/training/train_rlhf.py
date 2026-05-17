@@ -118,9 +118,23 @@ def build_config(args):
         "ablate_memory_replay": getattr(args, "ablate_memory_replay", False),
         "ablate_consolidation_fix": getattr(args, "ablate_consolidation_fix", False),
         "ablate_rnd_zero_on_reward": getattr(args, "ablate_rnd_zero_on_reward", False),
-        "ablate_gate_diversity": getattr(args, "ablate_gate_diversity", False),
+        # Phase C of 2026-05-17 plan: defaults flipped based on 2026-05-14
+        # ablation evidence (E_no_div phi_std +240%, F_no_fb best Phi-1 r).
+        # The diversity loss -log(|g-0.5|) was named ironically: it pushes
+        # gates toward {0,1} which CAUSES collapse, not prevents it. The
+        # gate_feedback projection anti-correlates phi with sync_R. Both
+        # default to OFF now via the new --gate-diversity-loss and
+        # --gate-feedback flags. Legacy --ablate-* flags are preserved as
+        # aliases that force the new behavior.
+        "ablate_gate_diversity": (
+            getattr(args, "gate_diversity_loss", "off") == "off"
+            or getattr(args, "ablate_gate_diversity", False)
+        ),
         "ablate_gate_entropy": getattr(args, "ablate_gate_entropy", False),
-        "ablate_gate_feedback": getattr(args, "ablate_gate_feedback", False),
+        "ablate_gate_feedback": (
+            getattr(args, "gate_feedback", "off") == "off"
+            or getattr(args, "ablate_gate_feedback", False)
+        ),
         "ablate_pad_loop": getattr(args, "ablate_pad_loop", False),
         "ablate_bptt": getattr(args, "ablate_bptt", False),
         # pyphi sampling cadence: compute phi every Nth step instead of
@@ -926,7 +940,25 @@ def main():
                              "the contribution of the new variance loss "
                              "from the existing -log(|g-0.5|) term.")
     parser.add_argument("--ablate-gate-feedback", action="store_true",
-                        help="Zero the gate_feedback projection in ConsciousnessGate.forward")
+                        help="Zero the gate_feedback projection in ConsciousnessGate.forward (alias: see --gate-feedback)")
+    # Phase C of 2026-05-17 Phi-1 retest plan: canonical flag names with
+    # default behavior reversed from the legacy --ablate-* flags. Defaults
+    # reflect what the 2026-05-14 ablation evidence shows actually helps
+    # gate dynamics: diversity loss OFF (it caused collapse, not prevented
+    # it) and gate_feedback OFF (it anti-correlated phi with sync_R).
+    parser.add_argument("--gate-diversity-loss", type=str, default="off",
+                        choices=["off", "log_distance"],
+                        help="Gate diversity loss mode. 'off' (new default 2026-05-17) "
+                             "or 'log_distance' for the legacy -log(|g-0.5|) penalty "
+                             "that ablation evidence showed CAUSES gate collapse "
+                             "(E_no_div had +240%% phi_std vs head).")
+    parser.add_argument("--gate-feedback", type=str, default="off",
+                        choices=["on", "off"],
+                        help="Cross-step gate_feedback projection. 'off' (new "
+                             "default 2026-05-17) or 'on' for the legacy "
+                             "projection that ablation evidence showed "
+                             "anti-correlates phi with sync_R (F_no_fb had best "
+                             "Phi-1 r vs head).")
     parser.add_argument("--ablate-pad-loop", action="store_true",
                         help="Pass None for pad_state and interoceptive_state into reentrant.settle")
     parser.add_argument("--ablate-bptt", action="store_true",

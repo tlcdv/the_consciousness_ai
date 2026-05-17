@@ -28,6 +28,7 @@ except ImportError:
 
 from typing import Any
 import logging
+import warnings
 from collections import deque
 from dataclasses import dataclass
 
@@ -77,6 +78,15 @@ GATE_NODE_LABELS = (
     "confidence",
 )
 
+# Adaptive binarization floors per gate dimension. The adaptation_rate floor
+# was lowered from 0.001 to 1e-5 on 2026-05-17 (Phase C of the Phi-1 retest
+# plan, ~/.claude/plans/let-s-plan-the-next-misty-parasol.md): adaptation
+# is scaled to [0, 0.02] in models/core/consciousness_gating.py:187, so the
+# running median was below 0.001 and binarization was always 0, removing
+# adaptation from the 5-bit state entirely. Lowering the floor lets
+# adaptation actually contribute to TPM state diversity.
+_DEFAULT_BINARIZATION_FLOORS = (0.1, 0.1, 1e-5, 0.05, 0.1)
+
 
 class IITMetrics:
     """
@@ -113,6 +123,11 @@ class IITMetrics:
 
         # Adaptive thresholds (updated from running medians)
         self._thresholds = np.array([0.5, 0.5, 0.01, 0.5, 0.5])
+        # Per-dimension flag: have we already warned that the running median
+        # is below 5x the binarization floor? Mirror-mode warning fires once
+        # per dimension per instance to surface "gate is uninformative"
+        # without spamming.
+        self._floor_pinned_warned = np.zeros(5, dtype=bool)
 
         # Node labels
         self.node_labels = GATE_NODE_LABELS
@@ -154,14 +169,47 @@ class IITMetrics:
         ], dtype=np.float64)
 
     def _update_thresholds(self) -> None:
-        """Recompute adaptive binarization thresholds from running medians."""
+        """Recompute adaptive binarization thresholds from running medians.
+
+        Floor values prevent degenerate splits when a gate dimension never
+        crosses 0.5 in either direction. The adaptation_rate floor was
+        lowered from 0.001 to 1e-5 on 2026-05-17 (Phase C of the Phi-1
+        retest plan): adaptation is scaled to [0, 0.02] in
+        models/core/consciousness_gating.py:187, so the running median is
+        often below 0.001 and binarization was always 0, removing
+        adaptation from the 5-bit state entirely. Lowering the floor lets
+        adaptation actually contribute to state diversity.
+
+        Median-vs-floor warning: if a dimension's running median stays
+        below 5x the floor for a long stretch, the binarization is being
+        pinned by the floor and the gate dimension is not informative.
+        The warning fires once per dimension per `IITMetrics` instance.
+        """
         if len(self._raw_history) < 10:
             return
         raw = np.array(self._raw_history)
         medians = np.median(raw, axis=0)
-        # Use median as threshold, with floor values to avoid degenerate splits
-        floors = np.array([0.1, 0.1, 0.001, 0.05, 0.1])
+        floors = np.array(_DEFAULT_BINARIZATION_FLOORS)
         self._thresholds = np.maximum(medians, floors)
+        # Mirror-mode warning: when the running median is strictly below the
+        # floor, the threshold is being clamped to the floor and binarization
+        # is always 1 (because `v > floor` rarely fails for the actual
+        # distribution). This is the "always 1" mirror of the pre-2026-05-17
+        # "always 0" bug. The warning fires once per dimension per instance.
+        if len(self._raw_history) >= 50:
+            pinned = (medians < floors) & ~self._floor_pinned_warned
+            for i in np.where(pinned)[0]:
+                warnings.warn(
+                    f"IITMetrics: gate dimension '{GATE_NODE_LABELS[i]}' median "
+                    f"({medians[i]:.3e}) is below floor ({floors[i]:.3e}); "
+                    f"binarization threshold is clamped to the floor and may be "
+                    f"saturated to 1. The dimension may not be informative in "
+                    f"the TPM. Consider lowering the floor further or revising "
+                    f"the gate scaling.",
+                    RuntimeWarning,
+                    stacklevel=2,
+                )
+                self._floor_pinned_warned[i] = True
 
     def _binarize(self, raw: np.ndarray) -> tuple[int, ...]:
         """Binarize raw gate values using adaptive thresholds."""
