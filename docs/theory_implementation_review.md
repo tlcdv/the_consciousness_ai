@@ -43,6 +43,8 @@ The three-subsystem design (Perception, Emotion, Global Workspace) correctly mir
 
 **Resolution:** `compute_effective_information()` in `models/evaluation/effective_information.py` implements Hoel's PNAS 2013 framework. `compare_ei_levels()` compares EI at gate vs. workspace level. If EI(workspace) > EI(gates), the workspace exhibits causal emergence. 11 tests cover deterministic/random/partial TPMs, level comparison, and discretization. What remains: pre-registering specific predictions about when EI(workspace) > EI(gates) during training, and running the actual experiments.
 
+**2026-05-17 update:** pre-registered predictions defined in `docs/preregistered_predictions.md` were tested across two campaigns (pyphi ablation 2026-05-14, RIIU 2026-05-16). All four testable predictions (EI-1, Phi-1, IM-1, IM-3) FAILED. EI-3 (EI/reward correlation) remains INCONCLUSIVE pending higher phi variance.
+
 ### 5. ~~Reward Formula in Thesis vs. Code~~ RESOLVED (2026-02-27)
 **Severity: LOW. Originally a consistency issue.**
 
@@ -91,13 +93,13 @@ The three-subsystem design (Perception, Emotion, Global Workspace) correctly mir
 | Multimodal perception building unified predictive models | **Complete.** Dual-stream: DINOv2 spatial + Qwen2-VL semantic. Trimodal tectum fusion. |
 | Emotional homeostasis with shaped RL rewards | **Complete.** Full PAD with homeostatic arousal term + Dominance. |
 | Global Workspace as information bottleneck | **Complete.** GNW with AKOrN binding, reentrant processing, capsule hierarchy. |
-| Phi (IIT) as measurable consciousness correlate | **Complete.** Causal gate states, adaptive binarization, geometric proxy. 38 tests. |
-| Phi spikes correlated with insight moments | **Open.** Pre-registered predictions defined. Needs experimental runs. |
+| Phi (IIT) as measurable consciousness correlate | **Partial.** Causal gate-state pipeline implemented (38 tests). Pre-registered Phi-1 (phi correlates r > 0.4 with AKOrN sync_R) FAILED twice: pyphi best r=+0.089 (2026-05-14), RIIU r=+0.075 (2026-05-16). See `docs/preregistered_predictions.md` sections 7-8. |
+| Phi spikes correlated with insight moments | **FAILED first test.** IM-1 verdict 2026-05-14: insight phi mean 1e-04, threshold 5e-04. See `docs/preregistered_predictions.md` section 7. |
 | Downward causation (strong emergence) | **Tooling complete.** EI function implemented. Needs experimental validation. |
 | Environments require consciousness machinery | **Complete.** DMTS (working memory), WCST (meta-cognition), DQN baseline for comparison. |
 | Emotion drives workspace dynamics | **Complete.** Two-stage appraisal (reflex + post-broadcast). Consciousness monitor metric-only. |
 | Capsule structure accessible post-broadcast | **Complete.** Structured payloads preserved through GNW broadcast. |
-| Phi correlates with strict supervenience test | **Open.** Research gap, needs experiment design. |
+| Phi correlates with strict supervenience test | **Open.** Currently blocked: prerequisite Phi-1 (phi-binding correlation) failed empirically across pyphi and RIIU pathways. |
 
 ---
 

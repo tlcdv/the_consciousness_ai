@@ -201,7 +201,7 @@ As of February 2026:
 
 - **463 tests passing** (100% pass rate, 4 skipped for optional deps)
 - **Tier 1 (Core Architecture):** Complete. AKOrN binding, sensory tectum, reentrant processing.
-- **Tier 2 (Architecture Corrections):** Complete. Affective modulator, phi-binding validation, proprioceptive self-model, effective information.
+- **Tier 2 (Architecture Corrections):** Complete. Affective modulator, AKOrN 3-condition binding validation (2026-02-21 synthetic test passed: phi monotonically tracked synchronization in a controlled stimulus), proprioceptive self-model, effective information. Note: in-training phi-binding correlation (Phi-1) FAILED in the 2026-05-14 ablation campaign (best r=+0.089 across 5 variants) and the 2026-05-16 RIIU run (full-run r=+0.075). The synthetic-stimulus validation does not transfer to the training-context prediction.
 - **Tier 3 (Compositional Deepening):** Complete. 4-level capsule hierarchy with multi-level reentrance, Brian2 validation, trimodal tectum, embodiment-affect loop, isomorphic visual mapping.
 - **Tier 3.5 (Alignment Fixes + Environments):** Complete. Two-stage emotion appraisal, capsule broadcast payloads, consciousness monitor fix, DMTS environment, WCST environment, DQN baseline, metrics logger, memory consolidation, navigation environment, semantic pathway.
 

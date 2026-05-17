@@ -49,7 +49,7 @@ We use IIT to quantify the *quality* of this fusion.
 *   If the workspace state is just a sum of its parts ($\Phi \approx 0$), the agent is "zombie-like" (acting on reflexes).
 *   If the workspace state creates a new, unified information structure ($\Phi > 0$), we argue this correlates with a "subjective" experience.
 
-**Hypothesis 2:** The RL Policy will naturally converge towards states of high $\Phi$ because high-$\Phi$ states (unified concepts) offer better predictive power than low-$\Phi$ states (fragmented data) for reducing long-term Anxiety.
+**Hypothesis 2 (pre-registered as Phi-1, tested 2026-05-14 and 2026-05-16, FAILED both):** The RL Policy was predicted to converge toward states of high $\Phi$ correlated with the AKOrN sync_R order parameter at Pearson r > 0.4. Observed values: best r=+0.089 (pyphi pipeline, 2026-05-14 ablation campaign across 5 architectural variants) and r=+0.075 (RIIU sliding-window SVD pathway, 2026-05-16 single-seed 200-episode run, with a transient peak of +0.267 between steps 11000-16000 that did not persist). The hypothesis stands rejected at the pre-registered threshold. See `docs/preregistered_predictions.md` sections 7 and 8 for full per-prediction verdicts.
 
 ---
 
@@ -65,7 +65,9 @@ Where:
 *   $A$: Arousal (penalizing anxiety).
 *   $\Phi$: Integrated Information (rewarding coherent thought).
 
-By explicitly rewarding $\Phi$ (or implicitly rewarding it via the prediction capability it confers), the agent is incentivized to "become conscious"—to integrate information—in order to solve the environment.
+By explicitly rewarding $\Phi$ (or implicitly rewarding it via the prediction capability it confers), the agent is incentivized to "become conscious", to integrate information, in order to solve the environment.
+
+**Empirical note (2026-05-17):** the $\lambda_3 \Phi$ term is functionally near-zero at current measurement scales. RIIU phi mean on the broadcast substrate measured 2.75e-04 across 200 episodes (`docs/results/riiu_compare_2026_05_16.md`); pyphi phi collapses to a ~6.5e-05 fixed point. The Phi reward bonus does not currently exert a measurable training pressure. The substrate-probe work tracked under Phase B of `~/.claude/plans/let-s-plan-the-next-misty-parasol.md` tests whether alternative activation sources (tectum_content, audio_content) produce phi values at a scale that could meaningfully shape the policy.
 
 ---
 

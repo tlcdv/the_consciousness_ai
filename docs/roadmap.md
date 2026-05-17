@@ -84,7 +84,11 @@ This roadmap outlines the planned development phases for The Consciousness AI.
   - ~~Memory consolidation cycle (relevance decay, cosine merge, pruning).~~ DONE.
   - ~~Navigation environment (multi-room, fog of war, battery).~~ DONE.
   - ~~Semantic pathway (Qwen2-VL embeddings as 5th workspace oscillator).~~ DONE.
-  - Documentation synchronization across all docs.
+  - ~~Documentation synchronization across all docs.~~ DONE 2026-05-17 (six docs updated to reflect 2026-05-14 pyphi ablation and 2026-05-16 RIIU empirical results).
+
+### Status 2026-05-17
+
+Pre-registered Phi-1 prediction (Pearson r > 0.4 between phi and AKOrN sync_R during training) FAILED in the 2026-05-14 pyphi ablation campaign (best r=+0.089 across 5 architectural variants, `docs/results/ablation_2026_05_14.md`) and the 2026-05-16 RIIU single-seed run on broadcast substrate (full-run r=+0.075, transient peak +0.267, `docs/results/riiu_compare_2026_05_16.md`). Per the decision protocol in `docs/preregistered_predictions.md` section 5, this is outcome 4 (fundamental redesign needed). Next focus: alternative-substrate RIIU probe (`tectum_content`, `audio_content`) before any further reward-coupled phi work, then progress to Phase 5 (Dynamic Self-Representation & Meta-Cognition) regardless of substrate-probe outcome.
 
 ## Phase 5: Dynamic Self-Representation & Meta-Cognition
 

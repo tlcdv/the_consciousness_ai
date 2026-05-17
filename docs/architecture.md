@@ -47,7 +47,7 @@ Consciousness emerges from the interaction of these feedback loops:
 
 4.  **Reentrant Loop:** Broadcast feeds back to specialists (top-down prediction). Specialists update bids (bottom-up error). 5-10 cycles until convergence.
 
-5.  **Consciousness-Action Loop:** Phi-weighted exploration scales noise inversely with integration level. High phi = exploit, low phi = explore. Gate reconstruction loss trains gate networks to predict broadcast dynamics.
+5.  **Consciousness-Action Loop:** Phi-weighted exploration scales noise inversely with integration level (high phi = exploit, low phi = explore) as the intended mechanism. As of 2026-05-17 the phi signal (both pyphi and RIIU pathways) is too small in absolute scale to drive measurable exploration changes; phi mean sits near 1e-4 to 3e-4. Gate reconstruction loss trains gate networks to predict broadcast dynamics. See `docs/preregistered_predictions.md` sections 7-8 for the empirical state of Phi-driven behavior.
 
 6.  **Action and Outcome:** Basal ganglia model (Go/No-Go pathways) selects actions. Emotional reward shaping reinforces behaviors that maintain homeostasis.
 
