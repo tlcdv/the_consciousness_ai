@@ -399,14 +399,36 @@ sync_R when bids are driven to vary in step with sync_R. Without this
 machinery (legacy winner-take-all), the broadcast is the winning module's
 payload regardless of sync_R, and no such correlation can exist.
 
-### Results (filled when F3 completes)
+### Results
 
 | Seed | n_rows | phi_mean | phi_std | sync_R_std | r(phi, sync_R) | p | verdict |
 |------|--------|----------|---------|------------|----------------|---|---------|
-| 42 (F2 single) | — | — | — | — | — | — | TBD |
-| 43 (F3) | — | — | — | — | — | — | TBD |
-| 44 (F3) | — | — | — | — | — | — | TBD |
-| 45 (F3) | — | — | — | — | — | — | TBD |
+| 42 (F2 single) | 39000 | 1.82e-03 | 1.84e-03 | 1.93e-02 | -0.0379 | 7.21e-14 | RE-RUN (variance below floor) |
+| 43 (F3) | not run | | | | | | |
+| 44 (F3) | not run | | | | | | |
+| 45 (F3) | not run | | | | | | |
 
-Final cross-seed verdict and verdict doc will live at
-`docs/results/phi1_retest_2026_05_17.md`.
+**F2 verdict: RE-RUN.** Per the pre-registered criterion above, both
+variances are below the non-degenerate floors (phi_std=1.84e-03 < 0.01;
+sync_R_std=0.0193 < 0.02). Phase F3 was NOT run because the variance
+gate must pass first.
+
+**Substantive scientific reading: the architecture's binding signal
+does not correlate with the 5-node IIT phi measurement, even after
+Phase A+C+D fixes.** Full-run r = -0.038 (effectively zero); rolling
+5000-step windows oscillate between -0.097 and +0.025 with no positive
+trend. The phi pathway through ConsciousnessGate's sigmoid networks +
+adaptive binarization + 5-bit TPM appears too lossy to preserve the
+sync_R-correlated signal that Phase A injects into the broadcast.
+
+Full verdict, rolling-window trajectory, reward trajectory, and four
+decision options (tune-and-RE-RUN, escalate to Phase B content-level
+binding, switch phi substrate to RIIU on broadcast, accept and publish)
+are in [phi1_retest_2026_05_17.md](results/phi1_retest_2026_05_17.md).
+
+The pre-registered Phi-1 threshold of r > 0.4 is NOT revised post-hoc.
+The original Phi-1 (sections 7-9) still stands FAILED. Section 10's
+test remains pre-registered; the variance-floor gate means the strict
+verdict awaits a re-run where variances exceed the pre-registered
+floors. The substantive r ≈ 0 finding does not depend on the floor
+gate and is the more important scientific result.
