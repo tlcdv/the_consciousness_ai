@@ -94,6 +94,16 @@ The 2026-05-17 follow-up tested the substrate hypothesis with a parallel RIIUPhi
 
 Phi-1 stands FAILED across pathways (pyphi, RIIU) AND substrates (broadcast, tectum, audio). The project proceeds to Phase 5 (Dynamic Self-Representation & Meta-Cognition). The RIIU code path remains available behind `--enable-riiu` as a diagnostic.
 
+### Status 2026-05-18: Phi-1 chapter closed
+
+After the 2026-05-17 substrate probe found NO WINNER, a deeper diagnosis surfaced FIVE structural failure modes in the architecture (`models/core/global_workspace.py:217-231` winner-take-all; `models/core/oscillatory_binding.py:140-191` phase-not-content binding; `models/core/reentrant_processor.py:121-128` bids-only feedback; gate-state collapse to 2-3 of 32 binarized states; dark_room single-modality bottleneck). A new pre-registration (section 10 of `docs/preregistered_predictions.md`) tested whether fixing these would let Phi-1 emerge.
+
+Phases A (attention-weighted fusion, commit `967fe2a`), C (gate-collapse fixes, commit `fafd581`), D (mock semantic + audio + pre-flight, commit `42fe78b`), E (pre-registration, commit `7227104`), and the wiring fixes (commit `d0318ff`) were implemented. F1 smoke passed. F2 single-seed 200-episode run produced pyphi r = -0.038. Option 3 dual-pathway run (Option 3 of the verdict decision tree) added the RIIU pathway and produced **pyphi r = -0.062, RIIU r = -0.005 (NOT significant)**. The 2026-05-16 transient r = +0.267 peak does NOT replicate; the corresponding rolling window in Option 3 shows r = +0.023.
+
+Across 7 independent runs spanning 2 architectures (OLD pre-2026-05-17, NEW post-2026-05-17) and 2 phi formulations (pyphi gate-state TPM, RIIU broadcast SVD), no run achieves the pre-registered r > 0.4 threshold or even the partial r > 0.15 on the full-run statistic. Verdict doc: `docs/results/phi1_retest_dual_pathway_2026_05_18.md`.
+
+The architectural improvements produced measurably better dynamics (28x phi mean, 10x RIIU phi variance, comparable reward) but did not produce the predicted binding-phi coupling. The Phi-1 chapter for the current binding+phi+gate architecture is closed. The project enters Phase 5.
+
 ## Phase 5: Dynamic Self-Representation & Meta-Cognition
 
 - **Goal:** Implement a dynamic, learned self-model and explore meta-cognitive capabilities.

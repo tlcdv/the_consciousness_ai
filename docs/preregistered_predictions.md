@@ -401,34 +401,57 @@ payload regardless of sync_R, and no such correlation can exist.
 
 ### Results
 
-| Seed | n_rows | phi_mean | phi_std | sync_R_std | r(phi, sync_R) | p | verdict |
-|------|--------|----------|---------|------------|----------------|---|---------|
-| 42 (F2 single) | 39000 | 1.82e-03 | 1.84e-03 | 1.93e-02 | -0.0379 | 7.21e-14 | RE-RUN (variance below floor) |
-| 43 (F3) | not run | | | | | | |
-| 44 (F3) | not run | | | | | | |
-| 45 (F3) | not run | | | | | | |
+| Seed | Pathway | n_rows | phi_mean | phi_std | sync_R_std | r(phi, sync_R) | p | verdict |
+|------|---------|--------|----------|---------|------------|----------------|---|---------|
+| 42 (F2 single, pyphi only) | pyphi | 39000 | 1.82e-03 | 1.84e-03 | 1.93e-02 | -0.0379 | 7e-14 | RE-RUN; substantive r ~ 0 |
+| 42 (Option 3, dual pathway) | pyphi | 39000 | 1.83e-03 | 2.05e-03 | 1.93e-02 | -0.0624 | 7e-35 | RE-RUN; substantive r ~ 0 |
+| 42 (Option 3, dual pathway) | RIIU broadcast | 39000 | 1.47e-02 | **1.99e-02** | 1.93e-02 | -0.0053 | 0.29 (NS) | r ~ 0; variance basically at floor |
+| 43/44/45 (F3) | not run | | | | | | | F3 skipped: BOTH pathways r ~ 0 |
 
-**F2 verdict: RE-RUN.** Per the pre-registered criterion above, both
-variances are below the non-degenerate floors (phi_std=1.84e-03 < 0.01;
-sync_R_std=0.0193 < 0.02). Phase F3 was NOT run because the variance
-gate must pass first.
+**F2 verdict (pyphi only): RE-RUN.** Per the pre-registered criterion
+above, both variances were below the non-degenerate floors
+(phi_std=1.84e-03 < 0.01; sync_R_std=0.0193 < 0.02). Substantive
+finding: full-run r = -0.038 (effectively zero); rolling 5000-step
+windows oscillate between -0.097 and +0.025 with no positive trend.
+Verdict doc: [phi1_retest_2026_05_17.md](results/phi1_retest_2026_05_17.md).
 
-**Substantive scientific reading: the architecture's binding signal
-does not correlate with the 5-node IIT phi measurement, even after
-Phase A+C+D fixes.** Full-run r = -0.038 (effectively zero); rolling
-5000-step windows oscillate between -0.097 and +0.025 with no positive
-trend. The phi pathway through ConsciousnessGate's sigmoid networks +
-adaptive binarization + 5-bit TPM appears too lossy to preserve the
-sync_R-correlated signal that Phase A injects into the broadcast.
+**Option 3 (dual-pathway retest): FAIL substantively, RE-RUN
+mechanically.** Same configuration as F2 plus `--enable-riiu` so both
+pyphi and RIIU phi were measured on the same trajectory. The RIIU
+pathway has 10x larger phi variance than pyphi (1.99e-02 vs 2.05e-03)
+and clears the signal-alive criterion mean >= 1e-3, ruling out "the
+pyphi pathway is too lossy" as the explanation for the pyphi r ~ 0.
+**Both pathways produce r ~ 0** (pyphi -0.062, RIIU -0.005). The 2026-05-16
+transient r=+0.267 peak on RIIU under the OLD architecture **does NOT
+replicate** under the NEW architecture: the equivalent rolling window
+(steps 11000-16000) now shows r=+0.023. The prior peak was a single-seed
+coincidence.
 
-Full verdict, rolling-window trajectory, reward trajectory, and four
-decision options (tune-and-RE-RUN, escalate to Phase B content-level
-binding, switch phi substrate to RIIU on broadcast, accept and publish)
-are in [phi1_retest_2026_05_17.md](results/phi1_retest_2026_05_17.md).
+Full dual-pathway verdict, rolling-window trajectories for both pathways,
+cross-run comparison table (7 runs, 2 architectures, 2 phi formulations),
+and the substantive conclusion are in
+[phi1_retest_dual_pathway_2026_05_18.md](results/phi1_retest_dual_pathway_2026_05_18.md).
 
 The pre-registered Phi-1 threshold of r > 0.4 is NOT revised post-hoc.
-The original Phi-1 (sections 7-9) still stands FAILED. Section 10's
-test remains pre-registered; the variance-floor gate means the strict
-verdict awaits a re-run where variances exceed the pre-registered
-floors. The substantive r ≈ 0 finding does not depend on the floor
-gate and is the more important scientific result.
+Across 7 independent runs spanning 2 architectures and 2 phi formulations,
+no run achieves the threshold or even the partial r > 0.15 on the
+full-run statistic.
+
+**Phase F3 (3-seed verification) was NOT run.** The plan's decision gate
+required F2 to clear r >= 0.15 before running F3. F2's pyphi pathway
+showed r = -0.038. Option 3 added the RIIU pathway and showed r = -0.005.
+Neither pathway met the gate.
+
+The substantive scientific conclusion: **the architecture's AKOrN
+phase-binding mechanism does not produce a measurable correlation with
+the IIT phi quantity during training**, regardless of which phi formulation
+(binary TPM via pyphi, or continuous SVD residual via RIIU) and regardless
+of which structural improvements are applied (winner-take-all -> attention
+fusion, gate collapse fixes, multi-modal binding). The pre-registered
+Phi-1 prediction stands FAILED across all measurement choices and
+architecture variants tested in this project.
+
+Per section 5 (decision protocol), this is outcome 4: "fundamental
+redesign needed, or abandon the strong emergence claim". The project
+proceeds to Phase 5 of `docs/roadmap.md` (Dynamic Self-Representation &
+Meta-Cognition) with this on permanent record.
