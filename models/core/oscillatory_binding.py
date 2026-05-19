@@ -110,7 +110,20 @@ class KuramotoLayer(nn.Module):
         # R = ||(1/N) * sum_i (amplitude_i * phase_i)||
         mean_field = torch.einsum('bn,bnd->bd', amplitudes, current_phases) / N
         synchronization_R = torch.norm(mean_field, p=2, dim=-1)
-        
+
+        # Phase B of the 2026-05-19 plan: expose the pairwise phase-coherence
+        # matrix `dot_ij[b,i,j] = <phase_i, phase_j>` for downstream
+        # content-level binding (BindingAttention). Values are cosines of
+        # the angle between oscillator phase vectors (in [-1, 1] for D=2,
+        # generally in [-1, 1] for D-sphere). The `dot_ij` inside the
+        # iteration loop above is overwritten each step; here we recompute
+        # it once on the FINAL phases, which is the state Phase B uses to
+        # modulate content cross-attention. Detached because downstream
+        # consumers use it as a gating signal, not for gradient flow.
+        self.last_pairwise_coherence = torch.einsum(
+            'bid,bjd->bij', current_phases, current_phases
+        ).detach()
+
         return current_phases, synchronization_R
 
 class WorkspaceBindingSystem(nn.Module):
@@ -189,3 +202,16 @@ class WorkspaceBindingSystem(nn.Module):
         self.last_sync_R_tensor = sync_R
 
         return bound_bids, sync_R.item()
+
+    def get_pairwise_coherence(self) -> torch.Tensor | None:
+        """Pairwise phase coherence [B, N, N] from the last bind_bids call.
+
+        Returns the cosine-similarity matrix of oscillator phase vectors at
+        the end of the most recent Kuramoto iteration. Values are in [-1, 1]:
+        +1 = fully synchronized pair, 0 = orthogonal, -1 = antiphase. Used by
+        Phase B's BindingAttention to gate cross-attention keys so that
+        synchronized module pairs literally share content.
+
+        Returns None if bind_bids has not been called yet (no phase state).
+        """
+        return getattr(self.kuramoto, 'last_pairwise_coherence', None)

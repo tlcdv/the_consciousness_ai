@@ -83,6 +83,21 @@ class GlobalWorkspace:
         # (tectum, audio, semantic) are typically 256-D; the bid-to-tensor
         # mapping uses only 8 slots and is unrelated.
         self.workspace_dim = config.get("workspace_dim", 256)
+
+        # Phase B of 2026-05-19 plan: AKOrN-modulated cross-attention on
+        # module content tensors. Consumes pairwise phase coherence from
+        # AKOrN's bind_bids and uses it to gate cross-attention logits so
+        # synchronized module pairs share content during fusion. Opt-in
+        # because Phase A's attention_weighted fusion is the prior step
+        # tested; Phase B adds content-level binding on top.
+        self.enable_content_binding = config.get("enable_content_binding", False)
+        self.binding_attention = None
+        if self.enable_content_binding:
+            from models.core.binding_attention import BindingAttention
+            self.binding_attention = BindingAttention(
+                payload_dim=self.workspace_dim,
+                hidden_dim=config.get("content_binding_hidden_dim", 64),
+            )
         
         # Dependencies
         self.iit_metrics = IITMetrics()
@@ -162,6 +177,39 @@ class GlobalWorkspace:
         bound_bids, sync_order_parameter = self.binding_system.bind_bids(bids)
         self.last_sync_R = sync_order_parameter
         self.last_sync_R_tensor = self.binding_system.last_sync_R_tensor
+
+        # 2b. Phase B content-level binding (2026-05-19 plan)
+        # When --enable-content-binding is set, the module payload tensors
+        # themselves are passed through AKOrN-modulated cross-attention BEFORE
+        # the broadcast-assembly fusion. Synchronized module pairs share
+        # content via coherence-gated attention; desynced pairs do not. This
+        # addresses failure modes 2 and 3 from the 2026-05-17 diagnosis
+        # (AKOrN binds phases not content; reentrant feedback updates bids
+        # not content). The downstream Phase A fusion (broadcast_mode =
+        # attention_weighted) then operates on these already-bound payloads,
+        # so phi-on-broadcast is now downstream of BOTH bid-weighting (Phase A)
+        # AND content-weighting (Phase B) by sync_R.
+        if self.binding_attention is not None:
+            coherence = self.binding_system.get_pairwise_coherence()
+            if coherence is not None:
+                module_order = self.binding_system.module_names
+                bound_contents = self.binding_attention(
+                    contents, coherence, module_order,
+                )
+                # Replace each module's payload tensor with the bound version.
+                # If the original payload was a dict (e.g., vision payload with
+                # capsule_poses), update the "tensor" key in-place to preserve
+                # structured data; if it was a raw tensor, replace directly.
+                for name, bound_tensor in bound_contents.items():
+                    orig = contents.get(name)
+                    if isinstance(orig, dict):
+                        # Preserve structured payload (capsule data etc.);
+                        # only update the tensor field
+                        new_payload = dict(orig)
+                        new_payload["tensor"] = bound_tensor
+                        contents[name] = new_payload
+                    else:
+                        contents[name] = bound_tensor
 
         # 3. Calculate Input Energy (Max Bound Bid)
         input_energy = max(bound_bids.values()) if bound_bids else 0.0

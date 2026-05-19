@@ -92,6 +92,13 @@ def build_config(args):
             "broadcast_mode": getattr(args, "broadcast_mode", "winner_take_all"),
             "attention_temperature": getattr(args, "attention_temperature", 0.5),
             "attention_floor": getattr(args, "attention_floor", 0.05),
+            # Phase B of 2026-05-19 plan: AKOrN-modulated cross-attention on
+            # module content tensors. Adds a coherence-gated cross-attention
+            # layer BEFORE the Phase A broadcast fusion, so synchronized
+            # module pairs share content. Phi-on-broadcast then tracks
+            # AKOrN sync_R through both bid-weighting and content-weighting.
+            "enable_content_binding": getattr(args, "enable_content_binding", False),
+            "content_binding_hidden_dim": getattr(args, "content_binding_hidden_dim", 64),
         },
         "reentrant": {
             "max_cycles": 5,
@@ -1082,6 +1089,21 @@ def main():
     parser.add_argument("--attention-floor", type=float, default=0.05,
                         help="Minimum bound_bid for a module to be eligible "
                              "for fusion. Default 0.05.")
+
+    # Phase B of 2026-05-19 plan: AKOrN-modulated cross-attention on module
+    # content tensors. Addresses the structural gap where AKOrN binds
+    # phases of bids but never touches content. Coherence-gated attention
+    # makes synchronized module pairs share content; phi-on-broadcast then
+    # becomes downstream of sync_R through BOTH bid-weighting (Phase A)
+    # AND content-weighting (Phase B).
+    parser.add_argument("--enable-content-binding", action="store_true",
+                        help="Phase B: AKOrN-modulated cross-attention on "
+                             "module content tensors. Most meaningful when "
+                             "combined with --broadcast-mode attention_weighted.")
+    parser.add_argument("--content-binding-hidden-dim", type=int, default=64,
+                        help="Hidden dimension of the BindingAttention "
+                             "projections. Default 64. Raise to 128-256 if "
+                             "phi_std under content binding is too low.")
 
     # Phase D of 2026-05-17 Phi-1 retest plan: enable a deterministic
     # mock semantic module so the semantic channel produces non-zero bids
