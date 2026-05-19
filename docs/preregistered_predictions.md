@@ -520,17 +520,23 @@ Degenerate variance triggers a re-run, not threshold revision. The r > 0.4 thres
 
 Phase B addresses the structural gap surfaced by the section-10 verdict: under Phase A's content fusion, the WEIGHTS tracked sync_R but the WEIGHTED CONTENT did not. Phase B closes this gap by making the content tensors themselves be modulated by AKOrN's pairwise phase coherence via cross-attention. Specifically: high coherence between (i, j) -> high attention[i, j] in BindingAttention -> module i's bound content includes more of module j's content. Whether this produces the predicted r > 0.4 depends on whether the resulting content-level integration translates into IIT phi variation that tracks sync_R. The synthetic mechanism gate passed; the empirical question is settled by F2.
 
-### Results (filled when F2/F3 complete)
+### Results
 
 | Seed | Pathway | n_rows | phi_mean | phi_std | sync_R_std | r(phi, sync_R) | p | verdict |
 |------|---------|--------|----------|---------|------------|----------------|---|---------|
-| 42 (F2 single) | pyphi | — | — | — | — | — | — | TBD |
-| 42 (F2 single) | RIIU broadcast | — | — | — | — | — | — | TBD |
-| 43 (F3) | pyphi | — | — | — | — | — | — | TBD |
-| 43 (F3) | RIIU | — | — | — | — | — | — | TBD |
-| 44 (F3) | pyphi | — | — | — | — | — | — | TBD |
-| 44 (F3) | RIIU | — | — | — | — | — | — | TBD |
-| 45 (F3) | pyphi | — | — | — | — | — | — | TBD |
-| 45 (F3) | RIIU | — | — | — | — | — | — | TBD |
+| 42 (F2 single) | pyphi | 39000 | 1.53e-03 | 1.67e-03 | 1.61e-02 | +0.0080 | 1.15e-01 (NS) | FAIL substantively; RE-RUN mechanically |
+| 42 (F2 single) | RIIU broadcast | 39000 | 8.53e-03 | 8.22e-03 | 1.61e-02 | -0.0074 | 1.43e-01 (NS) | FAIL substantively; RE-RUN mechanically |
+| 43/44/45 (F3) | both | not run | — | — | — | — | — | F3 SKIPPED: r < 0.15 on both pathways |
 
-Final verdict doc will live at `docs/results/phi1_phaseB_2026_05_19.md`.
+**F2 verdict: substantive FAIL.** Phase B's content-level binding via AKOrN-modulated cross-attention does NOT produce Phi-1 r > 0.4 (or even > 0.15) on either pathway. Full-run r is essentially zero on both: pyphi +0.008 (NS), RIIU -0.007 (NS). Mechanism-level test PASSES (`test_attention_weights_covary_with_coherence_at_mechanism_level`), so the design is correctly implemented; the failure is at the downstream phi-tracking level, not in the BindingAttention mechanics.
+
+**Comparison to section 10 (Phase A+C+D, no Phase B):**
+
+- Phase A only: pyphi r = -0.062, RIIU r = -0.005 (Option 3, 2026-05-18)
+- Phase A+B: pyphi r = +0.008, RIIU r = -0.007 (this run, 2026-05-19)
+
+Both in the same r ~ 0 band. Phase B's mechanism works but does not propagate to phi. Reward is more stable (62 / 200 positive episodes vs 50 / 200) but Phi-1 itself unchanged.
+
+Three deeper explanations and the decision path are in [phi1_phaseB_2026_05_19.md](results/phi1_phaseB_2026_05_19.md). Per plan section 11's decision-gate table, this triggers Phase B-alt (GASPnet replacement, ~30-40h dev + 6h run). The user's session 2026-05-19 choice was "Phase B first, then GASPnet if it fails (Recommended)"; the decision now is whether to commit to Phase B-alt or accept the negative result. Section 11 pre-registration remains intact; the verdict above is recorded against it on permanent record.
+
+The original Phi-1 pre-registered threshold of r > 0.4 is NOT revised. Across 8 runs spanning 3 architectures (OLD; NEW A+C+D; NEW A+B+C+D) and 2 phi formulations (pyphi gate-state TPM; RIIU broadcast SVD), no run achieves the pre-registered threshold or even the partial r > 0.15. The empirical record now strongly suggests that AKOrN's separation of abstract phase from concrete content is the structural limit; Phase B-alt (GASPnet with phase IS the content's phase) is the principled next step within the mission-aligned constraint set.
