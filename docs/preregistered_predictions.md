@@ -455,3 +455,82 @@ Per section 5 (decision protocol), this is outcome 4: "fundamental
 redesign needed, or abandon the strong emergence claim". The project
 proceeds to Phase 5 of `docs/roadmap.md` (Dynamic Self-Representation &
 Meta-Cognition) with this on permanent record.
+
+## 11. Phi-1 retest under Phase B content-level binding (pre-registered 2026-05-19)
+
+**Status:** PRE-REGISTERED, UNTESTED at registration time
+**Architecture commit hash:** `dfdcf83` (Phase B implementation, head of main at registration)
+**Plan:** `~/.claude/plans/let-s-plan-the-next-misty-parasol.md` (2026-05-19 plan)
+
+### Why this is a NEW pre-registration, not a re-interpretation
+
+Section 10's pre-registration tested the architecture with Phase A (attention-weighted broadcast fusion) + Phase C (gate-collapse fixes) + Phase D (mock semantic + audio + pre-flight). Both pyphi and RIIU pathways produced r ~ 0. The 2026-05-18 dual-pathway verdict ruled out "measurement is lossy" as the cause and pointed to a deeper structural issue: AKOrN binds the PHASES of scalar bids, but never touches the CONTENT TENSORS. Even with Phase A's bid-weighted content fusion, the content variation injected by sync_R-derived weights did not propagate to phi.
+
+This new pre-registration tests a DIFFERENT architecture: Phase A + C + D + **Phase B** (AKOrN-modulated content-level cross-attention). Phase B is the surgically-minimal architectural change that addresses failure modes 2 and 3 from the 2026-05-17 diagnosis: it makes module content tensors themselves be modulated by AKOrN's pairwise phase coherence, BEFORE they enter Phase A's fusion. Synchronized module pairs literally share content; desynced pairs do not. Phi-on-broadcast is then downstream of sync_R through TWO mechanisms (bid-weighting and content-weighting), instead of one (bid-weighting only as in section 10).
+
+The pre-registered Phi-1 threshold r > 0.4 is NOT revised. Section 10 stays FAILED. Section 11 is a new test, additive only.
+
+### Architecture under test
+
+Commits underlying this configuration (cumulative):
+
+- `967fe2a` (Phase A): attention-weighted broadcast fusion
+- `fafd581` (Phase C): gate-diversity-loss and gate_feedback default OFF; adaptation binarization floor 0.001 -> 1e-5
+- `42fe78b` (Phase D): MockSemanticModule + Phi-1 pre-flight gate
+- `d0318ff` (wiring): dict-broadcast handling in receive_broadcast and PE computation
+- `dfdcf83` (Phase B): AKOrN-modulated content-level cross-attention via BindingAttention
+
+Critical-gate evidence (collected at registration time): `tests/test_content_binding.py::test_attention_weights_covary_with_coherence_at_mechanism_level` PASSES. Under a synthetic 50-step drive with alternating balanced and dominant bid patterns, pooled across (step, module-i, module-j) triples, `r(coherence[i,j], attention[i,j]) > 0.4`. This verifies the mathematical mechanism: BindingAttention's log-bias correctly translates pairwise phase coherence into attention weights. The downstream output-level effect emerges only with training (untrained random Q/K/V/W_out projections wash out content differentiation in synthetic fixtures), so the gate is intentionally placed at the attention-weight level where the design intervenes.
+
+### Config (frozen at registration time)
+
+```bash
+PYPHI_WELCOME_OFF=yes python -m scripts.training.train_rlhf \
+    --env dark_room --enable-audio --enable-mock-semantic \
+    --enable-riiu --enable-content-binding \
+    --episodes 200 --max-steps 200 --seed 42 \
+    --broadcast-mode attention_weighted \
+    --gate-diversity-loss off --gate-feedback off \
+    --phi-sample-every 5 --log-ei-every 50 \
+    --phi1-min-active-modules 3 \
+    --log-dir runs/phi1_phaseB_seed42
+```
+
+### Prediction
+
+Pearson r > 0.4 between phi and AKOrN sync_R across training episodes, measured for BOTH the pyphi pathway (column `phi`) and the RIIU pathway (column `phi_riiu_broadcast`). The hypothesis: with content-level binding, BOTH pathways should now see signal. Single seed first (F2-equivalent); 3 seeds for confirmation (F3) only if F2 produces r >= 0.15 on either pathway.
+
+### Falsification criterion
+
+r <= 0.4 on the 3-seed confirmation set (or on the single seed if F3 is skipped due to F2 failure), with non-degenerate variances:
+
+- `phi_std > 0.01`
+- `sync_R_std > 0.02`
+
+Degenerate variance triggers a re-run, not threshold revision. The r > 0.4 threshold matches the original Phi-1 and is NOT revised post-hoc.
+
+### Decision-gate outcomes (from plan Phase 4)
+
+- **r >= 0.40 on EITHER pathway, non-degenerate**: PASS. Phase B succeeded. Run 3-seed confirmation.
+- **0.15 <= r < 0.40 on either pathway**: PARTIAL. User decision: tune `content-binding-hidden-dim`, escalate to Phase B-alt (GASPnet replacement), or accept partial signal.
+- **r < 0.15 on BOTH pathways, non-degenerate**: FAIL. Phase B insufficient. Escalate to Phase B-alt (GASPnet replacement, ~30-40h) which uses Kuramoto-derived dynamics on complex-valued content vectors (phase IS the content's phase, structurally couples binding and integration).
+- **Variances degenerate**: re-tune attention_temperature / content_binding_hidden_dim; do NOT revise threshold.
+
+### Architectural justification
+
+Phase B addresses the structural gap surfaced by the section-10 verdict: under Phase A's content fusion, the WEIGHTS tracked sync_R but the WEIGHTED CONTENT did not. Phase B closes this gap by making the content tensors themselves be modulated by AKOrN's pairwise phase coherence via cross-attention. Specifically: high coherence between (i, j) -> high attention[i, j] in BindingAttention -> module i's bound content includes more of module j's content. Whether this produces the predicted r > 0.4 depends on whether the resulting content-level integration translates into IIT phi variation that tracks sync_R. The synthetic mechanism gate passed; the empirical question is settled by F2.
+
+### Results (filled when F2/F3 complete)
+
+| Seed | Pathway | n_rows | phi_mean | phi_std | sync_R_std | r(phi, sync_R) | p | verdict |
+|------|---------|--------|----------|---------|------------|----------------|---|---------|
+| 42 (F2 single) | pyphi | — | — | — | — | — | — | TBD |
+| 42 (F2 single) | RIIU broadcast | — | — | — | — | — | — | TBD |
+| 43 (F3) | pyphi | — | — | — | — | — | — | TBD |
+| 43 (F3) | RIIU | — | — | — | — | — | — | TBD |
+| 44 (F3) | pyphi | — | — | — | — | — | — | TBD |
+| 44 (F3) | RIIU | — | — | — | — | — | — | TBD |
+| 45 (F3) | pyphi | — | — | — | — | — | — | TBD |
+| 45 (F3) | RIIU | — | — | — | — | — | — | TBD |
+
+Final verdict doc will live at `docs/results/phi1_phaseB_2026_05_19.md`.
