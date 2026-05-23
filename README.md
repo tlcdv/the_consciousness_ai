@@ -44,7 +44,12 @@ A multisensory spatial integration layer modeled after the biological optic tect
 
 ### 2. Oscillatory Binding (Integration)
 
-Based on [AKOrN](https://github.com/loeweX/AKOrN) (Artificial Kuramoto Oscillatory Neurons, ICLR 2025 oral). Treats neurons as oscillatory units on a hypersphere. Modules that synchronize are "bound" into unified percepts. Solves the binding problem through phase synchronization rather than single point convergence.
+Two interchangeable Kuramoto-based mechanisms, selectable at training time via `--binding-mechanism {akorn, komplex}`.
+
+*   **AKOrN** (default, clean-room implementation derived from the ICLR 2025 paper, "Artificial Kuramoto Oscillatory Neurons"). Treats neurons as oscillatory units on an N-sphere. Phases are abstract oscillator states detached from content. Modules that synchronize get amplitude boosts; phi-binding correlation tested in `tests/test_phi_binding_correlation.py`.
+*   **KomplexNet** (Phase B-alt of 2026-05-19 plan, clean-room implementation derived from Muzellec et al. 2025, "Enhancing deep neural networks through complex-valued representations and Kuramoto synchronization dynamics", arxiv 2502.21077, MIT). Per-module scalar phases woven multiplicatively into content tensors via `cos(theta_m - theta_global)`. Synchronized modules keep content magnitude; antiphase modules get sign-flipped; orthogonal modules get suppressed. The structural hypothesis being tested: phi-on-broadcast should track sync_R because the binding signal and the content signal are the same signal.
+
+The empirical comparison between mechanisms is an open scientific question (see Phi-1 results below).
 
 ### 3. Global Workspace (Consciousness)
 
@@ -52,7 +57,7 @@ Based on [AKOrN](https://github.com/loeweX/AKOrN) (Artificial Kuramoto Oscillato
 *   **Integrated Information (Phi):** Measures the causal integration using ConsciousnessGate states (attention, stability, adaptation, coherence, confidence) as the IIT subsystem. Adaptive binarization thresholds from running medians. Geometric proxy metric when pyphi is unavailable.
 *   **Effective Information (EI):** Hoel's framework (PNAS 2013) for measuring causal emergence. Compares EI at gate level vs. workspace level. If EI(workspace) > EI(gates), the workspace exhibits causal properties not reducible to its parts.
 *   **Capsule Network Composition:** A 4-level nested compositional hierarchy where lower level features (sensory) route to higher level composites (object primitives, categories, scenes) via dynamic routing by agreement (Sabour 2017). Includes multi-level reentrant feedback: higher capsule levels send top-down predictions to lower levels, which compute prediction errors and re-route.
-*   **Brian2 Validation:** Offline biological validation stack translating AKOrN Kuramoto parameters to Brian2 spiking networks. Compares synchronization curves between the two simulators via Pearson correlation.
+*   **Brian2 Validation:** Offline biological validation stack translating AKOrN Kuramoto parameters to Brian2 spiking networks. Compares synchronization curves between the two simulators via Pearson correlation. (KomplexNet uses scalar phases on the standard Kuramoto circle, so its Brian2 mapping is the standard textbook form; a dedicated validator can be added if needed.)
 
 ### 4. Affective Core (Emotion)
 
@@ -89,7 +94,7 @@ A parallel modulation system. Emotion does not compete with sensory modules for 
 The development validates emergent properties through:
 
 1.  **Emotional Bootstrapping:** Train agents using intrinsic motivation. The agent explores to reduce prediction error (anxiety), not to accumulate external reward.
-2.  **Binding Validation (empirical record):** The 2026-02-21 3-condition synthetic test demonstrated phi monotonicity with binding strength on a controlled stimulus. Subsequent in-training tests of the pre-registered Phi-1 prediction (phi correlates r > 0.4 with AKOrN sync_R) across 7 runs and 2 architectures and 2 phi formulations all FAILED ([docs/results/phi1_retest_dual_pathway_2026_05_18.md](docs/results/phi1_retest_dual_pathway_2026_05_18.md)): 2026-05-14 5-variant ablation campaign (best r=+0.089); 2026-05-16 RIIU on broadcast (r=+0.075, transient single-seed +0.267 that does not replicate); 2026-05-17 substrate probe (NO WINNER); 2026-05-17/18 retest under revised architecture with Phase A attention-weighted fusion + Phase C gate-collapse fixes + Phase D multi-modal binding (pyphi r=-0.062, RIIU r=-0.005 NOT significant). The architecture's binding signal does not exhibit a measurable correlation with the IIT phi quantity during training under any tested measurement choice or structural variant. Per the pre-registered decision protocol, this is outcome 4 (fundamental redesign or reframe). The project closes the Phi-1 chapter for the current binding+phi+gate architecture and proceeds to Phase 5 (Dynamic Self-Representation).
+2.  **Binding Validation (empirical record):** The 2026-02-21 3-condition synthetic test demonstrated phi monotonicity with binding strength on a controlled stimulus. Subsequent in-training tests of the pre-registered Phi-1 prediction (phi correlates r > 0.4 with binding sync_R) across 8 runs spanning 3 architectures and 2 phi formulations all FAILED: 2026-05-14 5-variant ablation campaign (AKOrN, best r=+0.089); 2026-05-16 RIIU on broadcast (AKOrN, r=+0.075, transient single-seed +0.267 that does not replicate); 2026-05-17 substrate probe (NO WINNER); 2026-05-17/18 retest under Phase A attention-weighted fusion + Phase C gate-collapse fixes + Phase D multi-modal binding (AKOrN, pyphi r=-0.062, RIIU r=-0.005 NS); 2026-05-19 Phase B AKOrN-modulated cross-attention on content (AKOrN+content-binding, pyphi r=+0.008, RIIU r=-0.007, both NS) ([docs/results/phi1_phaseB_2026_05_19.md](docs/results/phi1_phaseB_2026_05_19.md)). Phase B-alt replaces AKOrN's abstract-phase binding with KomplexNet-style binding (per-module scalar phases woven into content via `cos(theta_m - theta_global)`), testing the structural hypothesis that AKOrN's separation of phases from content is the underlying cause; results pending.
 3.  **Reentrant Settling:** Conscious content emerges from iterative convergence (5-10 cycles), not single pass processing. Capsule hierarchy adds nested reentrant feedback within each settling cycle.
 4.  **Complexity Scaling:** Gradual increase of environment complexity forces the agent to develop higher order world models.
 5.  **Measurement:** Continuous monitoring of Phi (IIT), ignition events (GNW), oscillatory synchronization (AKOrN order parameter R), and Effective Information (EI) for causal emergence detection.
@@ -145,7 +150,7 @@ python -m scripts.training.train_rlhf --env dark_room --enable-audio --episodes 
 python -m scripts.training.train_rlhf --render
 ```
 
-This runs the full cognitive loop: DINOv2 retinotopic encoding -> cochlear auditory encoding (optional, via `--enable-audio`) -> trimodal tectum fusion -> RSSM surprise bidding -> GNW competition with AKOrN binding -> reentrant convergence -> basal ganglia action selection -> two-stage emotion appraisal -> PAD reward shaping. No large model weights are required.
+This runs the full cognitive loop: DINOv2 retinotopic encoding -> cochlear auditory encoding (optional, via `--enable-audio`) -> trimodal tectum fusion -> RSSM surprise bidding -> GNW competition with oscillatory binding (AKOrN by default, or KomplexNet via `--binding-mechanism komplex`) -> reentrant convergence -> basal ganglia action selection -> two-stage emotion appraisal -> PAD reward shaping. No large model weights are required.
 
 ### 3. Running Tests
 

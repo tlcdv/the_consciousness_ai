@@ -103,13 +103,37 @@ class GlobalWorkspace:
         self.iit_metrics = IITMetrics()
         self.qualia_mapper = PhenomenologicalMapper()
         
-        # AKOrN Oscillatory Binding System
+        # Oscillatory Binding System.
         # 5 sensory/cognitive oscillators. Emotion is a parallel modulator,
         # not a workspace competitor (Tier 2 architecture redesign).
-        from models.core.oscillatory_binding import WorkspaceBindingSystem
+        #
+        # binding_mechanism selects between:
+        #   "akorn"   (default, AKOrN ICLR 2025): abstract N-sphere phases
+        #             detached from content. Original Tier 1 implementation.
+        #   "komplex" (Phase B-alt of 2026-05-19 plan): KomplexNet-style
+        #             scalar per-module phases woven multiplicatively into
+        #             content via weave_content(). The structural hypothesis
+        #             Phase B-alt tests is that AKOrN's separation of phase
+        #             from content is the reason Phi-1 keeps failing.
         num_modules = config.get("num_modules", 5)
         module_names = config.get("module_names", ['vision', 'audio', 'memory', 'body', 'semantic'])
-        self.binding_system = WorkspaceBindingSystem(num_modules=num_modules, iterations=5)
+        self.binding_mechanism = config.get("binding_mechanism", "akorn")
+        if self.binding_mechanism == "komplex":
+            from models.core.complex_binding import ComplexBindingSystem
+            self.binding_system = ComplexBindingSystem(
+                num_modules=num_modules,
+                iterations=config.get("binding_iterations", 5),
+                eta=config.get("komplex_eta", 0.1),
+                desync_eps=config.get("komplex_desync_eps", 0.01),
+            )
+        elif self.binding_mechanism == "akorn":
+            from models.core.oscillatory_binding import WorkspaceBindingSystem
+            self.binding_system = WorkspaceBindingSystem(num_modules=num_modules, iterations=5)
+        else:
+            raise ValueError(
+                f"Unknown binding_mechanism '{self.binding_mechanism}'. "
+                f"Expected 'akorn' or 'komplex'."
+            )
         self.binding_system.register_modules(module_names)
         
         # Affective Modulator (Tier 2): emotion modulates bids + threshold
@@ -178,7 +202,18 @@ class GlobalWorkspace:
         self.last_sync_R = sync_order_parameter
         self.last_sync_R_tensor = self.binding_system.last_sync_R_tensor
 
-        # 2b. Phase B content-level binding (2026-05-19 plan)
+        # 2b-alt. Phase B-alt content weaving (2026-05-19 plan, komplex only)
+        # KomplexNet weaves the per-module scalar phase directly into the
+        # content tensor: content_m <- content_m * cos(theta_m - theta_global).
+        # Modules whose phase aligns with the mean field keep magnitude;
+        # antiphase modules get sign-flipped; orthogonal modules get
+        # suppressed. The hypothesis: phi-on-broadcast tracks sync_R because
+        # the binding signal and the content signal are the same signal.
+        if (self.binding_mechanism == "komplex"
+                and hasattr(self.binding_system, 'weave_content')):
+            contents = self.binding_system.weave_content(contents)
+
+        # 2b. Phase B content-level binding (2026-05-19 plan, akorn only)
         # When --enable-content-binding is set, the module payload tensors
         # themselves are passed through AKOrN-modulated cross-attention BEFORE
         # the broadcast-assembly fusion. Synchronized module pairs share
@@ -189,6 +224,11 @@ class GlobalWorkspace:
         # attention_weighted) then operates on these already-bound payloads,
         # so phi-on-broadcast is now downstream of BOTH bid-weighting (Phase A)
         # AND content-weighting (Phase B) by sync_R.
+        #
+        # NOTE: BindingAttention is meaningful only for AKOrN because komplex
+        # already does content-level weaving via weave_content above. If both
+        # are active simultaneously the weaving runs first and BindingAttention
+        # then re-modulates the woven content; not a recommended config.
         if self.binding_attention is not None:
             coherence = self.binding_system.get_pairwise_coherence()
             if coherence is not None:

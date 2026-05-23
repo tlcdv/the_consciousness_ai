@@ -99,6 +99,15 @@ def build_config(args):
             # AKOrN sync_R through both bid-weighting and content-weighting.
             "enable_content_binding": getattr(args, "enable_content_binding", False),
             "content_binding_hidden_dim": getattr(args, "content_binding_hidden_dim", 64),
+            # Phase B-alt of 2026-05-19 plan: replace AKOrN's abstract phase
+            # binding with KomplexNet-style per-module scalar phases woven
+            # multiplicatively into content. 'akorn' (default) preserves the
+            # original Tier 1 architecture; 'komplex' switches the binding
+            # mechanism wholesale and activates the weave_content step that
+            # phase-modulates module payloads BEFORE Phase A fusion.
+            "binding_mechanism": getattr(args, "binding_mechanism", "akorn"),
+            "komplex_eta": getattr(args, "komplex_eta", 0.1),
+            "komplex_desync_eps": getattr(args, "komplex_desync_eps", 0.01),
         },
         "reentrant": {
             "max_cycles": 5,
@@ -1104,6 +1113,28 @@ def main():
                         help="Hidden dimension of the BindingAttention "
                              "projections. Default 64. Raise to 128-256 if "
                              "phi_std under content binding is too low.")
+
+    # Phase B-alt of 2026-05-19 plan: replace AKOrN's abstract-phase binding
+    # with KomplexNet-style per-module scalar phases woven multiplicatively
+    # into content. The structural hypothesis: AKOrN's separation of phases
+    # (abstract oscillator states) from content (concrete tensors) is the
+    # reason all 8 prior Phi-1 runs failed across 3 architectures and 2 phi
+    # formulations. KomplexNet weaves phase into content directly, so
+    # phi-on-broadcast should track sync_R because the binding signal and
+    # the content signal ARE the same signal.
+    parser.add_argument("--binding-mechanism", type=str, default="akorn",
+                        choices=["akorn", "komplex"],
+                        help="Oscillatory binding mechanism. 'akorn' (default) "
+                             "is the AKOrN ICLR 2025 implementation with "
+                             "phases on the N-sphere. 'komplex' is the "
+                             "KomplexNet-style binding with scalar phases "
+                             "woven into content via weave_content.")
+    parser.add_argument("--komplex-eta", type=float, default=0.1,
+                        help="KomplexNet phase update gain. Default 0.1.")
+    parser.add_argument("--komplex-desync-eps", type=float, default=0.01,
+                        help="KomplexNet global desync parameter epsilon. "
+                             "Small positive pushes phases apart in the "
+                             "absence of strong coupling. Default 0.01.")
 
     # Phase D of 2026-05-17 Phi-1 retest plan: enable a deterministic
     # mock semantic module so the semantic channel produces non-zero bids
