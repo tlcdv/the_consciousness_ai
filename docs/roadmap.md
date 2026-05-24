@@ -107,11 +107,15 @@ The architectural improvements produced measurably better dynamics (28x phi mean
 ## Phase 5: Dynamic Self-Representation & Meta-Cognition
 
 - **Goal:** Implement a dynamic, learned self-model and explore meta-cognitive capabilities.
+- **Theoretical grounding:** This phase is the project's first concrete integration of [Rouleau & Levin (2026)](rouleau_levin_substrate_independence.md) ("Brains and where else?", *Phil. Trans. R. Soc. A* 384: 20250082). Their theme #4 (meta-representations), the aneurocentric formulations of Higher-Order Theory, self-organizing meta-representational theory, and self-comes-to-mind theory, and Levin's "computational boundary of a self" framing are the explicit targets the deliverables below operationalise.
 - **Deliverables:**
-  - **Dynamic Self-Representation Module:** Learned "self-vector" loop within `ConsciousnessCore` and `SelfRepresentationCore` as per Higher-Order theories.
+  - **Dynamic Self-Representation Module:** Learned "self-vector" loop within `ConsciousnessCore` and `SelfRepresentationCore` as per Higher-Order theories. Evaluated against the aneurocentric HOT formulation in [`rouleau_levin_substrate_independence.md`](rouleau_levin_substrate_independence.md) §3 theme 4.
   - Reflective prompt templates and mechanisms for meta-cognitive evaluation.
   - Enhanced `ConsciousnessGating` informed by the dynamic self-model.
-- **Theoretical grounding:** Meta-representation, self-organizing meta-representational theory, and the "computational boundary of a self" are surveyed in [Rouleau & Levin (2026)](rouleau_levin_substrate_independence.md). Phase 5 self-model work should be evaluable against the aneurocentric formulations of HOT, self-organizing meta-representation, and self-comes-to-mind theory listed there.
+  - **Activate dormant Levin modules (Rouleau-Levin §4):** Wire `LevinConsciousnessEvaluator` (`models/evaluation/levin_consciousness_metrics.py`) into `models/evaluation/consciousness_monitor.py`, and wire `BioelectricSignalingNetwork` (`models/self_model/bioelectric_signaling.py`) and `holonic_intelligence.py` into the agent forward pass. These modules already exist but are currently unreferenced outside `tests/test_levin_consciousness_metrics.py`.
+  - **Substrate-independence falsification test (Rouleau-Levin §5 point 3):** Validate that `collective_intelligence` and `goal_directed_behavior` from `LevinConsciousnessMetrics` rise during DMTS / WCST trials that require self-monitoring, and do **not** rise on the DQN baseline on the same environments.
+  - **Computational boundary of self (Rouleau-Levin §5 point 2):** Implement a Markov-blanket-style causal-closure detector that identifies, at each timestep, which gates and which environmental variables are inside the self-model's predictive-causal boundary. This complements the EI macro-vs-micro test already in `models/evaluation/effective_information.py`.
+  - **Eight-themes coverage audit (Rouleau-Levin §3 table):** Confirm that each of the 8 aneurocentric themes Rouleau & Levin distil has at least one logged metric in the training run, and that theme 4 (meta-representations) becomes empirically detectable above baseline once the dynamic self-vector trains. Candidate Phase 5 pre-registered prediction (to be added to `docs/preregistered_predictions.md` once the metric definitions are finalised).
 
 ## Phase 6: Creative Simulation & Advanced Evaluation
 
@@ -120,6 +124,7 @@ The architectural improvements produced measurably better dynamics (28x phi mean
   - **Creative Imagination Buffer:** Generate and evaluate novel mental simulations, selecting based on Phi or GNW ignition.
   - Reward-shaping hooks based on creative outputs.
   - Advanced IIT metrics (CES visualization).
+  - **Active inference reframing (Rouleau-Levin §6.1):** Evaluate replacing or complementing the RSSM ELBO + reward objective with an explicit expected-free-energy action selector along the lines of Friston et al. (2023) *Active Inference* (MIT Press) and recent deep-active-inference world-model agents. Rationale and integration target documented in [`rouleau_levin_substrate_independence.md`](rouleau_levin_substrate_independence.md) §6.1.
 
 ## Phase 7: Peer Consciousness & Robustness
 
