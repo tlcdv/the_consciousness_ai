@@ -111,6 +111,7 @@ The architectural improvements produced measurably better dynamics (28x phi mean
   - **Dynamic Self-Representation Module:** Learned "self-vector" loop within `ConsciousnessCore` and `SelfRepresentationCore` as per Higher-Order theories.
   - Reflective prompt templates and mechanisms for meta-cognitive evaluation.
   - Enhanced `ConsciousnessGating` informed by the dynamic self-model.
+- **Theoretical grounding:** Meta-representation, self-organizing meta-representational theory, and the "computational boundary of a self" are surveyed in [Rouleau & Levin (2026)](rouleau_levin_substrate_independence.md). Phase 5 self-model work should be evaluable against the aneurocentric formulations of HOT, self-organizing meta-representation, and self-comes-to-mind theory listed there.
 
 ## Phase 6: Creative Simulation & Advanced Evaluation
 
