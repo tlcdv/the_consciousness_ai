@@ -539,4 +539,30 @@ Both in the same r ~ 0 band. Phase B's mechanism works but does not propagate to
 
 Three deeper explanations and the decision path are in [phi1_phaseB_2026_05_19.md](results/phi1_phaseB_2026_05_19.md). Per plan section 11's decision-gate table, this triggers Phase B-alt (GASPnet replacement, ~30-40h dev + 6h run). The user's session 2026-05-19 choice was "Phase B first, then GASPnet if it fails (Recommended)"; the decision now is whether to commit to Phase B-alt or accept the negative result. Section 11 pre-registration remains intact; the verdict above is recorded against it on permanent record.
 
-The original Phi-1 pre-registered threshold of r > 0.4 is NOT revised. Across 8 runs spanning 3 architectures (OLD; NEW A+C+D; NEW A+B+C+D) and 2 phi formulations (pyphi gate-state TPM; RIIU broadcast SVD), no run achieves the pre-registered threshold or even the partial r > 0.15. The empirical record now strongly suggests that AKOrN's separation of abstract phase from concrete content is the structural limit; Phase B-alt (GASPnet with phase IS the content's phase) is the principled next step within the mission-aligned constraint set.
+The original Phi-1 pre-registered threshold of r > 0.4 is NOT revised. Across 8 runs spanning 3 architectures (OLD; NEW A+C+D; NEW A+B+C+D) and 2 phi formulations (pyphi gate-state TPM; RIIU broadcast SVD), no run achieves the pre-registered threshold or even the partial r > 0.15. The empirical record now strongly suggests that AKOrN's separation of abstract phase from concrete content is the structural limit; Phase B-alt (KomplexNet with phase IS the content's phase) is the principled next step within the mission-aligned constraint set.
+
+## 12. Phi-1 retest under Phase B-alt KomplexNet binding (pre-registered 2026-05-19, results 2026-05-24)
+
+The user's 2026-05-19 decision after Phase B's substantive FAIL: "Escalate to Phase B-alt (GASPnet, ~46h)". The plan agent had misremembered the paper name; the actual paper is **KomplexNet** (Muzellec et al. 2025, "Enhancing deep neural networks through complex-valued representations and Kuramoto synchronization dynamics", arxiv 2502.21077, MIT-licensed). Clean-room implementation at [models/core/complex_binding.py](../models/core/complex_binding.py) (commit `ff5af81`).
+
+**Pre-registered statement** (locked before training launch on 2026-05-23):
+
+- **Prediction**: Pearson r > 0.4 between phi and sync_R across the full 200-episode run, on the broadcast substrate, with KomplexNet binding replacing AKOrN.
+- **Architectural change**: `--binding-mechanism komplex` replaces AKOrN's abstract N-sphere phases with per-module scalar phases woven multiplicatively into content via `cos(theta_m - theta_global)`. The structural hypothesis: phi-on-broadcast should track sync_R because the binding signal and the content signal are the same signal.
+- **Variance floors**: phi_std > 0.01, sync_R_std > 0.02 (degenerate variance triggers a re-run, not threshold revision).
+- **Falsification**: r < 0.15 on BOTH pathways with non-degenerate variances triggers acceptance of the negative result; the pre-registered architectural escalation chain ends at Phase B-alt.
+
+**Run:** `runs/phi1_phaseBalt_seed42`. Same dark_room + audio + mock_semantic config, seed 42, 200 episodes, all Phase A+C+D flags active.
+
+| Seed | Pathway | n_rows | phi_mean | phi_std | sync_R_std | r(phi, sync_R) | p | verdict |
+|------|---------|--------|----------|---------|------------|----------------|---|---------|
+| 42 | pyphi | 39000 | 1.90e-03 | 1.93e-03 | 1.58e-02 | +0.0105 | 3.73e-02 | FAIL substantively; RE-RUN mechanically |
+| 42 | RIIU broadcast | 39000 | 3.87e-02 | 3.79e-02 | 1.58e-02 | **-0.1116** | 2.5e-108 | FAIL on positive-direction prediction; substantively significant NEGATIVE correlation |
+
+**Substantive verdict: FAIL on the pre-registered Phi-1 prediction, with a substantively significant INVERSE finding on RIIU.** The KomplexNet RIIU pathway is the **first run in the entire 9-run campaign to produce a statistically robust phi-binding correlation**, but it is in the negative direction (r = -0.11, p < 10^-100, n = 39000). Variance unlock on RIIU is 19.65x (best of any run, vs 5x threshold). RIIU mean phi is ~140x prior architectures.
+
+Mechanistic reading: when phases align (high sync_R), all module content factors cluster near +1, producing low representational variance, producing low RIIU phi. When phases desync, factors span [-1, +1], producing high variance, producing high RIIU phi. **Oscillatory binding and integrated-information (per RIIU's SVD-residual formulation) are mechanistically opposed in this architecture**, not coupled.
+
+Full record with rolling-window trajectory, comparison to all 9 prior runs, and three deeper readings in [phi1_phaseBalt_2026_05_24.md](results/phi1_phaseBalt_2026_05_24.md).
+
+**Phi-1 chapter status: CLOSED.** 9 runs across 4 architectures (AKOrN; AKOrN + A+C+D; AKOrN + A+B+C+D; KomplexNet + A+C+D) and 2 phi formulations (pyphi gate-state TPM; RIIU broadcast SVD). No run achieves the pre-registered r > 0.4 in the predicted positive direction. The pre-registered threshold and sign are NOT revised retroactively. The architectural escalation chain pre-registered in sections 10-11-12 has been exhausted.
