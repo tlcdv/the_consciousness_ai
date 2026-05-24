@@ -193,6 +193,8 @@ If this never occurs across training, the system is not exhibiting the kind of e
 | Flat vector representations | Topographic spatial maps (world model as isomorphic map) |
 | Assumes emergence, measures nothing | Falsifies emergence with Effective Information + Phi validation |
 
+A clarification often raised: if the project replaces neurons with PyTorch modules, in what sense is it still "biologically grounded"? Feinberg-Mallatt is best read functionally — the six features describe an *architectural organization* that any sufficiently rich substrate can host. The complementary survey in [Rouleau & Levin (2026)](rouleau_levin_substrate_independence.md) ("Brains and where else? Mapping theories of consciousness to unconventional embodiments", *Phil. Trans. R. Soc. A* 384: 20250082) analyses 19 prominent ToCs and shows that almost all of them, including those Feinberg-Mallatt builds on, are aneurocentric in their core mechanics. Feinberg-Mallatt provides the *sufficient* blueprint that 520M years of evolution chose; Rouleau-Levin provides the *not-necessary* analysis that makes our computational re-instantiation legitimate.
+
 ---
 
 ## 7. Current Status and Test Results

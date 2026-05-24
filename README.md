@@ -214,6 +214,7 @@ the_consciousness_ai/
 ## Documentation
 
 *   [**Feinberg-Mallatt Approach**](docs/feinberg_mallatt_approach.md): How we translate Feinberg & Mallatt's neuroevolutionary theory into the architecture.
+*   [**Rouleau-Levin Substrate Independence**](docs/rouleau_levin_substrate_independence.md): Substrate-independence companion to the Feinberg-Mallatt approach, mapping our architecture to the 8 universal themes Rouleau & Levin (2026) distil from 19 prominent theories of consciousness. Drives concrete Phase 5 and Phase 6 deliverables in [`roadmap.md`](docs/roadmap.md) (activating the dormant `LevinConsciousnessEvaluator` and `BioelectricSignalingNetwork` modules, the computational-boundary-of-self detector, the 8-themes coverage audit, and the active-inference reframing).
 *   [**Architecture Deep Dive**](docs/architecture.md): System design overview.
 *   [**Biological Neural Architecture Research**](docs/biological_neural_architecture_research.md): Full biological grounding, gap analysis, and implementation roadmap.
 *   [**Theory of Emergence**](docs/theory_of_consciousness.md): Scientific basis of the Emotional RL approach.
