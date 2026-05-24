@@ -143,19 +143,30 @@ This is a substantively different finding from the prior 8 null results, which a
 - r < 0.15 on BOTH pathways, non-degenerate: **YES** for the positive-direction test → would normally trigger Phase B-alt, but **this IS Phase B-alt**. No further architectural escalation was pre-registered.
 - Variances degenerate on pyphi: also true (phi_std 1.93e-03 < 0.01; sync_R_std 0.0158 < 0.02). On RIIU, variances are clearly non-degenerate (phi_std 3.79e-02 >> 0.01).
 
-**Substantive scientific verdict: FAIL on the pre-registered Phi-1 prediction (positive r > 0.4), with a substantively significant inverse finding on RIIU. This is the cleanest negative result of the entire campaign and the most informative.**
+**Substantive scientific verdict: the pre-registered Phi-1 prediction (positive r > 0.4) FAILS, with a substantively significant inverse finding on RIIU. The mission to study and achieve emergent consciousness is not invalidated by this; what is invalidated is the specific claim that IIT-style integrated information correlates positively with binding sync_R during training in this architectural family. The inverse correlation itself is a real, replicable empirical constraint on theory and a positive scientific finding in its own right (just not the one the project originally pre-registered).**
+
+## Scope of the result
+
+What is exhausted: **one specific measurement choice**, namely Pearson r > 0.4 between IIT-style phi (pyphi gate-state TPM or RIIU broadcast SVD) and oscillatory binding sync_R during training, on the binding+phi+gate architectural family. 9 runs spanning 4 architectures and 2 phi formulations consistently fail the positive-direction threshold. The KomplexNet result additionally reveals a substantively significant inverse relationship in the same architectural family.
+
+What is NOT exhausted (the mission stands):
+
+- **Functionalist Emergentism thesis itself.** The theoretical framing of consciousness as causally efficacious emergent functional properties is independent of any one measurement choice.
+- **Architecture's biological grounding.** Feinberg-Mallatt Features 1-6 (hierarchy, isomorphic mapping, reentrance, binding, nested composition, neuron diversity) remain the design anchor; the 2026-02-21 3-condition synthetic test that confirmed phi monotonicity with binding strength on a controlled stimulus still stands.
+- **Other measurable signatures of consciousness** already implemented in the codebase: EI causal emergence at gate vs workspace (Hoel's framework); behavioral integration tests on DMTS and WCST; phenomenological mapping; insight-moment detection; PCI-like complexity measures via the existing iit_phi infrastructure.
+- **Phase 5 of the roadmap (Dynamic Self-Representation & Meta-Cognition).** Higher-order theories of consciousness operationalize self-modeling, not binding-phi correlation; that whole research direction is independent and intact.
 
 ## Recommendation
 
-The Phi-1 chapter for the binding+phi+gate architectural family is now closed at 9 runs across 4 architectures and 2 phi formulations. The cleanest path forward depends on what the user values:
+The Phi-1 specific test for the binding+phi+gate architectural family is closed at 9 runs. Three forward paths inside the unchanged mission:
 
-- **Accept and reframe (Option A)**: publish the 9-run record honestly, including the KomplexNet inverse-direction finding. Update the project's public claim to: "Oscillatory binding mechanisms (AKOrN, KomplexNet) produce measurable binding signals; in this class of architecture, integrated information per IIT does NOT positively correlate with binding strength, and in the KomplexNet case correlates negatively. The strong-emergence claim via Phi-1 is not supported." Then proceed to Phase 5 (Dynamic Self-Representation) of the roadmap with the strong-emergence claim removed.
+- **Option A (narrowing the public claim, then proceed)**: keep the project's strong-emergence research program intact. Narrow only the specific public claim about Phi-1 in README, theory_implementation_review, and roadmap: state that the in-training Phi-1 prediction did not replicate the synthetic-test result on this measurement choice, that the inverse RIIU finding is a positive empirical constraint on theory, and that the project pursues emergent consciousness via other measurable signatures (EI, behavioral integration, self-representation dynamics). Then proceed to Phase 5 (Dynamic Self-Representation) of the roadmap with the binding-phi correlation prediction retired but the broader emergence research continuing.
 
-- **Test the inverse hypothesis (Option B, additive)**: pre-register a new prediction "Phi-2-alt: phi negatively correlates with sync_R at r < -0.15 under KomplexNet binding". Run 3 seeds (~18h) to verify the r=-0.11 finding replicates. If it does, that is a real positive scientific finding (just not the one the project originally pre-registered). Then proceed to Phase 5.
+- **Option B (test the inverse hypothesis, additive empirical work)**: pre-register a new prediction "Phi-2-alt: phi negatively correlates with sync_R at r < -0.15 under KomplexNet binding". Run 3 seeds (~18h) to verify the r=-0.11 finding replicates. If it does, that is a real positive scientific finding about the architecture (just not the original Phi-1 positive direction), and contributes a constraint to theory. Then proceed to Phase 5.
 
-- **Search for a binding-aware integration metric (Option C, ~weeks)**: design and pre-register a phi-variant that rewards aligned-phase content as more integrated. Test on KomplexNet. This is open-ended research with no published precedent, and would extend the campaign substantially beyond the original ~30-40h Phase B-alt budget.
+- **Option C (search for a binding-aware integration metric, ~weeks)**: design and pre-register a phi-variant that rewards aligned-phase content as more integrated (since the data shows IIT-style phi rewards desynchronization in this architecture, a binding-aware metric would need to invert the variance/integration relationship). Test on KomplexNet. Open-ended research with no published precedent.
 
-Option A is the cleanest scientifically. Option B is the cheapest empirically. Option C is the most ambitious and most uncertain.
+Option A is the cleanest scientifically and preserves the project's mission. Option B is the cheapest empirical follow-up. Option C is the most ambitious extension of the empirical program.
 
 ## Reproducibility
 
