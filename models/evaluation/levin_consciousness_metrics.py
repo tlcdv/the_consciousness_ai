@@ -101,32 +101,42 @@ class LevinConsciousnessEvaluator:
         
     def evaluate_collective_intelligence(self, holonic_output: dict) -> float:
         """
-        Evaluate degree of integration between holonic components
-        Based on Levin's concept of collective intelligence
+        Evaluate the degree of integration between holonic components.
+
+        Integration is the mean pairwise cosine similarity of the holon state
+        vectors, mapped to [0, 1]: when the holons converge to similar states
+        they are acting as a coherent collective (high integration); when they
+        diverge they act independently (low integration). This is a
+        structural-coherence proxy for Levin's notion of collective
+        intelligence, the spatio-temporal scale a system measures and controls
+        (Levin 2019, "The Computational Boundary of a 'Self'").
+
+        Note (2026-05-29): the previous implementation used 1 - normalized
+        entropy of the holonic attention matrix. With an untrained HolonicSystem
+        the integration attention is near-uniform regardless of input, so that
+        metric was inert (constant ~2e-6 across 64 diverse inputs and under
+        training; see docs/results/levin_derisk_2026_05_29.md). The
+        holon_states-based measure below responds to input because each holon
+        applies its own learned map to the shared input, so the pairwise
+        alignment of holon states varies with the input.
         """
-        if 'attention_weights' not in holonic_output or 'holon_states' not in holonic_output:
+        holon_states = holonic_output.get('holon_states')
+        if not isinstance(holon_states, torch.Tensor):
             return 0.0
-            
-        attention_weights = holonic_output['attention_weights']
-        holon_states = holonic_output['holon_states']
-        
-        # Calculate entropy of attention distribution
-        if isinstance(attention_weights, torch.Tensor):
-            # Normalize weights
-            weights_norm = torch.nn.functional.softmax(attention_weights.reshape(-1), dim=0)
-            
-            # Calculate entropy
-            entropy = -torch.sum(weights_norm * torch.log(weights_norm + 1e-10)).item()
-            
-            # Scale to 0-1 range (assume max entropy = log(n))
-            max_entropy = torch.log(torch.tensor(float(weights_norm.numel()))).item()
-            normalized_entropy = entropy / max_entropy if max_entropy > 0 else 0.0
-            
-            # Return 1 - normalized_entropy as measure of integration
-            # (lower entropy = higher integration)
-            return 1.0 - normalized_entropy
-            
-        return 0.0
+
+        # Collapse to [num_holons, features]
+        states = holon_states.reshape(holon_states.shape[0], -1)
+        n = states.shape[0]
+        if n < 2:
+            return 0.0
+
+        normed = torch.nn.functional.normalize(states, dim=1, eps=1e-8)
+        sim = normed @ normed.t()  # [n, n], diagonal entries are 1
+        off_diag_sum = (sim.sum() - torch.diagonal(sim).sum())
+        mean_cos = (off_diag_sum / (n * (n - 1))).item()
+
+        # Map cosine [-1, 1] to integration [0, 1]
+        return float(max(0.0, min(1.0, (mean_cos + 1.0) / 2.0)))
         
     def evaluate_goal_directed_behavior(
         self,

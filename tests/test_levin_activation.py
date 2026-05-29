@@ -179,5 +179,73 @@ class TestEvaluateAdapter(unittest.TestCase):
         self.assertTrue(0.0 <= result["basal_cognition"] <= 1.0)
 
 
+class TestCollectiveIntelligenceFix(unittest.TestCase):
+    """Phase 1a (2026-05-29): collective_intelligence must respond to input.
+
+    The previous entropy-of-attention implementation was inert (constant ~2e-6
+    across 64 diverse inputs; see docs/results/levin_derisk_2026_05_29.md). The
+    holon_states-based measure must vary with input and have sensible extremes.
+    """
+
+    def setUp(self):
+        torch.manual_seed(0)
+        self.evaluator = LevinConsciousnessEvaluator(_small_config())
+
+    def test_identical_holons_give_max_integration(self):
+        # All holon states identical -> pairwise cosine 1 -> integration ~1.0
+        row = torch.randn(1, 32)
+        states = row.repeat(6, 1)
+        ci = self.evaluator.evaluate_collective_intelligence({"holon_states": states})
+        self.assertGreater(ci, 0.99)
+
+    def test_different_inputs_give_different_ci(self):
+        ci_a = self.evaluator.evaluate_collective_intelligence(
+            {"holon_states": torch.randn(8, 32)})
+        ci_b = self.evaluator.evaluate_collective_intelligence(
+            {"holon_states": torch.randn(8, 32) * 3.0 + 1.0})
+        self.assertNotEqual(ci_a, ci_b)
+        for ci in (ci_a, ci_b):
+            self.assertTrue(0.0 <= ci <= 1.0)
+
+    def test_missing_holon_states_returns_zero(self):
+        self.assertEqual(self.evaluator.evaluate_collective_intelligence({}), 0.0)
+
+    def test_single_holon_returns_zero(self):
+        self.assertEqual(
+            self.evaluator.evaluate_collective_intelligence(
+                {"holon_states": torch.randn(1, 32)}),
+            0.0,
+        )
+
+    def test_handles_3d_holon_states(self):
+        # Real HolonicSystem returns [num_holons, batch, hidden]
+        ci = self.evaluator.evaluate_collective_intelligence(
+            {"holon_states": torch.randn(8, 1, 32)})
+        self.assertTrue(0.0 <= ci <= 1.0)
+
+
+class TestLevinDynamicRange(unittest.TestCase):
+    """Phase 1b (2026-05-29): activated metrics must have real dynamic range,
+    not merely be bounded in [0, 1]. Addresses the standing audit gap that tests
+    only check shapes/bounds and never that a metric actually responds to input.
+    """
+
+    def test_metrics_respond_to_diverse_inputs(self):
+        from scripts.analysis.diagnose_levin_variance import run_probe
+        summary = run_probe(trials=32, seed=0, hidden_size=128, num_holons=6)
+
+        # collective_intelligence was inert before the fix; it must now move.
+        self.assertTrue(
+            summary["collective_intelligence"]["usable"],
+            f"collective_intelligence still inert: {summary['collective_intelligence']}",
+        )
+        # The other input-driven metrics must also have dynamic range.
+        for k in ("bioelectric_complexity", "morphological_adaptation",
+                  "basal_cognition"):
+            self.assertTrue(summary[k]["usable"], f"{k} inert: {summary[k]}")
+        # goal_directed is a documented constant-0 placeholder (deliverable 5).
+        self.assertEqual(summary["goal_directed_behavior"]["std"], 0.0)
+
+
 if __name__ == "__main__":
     unittest.main()
