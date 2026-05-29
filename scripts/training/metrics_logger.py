@@ -67,6 +67,18 @@ class StepMetrics:
     phi_riiu_broadcast: float = 0.0
     phi_riiu_tectum: float = 0.0
     phi_riiu_audio: float = 0.0
+    # Levin consciousness metrics (Rouleau-Levin theme set). Computed when
+    # --enable-levin-metrics is on, zero otherwise. These are diagnostic
+    # measurements (the holonic/bioelectric modules run in inference mode and
+    # are NOT part of the policy gradient); they are the baseline apparatus for
+    # Phase 5's substrate-independence falsification test. goal_directed is 0.0
+    # in this baseline until goal/outcome embeddings are defined at that test's
+    # pre-registration. See models/evaluation/levin_consciousness_metrics.py.
+    levin_bioelectric_complexity: float = 0.0
+    levin_morphological_adaptation: float = 0.0
+    levin_collective_intelligence: float = 0.0
+    levin_goal_directed: float = 0.0
+    levin_basal_cognition: float = 0.0
 
 
 class ConsciousnessMetricsLogger:
@@ -123,6 +135,9 @@ class ConsciousnessMetricsLogger:
             "broadcast_mag", "valence", "arousal", "dominance",
             "phi_method", "phi_riiu",
             "phi_riiu_broadcast", "phi_riiu_tectum", "phi_riiu_audio",
+            "levin_bioelectric_complexity", "levin_morphological_adaptation",
+            "levin_collective_intelligence", "levin_goal_directed",
+            "levin_basal_cognition",
         ])
 
     def _init_episode_csv(self):
@@ -151,6 +166,11 @@ class ConsciousnessMetricsLogger:
             metrics.phi_method, f"{metrics.phi_riiu:.6e}",
             f"{metrics.phi_riiu_broadcast:.6e}",
             f"{metrics.phi_riiu_tectum:.6e}", f"{metrics.phi_riiu_audio:.6e}",
+            f"{metrics.levin_bioelectric_complexity:.6f}",
+            f"{metrics.levin_morphological_adaptation:.6f}",
+            f"{metrics.levin_collective_intelligence:.6f}",
+            f"{metrics.levin_goal_directed:.6f}",
+            f"{metrics.levin_basal_cognition:.6f}",
         ])
         self._csv_file.flush()
 
@@ -172,6 +192,21 @@ class ConsciousnessMetricsLogger:
                 self.writer.add_scalar("consciousness/phi_riiu_tectum", metrics.phi_riiu_tectum, step)
             if metrics.phi_riiu_audio != 0.0:
                 self.writer.add_scalar("consciousness/phi_riiu_audio", metrics.phi_riiu_audio, step)
+            # Levin metrics: log only when active (any non-zero), so a disabled
+            # run does not flood TensorBoard with constant-zero series.
+            levin_vals = (
+                metrics.levin_bioelectric_complexity,
+                metrics.levin_morphological_adaptation,
+                metrics.levin_collective_intelligence,
+                metrics.levin_goal_directed,
+                metrics.levin_basal_cognition,
+            )
+            if any(v != 0.0 for v in levin_vals):
+                self.writer.add_scalar("levin/bioelectric_complexity", metrics.levin_bioelectric_complexity, step)
+                self.writer.add_scalar("levin/morphological_adaptation", metrics.levin_morphological_adaptation, step)
+                self.writer.add_scalar("levin/collective_intelligence", metrics.levin_collective_intelligence, step)
+                self.writer.add_scalar("levin/goal_directed", metrics.levin_goal_directed, step)
+                self.writer.add_scalar("levin/basal_cognition", metrics.levin_basal_cognition, step)
 
         # Buffer for insight detection
         self._cross_episode_rewards.append(metrics.reward)

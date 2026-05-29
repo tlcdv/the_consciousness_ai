@@ -241,3 +241,27 @@ class LevinConsciousnessEvaluator:
             'basal_cognition': basal_cognition,
             'overall_levin_score': metrics.get_overall_score()
         }
+
+    def evaluate(self, state: dict | None = None) -> dict[str, float]:
+        """Convenience adapter: evaluate Levin metrics from a single state dict.
+
+        Pulls the structured inputs (bioelectric_state, holonic_output,
+        past_states, current_state, actions, goals, outcomes, component_states)
+        from the dict when present, falling back to empty or neutral defaults so
+        the call never raises. ConsciousnessMonitor.periodic_update uses this
+        path with only a flat core-state dict, where most structured inputs are
+        absent (so the returned metrics are mostly zero there). The training
+        loop calls evaluate_levin_consciousness directly with the full
+        structured inputs.
+        """
+        state = state or {}
+        return self.evaluate_levin_consciousness(
+            bioelectric_state=state.get('bioelectric_state', {}),
+            holonic_output=state.get('holonic_output', {}),
+            past_states=state.get('past_states', []),
+            current_state=state.get('current_state', state),
+            actions=state.get('actions', []),
+            goals=state.get('goals', []),
+            outcomes=state.get('outcomes', []),
+            component_states=state.get('component_states', {}),
+        )

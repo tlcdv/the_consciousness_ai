@@ -34,12 +34,14 @@ from models.emotion.affective_modulator import AffectiveModulator
 from models.emotion.reward_shaping import EmotionalRewardShaper
 from models.self_model.action_selection_core import ActionSelectionCore
 from models.self_model.self_representation_core import SelfRepresentationCore
+from models.self_model.holonic_intelligence import HolonicSystem
 from models.memory.memory_core import MemoryCore
 from models.core.semantic_pathway import SemanticPathway
 from models.core.topographic_loss import topographic_spatial_loss
 from models.core.rnd_curiosity import RNDCuriosity
 from models.core.mock_semantic import MockSemanticModule
 from models.evaluation.phi_riiu import RIIUPhi
+from models.evaluation.levin_consciousness_metrics import LevinConsciousnessEvaluator
 from models.memory.optimized_store import MemoryConsolidationManager
 from scripts.training.metrics_logger import ConsciousnessMetricsLogger, StepMetrics
 
@@ -181,6 +183,22 @@ def build_config(args):
         # (matches pre-RIIU behavior). Setting an int seeds python/numpy/torch
         # and the env.reset call on the first episode.
         "seed": getattr(args, "seed", None),
+        # Phase 5 deliverable 4 (Rouleau-Levin): activate the dormant Levin
+        # modules. When on, a HolonicSystem + LevinConsciousnessEvaluator run
+        # in inference mode each step and the 5 LevinConsciousnessMetrics are
+        # logged to metrics.csv. Diagnostic only; not part of the policy
+        # gradient. Default off preserves baseline dynamics.
+        "levin_enabled": getattr(args, "enable_levin_metrics", False),
+        "levin": {
+            "hidden_size": 256,
+            "num_holons": getattr(args, "levin_num_holons", 8),
+            "field_dimension": 128,
+            "bioelectric_channels": 8,
+            "signaling_layers": 3,
+            "gap_junction_heads": 4,
+            "gap_junction_dropout": 0.0,
+            "integration_heads": 4,
+        },
     }
 
 
@@ -339,10 +357,31 @@ def init_components(config):
         )
         logger.info("Mock semantic module enabled (deterministic 1536-D embeddings)")
 
+    # Phase 5 deliverable 4 (Rouleau-Levin): the dormant Levin modules. When
+    # enabled, a HolonicSystem produces holon states + attention weights +
+    # bioelectric fields each step, and LevinConsciousnessEvaluator scores the
+    # 5 metrics from them. Both run in inference mode as fixed measurement
+    # functions: they are NOT trained and NOT part of the policy gradient. This
+    # is the baseline measurement apparatus for the substrate-independence
+    # falsification test (Phase 5 deliverable 5).
+    holonic_system = None
+    levin_evaluator = None
+    if config.get("levin_enabled", False):
+        levin_cfg = dict(config.get("levin", {}))
+        levin_cfg["hidden_size"] = config["workspace_dim"]
+        holonic_system = HolonicSystem(levin_cfg).to(device)
+        holonic_system.eval()
+        levin_evaluator = LevinConsciousnessEvaluator(levin_cfg)
+        logger.info(
+            f"Levin metrics enabled (holons={levin_cfg.get('num_holons', 8)}, "
+            f"hidden_size={levin_cfg['hidden_size']}, inference-mode diagnostic)"
+        )
+
     return (tectum, workspace, reentrant, modulator, emotion_shaper, memory,
             action_core, semantic, gate, tectum_optimizer, reward_predictor,
             reward_optimizer, workspace_optimizer, auditory_specialist, self_model,
-            rnd, rnd_optimizer, consolidation_mgr, riiu_phis, mock_semantic)
+            rnd, rnd_optimizer, consolidation_mgr, riiu_phis, mock_semantic,
+            holonic_system, levin_evaluator)
 
 
 def frame_to_tensor(frame: np.ndarray, device: str) -> torch.Tensor:
@@ -393,9 +432,15 @@ def run_episode(episode_idx, config, tectum, workspace, reentrant,
                 self_model=None, rnd=None, rnd_optimizer=None,
                 riiu_phis: dict | None = None,
                 riiu_source: str = "broadcast",
-                mock_semantic=None):
+                mock_semantic=None,
+                holonic_system=None, levin_evaluator=None):
     device = config["device"]
     max_steps = config["max_steps"]
+
+    # Phase 5 deliverable 4: rolling history of holonic integrated states for
+    # the Levin morphological_adaptation metric (compares the current holonic
+    # integration against the last few). Per-episode, capped at 5.
+    holonic_history: list[dict] = []
 
     obs, info = env.reset()
     total_reward = 0.0
@@ -931,6 +976,55 @@ def run_episode(episode_idx, config, tectum, workspace, reentrant,
             # Workspace state from broadcast magnitude bins
             ws_state = (broadcast_mag, phi, sync_r)
 
+            # --- Levin metrics (Phase 5 deliverable 4): diagnostic only ---
+            # The holonic + bioelectric modules run in inference mode (no grad,
+            # not in the policy gradient) as fixed measurement functions on the
+            # current broadcast/tectum/gate activations. goal_directed stays 0.0
+            # here: goal/outcome embeddings are defined at the pre-registration
+            # of the substrate-independence test (Phase 5 deliverable 5).
+            levin = {
+                "bioelectric_complexity": 0.0,
+                "morphological_adaptation": 0.0,
+                "collective_intelligence": 0.0,
+                "goal_directed_behavior": 0.0,
+                "basal_cognition": 0.0,
+            }
+            if holonic_system is not None and levin_evaluator is not None:
+                with torch.no_grad():
+                    wsdim = config["workspace_dim"]
+                    holon_in = broadcast.detach().reshape(1, -1)
+                    if holon_in.shape[1] < wsdim:
+                        holon_in = torch.nn.functional.pad(
+                            holon_in, (0, wsdim - holon_in.shape[1])
+                        )
+                    else:
+                        holon_in = holon_in[:, :wsdim]
+                    holonic_output = holonic_system(holon_in)
+                    current_lh = {
+                        "integrated_state": holonic_output["integrated_state"].detach()
+                    }
+                    gate_t = (
+                        torch.tensor(gate_state, device=device)
+                        if gate_state is not None
+                        else torch.zeros(1, device=device)
+                    )
+                    component_states = {
+                        "broadcast": broadcast.detach(),
+                        "tectum": tectum_content.detach(),
+                        "gate": gate_t,
+                    }
+                    levin = levin_evaluator.evaluate_levin_consciousness(
+                        bioelectric_state=holonic_output.get("bioelectric_fields", {}),
+                        holonic_output=holonic_output,
+                        past_states=holonic_history,
+                        current_state=current_lh,
+                        actions=[], goals=[], outcomes=[],
+                        component_states=component_states,
+                    )
+                    holonic_history.append(current_lh)
+                    if len(holonic_history) > 5:
+                        del holonic_history[0]
+
             metrics_logger.log_step(StepMetrics(
                 global_step=global_step,
                 phi=phi,
@@ -948,6 +1042,11 @@ def run_episode(episode_idx, config, tectum, workspace, reentrant,
                 phi_riiu_broadcast=phi_riiu_vals.get("broadcast", 0.0),
                 phi_riiu_tectum=phi_riiu_vals.get("tectum", 0.0),
                 phi_riiu_audio=phi_riiu_vals.get("audio", 0.0),
+                levin_bioelectric_complexity=levin["bioelectric_complexity"],
+                levin_morphological_adaptation=levin["morphological_adaptation"],
+                levin_collective_intelligence=levin["collective_intelligence"],
+                levin_goal_directed=levin["goal_directed_behavior"],
+                levin_basal_cognition=levin["basal_cognition"],
             ))
 
             # Insight detection: hash broadcast embedding for meaningful novelty signal
@@ -1151,6 +1250,14 @@ def main():
                              "Default 0 (no gate). Set to 3 when running "
                              "the Phi-1 retest experiment to make the "
                              "testability condition explicit.")
+    parser.add_argument("--enable-levin-metrics", action="store_true",
+                        help="Phase 5 deliverable 4 (Rouleau-Levin): activate "
+                             "the dormant Levin modules. A HolonicSystem + "
+                             "LevinConsciousnessEvaluator run in inference mode "
+                             "each step and the 5 LevinConsciousnessMetrics are "
+                             "logged to metrics.csv (levin_* columns). "
+                             "Diagnostic only, not in the policy gradient. "
+                             "Default off.")
 
     args = parser.parse_args()
 
@@ -1174,7 +1281,8 @@ def main():
      action_core, semantic, gate, tectum_optimizer, reward_predictor,
      reward_optimizer, workspace_optimizer, auditory_specialist,
      self_model, rnd, rnd_optimizer, consolidation_mgr,
-     riiu_phis, mock_semantic) = init_components(config)
+     riiu_phis, mock_semantic,
+     holonic_system, levin_evaluator) = init_components(config)
 
     if args.env == "navigation":
         from simulations.environments.navigation_env import NavigationEnv
@@ -1222,6 +1330,8 @@ def main():
             riiu_phis=riiu_phis,
             riiu_source=config.get("riiu_source", "broadcast"),
             mock_semantic=mock_semantic,
+            holonic_system=holonic_system,
+            levin_evaluator=levin_evaluator,
         )
         global_step += ep_steps
 

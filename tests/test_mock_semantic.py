@@ -106,15 +106,18 @@ def test_init_components_with_mock_semantic_enabled():
     """init_components returns a MockSemanticModule instance when the flag is set."""
     config = build_config(_default_args(enable_mock_semantic=True))
     components = init_components(config)
-    mock_semantic = components[-1]
-    assert isinstance(mock_semantic, MockSemanticModule), (
-        f"expected MockSemanticModule, got {type(mock_semantic)}"
+    # Locate by type (position-independent so future additions to the returned
+    # tuple do not break this test).
+    mock_semantics = [c for c in components if isinstance(c, MockSemanticModule)]
+    assert len(mock_semantics) == 1, (
+        f"expected exactly one MockSemanticModule, got {len(mock_semantics)}; "
+        f"component types: {[type(c).__name__ for c in components]}"
     )
 
 
 def test_init_components_without_mock_semantic_returns_none():
-    """Default config keeps mock_semantic disabled (None)."""
+    """Default config keeps mock_semantic disabled (no MockSemanticModule)."""
     config = build_config(_default_args())
     components = init_components(config)
-    mock_semantic = components[-1]
-    assert mock_semantic is None
+    mock_semantics = [c for c in components if isinstance(c, MockSemanticModule)]
+    assert mock_semantics == []
