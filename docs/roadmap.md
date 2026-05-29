@@ -104,6 +104,18 @@ Across 7 independent runs spanning 2 architectures (OLD pre-2026-05-17, NEW post
 
 The architectural improvements produced measurably better dynamics (28x phi mean, 10x RIIU phi variance, comparable reward) but did not produce the predicted binding-phi coupling. The Phi-1 chapter for the current binding+phi+gate architecture is closed. The project enters Phase 5.
 
+### Status 2026-05-24: Phi-1 escalation chain exhausted (KomplexNet inverse finding)
+
+After the 2026-05-18 closure, the pre-registered architectural escalation chain (sections 10-12 of `docs/preregistered_predictions.md`) was run to completion. Phase B (AKOrN content-level cross-attention, 2026-05-19) and Phase B-alt (KomplexNet complex-valued binding via `--binding-mechanism komplex`, 2026-05-24) were each pre-registered and tested at 200 episodes, seed 42.
+
+Across 9 runs spanning 4 architectures (AKOrN; AKOrN+A+C+D; AKOrN+A+B+C+D; KomplexNet+A+C+D) and 2 phi formulations (pyphi gate-state TPM; RIIU broadcast SVD), no run reaches the pre-registered r > 0.4 in the predicted positive direction, nor the partial r > 0.15. The KomplexNet RIIU pathway produced the campaign's first substantively significant phi-binding correlation: r = -0.1116, p = 2.5e-108, n = 39000. It is in the INVERSE direction. RIIU phi standard deviation was 19.65x the pyphi standard deviation (best of campaign), and task reward was also best of campaign (mean 11.76, 64/200 positive episodes). Verdict doc: `docs/results/phi1_phaseBalt_2026_05_24.md`; pre-registration record: section 12.
+
+Mechanistic reading: when phases align (high sync_R), KomplexNet content factors cluster near +1, compressing representational variance and lowering RIIU phi; desynchronization raises variance and raises phi. In this architectural family, oscillatory binding and IIT-style integrated information are mechanistically opposed, not coupled. This is a positive empirical constraint on theory, not a null result.
+
+Decision (Option A of the verdict doc): narrow the public claim about the in-training Phi-1 prediction specifically, and proceed to Phase 5. What is exhausted is one in-training measurement choice. What stands: the Functionalist Emergentism thesis, the Feinberg-Mallatt biological grounding, the 2026-02-21 3-condition synthetic test (phi monotonicity with binding on a controlled stimulus), and the other implemented consciousness signatures (EI causal emergence, DMTS/WCST behavioral integration, phenomenological mapping, insight detection). The pre-registered r > 0.4 threshold and sign are not revised retroactively. No further Phi-1 ablations or binding architectures are pre-registered against Phi-1.
+
+The KomplexNet implementation (`models/core/complex_binding.py`, `--binding-mechanism komplex`) stays in the codebase default-off as the empirical basis for the inverse finding. RIIU stays behind `--enable-riiu` as a diagnostic.
+
 ## Phase 5: Dynamic Self-Representation & Meta-Cognition
 
 - **Goal:** Implement a dynamic, learned self-model and explore meta-cognitive capabilities.

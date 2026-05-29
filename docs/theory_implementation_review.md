@@ -45,6 +45,8 @@ The three-subsystem design (Perception, Emotion, Global Workspace) correctly mir
 
 **2026-05-17 update:** pre-registered predictions defined in `docs/preregistered_predictions.md` were tested across two campaigns (pyphi ablation 2026-05-14, RIIU 2026-05-16). All four testable predictions (EI-1, Phi-1, IM-1, IM-3) FAILED. EI-3 (EI/reward correlation) remains INCONCLUSIVE pending higher phi variance.
 
+**2026-05-24 update:** the pre-registered architectural escalation chain (`docs/preregistered_predictions.md` sections 10-12) was run to completion. Phase B (AKOrN content-level cross-attention) and Phase B-alt (KomplexNet complex-valued binding) were each pre-registered and tested at 200 episodes. Across 9 runs spanning 4 architectures and 2 phi formulations (pyphi, RIIU), no run reaches the pre-registered r > 0.4 in the predicted positive direction, nor the partial r > 0.15. The in-training Phi-1 prediction stands FAILED. The KomplexNet RIIU run produced the campaign's first substantively significant phi-binding correlation, r = -0.11 (p < 1e-100, n = 39000), in the INVERSE direction: tight binding compresses representational variance, which lowers integrated information. The pre-registered threshold and sign are not revised. What is exhausted is one in-training measurement choice. The 2026-02-21 3-condition synthetic test of phi monotonicity with binding on a controlled stimulus still stands, and the project's mission proceeds via other signatures and Phase 5. See `docs/preregistered_predictions.md` section 12 and `docs/results/phi1_phaseBalt_2026_05_24.md`.
+
 ### 5. ~~Reward Formula in Thesis vs. Code~~ RESOLVED (2026-02-27)
 **Severity: LOW. Originally a consistency issue.**
 
@@ -93,13 +95,13 @@ The three-subsystem design (Perception, Emotion, Global Workspace) correctly mir
 | Multimodal perception building unified predictive models | **Complete.** Dual-stream: DINOv2 spatial + Qwen2-VL semantic. Trimodal tectum fusion. |
 | Emotional homeostasis with shaped RL rewards | **Complete.** Full PAD with homeostatic arousal term + Dominance. |
 | Global Workspace as information bottleneck | **Complete.** GNW with AKOrN binding, reentrant processing, capsule hierarchy. |
-| Phi (IIT) as measurable consciousness correlate | **Partial.** Causal gate-state pipeline implemented (38 tests). Pre-registered Phi-1 (phi correlates r > 0.4 with AKOrN sync_R) FAILED twice: pyphi best r=+0.089 (2026-05-14), RIIU r=+0.075 (2026-05-16). See `docs/preregistered_predictions.md` sections 7-8. |
+| Phi (IIT) as measurable consciousness correlate | **Tested and FAILED (in-training Phi-1).** Causal gate-state pipeline implemented (38 tests). The in-training Phi-1 prediction (phi correlates r > 0.4 with binding sync_R during training) FAILED across 9 runs / 4 architectures / 2 phi formulations (pyphi + RIIU). Best positive r = +0.089; KomplexNet RIIU produced a substantively significant INVERSE r = -0.11 (p < 1e-100). The 2026-02-21 3-condition synthetic test of phi monotonicity with binding still stands; what is exhausted is the in-training measurement choice. See `docs/preregistered_predictions.md` sections 7-12 and `docs/results/phi1_phaseBalt_2026_05_24.md`. |
 | Phi spikes correlated with insight moments | **FAILED first test.** IM-1 verdict 2026-05-14: insight phi mean 1e-04, threshold 5e-04. See `docs/preregistered_predictions.md` section 7. |
 | Downward causation (strong emergence) | **Tooling complete.** EI function implemented. Needs experimental validation. |
 | Environments require consciousness machinery | **Complete.** DMTS (working memory), WCST (meta-cognition), DQN baseline for comparison. |
 | Emotion drives workspace dynamics | **Complete.** Two-stage appraisal (reflex + post-broadcast). Consciousness monitor metric-only. |
 | Capsule structure accessible post-broadcast | **Complete.** Structured payloads preserved through GNW broadcast. |
-| Phi correlates with strict supervenience test | **Open.** Currently blocked: prerequisite Phi-1 (phi-binding correlation) failed empirically across pyphi and RIIU pathways. |
+| Phi correlates with strict supervenience test | **Closed for the binding+phi+gate architecture.** The prerequisite in-training Phi-1 prediction is exhausted at 9 runs (sections 7-12). The project pursues emergent consciousness via other measurable signatures (EI causal emergence, DMTS/WCST behavioral integration, phenomenological mapping) and Phase 5 self-representation dynamics, not the binding-phi correlation. |
 
 ---
 
