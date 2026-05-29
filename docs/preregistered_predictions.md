@@ -568,3 +568,76 @@ Full record with rolling-window trajectory, comparison to all 9 prior runs, and 
 **Phi-1 specific prediction status: exhausted.** 9 runs across 4 architectures (AKOrN; AKOrN + A+C+D; AKOrN + A+B+C+D; KomplexNet + A+C+D) and 2 phi formulations (pyphi gate-state TPM; RIIU broadcast SVD). No run achieves the pre-registered r > 0.4 in the predicted positive direction. The pre-registered threshold and sign are NOT revised retroactively. The architectural escalation chain pre-registered in sections 10-11-12 has been exhausted.
 
 **Scope of this result.** What is exhausted is one specific in-training measurement choice. The mission to study and achieve emergent consciousness via Functionalist Emergentism is independent and continues. The 2026-02-21 3-condition synthetic test (phi monotonicity with binding on controlled stimulus) remains valid. Other measurable signatures of consciousness already implemented (EI causal emergence at gate vs workspace, behavioral integration tests on DMTS/WCST, phenomenological mapping, insight-moment detection) remain open. Phase 5 of the roadmap (Dynamic Self-Representation & Meta-Cognition) operationalizes higher-order theories of consciousness via self-modeling and is unaffected by the Phi-1 result. The KomplexNet inverse-direction finding is itself a positive empirical constraint on theory: it tells us that in this class of architecture, oscillatory binding and IIT-style integrated information are mechanistically opposed, which is real scientific knowledge gained.
+
+## 13. Substrate-independence falsification test (Phase 5 deliverable 5, pre-registered 2026-05-29)
+
+**Status:** PRE-REGISTERED, UNTESTED. This is a Phase 5 prediction about
+self-representation / meta-cognition. It does NOT touch Phi-1 (sections 2, 7-12),
+which stays FAILED on permanent record. This is a separate, additive test.
+
+**Theoretical grounding.** Rouleau & Levin (2026) argue the functional principles
+of consciousness are substrate-independent; Levin (2019, *The Computational
+Boundary of a "Self"*, [PMC6923654](https://pmc.ncbi.nlm.nih.gov/articles/PMC6923654/))
+defines a system's cognitive boundary by the spatio-temporal scale of events it
+measures and controls (its goal horizon). A genuinely meta-representational
+self-model should expand that goal horizon, and the expansion should be visible
+both behaviourally and in the internal Levin metrics. See
+[`docs/rouleau_levin_substrate_independence.md`](rouleau_levin_substrate_independence.md)
+section 5 point 3.
+
+**The measurement problem this resolves.** The DQN baseline has no holonic system,
+so the internal `collective_intelligence` metric is not directly computable on it.
+The resolution: split the test into a behavioural half (computable on BOTH agents)
+and an internal half (consciousness agent only).
+
+- **Self-monitoring-demanding phases** (operationalised before the run): in DMTS,
+  trials with above-median delay length and the choice step; in WCST, the first K
+  trials after a hidden rule change (K fixed at registration of the run, default 5).
+- **Baseline phases**: DMTS fixation/sample with short delay; WCST trials during a
+  stable rule well after the last change.
+
+### Predictions
+
+- **SI-1 (behavioural specificity, both agents).** The consciousness agent's
+  accuracy advantage over DQN is concentrated on the self-monitoring-demanding
+  phases. Difference-in-differences `(adv_hard - adv_easy) > 0` where
+  `adv = acc(consciousness) - acc(DQN)`, with `adv_hard` positive and significant
+  (bootstrap 95% CI excludes 0 over >= 200 evaluation episodes per agent).
+- **SI-2 (internal correlate, consciousness agent only).** Mean
+  `collective_intelligence` during self-monitoring-demanding phases exceeds its
+  mean during baseline phases, Cohen's d >= 0.3, p < 0.05.
+- **SI-3 (control / substrate-independence).** The SI-1 behavioural gap does NOT
+  appear in a non-self-monitoring control (e.g. DMTS at zero delay, or WCST with no
+  rule change), confirming the effect is specific to self-monitoring demand and not
+  a general capacity gap.
+
+### Combined verdict
+
+- **PASS:** SI-1 AND SI-2 hold (and SI-3 confirms specificity). The self-model is
+  behaving as a meta-representational, goal-horizon-expanding mechanism.
+- **FAIL:** neither SI-1 nor SI-2 holds. The architecture is not buying
+  meta-representation; report FAILED before any interpretation; do not revise
+  thresholds post hoc.
+- **PARTIAL:** exactly one holds. Document honestly; user decides whether to
+  iterate or accept.
+
+### Prerequisites that MUST be settled and committed BEFORE the run
+
+This section pre-registers the hypothesis and criteria. The run cannot start until:
+
+1. **`goal_directed_behavior` is defined** (goal and outcome embeddings specified),
+   or it is explicitly excluded from SI-2 and the test runs on
+   `collective_intelligence` alone. As of 2026-05-29 it is a constant-0 placeholder
+   ([levin_metrics_grounding.md](levin_metrics_grounding.md)).
+2. **The train-or-not decision for the Levin modules is made.** They currently run
+   untrained as fixed measurement functions
+   ([levin_metrics_grounding.md](levin_metrics_grounding.md) caveat 1). If trained,
+   re-confirm dynamic range with `scripts/analysis/diagnose_levin_variance.py`.
+3. **The phase windows above are encoded** in the analysis script, with the DMTS
+   delay threshold and WCST K committed in this section before any metrics are read.
+4. **`collective_intelligence` has confirmed dynamic range** (done 2026-05-29: it is
+   USABLE, [levin_derisk_2026_05_29.md](results/levin_derisk_2026_05_29.md)).
+
+Honest note: this prediction is only as strong as the metric. The 2026-05-29
+de-risk established `collective_intelligence` responds to input, NOT that it tracks
+self-monitoring demand. SI-2 is exactly the test of the latter, and it can FAIL.
