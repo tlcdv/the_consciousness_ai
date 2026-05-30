@@ -348,7 +348,15 @@ class GlobalWorkspace:
             else:
                 # Legacy winner-take-all path. Default, unchanged behavior.
                 for winner in winners:
-                    payload = contents[winner]
+                    # A module can win ignition (high bound bid) without having
+                    # supplied a content payload: bids come from bound_bids
+                    # while contents come from payloads, and e.g. the body
+                    # channel bids but provides no tensor. Such a winner
+                    # contributes no broadcast content, so skip it rather than
+                    # raising KeyError.
+                    payload = contents.get(winner)
+                    if payload is None:
+                        continue
                     if isinstance(payload, dict):
                         broadcast_content.update(payload)
                         structured_payload[winner] = payload
