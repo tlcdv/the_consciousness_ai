@@ -79,6 +79,13 @@ class StepMetrics:
     levin_collective_intelligence: float = 0.0
     levin_goal_directed: float = 0.0
     levin_basal_cognition: float = 0.0
+    # Phase 5 deliverable 1 self-vector loop. self_pred_mse is the one-step
+    # self-prediction error of the learned self-model; self_pred_skill is the
+    # forecasting skill score vs a persistence baseline (1 - mse/persistence,
+    # clamped to [-1, 1]). > 0 means the self-model predicts its own next state
+    # better than "no change". Zero when --enable-self-vector is off.
+    self_pred_mse: float = 0.0
+    self_pred_skill: float = 0.0
 
 
 class ConsciousnessMetricsLogger:
@@ -138,6 +145,7 @@ class ConsciousnessMetricsLogger:
             "levin_bioelectric_complexity", "levin_morphological_adaptation",
             "levin_collective_intelligence", "levin_goal_directed",
             "levin_basal_cognition",
+            "self_pred_mse", "self_pred_skill",
         ])
 
     def _init_episode_csv(self):
@@ -171,6 +179,7 @@ class ConsciousnessMetricsLogger:
             f"{metrics.levin_collective_intelligence:.6f}",
             f"{metrics.levin_goal_directed:.6f}",
             f"{metrics.levin_basal_cognition:.6f}",
+            f"{metrics.self_pred_mse:.6e}", f"{metrics.self_pred_skill:.6f}",
         ])
         self._csv_file.flush()
 
@@ -207,6 +216,10 @@ class ConsciousnessMetricsLogger:
                 self.writer.add_scalar("levin/collective_intelligence", metrics.levin_collective_intelligence, step)
                 self.writer.add_scalar("levin/goal_directed", metrics.levin_goal_directed, step)
                 self.writer.add_scalar("levin/basal_cognition", metrics.levin_basal_cognition, step)
+            # Self-vector loop: log only when active (skill non-zero or mse set).
+            if metrics.self_pred_mse != 0.0 or metrics.self_pred_skill != 0.0:
+                self.writer.add_scalar("self_model/self_pred_mse", metrics.self_pred_mse, step)
+                self.writer.add_scalar("self_model/self_pred_skill", metrics.self_pred_skill, step)
 
         # Buffer for insight detection
         self._cross_episode_rewards.append(metrics.reward)

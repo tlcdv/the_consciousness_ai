@@ -2,7 +2,7 @@
 
 [![License](https://img.shields.io/badge/License-Non--Commercial-blue.svg)](LICENSE.md)
 [![Python](https://img.shields.io/badge/Python-3.10%2B-blue)](https://www.python.org/)
-[![Tests](https://img.shields.io/badge/Tests-621%20passing-brightgreen)]()
+[![Tests](https://img.shields.io/badge/Tests-644%20passing-brightgreen)]()
 
 **The Consciousness AI** is a research framework investigating the emergence of synthetic awareness. Unlike traditional AI that mimics intelligent output, this system generates behavior through an internal struggle for **Emotional Homeostasis** and **Integrated Information**.
 
@@ -72,6 +72,7 @@ A parallel modulation system. Emotion does not compete with sensory modules for 
 *   **Body Schema:** A spatial representation of the agent's physical structure (joint positions, contact forces, capabilities), projected onto the tectum grid as a somatotopic map.
 *   **Self-Other Boundary:** The somatotopic map (self) overlaps the environment map (other) in a shared coordinate frame, providing the basis for subjective referral.
 *   **Interoceptive State:** Internal homeostatic variables (energy, fatigue, damage) feed directly into the affective core, closing the embodiment-affect loop.
+*   **Dynamic Self-Vector (Meta-Representation, Phase 5):** A learned vector encodes the agent's own first-order state (PAD emotion, interoception, learning velocity, temporal continuity, confidence, workspace summary), trained by an SPR-style one-step self-prediction objective (predict the next step's first-order features) and scored by forecasting skill against a persistence baseline. Behind `--enable-self-vector` (default off); under evaluation as the higher-order self-model. See the [roadmap](docs/roadmap.md) Phase 5.
 
 ### 6. Reinforcement Core (Learning)
 
@@ -203,7 +204,7 @@ the_consciousness_ai/
 │   ├── analysis/           # Analysis and comparison scripts
 │   └── demos/              # AKOrN binding visualization
 ├── configs/                # YAML and Python configuration files
-├── tests/                  # 565 passing tests
+├── tests/                  # 644 passing tests
 ├── unity_scripts/          # C# scripts for Unity ML-Agents integration
 ├── docs/                   # Research docs, theory review, architecture deep dives
 └── requirements.txt

@@ -33,7 +33,7 @@ from models.core.consciousness_gating import ConsciousnessGate
 from models.emotion.affective_modulator import AffectiveModulator
 from models.emotion.reward_shaping import EmotionalRewardShaper
 from models.self_model.action_selection_core import ActionSelectionCore
-from models.self_model.self_representation_core import SelfRepresentationCore
+from models.self_model.self_representation_core import SelfRepresentationCore, SelfVectorModule
 from models.self_model.holonic_intelligence import HolonicSystem
 from models.memory.memory_core import MemoryCore
 from models.core.semantic_pathway import SemanticPathway
@@ -199,6 +199,12 @@ def build_config(args):
             "gap_junction_dropout": 0.0,
             "integration_heads": 4,
         },
+        # Phase 5 deliverable 1: learned self-vector with an SPR-style one-step
+        # self-prediction objective (default off). Diagnostic + (later) gating
+        # input; trained by its own loss, not the policy gradient.
+        "enable_self_vector": getattr(args, "enable_self_vector", False),
+        "self_vector_dim": getattr(args, "self_vector_dim", 64),
+        "self_vector_lr": 1e-3,
     }
 
 
@@ -377,11 +383,30 @@ def init_components(config):
             f"hidden_size={levin_cfg['hidden_size']}, inference-mode diagnostic)"
         )
 
+    # Phase 5 deliverable 1: dynamic self-vector loop. The module is trained by
+    # its OWN one-step self-prediction loss (not the policy gradient); the
+    # self_vector it produces is exposed on self_model.state for later gating use
+    # (deliverable 3). Default off.
+    self_vector_module = None
+    self_vector_optimizer = None
+    if config.get("enable_self_vector", False):
+        self_vector_module = SelfVectorModule(
+            self_dim=config.get("self_vector_dim", 64)
+        ).to(device)
+        self_vector_optimizer = torch.optim.Adam(
+            self_vector_module.parameters(), lr=config.get("self_vector_lr", 1e-3)
+        )
+        logger.info(
+            f"Self-vector loop enabled (self_dim={config.get('self_vector_dim', 64)}, "
+            f"SPR-style one-step self-prediction)"
+        )
+
     return (tectum, workspace, reentrant, modulator, emotion_shaper, memory,
             action_core, semantic, gate, tectum_optimizer, reward_predictor,
             reward_optimizer, workspace_optimizer, auditory_specialist, self_model,
             rnd, rnd_optimizer, consolidation_mgr, riiu_phis, mock_semantic,
-            holonic_system, levin_evaluator)
+            holonic_system, levin_evaluator,
+            self_vector_module, self_vector_optimizer)
 
 
 def frame_to_tensor(frame: np.ndarray, device: str) -> torch.Tensor:
@@ -433,7 +458,8 @@ def run_episode(episode_idx, config, tectum, workspace, reentrant,
                 riiu_phis: dict | None = None,
                 riiu_source: str = "broadcast",
                 mock_semantic=None,
-                holonic_system=None, levin_evaluator=None):
+                holonic_system=None, levin_evaluator=None,
+                self_vector_module=None, self_vector_optimizer=None):
     device = config["device"]
     max_steps = config["max_steps"]
 
@@ -441,6 +467,11 @@ def run_episode(episode_idx, config, tectum, workspace, reentrant,
     # the Levin morphological_adaptation metric (compares the current holonic
     # integration against the last few). Per-episode, capped at 5.
     holonic_history: list[dict] = []
+
+    # Phase 5 deliverable 1: previous-step first-order feature vector for the
+    # self-vector one-step self-prediction objective. None at episode start so
+    # the first step trains nothing (no prior to predict from).
+    prev_feat = None
 
     obs, info = env.reset()
     total_reward = 0.0
@@ -688,6 +719,43 @@ def run_episode(episode_idx, config, tectum, workspace, reentrant,
             broadcast = torch.zeros(1, config["workspace_dim"], device=device)
 
         broadcast_mag = float(broadcast.norm().item())
+
+        # --- Self-vector loop (Phase 5 deliverable 1): SPR-style self-prediction ---
+        # Build the agent's first-order feature vector, encode it to a self_vector,
+        # and train the encoder+predictor to forecast the NEXT step's features from
+        # the PREVIOUS step's self_vector. The offset target is observed, grounded
+        # data, so there is no same-step reconstruction tautology and no latent
+        # collapse. Skill is scored against a persistence baseline. The module
+        # trains by its own loss only (not the policy gradient); the self_vector is
+        # exposed on self_model.state for later gating use (deliverable 3).
+        self_pred_mse = 0.0
+        self_pred_skill = 0.0
+        if self_vector_module is not None and self_model is not None:
+            feat_t = torch.tensor(
+                self_model.first_order_features(
+                    emotion,
+                    (broadcast_mag,
+                     float(broadcast.mean().item()),
+                     float(broadcast.std().item())),
+                ),
+                dtype=torch.float32, device=device,
+            ).unsqueeze(0)
+            if prev_feat is not None:
+                sv_prev = self_vector_module.encode(prev_feat)
+                pred = self_vector_module.predict(sv_prev)
+                loss = torch.nn.functional.mse_loss(pred, feat_t.detach())
+                persistence = torch.nn.functional.mse_loss(prev_feat, feat_t).item()
+                self_vector_optimizer.zero_grad()
+                loss.backward()
+                self_vector_optimizer.step()
+                self_pred_mse = float(loss.item())
+                if persistence > 1e-8:
+                    self_pred_skill = float(
+                        max(-1.0, min(1.0, 1.0 - self_pred_mse / persistence))
+                    )
+            with torch.no_grad():
+                self_model.state.self_vector = self_vector_module.encode(feat_t).detach()
+            prev_feat = feat_t.detach()
 
         # RIIU parallel phi: push broadcast into the sliding window and compute
         # the SVD-residual phi. Zero before the buffer is warm (first `rank+1`
@@ -1047,6 +1115,8 @@ def run_episode(episode_idx, config, tectum, workspace, reentrant,
                 levin_collective_intelligence=levin["collective_intelligence"],
                 levin_goal_directed=levin["goal_directed_behavior"],
                 levin_basal_cognition=levin["basal_cognition"],
+                self_pred_mse=self_pred_mse,
+                self_pred_skill=self_pred_skill,
             ))
 
             # Insight detection: hash broadcast embedding for meaningful novelty signal
@@ -1258,6 +1328,15 @@ def main():
                              "logged to metrics.csv (levin_* columns). "
                              "Diagnostic only, not in the policy gradient. "
                              "Default off.")
+    parser.add_argument("--enable-self-vector", action="store_true",
+                        help="Phase 5 deliverable 1: learn a self-vector with an "
+                             "SPR-style one-step self-prediction objective "
+                             "(predict the next step's first-order features). "
+                             "Logs self_pred_mse and self_pred_skill (skill vs a "
+                             "persistence baseline) to metrics.csv. Trained by "
+                             "its own loss, not the policy gradient. Default off.")
+    parser.add_argument("--self-vector-dim", type=int, default=64,
+                        help="Dimension of the learned self-vector. Default 64.")
 
     args = parser.parse_args()
 
@@ -1282,7 +1361,8 @@ def main():
      reward_optimizer, workspace_optimizer, auditory_specialist,
      self_model, rnd, rnd_optimizer, consolidation_mgr,
      riiu_phis, mock_semantic,
-     holonic_system, levin_evaluator) = init_components(config)
+     holonic_system, levin_evaluator,
+     self_vector_module, self_vector_optimizer) = init_components(config)
 
     if args.env == "navigation":
         from simulations.environments.navigation_env import NavigationEnv
@@ -1332,6 +1412,8 @@ def main():
             mock_semantic=mock_semantic,
             holonic_system=holonic_system,
             levin_evaluator=levin_evaluator,
+            self_vector_module=self_vector_module,
+            self_vector_optimizer=self_vector_optimizer,
         )
         global_step += ep_steps
 

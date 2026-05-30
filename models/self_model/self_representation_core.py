@@ -49,7 +49,11 @@ class SelfState:
     body_schema: torch.Tensor = None            # Spatial representation of the physical self
     interoceptive_state: dict[str, float] = None # Internal needs (energy, damage, fatigue)
     capability_model: dict[str, float] = None    # Action-to-outcome confidence mappings
-    
+
+    # Phase 5 deliverable 1: learned meta-representational self-vector. Set during
+    # training when --enable-self-vector is on; None otherwise.
+    self_vector: torch.Tensor = None
+
     def __post_init__(self):
         """Initialize empty containers"""
         if self.emotional_state is None:
@@ -371,7 +375,44 @@ class SelfRepresentationCore:
         bridging Q7's requirement for a persistent body representation.
         """
         self.state.body_schema = proprioceptive_tensor.detach().clone()
-        
+
+    def first_order_features(
+        self,
+        emotion: dict | None,
+        broadcast_summary: tuple[float, float, float],
+    ) -> list[float]:
+        """Assemble the fixed first-order feature vector the self-vector encoder
+        consumes (Phase 5 deliverable 1). These are the agent's representations
+        of its OWN current state, the lower-order states a meta-representation
+        monitors: PAD emotion, interoceptive drives, learning velocity, temporal
+        continuity, confidence calibration, a capability summary, and a summary
+        of the current workspace broadcast. Length must equal
+        SELF_VECTOR_FEATURE_DIM.
+        """
+        emo = emotion or self.state.emotional_state or {}
+        intero = self.state.interoceptive_state or {}
+        caps = list(self.state.capability_model.values()) if self.state.capability_model else []
+        cap_mean = float(np.mean(caps)) if caps else 0.0
+        cap_count_norm = min(1.0, len(caps) / 10.0)
+        b_norm, b_mean, b_std = broadcast_summary
+        feats = [
+            float(emo.get("valence", 0.0)),
+            float(emo.get("arousal", 0.0)),
+            float(emo.get("dominance", 0.0)),
+            float(intero.get("energy", 1.0)),
+            float(intero.get("fatigue", 0.0)),
+            float(intero.get("damage", 0.0)),
+            float(self.state.learning_recognition),
+            float(self.state.temporal_continuity),
+            float(self.state.confidence_calibration),
+            cap_mean,
+            cap_count_norm,
+            float(b_norm),
+            float(b_mean),
+            float(b_std),
+        ]
+        return feats
+
 # Phase 5 Self-Model Learning Components
 class DirectExperienceLearner:
     """
@@ -453,3 +494,52 @@ class MetaLearningModule:
             "rpe_variance_ratio": variance_ratio,
             "novelty_spike": novelty_spike
         }
+
+
+# Dimension of the first-order feature vector consumed by SelfVectorModule.
+# Must match SelfRepresentationCore.first_order_features.
+SELF_VECTOR_FEATURE_DIM = 14
+
+
+class SelfVectorModule(nn.Module):
+    """Phase 5 deliverable 1: learned self-vector with an SPR-style self-prediction
+    objective (Schwarzer et al. 2021, arXiv:2007.05929).
+
+    The encoder maps the agent's current first-order features (see
+    SelfRepresentationCore.first_order_features) to a self_vector. The predictor
+    maps a self_vector to the NEXT step's first-order features. Training on a
+    one-step-ahead, temporally OFFSET target (the observed next features, not a
+    same-step reconstruction and not a learned latent) makes the objective a
+    genuine forecasting task: no tautology and no representational collapse,
+    because the target is grounded observed data, so the self_vector must encode
+    information predictive of the agent's own next state.
+
+    This is the theme-4 (meta-representation) mechanism of Rouleau-Levin. Its
+    value is reported as a forecasting skill score against a persistence baseline
+    (predict next == current). A self-model that beats persistence has learned
+    structure beyond "things stay the same"; one that does not is no better than
+    a trivial copy, and that is reported FAILED-first.
+    """
+
+    def __init__(self, feature_dim: int = SELF_VECTOR_FEATURE_DIM,
+                 self_dim: int = 64, hidden_dim: int = 64):
+        super().__init__()
+        self.feature_dim = feature_dim
+        self.self_dim = self_dim
+        self.encoder = nn.Sequential(
+            nn.Linear(feature_dim, hidden_dim),
+            nn.LayerNorm(hidden_dim),
+            nn.GELU(),
+            nn.Linear(hidden_dim, self_dim),
+        )
+        self.predictor = nn.Sequential(
+            nn.Linear(self_dim, hidden_dim),
+            nn.GELU(),
+            nn.Linear(hidden_dim, feature_dim),
+        )
+
+    def encode(self, features: torch.Tensor) -> torch.Tensor:
+        return self.encoder(features)
+
+    def predict(self, self_vector: torch.Tensor) -> torch.Tensor:
+        return self.predictor(self_vector)
