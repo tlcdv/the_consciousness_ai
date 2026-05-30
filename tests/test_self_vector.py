@@ -22,6 +22,7 @@ from models.self_model.self_representation_core import (
     SelfVectorModule,
     SELF_VECTOR_FEATURE_DIM,
 )
+from models.core.consciousness_gating import ConsciousnessGate
 
 
 class TestSelfVectorModuleShapes(unittest.TestCase):
@@ -140,6 +141,52 @@ class TestSelfVectorLoopIntegration(unittest.TestCase):
         self.assertTrue(torch.isfinite(core.state.self_vector).all())
         self.assertIsNotNone(last_skill)
         self.assertTrue(math.isfinite(last_skill))
+
+
+class TestSelfVectorGating(unittest.TestCase):
+    """Phase 5 deliverable 3: gate conditioning on the self_vector.
+
+    Default off must leave the gate path bit-identical (so the WCST ablation is
+    clean); enabled, a different self_vector must change the gate outputs.
+    """
+
+    def _gate(self, use_self_vector):
+        torch.manual_seed(0)
+        return ConsciousnessGate({
+            "hidden_size": 32,
+            "use_self_vector": use_self_vector,
+            "self_vector_dim": 8,
+            "gating": {"attention_threshold": 0.5, "stability_threshold": 0.6,
+                       "base_adaptation_rate": 0.01},
+        })
+
+    def test_projection_exists_only_when_enabled(self):
+        self.assertIsNone(self._gate(False).self_projection)
+        self.assertIsNotNone(self._gate(True).self_projection)
+
+    def test_disabled_ignores_self_vector(self):
+        gate = self._gate(False)
+        x = torch.randn(1, 32)
+        gate.reset_episode()
+        gate(x, self_vector=None)
+        out1 = gate.last_gate_values_tensor.detach().clone()
+        gate.reset_episode()
+        gate(x, self_vector=torch.randn(1, 8))
+        out2 = gate.last_gate_values_tensor.detach().clone()
+        self.assertTrue(torch.allclose(out1, out2),
+                        "disabled gate must ignore the self_vector")
+
+    def test_enabled_self_vector_changes_output(self):
+        gate = self._gate(True)
+        x = torch.randn(1, 32)
+        gate.reset_episode()
+        gate(x, self_vector=torch.zeros(1, 8))
+        out_a = gate.last_gate_values_tensor.detach().clone()
+        gate.reset_episode()
+        gate(x, self_vector=torch.ones(1, 8) * 3.0)
+        out_b = gate.last_gate_values_tensor.detach().clone()
+        self.assertFalse(torch.allclose(out_a, out_b),
+                         "enabled gate output must depend on the self_vector")
 
 
 if __name__ == "__main__":

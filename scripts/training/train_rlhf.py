@@ -202,7 +202,16 @@ def build_config(args):
         # Phase 5 deliverable 1: learned self-vector with an SPR-style one-step
         # self-prediction objective (default off). Diagnostic + (later) gating
         # input; trained by its own loss, not the policy gradient.
-        "enable_self_vector": getattr(args, "enable_self_vector", False),
+        # enable_self_vector_gating implies enable_self_vector: the gate can only
+        # be conditioned on a self_vector that is actually being computed.
+        "enable_self_vector": (
+            getattr(args, "enable_self_vector", False)
+            or getattr(args, "enable_self_vector_gating", False)
+        ),
+        # Phase 5 deliverable 3: feed the self_vector into ConsciousnessGate.
+        # Default off so the baseline gate path is bit-identical and the WCST
+        # ablation (with vs without) is clean.
+        "enable_self_vector_gating": getattr(args, "enable_self_vector_gating", False),
         "self_vector_dim": getattr(args, "self_vector_dim", 64),
         "self_vector_lr": 1e-3,
     }
@@ -251,6 +260,8 @@ def init_components(config):
     gate = ConsciousnessGate({
         "hidden_size": config["workspace_dim"],
         "ablate_feedback": config.get("ablate_gate_feedback", False),
+        "use_self_vector": config.get("enable_self_vector_gating", False),
+        "self_vector_dim": config.get("self_vector_dim", 64),
         "gating": {
             "attention_threshold": 0.5,
             "stability_threshold": 0.6,
@@ -798,7 +809,16 @@ def run_episode(episode_idx, config, tectum, workspace, reentrant,
                     gate_input, (0, config["workspace_dim"] - gate_input.shape[0])
                 )
             gate_input_batched = gate_input.unsqueeze(0)
-            _, gate_state_obj = gate(gate_input_batched)
+            # Phase 5 deliverable 3: condition the gate on the self-vector when
+            # gating is enabled. The self_vector was set this step by the
+            # self-vector block above (enable_self_vector is forced on when
+            # gating is on). None otherwise -> baseline gate path.
+            gate_self_vector = (
+                self_model.state.self_vector
+                if config.get("enable_self_vector_gating", False) and self_model is not None
+                else None
+            )
+            _, gate_state_obj = gate(gate_input_batched, self_vector=gate_self_vector)
             # Sampled pyphi: run the expensive Big Phi computation every
             # Nth step only. The TPM still updates every step via
             # update_from_gate_state. On non-sampled steps phi carries
@@ -1337,6 +1357,13 @@ def main():
                              "its own loss, not the policy gradient. Default off.")
     parser.add_argument("--self-vector-dim", type=int, default=64,
                         help="Dimension of the learned self-vector. Default 64.")
+    parser.add_argument("--enable-self-vector-gating", action="store_true",
+                        help="Phase 5 deliverable 3: feed the learned self_vector "
+                             "into ConsciousnessGate as an extra conditioning "
+                             "input (gating informed by the self-model). Implies "
+                             "--enable-self-vector. Default off, so the baseline "
+                             "gate path is bit-identical and the WCST ablation "
+                             "(with vs without) is clean.")
 
     args = parser.parse_args()
 

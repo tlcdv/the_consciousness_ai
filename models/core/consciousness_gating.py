@@ -58,6 +58,8 @@ class ConsciousnessGate(nn.Module):
             self.base_adaptation_rate = gating.get('base_adaptation_rate', 0.01)
             self.hidden_size = config.get('hidden_size', 128)
             self.ablate_feedback = config.get('ablate_feedback', False)
+            self.use_self_vector = config.get('use_self_vector', False)
+            self._self_vector_dim = config.get('self_vector_dim', 64)
         else:
             gating = getattr(config, 'gating', config)
             self.attention_threshold = getattr(gating, 'attention_threshold', 0.5)
@@ -65,6 +67,8 @@ class ConsciousnessGate(nn.Module):
             self.base_adaptation_rate = getattr(gating, 'base_adaptation_rate', 0.01)
             self.hidden_size = getattr(config, 'hidden_size', 128)
             self.ablate_feedback = getattr(config, 'ablate_feedback', False)
+            self.use_self_vector = getattr(config, 'use_self_vector', False)
+            self._self_vector_dim = getattr(config, 'self_vector_dim', 64)
 
         # --- Causal gate networks ---
         # Each network takes enriched input PLUS the output of its causal parent.
@@ -117,6 +121,18 @@ class ConsciousnessGate(nn.Module):
         # Provides the confidence->attention cross-step connection.
         self.gate_feedback = nn.Linear(5, self.hidden_size)
 
+        # Self-model conditioning (Phase 5 deliverable 3). When enabled, the
+        # learned self_vector is projected into hidden space and added to the
+        # enriched gate input, so the gate's causal nodes are conditioned on the
+        # agent's meta-representation of its own state (gating informed by the
+        # self-model, the computational-HOT / cognitive-reality-monitoring idea
+        # that metacognition arises from gating in hierarchical RL). Default off
+        # keeps the baseline gate path bit-identical.
+        self.self_projection = (
+            nn.Linear(self._self_vector_dim, self.hidden_size)
+            if self.use_self_vector else None
+        )
+
         # Buffer for previous gate values (detached for conditioning only)
         self.prev_gate_values: torch.Tensor | None = None
 
@@ -133,7 +149,8 @@ class ConsciousnessGate(nn.Module):
         self,
         input_state: torch.Tensor,
         meta_memory_context: dict | None = None,
-        narrator_state: dict | None = None
+        narrator_state: dict | None = None,
+        self_vector: torch.Tensor | None = None,
     ) -> tuple[torch.Tensor, GatingState]:
         """Run causal gate computation. Returns (gated_output, state).
 
@@ -150,6 +167,17 @@ class ConsciousnessGate(nn.Module):
             enriched = input_state + feedback
         else:
             enriched = input_state
+
+        # Self-model conditioning (Phase 5 deliverable 3, default off). Adds the
+        # projected self_vector to the enriched input so every gate node is
+        # conditioned on the agent's meta-representation of its own state.
+        if self.self_projection is not None and self_vector is not None:
+            sv = self_vector.to(input_state.device)
+            if sv.dim() == 1:
+                sv = sv.unsqueeze(0)
+            if enriched.dim() == 2 and sv.shape[0] == 1 and enriched.shape[0] > 1:
+                sv = sv.expand(enriched.shape[0], -1)
+            enriched = enriched + self.self_projection(sv)
 
         # Extract previous confidence for the confidence->attention connection.
         # On first call, use 0.5 (neutral).
