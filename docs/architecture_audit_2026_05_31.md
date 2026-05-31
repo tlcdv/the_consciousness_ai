@@ -145,3 +145,26 @@ the project feel like it is "bolting on." Proposal, ordered by value/effort
 and P5 with that clarity. This converts the project from "measure many signatures
 bolted onto a weak agent" toward "a smaller, causally-coherent conscious process we
 can actually test", which is what Functionalist Emergentism requires.
+
+## Update 2026-05-31: P1a + P2 executed
+
+**P1a (decluttering, done).** Removed 6 files verified orphaned (no production
+importer, no test dependency, git-recoverable): `models/self_model/intention_tracker.py`,
+`models/self_model/emotion_context_tracker.py`, `models/self_model/meta_learner.py`,
+`models/self_model/meta_learning.py`, and the deprecated agent pair
+`models/agent/consciousness_agent.py` + `scripts/training/train_emotional_agent.py`.
+Honest note: `consciousness_agent.py`'s own docstring claimed it was "preserved for
+backward compatibility with existing tests", but no test imported it. The claim was
+stale, which is itself evidence of the accretion problem.
+
+**P2 (one orchestrator story, done).** The canonical research loop is
+`train_rlhf.py`; `ConsciousnessCore` is retained as the API / integration shell
+(used by `simulations/api/simulation_manager.py`); the deprecated `ConsciousnessAgent`
+is removed. Two clearly separated stories instead of three.
+
+**Deferred (NOT removed).** `modular_self_representation.py` + `belief_system.py`
+are orphaned from the research loop but imported by the `tests/test_consciousness_system.py`
+integration test (a parallel-track test, not the train_rlhf stack). Removing them
+requires removing or rewriting that test, which is a separate user decision. P3
+(unify self-model + make it causally central on navigation), P4 (measurement vs
+integration stance), and P5 (agent competence) remain open.
