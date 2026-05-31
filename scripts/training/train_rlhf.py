@@ -1177,6 +1177,20 @@ def run_episode(episode_idx, config, tectum, workspace, reentrant,
         if done:
             break
 
+    # Phase 5 (option 2): log env-specific per-episode self-monitoring metrics.
+    # WCST exposes rule_changes / trials_correct; a self-monitoring agent recovers
+    # faster after each hidden rule change and so triggers more switches. These
+    # are finer than episode reward for the self-vector causal-efficacy test.
+    if metrics_logger is not None and isinstance(info, dict):
+        env_metrics = {
+            k: info[k]
+            for k in ("rule_changes", "trials_correct", "consecutive_correct")
+            if k in info
+        }
+        if env_metrics:
+            env_metrics["total_reward"] = float(total_reward)
+            metrics_logger.log_env_episode(episode_idx, env_metrics)
+
     avg_phi = phi_accum / max(steps_taken, 1)
     consciousness_ratio = conscious_steps / max(steps_taken, 1)
     return total_reward, steps_taken, avg_phi, consciousness_ratio

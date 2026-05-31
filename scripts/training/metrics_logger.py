@@ -123,6 +123,14 @@ class ConsciousnessMetricsLogger:
         self._ep_csv_writer = None
         self._init_episode_csv()
 
+        # Env-specific per-episode CSV (e.g. WCST recovery: rule_changes,
+        # trials_correct). Lazily created on the first log_env_episode call so
+        # non-WCST runs do not write an empty file.
+        self._env_ep_csv_path = os.path.join(log_dir, "env_episodes.csv")
+        self._env_ep_csv_file = None
+        self._env_ep_csv_writer = None
+        self._env_ep_keys: list[str] = []
+
         # Insight detection state
         self._seen_state_actions: set[str] = set()
         self._cross_episode_rewards: deque[float] = deque(maxlen=500)
@@ -265,6 +273,23 @@ class ConsciousnessMetricsLogger:
 
         # Reset per-episode buffers
         self._episode_broadcast_mags.clear()
+
+    def log_env_episode(self, episode: int, env_metrics: dict):
+        """Log environment-specific per-episode metrics (e.g. WCST rule_changes,
+        trials_correct) to env_episodes.csv. The header is created lazily from
+        the first call's keys, so only runs that report env metrics produce the
+        file."""
+        if not env_metrics:
+            return
+        if self._env_ep_csv_writer is None:
+            self._env_ep_csv_file = open(self._env_ep_csv_path, "w", newline="")
+            self._env_ep_csv_writer = csv.writer(self._env_ep_csv_file)
+            self._env_ep_keys = sorted(env_metrics.keys())
+            self._env_ep_csv_writer.writerow(["episode"] + self._env_ep_keys)
+        self._env_ep_csv_writer.writerow(
+            [episode] + [env_metrics.get(k, "") for k in self._env_ep_keys]
+        )
+        self._env_ep_csv_file.flush()
 
     def compute_and_log_ei(self, episode: int, num_gate_states: int = 243,
                            num_workspace_states: int = 8) -> dict:
@@ -412,3 +437,5 @@ class ConsciousnessMetricsLogger:
             self._csv_file.close()
         if self._ep_csv_file is not None:
             self._ep_csv_file.close()
+        if self._env_ep_csv_file is not None:
+            self._env_ep_csv_file.close()

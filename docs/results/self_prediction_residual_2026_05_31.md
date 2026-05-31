@@ -145,3 +145,52 @@ Options to bring to the user (none chosen here):
 The self-vector + enrichment code stays behind `--enable-self-vector` (default
 off); no defaults changed. Single seed; numbers from disk.
 
+---
+
+## Option 2 executed: behavioural self-monitoring value on WCST - BLOCKED
+
+Option 2 above was run: measure the self-vector's causal efficacy behaviourally
+via WCST post-rule-change recovery, with vs without the self-vector feeding the
+gate (60 ep x 150 steps, seed 42). Added per-episode env logging
+(`env_episodes.csv`) for `rule_changes` and `trials_correct`. A self-monitoring
+agent should recover faster after each hidden rule change and so trigger MORE
+rule changes per episode.
+
+| run | rule_changes total / mean | trials_correct mean | reward mean |
+|-----|---------------------------|---------------------|-------------|
+| baseline (gate ignores self-vector) | 0 / 0.000 | 6.58 | 1.059 |
+| gating (gate uses self-vector) | 1 / 0.017 | 6.32 | 0.709 |
+
+**Verdict: BLOCKED, and gating FAILED.** The self-vector gating did not help
+(reward 0.71 vs 1.06, worse; trials_correct 6.32 vs 6.58). More fundamentally,
+the agent triggers 0-1 rule changes across 60 episodes: it almost never reaches
+6-consecutive-correct, so it never enters the rule-change regime where
+self-monitoring matters. Post-rule-change recovery is therefore UNMEASURABLE with
+this agent - there are essentially no rule changes to recover from.
+
+## Consolidated conclusion (self-vector investigation, 2026-05-31)
+
+WCST fails as a self-monitoring testbed for the self-model on TWO independent
+counts: (1) its first-order self-features are near-static, so per-step
+self-prediction cannot beat persistence (Phases A/B); and (2) the agent is too
+weak to reach the rule-change regime, so behavioural recovery is unmeasurable
+(option 2).
+
+What IS established: the self-model MECHANISM is sound. On navigation, where the
+agent's self-state genuinely moves, residual self-prediction beats persistence
+(skill +0.35, rising with training). That is genuine meta-representation working
+where it is measurable.
+
+Recommendation to the user: treat **navigation (a self-dynamics-rich task) as the
+self-vector testbed** and advance the other Phase 5 deliverables on it -
+Deliverable 6 (Markov-blanket self-boundary detector, which consumes the
+validated self-vector) and Deliverable 7 (eight-themes audit; theme-4
+self-prediction skill is now demonstrable on navigation). Drop WCST as the
+self-monitoring testbed for now: it is blocked on agent competence, which is a
+separate problem from the self-model question. (Alternatives: invest in WCST
+agent competence first; or design a task that both moves the self-state and is
+solvable enough to exercise self-monitoring.)
+
+The self-vector + env-logging code stays behind `--enable-self-vector` (default
+off); no defaults changed. Single seed; numbers from disk.
+
