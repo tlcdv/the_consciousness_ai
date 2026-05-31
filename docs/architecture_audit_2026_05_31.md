@@ -165,6 +165,27 @@ is removed. Two clearly separated stories instead of three.
 **Deferred (NOT removed).** `modular_self_representation.py` + `belief_system.py`
 are orphaned from the research loop but imported by the `tests/test_consciousness_system.py`
 integration test (a parallel-track test, not the train_rlhf stack). Removing them
-requires removing or rewriting that test, which is a separate user decision. P3
-(unify self-model + make it causally central on navigation), P4 (measurement vs
-integration stance), and P5 (agent competence) remain open.
+requires removing or rewriting that test, which is a separate user decision.
+
+**P3 (make the self-model causally central, done).** The learned self-vector is
+now concatenated onto the broadcast that drives the policy PFC behind
+`--enable-self-vector-action` (default off; PFC input dim grows by
+self_vector_dim only when on, baseline bit-identical). The policy consumes and
+learns from the self-model. Behavioural value on navigation is measured
+separately (single-seed first; >=3 seeds before any default change).
+
+**P4 (measurement vs integration stance, resolved as DIAGNOSTICS).** Of the
+consciousness signals, only phi-delta (0.5x term in the policy reward) and sync_R
+(binding optimizer) have causal pathways into learning, and they are thin. EI, the
+Levin metrics, RIIU phi, and the self-vector self-prediction skill are DIAGNOSTIC
+measurements, not part of the causal conscious mechanism, and the docs state this
+plainly (this audit; `docs/levin_metrics_grounding.md` disclaims the Levin
+modules; `docs/preregistered_predictions.md` frames phi/EI as hypotheses under
+test). We do not claim these diagnostics constitute consciousness; they are
+signatures we measure. P3 is the one move that makes a signal (the self-vector)
+causally central by construction.
+
+**P5 (agent competence) remains open** and is the largest item: the base agent is
+weak (dark_room 12.95 vs DQN 92.00; WCST 0-1 rule changes), which is what makes
+many signatures unmeasurable. This needs its own focused effort (curriculum /
+stronger base RL) and is not attempted as a side change.
