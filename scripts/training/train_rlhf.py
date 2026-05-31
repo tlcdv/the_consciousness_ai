@@ -125,6 +125,10 @@ def build_config(args):
             "context_dim": 128,
             "learning_rate": args.lr,
             "device": "cuda" if torch.cuda.is_available() else "cpu",
+            # P3: make the self-vector causally central by concatenating it onto
+            # the broadcast that drives the policy PFC. Default off.
+            "use_self_vector": getattr(args, "enable_self_vector_action", False),
+            "self_vector_dim": getattr(args, "self_vector_dim", 64),
         },
         "memory": {},
         "episodes": args.episodes,
@@ -207,7 +211,9 @@ def build_config(args):
         "enable_self_vector": (
             getattr(args, "enable_self_vector", False)
             or getattr(args, "enable_self_vector_gating", False)
+            or getattr(args, "enable_self_vector_action", False)
         ),
+        "enable_self_vector_action": getattr(args, "enable_self_vector_action", False),
         # Phase 5 deliverable 3: feed the self_vector into ConsciousnessGate.
         # Default off so the baseline gate path is bit-identical and the WCST
         # ablation (with vs without) is clean.
@@ -868,8 +874,16 @@ def run_episode(episode_idx, config, tectum, workspace, reentrant,
         arousal = emotion["arousal"]
         phi_exploration_scale = max(0.2, 1.0 - phi * 10.0)  # phi=0.05 -> scale=0.5
         effective_arousal = arousal * phi_exploration_scale
+        # P3: when self-vector action-conditioning is on, feed the (detached)
+        # self_vector into the policy so it causally drives action selection.
+        sv_for_policy = (
+            self_model.state.self_vector
+            if config.get("enable_self_vector_action", False) and self_model is not None
+            else None
+        )
         action, value = action_core.select_action(
-            broadcast, emotion_arousal=effective_arousal, rpe_cache=0.0
+            broadcast, emotion_arousal=effective_arousal, rpe_cache=0.0,
+            self_vector=sv_for_policy,
         )
 
         # Discrete environments (DMTS, WCST): convert continuous action to int
@@ -1037,6 +1051,8 @@ def run_episode(episode_idx, config, tectum, workspace, reentrant,
             emotion_state=emotion_post,
             attention_level=phi,
             narrative="",
+            self_vector=sv_for_policy,
+            next_self_vector=sv_for_policy,
         )
 
         if step > 0 and step % 10 == 0:
@@ -1386,6 +1402,13 @@ def main():
                              "--enable-self-vector. Default off, so the baseline "
                              "gate path is bit-identical and the WCST ablation "
                              "(with vs without) is clean.")
+    parser.add_argument("--enable-self-vector-action", action="store_true",
+                        help="P3: make the self-vector causally central by "
+                             "concatenating it onto the broadcast that drives the "
+                             "policy PFC, so the self-model influences and is "
+                             "learned by action selection. Implies "
+                             "--enable-self-vector. Default off (PFC input dim = "
+                             "workspace_dim, baseline bit-identical).")
 
     args = parser.parse_args()
 

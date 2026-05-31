@@ -169,9 +169,21 @@ class ActionSelectionCore:
         self.lr = config.get("learning_rate", 3e-4)
         
         self.device = config.get("device", "cpu")
-        
+
+        # Phase 5 deliverable 3 (P3): optionally make the self-vector causally
+        # central by concatenating it onto the workspace broadcast that drives the
+        # PFC, so the policy consumes and learns from the self-model (the PFC GRU's
+        # input weights for the self-vector columns are trained by update_policy).
+        # Default off keeps the PFC input dim = workspace_dim (baseline
+        # bit-identical). When on, action-time, rollout/memory storage, and
+        # update-time all use the same augmented state, so training stays
+        # consistent.
+        self.use_self_vector = config.get("use_self_vector", False)
+        self.self_vector_dim = config.get("self_vector_dim", 64)
+        pfc_input_dim = self.workspace_dim + (self.self_vector_dim if self.use_self_vector else 0)
+
         # Models
-        self.pfc = PrefrontalCortex(self.workspace_dim, self.context_dim).to(self.device)
+        self.pfc = PrefrontalCortex(pfc_input_dim, self.context_dim).to(self.device)
         self.bg = BasalGanglia(self.context_dim, self.action_dim).to(self.device)
         
         # Optimizer
@@ -190,20 +202,39 @@ class ActionSelectionCore:
         self.pfc_hidden = torch.zeros(batch_size, self.context_dim, device=self.device)
         self.last_value = 0.0
 
-    def select_action(self, workspace_broadcast: torch.Tensor, emotion_arousal: float = 0.5, rpe_cache: float = 0.0) -> tuple[np.ndarray, float]:
+    def _augment(self, broadcast: torch.Tensor, self_vector: torch.Tensor | None) -> torch.Tensor:
+        """Concatenate the self-vector onto the broadcast (P3) so the PFC consumes
+        the self-model. No-op when use_self_vector is off. When on but no
+        self_vector is supplied, the self-vector slot is zero-filled so the PFC
+        input dim is always workspace_dim + self_vector_dim."""
+        if broadcast.dim() == 1:
+            broadcast = broadcast.unsqueeze(0)
+        if not self.use_self_vector:
+            return broadcast
+        b = broadcast.shape[0]
+        if self_vector is None:
+            sv = torch.zeros(b, self.self_vector_dim, device=broadcast.device)
+        else:
+            sv = self_vector.detach().to(broadcast.device)
+            if sv.dim() == 1:
+                sv = sv.unsqueeze(0)
+            if sv.shape[0] != b:
+                sv = sv.expand(b, -1)
+        return torch.cat([broadcast, sv], dim=-1)
+
+    def select_action(self, workspace_broadcast: torch.Tensor, emotion_arousal: float = 0.5, rpe_cache: float = 0.0, self_vector: torch.Tensor | None = None) -> tuple[np.ndarray, float]:
         """
         Step the PFC and BG to determine the next action.
         Uses emotional arousal to scale exploration (panic/urgency vs calm precision).
         """
         self.pfc.eval()
         self.bg.eval()
-        
+
         with torch.no_grad():
-            # 1. Update PFC Working Memory with new conscious broadcast
-            # Ensure proper batch dimensions
-            if workspace_broadcast.dim() == 1:
-                workspace_broadcast = workspace_broadcast.unsqueeze(0)
-            
+            # 1. Update PFC Working Memory with new conscious broadcast.
+            # P3: optionally augment with the self-vector (no-op when disabled).
+            workspace_broadcast = self._augment(workspace_broadcast, self_vector)
+
             pfc_state, self.pfc_hidden = self.pfc(workspace_broadcast, self.pfc_hidden)
             
             # 2. Basal Ganglia logic
@@ -231,11 +262,23 @@ class ActionSelectionCore:
              done: bool, 
              emotion_state: dict[str, float],
              attention_level: float,
-             narrative: str = "") -> dict[str, float]:
+             narrative: str = "",
+             self_vector: torch.Tensor | None = None,
+             next_self_vector: torch.Tensor | None = None) -> dict[str, float]:
         """
         Process the environment step, compute Dopaminergic RPE, and store for learning.
         """
-        
+        # P3: build self-vector-augmented views for the PFC and the rollout buffer
+        # (so the policy is driven by, and learns from, the self-model), but keep
+        # the RAW broadcast for memory storage so the memory's fixed-dim
+        # coherence/replay logic is unaffected. No-op when use_self_vector is off.
+        if workspace_broadcast.dim() == 1:
+            workspace_broadcast = workspace_broadcast.unsqueeze(0)
+        if next_broadcast.dim() == 1:
+            next_broadcast = next_broadcast.unsqueeze(0)
+        aug_broadcast = self._augment(workspace_broadcast, self_vector)
+        aug_next = self._augment(next_broadcast, next_self_vector)
+
         # 1. Emotional Reward Shaping
         shaped_reward = self.emotion_shaper.compute_emotional_reward(
             emotion_values=emotion_state,
@@ -254,7 +297,7 @@ class ActionSelectionCore:
             
             # Peek at next state value using current working memory context securely
             temp_hidden = self.pfc_hidden.clone()
-            next_pfc, _ = self.pfc(next_broadcast, temp_hidden)
+            next_pfc, _ = self.pfc(aug_next, temp_hidden)
             _, next_value_tensor = self.bg(next_pfc)
             next_value = next_value_tensor.item()
             
@@ -271,13 +314,14 @@ class ActionSelectionCore:
             narrative=narrative
         )
         
-        # 4. Add to rollout buffer for formal backprop
+        # 4. Add to rollout buffer for formal backprop. Use the AUGMENTED views so
+        # update_policy re-forwards the same PFC input the action was driven with.
         self.rollout_buffer.append({
-            "state": workspace_broadcast,
+            "state": aug_broadcast,
             "hidden": self.pfc_hidden.clone(), # Need the context used at that step
             "action": action_tensor,
             "reward": shaped_reward,
-            "next_state": next_broadcast,
+            "next_state": aug_next,
             "done": done,
             "rpe": rpe # The dopamine spike
         })
@@ -409,6 +453,13 @@ class ActionSelectionCore:
                 s = s.unsqueeze(0)
             states.append(s)
         states = torch.cat(states, dim=0)
+
+        # P3: memory stores RAW broadcasts; the augmented PFC expects the
+        # self-vector slot too. Zero-fill it for replay (replayed memory carries
+        # no self-vector). Guard on the raw width so double-padding cannot happen.
+        if self.use_self_vector and states.shape[-1] == self.workspace_dim:
+            pad = torch.zeros(states.shape[0], self.self_vector_dim, device=self.device)
+            states = torch.cat([states, pad], dim=-1)
 
         # Zero hidden for replay (no recurrent context)
         hiddens = torch.zeros(len(valid), self.context_dim, device=self.device)

@@ -213,5 +213,59 @@ class TestSelfVectorGating(unittest.TestCase):
                          "enabled gate output must depend on the self_vector")
 
 
+class TestSelfVectorAction(unittest.TestCase):
+    """P3: the self-vector concatenated onto the PFC input (causally central).
+
+    Default off keeps PFC input dim = workspace_dim (baseline bit-identical);
+    enabled grows the PFC input and routes the self-vector into the policy.
+    """
+
+    def _core(self, use_self_vector):
+        from models.self_model.action_selection_core import ActionSelectionCore
+        from models.emotion.reward_shaping import EmotionalRewardShaper
+        from models.memory.memory_core import MemoryCore
+        torch.manual_seed(0)
+        cfg = {
+            "workspace_dim": 32, "context_dim": 16, "action_dim": 4,
+            "device": "cpu",
+            "use_self_vector": use_self_vector, "self_vector_dim": 8,
+        }
+        return ActionSelectionCore(cfg, EmotionalRewardShaper({}), MemoryCore({}))
+
+    def test_pfc_input_dim_grows_when_enabled(self):
+        self.assertEqual(self._core(False).pfc.working_memory.input_size, 32)
+        self.assertEqual(self._core(True).pfc.working_memory.input_size, 40)  # 32 + 8
+
+    def test_augment_noop_when_disabled(self):
+        core = self._core(False)
+        b = torch.randn(1, 32)
+        out = core._augment(b, torch.randn(1, 8))
+        self.assertEqual(tuple(out.shape), (1, 32))
+        self.assertTrue(torch.allclose(out, b))
+
+    def test_augment_concats_when_enabled(self):
+        core = self._core(True)
+        b = torch.randn(1, 32)
+        sv = torch.randn(1, 8)
+        out = core._augment(b, sv)
+        self.assertEqual(tuple(out.shape), (1, 40))
+        self.assertTrue(torch.allclose(out[:, :32], b))
+        self.assertTrue(torch.allclose(out[:, 32:], sv))
+
+    def test_augment_zero_fills_when_enabled_and_no_self_vector(self):
+        core = self._core(True)
+        out = core._augment(torch.randn(1, 32), None)
+        self.assertEqual(tuple(out.shape), (1, 40))
+        self.assertTrue(torch.allclose(out[:, 32:], torch.zeros(1, 8)))
+
+    def test_select_action_runs_with_self_vector(self):
+        core = self._core(True)
+        core.reset_state(1)
+        action, value = core.select_action(
+            torch.randn(1, 32), self_vector=torch.randn(1, 8))
+        self.assertEqual(action.shape[0], 4)
+        self.assertTrue(np.isfinite(action).all())
+
+
 if __name__ == "__main__":
     unittest.main()
