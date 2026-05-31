@@ -483,6 +483,9 @@ def run_episode(episode_idx, config, tectum, workspace, reentrant,
     # self-vector one-step self-prediction objective. None at episode start so
     # the first step trains nothing (no prior to predict from).
     prev_feat = None
+    # Phase B: reset the reward EMAs so within-episode self-monitoring starts clean.
+    if self_model is not None and hasattr(self_model, "reset_performance"):
+        self_model.reset_performance()
 
     obs, info = env.reset()
     total_reward = 0.0
@@ -742,6 +745,10 @@ def run_episode(episode_idx, config, tectum, workspace, reentrant,
         self_pred_mse = 0.0
         self_pred_skill = 0.0
         if self_vector_module is not None and self_model is not None:
+            # Phase B: fold the latest available reward into the performance EMAs
+            # so the self-state moves on tasks like WCST. prev_env_reward is the
+            # actual env reward from the previous step (0.0 on the first step).
+            self_model.update_performance(prev_env_reward)
             feat_t = torch.tensor(
                 self_model.first_order_features(
                     emotion,

@@ -54,6 +54,13 @@ class SelfState:
     # training when --enable-self-vector is on; None otherwise.
     self_vector: torch.Tensor = None
 
+    # Phase 5 deliverable 1 (Phase B enrichment): running reward EMAs that make the
+    # self-state move on tasks like WCST where PAD/interoception are near-static.
+    # recent_reward_ema (fast) is current performance; (fast - slow) is the
+    # self-monitoring trend that drops when a hidden rule change tanks performance.
+    recent_reward_ema: float = 0.0
+    recent_reward_ema_slow: float = 0.0
+
     def __post_init__(self):
         """Initialize empty containers"""
         if self.emotional_state is None:
@@ -368,6 +375,27 @@ class SelfRepresentationCore:
             'capability_model': dict(self.state.capability_model),
         }
     
+    def update_performance(self, reward: float) -> None:
+        """Update running reward EMAs (fast + slow) from the latest reward.
+
+        The fast EMA tracks current performance; (fast - slow) is the
+        self-monitoring trend, which drops when a hidden rule change tanks
+        performance. These feed first_order_features so the self-state moves on
+        tasks like WCST where PAD / interoception are near-constant (Phase B,
+        docs/results/self_prediction_residual_2026_05_31.md).
+        """
+        r = float(reward)
+        a_fast = self.config.get("reward_ema_fast", 0.2)
+        a_slow = self.config.get("reward_ema_slow", 0.05)
+        self.state.recent_reward_ema = (1 - a_fast) * self.state.recent_reward_ema + a_fast * r
+        self.state.recent_reward_ema_slow = (1 - a_slow) * self.state.recent_reward_ema_slow + a_slow * r
+
+    def reset_performance(self) -> None:
+        """Reset the reward EMAs at the start of an episode so within-episode
+        self-monitoring (e.g. WCST rule-change detection) starts clean."""
+        self.state.recent_reward_ema = 0.0
+        self.state.recent_reward_ema_slow = 0.0
+
     def update_body_schema(self, proprioceptive_tensor: torch.Tensor) -> None:
         """
         Update the body schema from the ProprioceptiveProcessor output.
@@ -410,6 +438,8 @@ class SelfRepresentationCore:
             float(b_norm),
             float(b_mean),
             float(b_std),
+            float(self.state.recent_reward_ema),
+            float(self.state.recent_reward_ema - self.state.recent_reward_ema_slow),
         ]
         return feats
 
@@ -497,8 +527,10 @@ class MetaLearningModule:
 
 
 # Dimension of the first-order feature vector consumed by SelfVectorModule.
-# Must match SelfRepresentationCore.first_order_features.
-SELF_VECTOR_FEATURE_DIM = 14
+# Must match SelfRepresentationCore.first_order_features. 14 base features
+# (PAD, interoception, learning/continuity/calibration, capability, broadcast)
+# plus 2 Phase-B performance features (recent_reward_ema, reward trend).
+SELF_VECTOR_FEATURE_DIM = 16
 
 
 class SelfVectorModule(nn.Module):

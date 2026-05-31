@@ -90,3 +90,58 @@ for e in wcst dmts navigation; do
     --phi-sample-every 5 --log-dir runs/sv_residual/$e
 done
 ```
+
+---
+
+## Phase B: feature enrichment (reward EMAs) - FAILED to fix WCST
+
+Option 1 above was executed. The first-order feature vector was enriched with two
+performance signals that DO move on WCST: a fast reward EMA (current performance)
+and the fast-minus-slow trend (drops when a hidden rule change tanks performance).
+Feature dim 14 -> 16. Re-measured at the same settings (25 ep x 100 steps, seed 42).
+
+| env | Phase A last-200 | Phase B last-200 | Phase B 2nd-half | frac steps > 0 |
+|-----|------------------|-------------------|------------------|----------------|
+| navigation | +0.354 | +0.340 | +0.253 | 0.58 |
+| dmts | -0.348 | -0.295 | -0.309 | 0.41 |
+| wcst | -0.481 | **-0.460** | -0.457 | 0.28 |
+
+**Verdict: FAILED.** The enrichment moved WCST skill only marginally (-0.48 ->
+-0.46), nowhere near positive. Navigation stays positive; DMTS stays negative.
+
+Root cause: a reward EMA is, by construction, SMOOTH, so it is persistence
+dominated just like the slow features it was meant to fix. The model has to beat a
+baseline that already predicts "EMA barely changed", and on the ~72% of WCST steps
+where the self-state is near-constant, any model error loses to persistence (only
+28% of steps have positive skill). The sharp signal on WCST is the raw per-trial
+reward, but that is stochastic (depends on whether the agent happened to sort
+correctly), so neither the model nor persistence predicts it. WCST has no
+"sharp AND predictable" self-feature at the per-step horizon.
+
+## Conclusion: a Phase-5 finding, not just a tuning miss
+
+Across Phase A (residual prediction) and Phase B (feature enrichment), **per-step
+self-prediction is achievable where the agent's self-state has smooth deterministic
+dynamics (navigation: skill +0.35) and is NOT achievable on WCST/DMTS**, whose
+self-state is either near-constant (persistence-dominated) or sharp-but-stochastic
+(unpredictable). The self-vector mechanism is sound; the per-step self-prediction
+SKILL metric is simply the wrong success signal for self-monitoring tasks like
+WCST.
+
+Options to bring to the user (none chosen here):
+
+1. **Multi-step / event-horizon prediction.** Predict the self-state several steps
+   ahead, or specifically predict the post-rule-change performance drop, instead of
+   the next single step. Persistence is far weaker over a horizon, and rule-change
+   dynamics are the predictable structure.
+2. **Measure self-model value behaviourally, not by self-prediction.** Keep the
+   self-vector as a representation and judge it by whether feeding it into gating /
+   action improves WCST recovery in the post-rule-change window (the pre-registered
+   Deliverable-5 self-monitoring window), dropping self_pred_skill as the gate.
+3. **Use navigation (or a self-dynamics-rich task) as the self-vector testbed**,
+   and treat WCST purely as the behavioural self-monitoring benchmark with its own
+   (non-self-prediction) metric.
+
+The self-vector + enrichment code stays behind `--enable-self-vector` (default
+off); no defaults changed. Single seed; numbers from disk.
+

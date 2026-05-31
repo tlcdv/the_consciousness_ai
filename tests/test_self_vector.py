@@ -73,6 +73,22 @@ class TestFirstOrderFeatures(unittest.TestCase):
         self.assertAlmostEqual(feats[9], 0.1, places=5)
         self.assertAlmostEqual(feats[10], 0.2, places=5)
 
+    def test_performance_features_move_with_reward(self):
+        # Phase B: the reward EMAs must make the self-state move on tasks where
+        # PAD/interoception are static (index 14 = recent_reward_ema,
+        # index 15 = fast-slow trend).
+        base = self.core.first_order_features({}, (0.0, 0.0, 0.0))
+        self.assertAlmostEqual(base[14], 0.0, places=6)
+        for _ in range(10):
+            self.core.update_performance(1.0)
+        after = self.core.first_order_features({}, (0.0, 0.0, 0.0))
+        self.assertGreater(after[14], base[14])
+        self.assertGreater(after[14], 0.1)
+        self.assertGreater(after[15], 0.0)  # fast EMA leads slow -> positive trend
+        self.core.reset_performance()
+        cleared = self.core.first_order_features({}, (0.0, 0.0, 0.0))
+        self.assertAlmostEqual(cleared[14], 0.0, places=6)
+
 
 class TestSelfPredictionBeatsPersistence(unittest.TestCase):
     """The deliverable's core claim: the self-model learns predictive structure
