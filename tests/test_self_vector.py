@@ -40,6 +40,14 @@ class TestSelfVectorModuleShapes(unittest.TestCase):
         self.assertEqual(tuple(pred.shape), (1, SELF_VECTOR_FEATURE_DIM))
         self.assertTrue(torch.isfinite(pred).all())
 
+    def test_predict_next_is_residual(self):
+        feats = torch.randn(1, SELF_VECTOR_FEATURE_DIM)
+        nxt = self.m.predict_next(feats)
+        self.assertEqual(tuple(nxt.shape), (1, SELF_VECTOR_FEATURE_DIM))
+        # predict_next must be features + predicted delta (a residual).
+        delta = self.m.predict(self.m.encode(feats))
+        self.assertTrue(torch.allclose(nxt, feats + delta))
+
 
 class TestFirstOrderFeatures(unittest.TestCase):
     def setUp(self):
@@ -86,7 +94,7 @@ class TestSelfPredictionBeatsPersistence(unittest.TestCase):
         prev = None
         for _ in range(500):
             if prev is not None:
-                pred = m.predict(m.encode(prev))
+                pred = m.predict_next(prev)
                 loss = torch.nn.functional.mse_loss(pred, x.detach())
                 persistence = torch.nn.functional.mse_loss(prev, x).item()
                 opt.zero_grad()
@@ -124,7 +132,7 @@ class TestSelfVectorLoopIntegration(unittest.TestCase):
                 dtype=torch.float32,
             ).unsqueeze(0)
             if prev is not None:
-                pred = m.predict(m.encode(prev))
+                pred = m.predict_next(prev)
                 loss = torch.nn.functional.mse_loss(pred, feats.detach())
                 persistence = torch.nn.functional.mse_loss(prev, feats).item()
                 opt.zero_grad()

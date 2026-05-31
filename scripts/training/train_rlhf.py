@@ -752,8 +752,9 @@ def run_episode(episode_idx, config, tectum, workspace, reentrant,
                 dtype=torch.float32, device=device,
             ).unsqueeze(0)
             if prev_feat is not None:
-                sv_prev = self_vector_module.encode(prev_feat)
-                pred = self_vector_module.predict(sv_prev)
+                # Residual forecast: predict feat_t as prev_feat + delta, so the
+                # persistence baseline (zero delta) is what the model must beat.
+                pred = self_vector_module.predict_next(prev_feat)
                 loss = torch.nn.functional.mse_loss(pred, feat_t.detach())
                 persistence = torch.nn.functional.mse_loss(prev_feat, feat_t).item()
                 self_vector_optimizer.zero_grad()

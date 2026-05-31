@@ -543,3 +543,16 @@ class SelfVectorModule(nn.Module):
 
     def predict(self, self_vector: torch.Tensor) -> torch.Tensor:
         return self.predictor(self_vector)
+
+    def predict_next(self, features: torch.Tensor) -> torch.Tensor:
+        """Residual one-step forecast: features + predicted delta.
+
+        The predictor head outputs the CHANGE in first-order features, so the
+        persistence baseline (predict next == current) corresponds to a zero
+        delta. The model beats persistence only when it captures systematic
+        dynamics (e.g. the deterministic decay/accumulation of interoceptive
+        drives), instead of having to reproduce the large, near-constant
+        absolute feature values, which is why raw next-feature prediction lost
+        to persistence (docs/results/self_vector_gating_wcst_2026_05_30.md).
+        """
+        return features + self.predict(self.encode(features))
