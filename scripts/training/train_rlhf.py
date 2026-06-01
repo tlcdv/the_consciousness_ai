@@ -33,6 +33,7 @@ from models.core.consciousness_gating import ConsciousnessGate
 from models.emotion.affective_modulator import AffectiveModulator
 from models.emotion.reward_shaping import EmotionalRewardShaper
 from models.self_model.action_selection_core import ActionSelectionCore
+from models.self_model.standard_actor_critic import StandardActorCritic
 from models.self_model.self_representation_core import SelfRepresentationCore, SelfVectorModule
 from models.self_model.holonic_intelligence import HolonicSystem
 from models.memory.memory_core import MemoryCore
@@ -133,6 +134,11 @@ def build_config(args):
         "memory": {},
         "episodes": args.episodes,
         "max_steps": args.max_steps,
+        # P5 diagnosis: which policy consumes the broadcast. 'gonogo' (default) is
+        # the Go/No-Go ActionSelectionCore; 'standard' is a plain A2C head, used to
+        # isolate whether the policy or the broadcast representation is the
+        # competence bottleneck.
+        "policy": getattr(args, "policy", "gonogo"),
         "enable_audio": getattr(args, "enable_audio", False),
         "audio_sample_rate": 16000,
         "audio_num_bands": 64,
@@ -249,11 +255,15 @@ def init_components(config):
 
     memory = MemoryCore(config["memory"])
 
-    action_core = ActionSelectionCore(
-        config["action_selection"],
-        emotion_shaper,
-        memory,
-    )
+    if config.get("policy", "gonogo") == "standard":
+        action_core = StandardActorCritic(config["action_selection"], emotion_shaper, memory)
+        logger.info("Policy: StandardActorCritic (A2C on broadcast) [P5 diagnostic]")
+    else:
+        action_core = ActionSelectionCore(
+            config["action_selection"],
+            emotion_shaper,
+            memory,
+        )
 
     semantic = SemanticPathway(
         input_dim=config.get("semantic_input_dim", 1536),
@@ -1409,6 +1419,13 @@ def main():
                              "learned by action selection. Implies "
                              "--enable-self-vector. Default off (PFC input dim = "
                              "workspace_dim, baseline bit-identical).")
+    parser.add_argument("--policy", type=str, default="gonogo",
+                        choices=["gonogo", "standard"],
+                        help="P5 diagnosis: which policy consumes the broadcast. "
+                             "'gonogo' (default) is the Go/No-Go ActionSelectionCore; "
+                             "'standard' is a plain A2C head (StandardActorCritic) "
+                             "used to isolate whether the policy or the broadcast "
+                             "representation is the competence bottleneck.")
 
     args = parser.parse_args()
 
