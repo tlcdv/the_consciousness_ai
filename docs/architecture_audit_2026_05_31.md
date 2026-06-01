@@ -162,10 +162,13 @@ stale, which is itself evidence of the accretion problem.
 (used by `simulations/api/simulation_manager.py`); the deprecated `ConsciousnessAgent`
 is removed. Two clearly separated stories instead of three.
 
-**Deferred (NOT removed).** `modular_self_representation.py` + `belief_system.py`
-are orphaned from the research loop but imported by the `tests/test_consciousness_system.py`
-integration test (a parallel-track test, not the train_rlhf stack). Removing them
-requires removing or rewriting that test, which is a separate user decision.
+**Modular cluster (RESOLVED 2026-06-01).** `modular_self_representation.py` +
+`belief_system.py` are removed. `tests/test_consciousness_system.py` was rewritten
+onto the canonical `SelfRepresentationCore` (its assertions depend on the monitor's
+`evaluate_development`, not the self-model's output, so the swap is clean),
+preserving the integration test and `MemoryIntegrationCore` coverage. The self-model
+is now a single canonical module (`self_representation_core.py`) plus its Phase 5
+`SelfVectorModule`.
 
 **P3 (make the self-model causally central, done).** The learned self-vector is
 now concatenated onto the broadcast that drives the policy PFC behind

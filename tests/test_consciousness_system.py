@@ -21,7 +21,7 @@ from dataclasses import dataclass
 
 from models.memory.memory_integration import MemoryIntegrationCore
 from models.evaluation.consciousness_metrics import ConsciousnessMetrics
-from models.self_model.modular_self_representation import ModularSelfRepresentation
+from models.self_model.self_representation_core import SelfRepresentationCore
 from models.evaluation.consciousness_monitor import ConsciousnessMonitor
 
 @dataclass
@@ -55,7 +55,7 @@ class TestConsciousnessSystem(unittest.TestCase):
         # Initialize core components
         self.memory = MemoryIntegrationCore(self.config.memory_config)
         self.consciousness = ConsciousnessMetrics(self.config.consciousness_config)
-        self.self_model = ModularSelfRepresentation(self.config.consciousness_config)
+        self.self_model = SelfRepresentationCore(self.config.consciousness_config)
         self.monitor = ConsciousnessMonitor(self.config.consciousness_config)
 
     def test_complete_development_cycle(self):
@@ -70,25 +70,27 @@ class TestConsciousnessSystem(unittest.TestCase):
             # Process through consciousness pipeline
             consciousness_state = self._process_consciousness_cycle(experience)
             
-            # Update self-model
-            self_model_update = self.self_model.update(
-                current_state=consciousness_state['state'],
-                emotional_context=experience['emotion'],
-                attention_level=consciousness_state['attention_level']
+            # Update the canonical self-model (SelfRepresentationCore).
+            self.self_model.update_self_model(
+                current_state={},
+                attention_level=consciousness_state['attention_level'],
+                emotional_state=experience['emotion'],
             )
-            
+
+            # Evaluate development (the monitor computes consciousness_level from
+            # attention/emotion inputs).
+            metrics = self.monitor.evaluate_development(
+                current_state=consciousness_state,
+                emotion_values=experience['emotion'],
+                attention_metrics={'attention_level': consciousness_state['attention_level']},
+                memory_state=self.memory.get_state(),
+            )
+
             # Store experience with consciousness context
             self.memory.store_experience(
                 experience_data=consciousness_state['state'],
                 emotional_context=experience['emotion'],
-                consciousness_level=self_model_update['consciousness_level']
-            )
-            
-            # Evaluate development
-            metrics = self.monitor.evaluate_development(
-                current_state=consciousness_state,
-                self_model_state=self_model_update,
-                memory_state=self.memory.get_state()
+                consciousness_level=metrics['consciousness_level'],
             )
             
             development_metrics.append(metrics)
