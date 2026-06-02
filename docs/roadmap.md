@@ -116,9 +116,50 @@ Decision (Option A of the verdict doc): narrow the public claim about the in-tra
 
 The KomplexNet implementation (`models/core/complex_binding.py`, `--binding-mechanism komplex`) stays in the codebase default-off as the empirical basis for the inverse finding. RIIU stays behind `--enable-riiu` as a diagnostic.
 
+### Status 2026-06-02: agent competence localized; success metric set to consciousness signatures
+
+The P5 competence thread localized the agent's low dark_room control reward (~15 vs a
+vanilla DQN on raw pixels at 92) to the perceptual front-end. Holding the DQN learner
+constant, reward by representation tap is: pixels 92.00 -> obs_map 17.14 (pre
+RSSM/capsule) -> tectum_content 15.93 (post capsule) -> broadcast 14.65 (post GNW). The
+control signal is lost at the FIRST encoding stage (pixels -> obs_map); the capsule
+collapse, the GNW, and the policy are not the cost. Numbers on disk:
+[`docs/results/agent_competence_fix_2026_06_02.md`](results/agent_competence_fix_2026_06_02.md).
+
+Decision (adopted, [`docs/decisions/2026_06_02_competence_reading_2.md`](decisions/2026_06_02_competence_reading_2.md)):
+the architecture is biology-first; dark_room control reward is the cost of that design,
+not the success metric. **Success is judged by consciousness signatures**, formalized as
+the indicator-properties rubric in
+[`docs/consciousness_indicators_butlin.md`](consciousness_indicators_butlin.md) (Butlin,
+Long et al. 2023, arXiv:2308.08708; TiCS 2025), together with the project's own metrics
+(IIT phi, EI causal emergence, Levin metrics, phenomenological mapping, insight
+detection, DMTS/WCST behavioral integration). Control reward is retired as a target and
+kept only as a behavioral sanity signal.
+
+Honest competence bar (not "declare victory"): the agent must still perceive well enough
+to ENTER the diagnostic regimes of the consciousness-demanding tasks, or the signatures
+cannot be measured. This becomes a Phase 5 prerequisite below.
+
+The biological strategy, components, and roadmap are unchanged. The active-inference
+direction (Phase 6 below) is elevated: the localization gives it a measured motivation,
+since the front-end is lossy precisely because it is trained ad-hoc (reward-MSE + TDANN
+topography) rather than by a principled free-energy / prediction-error objective.
+
 ## Phase 5: Dynamic Self-Representation & Meta-Cognition
 
 - **Goal:** Implement a dynamic, learned self-model and explore meta-cognitive capabilities.
+- **Evaluation (2026-06-02):** Phase 5 progress is judged by the indicator rubric
+  ([`consciousness_indicators_butlin.md`](consciousness_indicators_butlin.md)), not
+  control reward. The self-vector loop and metacognition target HOT-2 / HOT-3; the
+  substrate-independence test targets measurable agency and integration on the
+  consciousness tasks. Progress = moving an indicator from PARTIAL to IMPLEMENTED with a
+  measured signature.
+- **Prerequisite (2026-06-02): verify perception supports the consciousness tasks.** A
+  cheap check before the signature experiments: can the agent perceive the DMTS sample /
+  WCST card enough to enter the task's diagnostic regime (DMTS/WCST are currently flat)?
+  If not, the front-end is the blocker, and the active-inference reframing below becomes
+  Phase-5 enabling work rather than Phase-6 polish. Pursued probe-first and biologically;
+  never by reverting to a non-biological control encoder.
 - **Theoretical grounding:** This phase is the project's first concrete integration of [Rouleau & Levin (2026)](rouleau_levin_substrate_independence.md) ("Brains and where else?", *Phil. Trans. R. Soc. A* 384: 20250082). Their theme #4 (meta-representations), the aneurocentric formulations of Higher-Order Theory, self-organizing meta-representational theory, and self-comes-to-mind theory, and Levin's "computational boundary of a self" framing are the explicit targets the deliverables below operationalise.
 - **Deliverables:**
   - **Dynamic Self-Representation Module:** Learned "self-vector" loop within `ConsciousnessCore` and `SelfRepresentationCore` as per Higher-Order theories. Evaluated against the aneurocentric HOT formulation in [`rouleau_levin_substrate_independence.md`](rouleau_levin_substrate_independence.md) §3 theme 4.
@@ -136,7 +177,7 @@ The KomplexNet implementation (`models/core/complex_binding.py`, `--binding-mech
   - **Creative Imagination Buffer:** Generate and evaluate novel mental simulations, selecting based on Phi or GNW ignition.
   - Reward-shaping hooks based on creative outputs.
   - Advanced IIT metrics (CES visualization).
-  - **Active inference reframing (Rouleau-Levin §6.1):** Evaluate replacing or complementing the RSSM ELBO + reward objective with an explicit expected-free-energy action selector along the lines of Friston et al. (2023) *Active Inference* (MIT Press) and recent deep-active-inference world-model agents. Rationale and integration target documented in [`rouleau_levin_substrate_independence.md`](rouleau_levin_substrate_independence.md) §6.1.
+  - **Active inference reframing (Rouleau-Levin §6.1; elevated 2026-06-02):** Replace or complement the ad-hoc front-end training (reward-MSE + TDANN topography) and the RSSM ELBO + reward objective with an explicit expected-free-energy / prediction-error objective along the lines of Friston et al. (2023) *Active Inference* (MIT Press), Rao et al. (Active Predictive Coding, Neural Computation 2024, MIT Press), and recent deep-active-inference world-model agents ([arXiv:2505.19867](https://arxiv.org/abs/2505.19867)). **Motivation (2026-06-02 localization):** the perceptual front-end loses most of the control-relevant signal (pixels -> obs_map), and it is trained ad-hoc; an action-coupled free-energy objective is the biologically principled way to make perception both faithful and functional, without a non-biological control encoder. If the Phase 5 perception prerequisite fails, this work moves earlier (Phase-5 enabling). Rationale and integration target in [`rouleau_levin_substrate_independence.md`](rouleau_levin_substrate_independence.md) §6.1.
 
 ## Phase 7: Peer Consciousness & Robustness
 

@@ -213,6 +213,16 @@ fix blindly.
    that the architecture trades control performance for its biological/integration
    properties, and judge the agent by the consciousness signatures instead.
 
+## Decision (2026-06-02): reading #2 adopted
+
+Reading #2 is adopted. dark_room control reward is retired as a target metric; success
+is judged by consciousness signatures, formalized as the indicator rubric in
+[`consciousness_indicators_butlin.md`](../consciousness_indicators_butlin.md). Full
+rationale, the honest "perception must support the consciousness tasks" caveat, and the
+research-backed forward path (Butlin indicators for evaluation; active inference for a
+biologically principled front-end) are in
+[`decisions/2026_06_02_competence_reading_2.md`](../decisions/2026_06_02_competence_reading_2.md).
+
 ## Reproducibility
 
 ```bash
