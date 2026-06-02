@@ -41,6 +41,9 @@ class DQNPolicy:
         self.emotion_shaper = emotion_shaper
         self.memory = memory
         self.workspace_dim = config.get("workspace_dim", 256)
+        # The policy's input dim. Defaults to workspace_dim (broadcast/tectum taps),
+        # but the spatial localization tap is much larger, so it can be overridden.
+        self.input_dim = config.get("policy_input_dim", self.workspace_dim)
         self.action_dim = config.get("action_dim", 4)
         self.device = config.get("device", "cpu")
         self.gamma = config.get("gamma", 0.99)
@@ -60,7 +63,7 @@ class DQNPolicy:
 
         def _qnet() -> nn.Module:
             return nn.Sequential(
-                nn.Linear(self.workspace_dim, hidden), nn.ReLU(),
+                nn.Linear(self.input_dim, hidden), nn.ReLU(),
                 nn.Linear(hidden, hidden), nn.ReLU(),
                 nn.Linear(hidden, self.n_actions),
             ).to(self.device)
@@ -176,7 +179,7 @@ class DQNPolicy:
             t = torch.as_tensor(e["state"], dtype=torch.float, device=self.device)
             states.append(t.view(-1))
         s = torch.stack(states)
-        if s.shape[1] != self.workspace_dim:  # raw memory states may differ; skip
+        if s.shape[1] != self.input_dim:  # raw memory states may differ; skip
             return {}
         rewards = torch.tensor([float(e["reward"]) for e in valid],
                                dtype=torch.float32, device=self.device)

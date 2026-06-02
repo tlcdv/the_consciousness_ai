@@ -262,6 +262,20 @@ def init_components(config):
 
     memory = MemoryCore(config["memory"])
 
+    # P5 localization: if the policy reads the pre-capsule spatial tap, size its
+    # input to that tap (computed via one dummy tectum forward, then reset).
+    if config.get("policy_input", "broadcast") == "spatial":
+        with torch.no_grad():
+            dummy_frame = torch.zeros(1, 3, 224, 224, device=device)
+            dummy_audio = torch.zeros(1, config["tectum_feature_dim"], 2, device=device)
+            tectum(dummy_frame, dummy_audio)
+        spatial_dim = int(tectum._last_obs_map.reshape(1, -1).shape[1])
+        tectum.reset_state(1)
+        config["action_selection"]["policy_input_dim"] = spatial_dim
+        # Bound the replay memory footprint at this larger input dim.
+        config["action_selection"]["dqn_buffer"] = 5000
+        logger.info(f"Policy input: spatial obs_map tap, dim={spatial_dim}")
+
     if config.get("policy", "gonogo") == "standard":
         action_core = StandardActorCritic(config["action_selection"], emotion_shaper, memory)
         logger.info("Policy: StandardActorCritic (A2C on broadcast) [P5 diagnostic]")
@@ -793,8 +807,11 @@ def run_episode(episode_idx, config, tectum, workspace, reentrant,
         # broadcast; --policy-input tectum feeds the pre-GNW tectum_content instead
         # (same workspace_dim). Everything else (gate, phi, RND, memory bid) stays
         # on the broadcast. Detached so the policy never backprops into perception.
-        if config.get("policy_input", "broadcast") == "tectum":
+        pinput = config.get("policy_input", "broadcast")
+        if pinput == "tectum":
             policy_state = tectum_content.detach()
+        elif pinput == "spatial":
+            policy_state = tectum._last_obs_map.reshape(1, -1)
         else:
             policy_state = broadcast
 
@@ -1500,13 +1517,14 @@ def main():
                              "competence bottleneck, holding the learner family "
                              "constant against the DQN-on-pixels baseline.")
     parser.add_argument("--policy-input", type=str, default="broadcast",
-                        choices=["broadcast", "tectum"],
+                        choices=["broadcast", "tectum", "spatial"],
                         help="P5 localization probe: which representation the policy "
                              "reads. 'broadcast' (default) is the post-GNW broadcast; "
-                             "'tectum' is the pre-GNW tectum_content. Comparing DQN "
-                             "reward across taps localizes which pipeline stage "
-                             "(pixels->tectum vs tectum->broadcast) loses the "
-                             "control-relevant signal.")
+                             "'tectum' is the pre-GNW tectum_content (256-D, post "
+                             "capsule collapse); 'spatial' is the topographic obs_map "
+                             "(flattened grid, post retinotopic encoder + fusion, pre "
+                             "RSSM/capsule). Comparing DQN reward across taps localizes "
+                             "which pipeline stage loses the control-relevant signal.")
     parser.add_argument("--enable-control-repr", action="store_true",
                         help="P5 fix: add an action-conditioned forward model that "
                              "predicts the next observation from the current tectum "

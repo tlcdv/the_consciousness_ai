@@ -15,11 +15,13 @@ in-session (120 episodes x 100 steps, dark_room, seed 42, `--phi-sample-every 5`
   competence. FAILED.** Reward is unchanged (14.06 ON vs 14.80 OFF, within noise,
   marginally lower). The representation is the bottleneck, but this particular way
   of shaping it does not fix it.
-- **Localization follow-up: the signal is lost in pixels -> tectum_content, not in
-  the GNW.** DQN on the pre-GNW tectum_content (15.93) ties DQN on the post-GNW
-  broadcast (14.65); both are ~6x below DQN on pixels (92.00). The lossy stage is
-  the tectum encoder, not the workspace. (See the localization section below.) This
-  redirects the next fix away from the broadcast and onto the encoder.
+- **Localization (resolved): the signal is lost at the FIRST encoding stage,
+  pixels -> obs_map.** DQN reward by tap: pixels 92.00 -> obs_map 17.14 (pre
+  RSSM/capsule) -> tectum_content 15.93 (post capsule) -> broadcast 14.65 (post
+  GNW). The bulk of the drop is the retinotopic encoder + 16x16 fusion front-end;
+  the capsule collapse and GNW each add only a small further loss. This rules out
+  BOTH the GNW and the capsule-collapse as the lever. The bottleneck is the
+  perceptual front-end. (See the two localization sections below.)
 
 ## Step 1 - confirmation (DQN on the broadcast, learner held constant)
 
@@ -151,17 +153,65 @@ next-observation forward model) failed: the encoder's pooling discards the
 control-relevant spatial structure, and a next-observation prediction head did not
 recover it.
 
-**Revised next directions (gated; >= 3 seeds before any default flip):**
-1. The lever is the tectum encoder, specifically the capsule composition / workspace
-   projection that pools spatial structure into 256-D. Probe whether preserving
-   spatial layout (e.g. a less aggressive pool, or a spatial tap before capsule
-   collapse) recovers DQN reward toward the pixel baseline.
-2. Only after a spatially-richer tectum closes part of the gap does a control
-   objective (or end-to-end gradient) on that representation become worth building.
-3. Consider that the consciousness pipeline's compression may be inherent to its
-   design (GNW broadcast is meant to be a low-dimensional bottleneck); if so, the
-   honest framing is that this architecture trades control performance for the
-   integration/broadcast properties it is built to study.
+### Second localization (same day): is the capsule collapse the lever?
+
+The first localization said the loss is before the GNW. The natural next
+hypothesis was the capsule composition / workspace projection collapsing the
+spatial grid into 256-D. Tested it with a third tap (`--policy-input spatial`):
+the same DQN reads the topographic `obs_map` (post retinotopic-encoder + inverse-
+effectiveness fusion, PRE RSSM, PRE capsule; 16x16x64 = 16384-D, flattened).
+
+| tap | DQN reward | stage |
+|-----|------------|-------|
+| pixels | **92.00** last-100 (105.31 overall, 1000 ep) | raw input |
+| obs_map (spatial) | **17.14** (first30 19.34, last30 22.50) | post encoder + fusion |
+| tectum_content | 15.93 | post capsule collapse |
+| broadcast | 14.65 | post GNW |
+
+**Verdict: the loss is at the FIRST encoding stage, pixels -> obs_map.** Even the
+earliest spatial representation, before RSSM and before the capsule collapse, is
+already at ~17, ~5x below pixels. The capsule collapse (obs_map 17.14 ->
+tectum_content 15.93) and the GNW (-> broadcast 14.65) each add only a small
+further loss. This RULES OUT the capsule/RSSM-collapse hypothesis as the lever: the
+bulk of the 92 -> 17 drop happens in the retinotopic encoder + 16x16 fusion
+front-end, not downstream.
+
+(obs_map does show a small upward trend, first30 19.34 -> last30 22.50, that the
+post-collapse taps lack, so spatial structure is marginally more learnable; but the
+ceiling is still ~20, not ~92.)
+
+## Resolved picture and honest readings
+
+The full chain (pixels 92 -> obs_map 17 -> tectum_content 16 -> broadcast 15)
+localizes the bottleneck to the perceptual front-end: the encoder that turns a
+224x224x3 frame into a 16x16x64 topographic map loses most of the control-relevant
+signal (the precise light position dark_room rewards). The downstream consciousness
+machinery (RSSM, capsule hierarchy, GNW competition, reentrant, detach) is NOT the
+primary cost.
+
+Two honest readings, not yet decided:
+1. **Under-resourced front-end.** The encoder is 16x16 spatial, trained for
+   reward-prediction + TDANN topography, not control. A control-trained or
+   higher-resolution front-end might recover reward. This is a large change to a
+   deliberately biological component (DINOv2 / retinotopic + topographic loss).
+2. **Inherent to the design.** The architecture's perception is built for biological
+   and topographic fidelity and for feeding a low-dimensional integrated workspace,
+   not pixel-precise control. On a task that rewards precise localization
+   (dark_room), a ~15-20 ceiling is the cost of that design. dark_room reward is not
+   the project's success metric; the consciousness signatures are. Under this
+   reading the agent underperforming a pixel DQN is expected, not a defect.
+
+The localization is solid (numbers from disk). Which reading holds is the open
+question, and it is a design/scope decision for the project owner, not a bug to
+fix blindly.
+
+**Next directions (gated; >= 3 seeds before any default flip, none auto-merged):**
+1. If pursuing reading 1: probe a higher-resolution / control-trained front-end
+   (e.g. larger grid, or let a control objective reach the encoder) and measure DQN
+   reward recovery. Large change; measure before committing.
+2. If accepting reading 2: stop optimizing dark_room reward as a target, document
+   that the architecture trades control performance for its biological/integration
+   properties, and judge the agent by the consciousness signatures instead.
 
 ## Reproducibility
 
