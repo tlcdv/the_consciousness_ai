@@ -17,10 +17,19 @@ isolated where the control-relevant signal is lost, holding the DQN learner cons
 | tectum_content | 15.93 | post capsule collapse |
 | broadcast | 14.65 | post GNW |
 
-The signal is lost at the FIRST encoding stage (pixels -> obs_map). The capsule
-collapse and the GNW each add only a small further loss. The policy is not the
-bottleneck either (a plain A2C and the Go/No-Go core tie on the broadcast). The
-bottleneck is the perceptual front-end.
+The defensible reading of this table: the capsule collapse and the GNW add only a
+small further loss (the three taps tie), and the policy is not the bottleneck (a
+plain A2C and the Go/No-Go core tie on the broadcast). The apparent jump from pixels
+(92) to obs_map (17) is CONFOUNDED and does not by itself establish that the
+front-end is the lossy stage: the tap DQNs ran with ~77% random exploration (epsilon
+decayed over 50k steps but the runs were 12k steps), an MLP rather than the
+baseline's CNN, and 120 vs 1000 episodes. See the "Confound caveat" in
+[`agent_competence_fix_2026_06_02.md`](../results/agent_competence_fix_2026_06_02.md).
+So the localization is suggestive of a front-end bottleneck but provisional.
+
+Crucially, the decision below does not depend on resolving that: it rests on the
+strategic argument plus the firm relative finding that the consciousness machinery
+(GNW, capsule, policy) is not the cost.
 
 This left an honest fork:
 1. **Under-resourced front-end** - rebuild/retrain the encoder for control.

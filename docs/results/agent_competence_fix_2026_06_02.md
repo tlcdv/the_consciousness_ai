@@ -15,13 +15,16 @@ in-session (120 episodes x 100 steps, dark_room, seed 42, `--phi-sample-every 5`
   competence. FAILED.** Reward is unchanged (14.06 ON vs 14.80 OFF, within noise,
   marginally lower). The representation is the bottleneck, but this particular way
   of shaping it does not fix it.
-- **Localization (resolved): the signal is lost at the FIRST encoding stage,
-  pixels -> obs_map.** DQN reward by tap: pixels 92.00 -> obs_map 17.14 (pre
-  RSSM/capsule) -> tectum_content 15.93 (post capsule) -> broadcast 14.65 (post
-  GNW). The bulk of the drop is the retinotopic encoder + 16x16 fusion front-end;
-  the capsule collapse and GNW each add only a small further loss. This rules out
-  BOTH the GNW and the capsule-collapse as the lever. The bottleneck is the
-  perceptual front-end. (See the two localization sections below.)
+- **Localization (PROVISIONAL, confounded vs the pixel baseline): relative taps
+  tie; absolute front-end claim is not established.** DQN reward by tap: pixels
+  92.00 -> obs_map 17.14 (pre RSSM/capsule) -> tectum_content 15.93 (post capsule)
+  -> broadcast 14.65 (post GNW). The comparison AMONG the three taps is fair (shared
+  setup) and shows the capsule collapse and GNW add only a small further loss, so
+  they are not the lever. But the comparison TO pixels (92) is confounded on three
+  axes (see "Confound caveat" below), so "the front-end specifically loses the
+  signal" is NOT established by this probe. What holds: the policy is not the
+  bottleneck, and nothing on the broadcast beats ~15 under these short,
+  high-exploration runs.
 
 ## Step 1 - confirmation (DQN on the broadcast, learner held constant)
 
@@ -180,14 +183,45 @@ front-end, not downstream.
 post-collapse taps lack, so spatial structure is marginally more learnable; but the
 ceiling is still ~20, not ~92.)
 
+## Confound caveat (added 2026-06-02 on re-examination)
+
+A self-review found the tap-vs-pixels comparison is confounded on three axes. The
+"DQN learner held constant" framing is only true AMONG the three taps (obs_map,
+tectum_content, broadcast), not between the taps and the pixel baseline. Verified:
+
+1. **Exploration schedule.** `DQNPolicy` decays epsilon over 50,000 steps; the tap
+   runs are 12,000 steps (confirmed: 12,000 metric rows each), so epsilon ended at
+   ~0.772 - the probe DQNs took ~77% random actions even at the end of training. The
+   pixel baseline (`train_baseline_dqn.py`) decays over 500 EPISODES and spent its
+   last ~500 of 1000 episodes at epsilon=0.05 (exploiting). The probes were mostly
+   random; the baseline mostly exploited.
+2. **Network architecture.** The pixel baseline uses a CNN; the tap DQNs use an MLP
+   over a flattened vector. For the spatial obs_map tap (64x16x16) this discards the
+   spatial structure a CNN would exploit - penalizing the very tap meant to test
+   spatial richness.
+3. **Training budget.** 120 episodes (taps) vs 1000 (pixels). obs_map was still
+   rising (first30 19.34 -> last30 22.50), consistent with undertraining, not a
+   ceiling.
+
+What this means: the RELATIVE result (capsule collapse and GNW add little; policy is
+not the bottleneck, corroborated by the properly-trained Go/No-Go and A2C) stands.
+The ABSOLUTE claim ("the perceptual front-end is where the control signal is lost,
+vs pixels") is NOT established - all three confounds push the taps below pixels
+independent of representation content. To establish it would require a de-confounded
+re-run (match the epsilon schedule, use a CNN over the spatial tap, equal episodes).
+That re-run was judged low-value because reading #2 (below) retires control reward as
+a target, so the localization no longer drives a build decision; it is available if
+the absolute claim is ever needed.
+
 ## Resolved picture and honest readings
 
-The full chain (pixels 92 -> obs_map 17 -> tectum_content 16 -> broadcast 15)
-localizes the bottleneck to the perceptual front-end: the encoder that turns a
-224x224x3 frame into a 16x16x64 topographic map loses most of the control-relevant
-signal (the precise light position dark_room rewards). The downstream consciousness
-machinery (RSSM, capsule hierarchy, GNW competition, reentrant, detach) is NOT the
-primary cost.
+The chain (pixels 92 -> obs_map 17 -> tectum_content 16 -> broadcast 15) is
+SUGGESTIVE of a perceptual-front-end bottleneck, but per the confound caveat above
+the pixels-vs-taps step is not a clean measurement. The defensible conclusion is
+narrower: the downstream consciousness machinery (RSSM, capsule hierarchy, GNW
+competition, reentrant, detach) is NOT the primary cost (relative taps tie), and no
+broadcast-side learner exceeds ~15 in these runs. Whether the front-end is the
+specific lossy stage versus pixels is provisional pending a de-confounded re-run.
 
 Two honest readings, not yet decided:
 1. **Under-resourced front-end.** The encoder is 16x16 spatial, trained for

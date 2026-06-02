@@ -120,10 +120,13 @@ The KomplexNet implementation (`models/core/complex_binding.py`, `--binding-mech
 
 The P5 competence thread localized the agent's low dark_room control reward (~15 vs a
 vanilla DQN on raw pixels at 92) to the perceptual front-end. Holding the DQN learner
-constant, reward by representation tap is: pixels 92.00 -> obs_map 17.14 (pre
-RSSM/capsule) -> tectum_content 15.93 (post capsule) -> broadcast 14.65 (post GNW). The
-control signal is lost at the FIRST encoding stage (pixels -> obs_map); the capsule
-collapse, the GNW, and the policy are not the cost. Numbers on disk:
+constant across the taps, reward is: pixels 92.00 -> obs_map 17.14 (pre RSSM/capsule)
+-> tectum_content 15.93 (post capsule) -> broadcast 14.65 (post GNW). Defensible
+finding: the capsule collapse, the GNW, and the policy are NOT the cost (the taps tie;
+Go/No-Go and A2C tie on the broadcast). The pixels-vs-taps jump is CONFOUNDED
+(exploration schedule, MLP-vs-CNN, 120-vs-1000 episodes; see the Confound caveat in
+the results doc), so "the front-end specifically is the lossy stage" is provisional,
+not established. Numbers on disk:
 [`docs/results/agent_competence_fix_2026_06_02.md`](results/agent_competence_fix_2026_06_02.md).
 
 Decision (adopted, [`docs/decisions/2026_06_02_competence_reading_2.md`](decisions/2026_06_02_competence_reading_2.md)):
@@ -177,7 +180,7 @@ topography) rather than by a principled free-energy / prediction-error objective
   - **Creative Imagination Buffer:** Generate and evaluate novel mental simulations, selecting based on Phi or GNW ignition.
   - Reward-shaping hooks based on creative outputs.
   - Advanced IIT metrics (CES visualization).
-  - **Active inference reframing (Rouleau-Levin §6.1; elevated 2026-06-02):** Replace or complement the ad-hoc front-end training (reward-MSE + TDANN topography) and the RSSM ELBO + reward objective with an explicit expected-free-energy / prediction-error objective along the lines of Friston et al. (2023) *Active Inference* (MIT Press), Rao et al. (Active Predictive Coding, Neural Computation 2024, MIT Press), and recent deep-active-inference world-model agents ([arXiv:2505.19867](https://arxiv.org/abs/2505.19867)). **Motivation (2026-06-02 localization):** the perceptual front-end loses most of the control-relevant signal (pixels -> obs_map), and it is trained ad-hoc; an action-coupled free-energy objective is the biologically principled way to make perception both faithful and functional, without a non-biological control encoder. If the Phase 5 perception prerequisite fails, this work moves earlier (Phase-5 enabling). Rationale and integration target in [`rouleau_levin_substrate_independence.md`](rouleau_levin_substrate_independence.md) §6.1.
+  - **Active inference reframing (Rouleau-Levin §6.1; elevated 2026-06-02):** Replace or complement the ad-hoc front-end training (reward-MSE + TDANN topography) and the RSSM ELBO + reward objective with an explicit expected-free-energy / prediction-error objective along the lines of Friston et al. (2023) *Active Inference* (MIT Press), Rao et al. (Active Predictive Coding, Neural Computation 2024, MIT Press), and recent deep-active-inference world-model agents ([arXiv:2505.19867](https://arxiv.org/abs/2505.19867)). **Motivation (2026-06-02):** the perception is trained by an ad-hoc mix of auxiliary losses (reward-MSE + TDANN topography), and the broader training loop stacks ~6 hand-wired, partly reward-coupled objectives that contradict the project's stated "intrinsic motivation, not external reward" philosophy. An action-coupled expected-free-energy objective unifies most of them (predictive perception, exploration in place of RND, world-modeling, action selection) under one biologically principled principle, and resolves the reward-vs-signatures incoherence. The competence localization is consistent with this (the front-end may be a bottleneck) but is provisional; the unification case rests on coherence/elegance, not on that single confounded probe. If the Phase 5 perception prerequisite fails, this work moves earlier (Phase-5 enabling). See [`active_inference_unification.md`](active_inference_unification.md). Rationale and integration target in [`rouleau_levin_substrate_independence.md`](rouleau_levin_substrate_independence.md) §6.1.
 
 ## Phase 7: Peer Consciousness & Robustness
 
