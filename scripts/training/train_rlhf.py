@@ -141,6 +141,7 @@ def build_config(args):
         # isolate whether the policy or the broadcast representation is the
         # competence bottleneck.
         "policy": getattr(args, "policy", "gonogo"),
+        "policy_input": getattr(args, "policy_input", "broadcast"),
         "enable_audio": getattr(args, "enable_audio", False),
         "audio_sample_rate": 16000,
         "audio_num_bands": 64,
@@ -540,6 +541,10 @@ def run_episode(episode_idx, config, tectum, workspace, reentrant,
     obs, info = env.reset()
     total_reward = 0.0
     previous_broadcast = None
+    # P5 localization probe: the policy can read either the post-GNW broadcast
+    # (default) or the pre-GNW tectum_content, to find which pipeline stage loses
+    # the control-relevant signal. previous_policy_state tracks the policy's input.
+    previous_policy_state = None
     steps_taken = 0
     phi_accum = 0.0
     conscious_steps = 0
@@ -784,6 +789,15 @@ def run_episode(episode_idx, config, tectum, workspace, reentrant,
 
         broadcast_mag = float(broadcast.norm().item())
 
+        # P5 localization probe: what the POLICY reads. Default is the post-GNW
+        # broadcast; --policy-input tectum feeds the pre-GNW tectum_content instead
+        # (same workspace_dim). Everything else (gate, phi, RND, memory bid) stays
+        # on the broadcast. Detached so the policy never backprops into perception.
+        if config.get("policy_input", "broadcast") == "tectum":
+            policy_state = tectum_content.detach()
+        else:
+            policy_state = broadcast
+
         # --- Self-vector loop (Phase 5 deliverable 1): SPR-style self-prediction ---
         # Build the agent's first-order feature vector, encode it to a self_vector,
         # and train the encoder+predictor to forecast the NEXT step's features from
@@ -926,7 +940,7 @@ def run_episode(episode_idx, config, tectum, workspace, reentrant,
             else None
         )
         action, value = action_core.select_action(
-            broadcast, emotion_arousal=effective_arousal, rpe_cache=0.0,
+            policy_state, emotion_arousal=effective_arousal, rpe_cache=0.0,
             self_vector=sv_for_policy,
         )
 
@@ -1094,8 +1108,10 @@ def run_episode(episode_idx, config, tectum, workspace, reentrant,
         # Store ALL experiences with post-action emotion and phi priority
         if memory is not None:
             action_t = torch.tensor(action, dtype=torch.float, device=device) if not isinstance(action, torch.Tensor) else action
+            # Store the policy's own input (broadcast by default, tectum in the
+            # localization probe) so the policy's replay is on-distribution.
             memory.store_experience(
-                state=broadcast.detach().view(-1),
+                state=policy_state.detach().view(-1),
                 action=action_t.view(-1),
                 reward=float(reward_for_action_core),
                 emotion_values=emotion_post,
@@ -1105,12 +1121,12 @@ def run_episode(episode_idx, config, tectum, workspace, reentrant,
 
         # Pass env_reward + intrinsic bonuses to action_core, which applies
         # emotion shaping internally (single pass, no double shaping).
-        prev = previous_broadcast if previous_broadcast is not None else broadcast
+        prev = previous_policy_state if previous_policy_state is not None else policy_state
         action_core.step(
             workspace_broadcast=prev,
             action=action,
             raw_reward=reward_for_action_core,
-            next_broadcast=broadcast,
+            next_broadcast=policy_state,
             done=done,
             emotion_state=emotion_post,
             attention_level=phi,
@@ -1123,6 +1139,7 @@ def run_episode(episode_idx, config, tectum, workspace, reentrant,
             action_core.update_policy()
 
         previous_broadcast = broadcast.detach().clone()
+        previous_policy_state = policy_state.detach().clone()
         prev_action = action
         prev_phi = phi
         prev_phi_riiu = phi_riiu_val
@@ -1482,6 +1499,14 @@ def main():
                              "confirm whether the broadcast representation is the "
                              "competence bottleneck, holding the learner family "
                              "constant against the DQN-on-pixels baseline.")
+    parser.add_argument("--policy-input", type=str, default="broadcast",
+                        choices=["broadcast", "tectum"],
+                        help="P5 localization probe: which representation the policy "
+                             "reads. 'broadcast' (default) is the post-GNW broadcast; "
+                             "'tectum' is the pre-GNW tectum_content. Comparing DQN "
+                             "reward across taps localizes which pipeline stage "
+                             "(pixels->tectum vs tectum->broadcast) loses the "
+                             "control-relevant signal.")
     parser.add_argument("--enable-control-repr", action="store_true",
                         help="P5 fix: add an action-conditioned forward model that "
                              "predicts the next observation from the current tectum "

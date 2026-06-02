@@ -15,6 +15,11 @@ in-session (120 episodes x 100 steps, dark_room, seed 42, `--phi-sample-every 5`
   competence. FAILED.** Reward is unchanged (14.06 ON vs 14.80 OFF, within noise,
   marginally lower). The representation is the bottleneck, but this particular way
   of shaping it does not fix it.
+- **Localization follow-up: the signal is lost in pixels -> tectum_content, not in
+  the GNW.** DQN on the pre-GNW tectum_content (15.93) ties DQN on the post-GNW
+  broadcast (14.65); both are ~6x below DQN on pixels (92.00). The lossy stage is
+  the tectum encoder, not the workspace. (See the localization section below.) This
+  redirects the next fix away from the broadcast and onto the encoder.
 
 ## Step 1 - confirmation (DQN on the broadcast, learner held constant)
 
@@ -114,6 +119,50 @@ the objective shapes.
    competition -> detach pipeline plateaus at ~15. The lossy stage is between pixels
    and broadcast.
 
+## Localization follow-up (same day): WHERE is the signal lost?
+
+The fix failed most plausibly because the policy reads the post-GNW broadcast while
+the objective shaped tectum content upstream. Before building a broadcast-targeted
+fix, localize the lossy stage by running the SAME DQN learner on the pre-GNW tap
+(`--policy-input tectum`) vs the post-GNW broadcast.
+
+| tap | DQN reward | source |
+|-----|------------|--------|
+| pixels | **92.00** (last-100; first-100 was 52.72) | runs_baseline/baseline_dark_room.csv, 1000 ep |
+| tectum_content (pre-GNW) | **15.93** | runs/p5_dqn_tectum, 120 ep mean |
+| broadcast (post-GNW) | **14.65** | runs/p5_dqn_broadcast, 120 ep mean |
+
+(Window caveat: the pixels baseline is the last-100 of a 1000-ep run; the two taps
+are 120-ep means. Even the pixels FIRST-100, 52.72, is 3x above either tap, so the
+gap holds regardless of window.)
+
+**Verdict: the control-relevant signal is lost in pixels -> tectum_content, NOT in
+the GNW.** tectum_content (15.93) ties the broadcast (14.65); the GNW competition,
+reentrant settling, fusion, and detach stage costs almost nothing. The lossy stage
+is the tectum ENCODER: retinotopic conv -> RSSM -> capsule composition -> workspace
+projection, which collapses the spatially-rich frame into a 256-D vector a learner
+cannot control from.
+
+This overturns the "next direction" the Step-2 section proposed (target the
+post-GNW broadcast): that fix would have inherited the same ceiling, because
+tectum_content is already lossy. Localizing first prevented building it. It also
+explains why the Step-2 control objective (which shaped tectum_content via a
+next-observation forward model) failed: the encoder's pooling discards the
+control-relevant spatial structure, and a next-observation prediction head did not
+recover it.
+
+**Revised next directions (gated; >= 3 seeds before any default flip):**
+1. The lever is the tectum encoder, specifically the capsule composition / workspace
+   projection that pools spatial structure into 256-D. Probe whether preserving
+   spatial layout (e.g. a less aggressive pool, or a spatial tap before capsule
+   collapse) recovers DQN reward toward the pixel baseline.
+2. Only after a spatially-richer tectum closes part of the gap does a control
+   objective (or end-to-end gradient) on that representation become worth building.
+3. Consider that the consciousness pipeline's compression may be inherent to its
+   design (GNW broadcast is meant to be a low-dimensional bottleneck); if so, the
+   honest framing is that this architecture trades control performance for the
+   integration/broadcast properties it is built to study.
+
 ## Reproducibility
 
 ```bash
@@ -125,4 +174,8 @@ PYPHI_WELCOME_OFF=yes python -m scripts.training.train_rlhf --env dark_room \
 PYPHI_WELCOME_OFF=yes python -m scripts.training.train_rlhf --env dark_room \
   --episodes 120 --max-steps 100 --seed 42 --phi-sample-every 5 \
   --enable-control-repr --log-dir runs/p5_cr_on
+# Localization: same DQN learner on the pre-GNW tap
+PYPHI_WELCOME_OFF=yes python -m scripts.training.train_rlhf --env dark_room \
+  --episodes 120 --max-steps 100 --policy dqn --policy-input tectum --seed 42 \
+  --phi-sample-every 5 --log-dir runs/p5_dqn_tectum
 ```
