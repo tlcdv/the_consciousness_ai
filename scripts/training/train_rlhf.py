@@ -34,6 +34,8 @@ from models.emotion.affective_modulator import AffectiveModulator
 from models.emotion.reward_shaping import EmotionalRewardShaper
 from models.self_model.action_selection_core import ActionSelectionCore
 from models.self_model.standard_actor_critic import StandardActorCritic
+from models.self_model.dqn_policy import DQNPolicy
+from models.core.control_representation import ControlRepresentationHead, obs_features
 from models.self_model.self_representation_core import SelfRepresentationCore, SelfVectorModule
 from models.self_model.holonic_intelligence import HolonicSystem
 from models.memory.memory_core import MemoryCore
@@ -226,6 +228,10 @@ def build_config(args):
         "enable_self_vector_gating": getattr(args, "enable_self_vector_gating", False),
         "self_vector_dim": getattr(args, "self_vector_dim", 64),
         "self_vector_lr": 1e-3,
+        # P5 fix: action-conditioned forward model that trains the tectum to be a
+        # controllable representation. Default off (baseline bit-identical).
+        "enable_control_repr": getattr(args, "enable_control_repr", False),
+        "control_repr": {"weight": 1.0, "grid": 8, "hidden_dim": 128, "lr": 1e-3},
     }
 
 
@@ -258,6 +264,9 @@ def init_components(config):
     if config.get("policy", "gonogo") == "standard":
         action_core = StandardActorCritic(config["action_selection"], emotion_shaper, memory)
         logger.info("Policy: StandardActorCritic (A2C on broadcast) [P5 diagnostic]")
+    elif config.get("policy", "gonogo") == "dqn":
+        action_core = DQNPolicy(config["action_selection"], emotion_shaper, memory)
+        logger.info("Policy: DQNPolicy (DQN on broadcast) [P5 confirmation]")
     else:
         action_core = ActionSelectionCore(
             config["action_selection"],
@@ -428,12 +437,36 @@ def init_components(config):
             f"SPR-style one-step self-prediction)"
         )
 
+    # Control-relevant representation objective (P5 fix): an action-conditioned
+    # forward model that shapes the tectum to encode action consequences, so the
+    # broadcast becomes a controllable state. Trained on the tectum_optimizer path
+    # alongside the reward predictor. Default off (baseline bit-identical).
+    control_repr_head = None
+    control_repr_optimizer = None
+    if config.get("enable_control_repr", False):
+        cr_cfg = config.get("control_repr", {})
+        cr_grid = cr_cfg.get("grid", 8)
+        control_repr_head = ControlRepresentationHead(
+            content_dim=config["workspace_dim"],
+            action_dim=config["action_selection"].get("action_dim", 2),
+            target_dim=3 * cr_grid * cr_grid,
+            hidden_dim=cr_cfg.get("hidden_dim", 128),
+        ).to(device)
+        control_repr_optimizer = torch.optim.Adam(
+            control_repr_head.parameters(), lr=cr_cfg.get("lr", 1e-3)
+        )
+        logger.info(
+            f"Control-representation objective enabled "
+            f"(weight={cr_cfg.get('weight', 1.0)}, action-conditioned forward model)"
+        )
+
     return (tectum, workspace, reentrant, modulator, emotion_shaper, memory,
             action_core, semantic, gate, tectum_optimizer, reward_predictor,
             reward_optimizer, workspace_optimizer, auditory_specialist, self_model,
             rnd, rnd_optimizer, consolidation_mgr, riiu_phis, mock_semantic,
             holonic_system, levin_evaluator,
-            self_vector_module, self_vector_optimizer)
+            self_vector_module, self_vector_optimizer,
+            control_repr_head, control_repr_optimizer)
 
 
 def frame_to_tensor(frame: np.ndarray, device: str) -> torch.Tensor:
@@ -486,7 +519,8 @@ def run_episode(episode_idx, config, tectum, workspace, reentrant,
                 riiu_source: str = "broadcast",
                 mock_semantic=None,
                 holonic_system=None, levin_evaluator=None,
-                self_vector_module=None, self_vector_optimizer=None):
+                self_vector_module=None, self_vector_optimizer=None,
+                control_repr_head=None, control_repr_optimizer=None):
     device = config["device"]
     max_steps = config["max_steps"]
 
@@ -919,13 +953,33 @@ def run_episode(episode_idx, config, tectum, workspace, reentrant,
             if obs_map is not None and obs_map.shape[-1] >= 4:
                 topo_loss = topographic_spatial_loss(obs_map, alpha=0.25)
 
-            total_tectum_loss = pred_loss + topo_loss
+            # Control-relevant representation objective (P5 fix): action-conditioned
+            # forward model. Predict the next observation (downsampled) from the
+            # current tectum content + action. Gradient flows into the tectum
+            # through tectum_content, shaping it to encode action consequences
+            # (controllable dynamics). Same-step (next_obs already available), so
+            # no cross-step BPTT graph is retained.
+            control_loss = torch.tensor(0.0, device=device)
+            if control_repr_head is not None:
+                cr_cfg = config.get("control_repr", {})
+                next_frame_t = frame_to_tensor(next_obs, device)
+                target_feats = obs_features(next_frame_t, grid=cr_cfg.get("grid", 8))
+                action_t_cr = torch.as_tensor(
+                    np.asarray(action), dtype=torch.float, device=device)
+                control_loss = cr_cfg.get("weight", 1.0) * control_repr_head.loss(
+                    tectum_content, action_t_cr, target_feats)
+
+            total_tectum_loss = pred_loss + topo_loss + control_loss
 
             tectum_optimizer.zero_grad()
             reward_optimizer.zero_grad()
+            if control_repr_optimizer is not None:
+                control_repr_optimizer.zero_grad()
             total_tectum_loss.backward(retain_graph=True)
             tectum_optimizer.step()
             reward_optimizer.step()
+            if control_repr_optimizer is not None:
+                control_repr_optimizer.step()
             # Force-detach recurrent state immediately after the optimizer
             # mutates tectum parameters in-place. Without this, a later
             # backward call through the BPTT-retained graph would reference
@@ -1420,12 +1474,20 @@ def main():
                              "--enable-self-vector. Default off (PFC input dim = "
                              "workspace_dim, baseline bit-identical).")
     parser.add_argument("--policy", type=str, default="gonogo",
-                        choices=["gonogo", "standard"],
+                        choices=["gonogo", "standard", "dqn"],
                         help="P5 diagnosis: which policy consumes the broadcast. "
                              "'gonogo' (default) is the Go/No-Go ActionSelectionCore; "
-                             "'standard' is a plain A2C head (StandardActorCritic) "
-                             "used to isolate whether the policy or the broadcast "
-                             "representation is the competence bottleneck.")
+                             "'standard' is a plain A2C head (StandardActorCritic); "
+                             "'dqn' is an off-policy DQN head (DQNPolicy) used to "
+                             "confirm whether the broadcast representation is the "
+                             "competence bottleneck, holding the learner family "
+                             "constant against the DQN-on-pixels baseline.")
+    parser.add_argument("--enable-control-repr", action="store_true",
+                        help="P5 fix: add an action-conditioned forward model that "
+                             "predicts the next observation from the current tectum "
+                             "content + action, training the tectum (via the "
+                             "tectum_optimizer) to be a controllable representation. "
+                             "Default off (baseline bit-identical).")
 
     args = parser.parse_args()
 
@@ -1444,6 +1506,9 @@ def main():
         config["action_selection"]["action_dim"] = 5
     elif args.env == "wcst":
         config["action_selection"]["action_dim"] = 4
+    # DQN-on-broadcast (--policy dqn) discretizes continuous action spaces
+    # (dark_room, navigation) into 9 bins; discrete envs map one Q per action.
+    config["action_selection"]["env_continuous"] = args.env in ("dark_room", "navigation")
 
     (tectum, workspace, reentrant, modulator, emotion_shaper, memory,
      action_core, semantic, gate, tectum_optimizer, reward_predictor,
@@ -1451,7 +1516,8 @@ def main():
      self_model, rnd, rnd_optimizer, consolidation_mgr,
      riiu_phis, mock_semantic,
      holonic_system, levin_evaluator,
-     self_vector_module, self_vector_optimizer) = init_components(config)
+     self_vector_module, self_vector_optimizer,
+     control_repr_head, control_repr_optimizer) = init_components(config)
 
     if args.env == "navigation":
         from simulations.environments.navigation_env import NavigationEnv
@@ -1503,6 +1569,8 @@ def main():
             levin_evaluator=levin_evaluator,
             self_vector_module=self_vector_module,
             self_vector_optimizer=self_vector_optimizer,
+            control_repr_head=control_repr_head,
+            control_repr_optimizer=control_repr_optimizer,
         )
         global_step += ep_steps
 
