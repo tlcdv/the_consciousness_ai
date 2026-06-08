@@ -169,6 +169,16 @@ def build_config(args):
         ),
         "ablate_pad_loop": getattr(args, "ablate_pad_loop", False),
         "ablate_bptt": getattr(args, "ablate_bptt", False),
+        # Phase 5 (Metzinger MPE / existence-bias ethics). Ablate the agent's
+        # survival/existence drive to run a "no existence-bias" configuration and
+        # compare consciousness signatures. When on: the affective modulator stops
+        # generating interoceptive PAD (energy/fatigue/damage -> negative affect),
+        # and the reward shaper drops the homeostatic arousal penalty and the
+        # dominance/agency term. Default off (baseline bit-identical). An ablation
+        # experiment, not a claim about suffering; FAILED-first, >=3 seeds before
+        # any conclusion. See docs/ethics_framework.md and
+        # docs/metzinger_phenomenal_self_model.md.
+        "ablate_existence_bias": getattr(args, "ablate_existence_bias", False),
         # pyphi sampling cadence: compute phi every Nth step instead of
         # every step. State history still accumulates every step so the
         # TPM stays warm. Cuts pyphi MIP calls N-fold to avoid the ~91k
@@ -252,13 +262,17 @@ def init_components(config):
 
     reentrant = ReentrantProcessor(config["reentrant"])
 
-    modulator = AffectiveModulator()
+    modulator = AffectiveModulator(
+        {"ablate_existence_bias": config.get("ablate_existence_bias", False)}
+    )
     # Attach so workspace.run_competition can apply the modulator on every
     # reentrant cycle when pad_state is passed through. Without this attachment
     # the new explicit-arg modulation path is silently inert.
     workspace.affective_modulator = modulator
 
-    emotion_shaper = EmotionalRewardShaper(config["emotion"]).to(device)
+    emotion_cfg = dict(config["emotion"])
+    emotion_cfg["ablate_existence_bias"] = config.get("ablate_existence_bias", False)
+    emotion_shaper = EmotionalRewardShaper(emotion_cfg).to(device)
 
     memory = MemoryCore(config["memory"])
 
@@ -1366,6 +1380,11 @@ def main():
                         help="Pass None for pad_state and interoceptive_state into reentrant.settle")
     parser.add_argument("--ablate-bptt", action="store_true",
                         help="Set tectum bptt_window=1 (one-step encoder, no truncated BPTT)")
+    parser.add_argument("--ablate-existence-bias", action="store_true",
+                        help="Ablate the survival/existence drive (Metzinger ethics): no "
+                             "interoceptive PAD affect, and drop the homeostatic arousal "
+                             "penalty and dominance reward terms. Runs a 'no existence-bias' "
+                             "configuration. Default off; baseline bit-identical.")
     parser.add_argument("--phi-sample-every", type=int, default=5,
                         help="Run pyphi only every Nth step. State history "
                              "still updated every step so the TPM stays warm. "
@@ -1585,6 +1604,7 @@ def main():
         "ablate_memory_replay", "ablate_consolidation_fix",
         "ablate_rnd_zero_on_reward", "ablate_gate_diversity",
         "ablate_gate_feedback", "ablate_pad_loop", "ablate_bptt",
+        "ablate_existence_bias",
     ) if config.get(k)]
     logger.info(f"Active ablations: {active_ablations if active_ablations else 'none'}")
 

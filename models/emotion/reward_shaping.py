@@ -78,6 +78,13 @@ class EmotionalRewardShaper(nn.Module):
         self.arousal_lambda = config.get("arousal_lambda", 0.1)
         self.arousal_target = config.get("arousal_target", 0.3)
 
+        # Existence-bias ablation (Metzinger ethics, default off). When True,
+        # compute_emotional_reward drops the homeostatic arousal penalty and the
+        # dominance/agency term (the "stay alive / in control" survival terms),
+        # keeping external reward plus the valence term. Baseline is
+        # bit-identical when False. See docs/ethics_framework.md.
+        self.ablate_existence_bias = bool(config.get("ablate_existence_bias", False))
+
     def compute_reward(
         self,
         emotion_values: dict[str, float],
@@ -188,11 +195,15 @@ class EmotionalRewardShaper(nn.Module):
             reward += emotion_values['valence'] * self.valence_weight
 
         # λ3 * Dominance: reward sense of control and agency.
-        if 'dominance' in emotion_values:
+        # Gated by the existence-bias ablation: dominance/agency is part of the
+        # "stay in control" survival drive.
+        if 'dominance' in emotion_values and not self.ablate_existence_bias:
             reward += emotion_values['dominance'] * self.dominance_weight
 
         # -λ2 * (Arousal - Arousal_target)^2: homeostatic arousal.
-        if 'arousal' in emotion_values:
+        # Gated by the existence-bias ablation: this is the homeostatic survival
+        # term (keep arousal near a viable set point).
+        if 'arousal' in emotion_values and not self.ablate_existence_bias:
             deviation = emotion_values['arousal'] - self.arousal_target
             reward -= self.arousal_lambda * (deviation ** 2)
 

@@ -72,6 +72,14 @@ class AffectiveModulator:
         self.approach_modules = set(config.get("approach_modules", APPROACH_MODULES))
         self.threat_modules = set(config.get("threat_modules", THREAT_MODULES))
 
+        # Existence-bias ablation (Metzinger ethics, default off). When True,
+        # interoceptive_to_pad returns zero PAD deltas, so homeostatic drives
+        # (energy/fatigue/damage) no longer generate affect. This removes the
+        # affect side of the agent's survival/existence drive for a controlled
+        # "no existence-bias" experiment. Baseline is bit-identical when False.
+        # See docs/ethics_framework.md and docs/metzinger_phenomenal_self_model.md.
+        self.ablate_existence_bias = bool(config.get("ablate_existence_bias", False))
+
     def interoceptive_to_pad(
         self,
         interoceptive_state: dict[str, float],
@@ -95,6 +103,12 @@ class AffectiveModulator:
         Returns:
             PAD delta dict {"valence": float, "arousal": float, "dominance": float}
         """
+        # Existence-bias ablation: no interoceptive affect at all. Homeostatic
+        # imbalance generates no valence/arousal/dominance, removing the affect
+        # component of the survival drive (Metzinger, gated experiment).
+        if self.ablate_existence_bias:
+            return {"valence": 0.0, "arousal": 0.0, "dominance": 0.0}
+
         energy = interoceptive_state.get("energy", 1.0)
         fatigue = interoceptive_state.get("fatigue", 0.0)
         damage = interoceptive_state.get("damage", 0.0)
