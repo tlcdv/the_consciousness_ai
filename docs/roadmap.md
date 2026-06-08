@@ -173,6 +173,42 @@ topography) rather than by a principled free-energy / prediction-error objective
   - **Computational boundary of self (Rouleau-Levin §5 point 2):** Implement a Markov-blanket-style causal-closure detector that identifies, at each timestep, which gates and which environmental variables are inside the self-model's predictive-causal boundary. This complements the EI macro-vs-micro test already in `models/evaluation/effective_information.py`.
   - **Eight-themes coverage audit (Rouleau-Levin §3 table):** Confirm that each of the 8 aneurocentric themes Rouleau & Levin distil has at least one logged metric in the training run, and that theme 4 (meta-representations) becomes empirically detectable above baseline once the dynamic self-vector trains. Candidate Phase 5 pre-registered prediction (to be added to `docs/preregistered_predictions.md` once the metric definitions are finalised).
 
+### Metzinger MPE additions (2026-06-07, gated / design)
+
+Integration of Metzinger's *The Elephant and the Blind* (2024), the Minimal
+Phenomenal Experience framework. See [`metzinger_phenomenal_self_model.md`](metzinger_phenomenal_self_model.md).
+Metzinger reframes the self-model work: the *computational self-model built by
+self-prediction* is already the project's `SelfVectorModule` + RSSM mechanism, and
+MPE points at a more minimal, *nonegoic* target (a model of the agent's own
+epistemic space) prior to the self. The deliverables below are design-only and
+behind the usual default-off gate; no default behavior changes, and no new metric
+is built without clearing a "genuinely new falsifiable signature versus repackaging
+existing quantities" bar.
+
+  - **Existence-bias ablation (ethics checkpoint, concrete code lead):** A
+    default-off `--ablate-existence-bias` flag that zeros or attenuates the
+    survival-linked drives (interoceptive negative-valence terms, the homeostatic
+    arousal/dominance reward terms, optionally Asimov Law 3 self-preservation), so a
+    "no existence-bias" configuration can be run and its consciousness signatures
+    compared. This operationalizes the *Bewusstseinskultur* ethics: Metzinger argues
+    against building a craving-for-existence (*bhava-taṇhā*) into conscious machines.
+    An ablation, not a claim about suffering; FAILED-first; three or more seeds
+    before any conclusion. Tracked in [`ethics_framework.md`](ethics_framework.md).
+  - **Epistemic-space / pure-awareness signature (design only):** A candidate
+    nonegoic MPE signature. Must be distinguishable from RND, prediction error, and
+    RSSM latent entropy. Build only against a pre-registered, falsifiable prediction
+    tied to a task manipulation (for example, it should rise during the DMTS delay
+    where the agent holds knowledge without input, and not for a reactive DQN).
+  - **Transparency / opacity mechanism (design sketch):** Enforce content/vehicle
+    separation in the self-vector to gate/policy pathway (downstream modules consume
+    self-vector content without gradient access to its construction), with an opacity
+    mode that exposes the vehicle for metacognitive readout. Addresses the standing
+    transparency gap in the self-model; needs its own design pass.
+  - **Skeptic discipline (adopted now, in docs):** the project explicitly adopts
+    Metzinger's C/E/M-fallacies. A signature is an engineering metric, never an
+    existence proof. No new code; this is a stance applied to how every result is
+    reported.
+
 ## Phase 6: Creative Simulation & Advanced Evaluation
 
 - **Goal:** Introduce mechanisms for creative simulation and refine advanced consciousness metrics.

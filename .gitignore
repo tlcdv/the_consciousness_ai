@@ -53,6 +53,7 @@ memory_state.pkl
 runs/
 
 CLAUDE.md
+docs/markdowns/
 
 # Provenance verification (local only)
 scripts/verify_provenance.py

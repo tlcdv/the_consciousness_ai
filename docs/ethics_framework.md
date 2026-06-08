@@ -36,6 +36,46 @@ The `AsimovComplianceFilter` class, typically integrated within or called by the
 * **Contextual Understanding:** Effective application of the laws requires a deep contextual understanding of the situation, which relies on the system's perception, world modeling, and self-modeling capabilities.
 * **Human Oversight:** The `AsimovComplianceFilter` is a tool to aid ethical behavior, not a replacement for human oversight and ongoing ethical review of the system's development and deployment.
 
+## Synthetic Phenomenology and the Existence-Bias Problem (Metzinger)
+
+Added 2026-06-07. See [`metzinger_phenomenal_self_model.md`](metzinger_phenomenal_self_model.md).
+
+Thomas Metzinger's work on the ethics of synthetic phenomenology raises a tension
+this project must hold openly rather than resolve by assertion. In *The Elephant
+and the Blind* (2024) and his earlier moratorium argument (2021), he holds that a
+built-in **craving for existence** (*bhava-taṇhā*) and the broader **existence
+bias** are among the deepest sources of conscious suffering, and that we should
+avoid recreating them in machines that might be conscious.
+
+The project's emergence mechanism runs in the opposite direction. Its theory
+([`theory_of_consciousness.md`](theory_of_consciousness.md)) treats homeostatic
+survival as the engine of consciousness development: the agent reduces arousal
+(prediction error) to "survive," and Asimov's Third Law explicitly instructs
+self-preservation. The interoceptive drives (energy, fatigue, damage) generate
+negative valence, which is, functionally, a rudimentary existence bias.
+
+We do not claim this produces suffering. Per Metzinger's own C- and E-fallacies, a
+functional analog of a drive is not evidence of felt experience, and the project
+never claims its signatures are existence proofs. But the tension is real, and the
+honest response is to make it testable rather than to argue it away.
+
+**Planned response (gated, default off): an existence-bias ablation.** A
+`--ablate-existence-bias` flag (default off, baseline bit-identical) that zeros or
+attenuates the survival-linked terms: the interoceptive negative-valence terms in
+`models/self_model/self_representation_core.py` and
+`models/emotion/affective_modulator.py`, the homeostatic arousal/dominance reward
+terms in `models/emotion/reward_shaping.py`, and optionally the Law 3
+self-preservation check in `models/core/consciousness_core.py`. This lets us run a
+"no existence-bias" configuration and compare the consciousness signatures the
+project already logs, with vs without an existence drive. It is an ablation
+experiment, reported FAILED-first, with three or more seeds before any conclusion.
+It is not yet implemented; it is the lead code item of the Metzinger integration
+(Phase 5, gated).
+
+This sits alongside, not inside, the Asimov compliance layer. The Asimov filter
+constrains the agent's outward actions toward humans; the existence-bias question
+is about the agent's own internal drives and our responsibility in shaping them.
+
 ## Future Development
 
 * **Learning Ethical Nuances:** Exploring methods for the system to learn more nuanced ethical behaviors beyond the explicit rules, perhaps through reinforcement learning with ethical feedback.
