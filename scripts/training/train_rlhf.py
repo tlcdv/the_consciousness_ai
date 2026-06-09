@@ -1339,6 +1339,31 @@ def main():
     parser.add_argument("--log-dir", type=str, default="runs", help="Directory for metrics logs")
     parser.add_argument("--log-ei-every", type=int, default=50,
                         help="Compute EI every N episodes (0 to disable)")
+
+    # -------------------------------------------------------------------------
+    # Experiment flags (18 on/off toggles). Each defaults to a
+    # baseline-bit-identical state; flip one at a time. Grouped by status so
+    # this section stays navigable. See docs/architecture_assessment_2026_06_09.md.
+    #
+    #   Live default-off experiments / ablation knobs (under evaluation):
+    #     --enable-audio, --enable-content-binding, --enable-control-repr,
+    #     --enable-levin-metrics, --enable-mock-semantic, --enable-riiu,
+    #     --enable-self-vector, --enable-self-vector-action,
+    #     --enable-self-vector-gating, --ablate-existence-bias, --ablate-bptt,
+    #     --ablate-pad-loop, --ablate-memory-replay, --ablate-consolidation-fix,
+    #     --ablate-rnd-zero-on-reward
+    #
+    #   Settled to OFF, canonical flag with legacy alias kept for reproducibility:
+    #     --gate-diversity-loss (off)  alias --ablate-gate-diversity
+    #     --gate-feedback (off)        alias --ablate-gate-feedback
+    #     The legacy aliases are referenced by docs/results/ablation_2026_05_14.md,
+    #     docs/preregistered_predictions.md, scripts/analysis/diagnose_phi_in_training.py,
+    #     and scripts/training/_run_ablation_campaign.sh. Do not delete them
+    #     without updating those repro commands (which were run with the alias).
+    #
+    #   Dormant no-op kept as infrastructure:
+    #     --ablate-gate-entropy
+    # -------------------------------------------------------------------------
     parser.add_argument("--enable-audio", action="store_true",
                         help="Enable cochlear auditory pipeline")
 
