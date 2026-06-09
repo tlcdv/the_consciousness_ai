@@ -143,7 +143,8 @@ def _torch_probe(X, y_idx, n_classes, seed, test_size):
 # --------------------------------------------------------------------------- #
 # Component construction (reuses train_rlhf builders, no edits to that file)
 # --------------------------------------------------------------------------- #
-def _build_components(env_name: str, action_dim: int, seed: int, mock_semantic: bool):
+def _build_components(env_name: str, action_dim: int, seed: int, mock_semantic: bool,
+                      load_tectum: str | None = None):
     args = types.SimpleNamespace(
         action_dim=action_dim, lr=1e-3, episodes=1, max_steps=200,
         env=env_name, enable_audio=False, enable_mock_semantic=mock_semantic,
@@ -164,6 +165,20 @@ def _build_components(env_name: str, action_dim: int, seed: int, mock_semantic: 
     # from invoking pyphi every step (faster, and avoids the long-run segfault).
     if hasattr(workspace, "consciousness_gate"):
         workspace.consciousness_gate = None
+
+    if load_tectum:
+        state = torch.load(load_tectum, map_location="cpu")
+        # h_state / z_state are RSSM runtime buffers saved mid-rollout, not learned
+        # weights. Drop them: the probe resets tectum state per episode anyway.
+        state = {k: v for k, v in state.items() if k not in ("h_state", "z_state")}
+        missing, unexpected = tectum.load_state_dict(state, strict=False)
+        leftover = [k for k in unexpected if k not in ("h_state", "z_state")]
+        if missing or leftover:
+            raise RuntimeError(
+                f"tectum state_dict mismatch: missing={list(missing)} "
+                f"unexpected={leftover}"
+            )
+        print(f"  loaded trained tectum from {load_tectum}")
 
     if isinstance(tectum, torch.nn.Module):
         tectum.eval()
@@ -251,9 +266,10 @@ def _compute_broadcast(config, tectum, workspace, reentrant, self_model,
 # --------------------------------------------------------------------------- #
 # Collection
 # --------------------------------------------------------------------------- #
-def collect_dmts(episodes, seed, include_broadcast, mock_semantic):
+def collect_dmts(episodes, seed, include_broadcast, mock_semantic, load_tectum=None):
     config, tectum, workspace, reentrant, self_model, memory, mock_sem = \
-        _build_components("dmts", action_dim=5, seed=seed, mock_semantic=mock_semantic)
+        _build_components("dmts", action_dim=5, seed=seed, mock_semantic=mock_semantic,
+                          load_tectum=load_tectum)
     using_dino = bool(getattr(tectum.retinotopic_encoder, "using_dino", False))
 
     env = DMTSEnv(num_trials=20)
@@ -298,9 +314,10 @@ def collect_dmts(episodes, seed, include_broadcast, mock_semantic):
     return records, using_dino
 
 
-def collect_wcst(episodes, seed, include_broadcast, mock_semantic):
+def collect_wcst(episodes, seed, include_broadcast, mock_semantic, load_tectum=None):
     config, tectum, workspace, reentrant, self_model, memory, mock_sem = \
-        _build_components("wcst", action_dim=4, seed=seed, mock_semantic=mock_semantic)
+        _build_components("wcst", action_dim=4, seed=seed, mock_semantic=mock_semantic,
+                          load_tectum=load_tectum)
     using_dino = bool(getattr(tectum.retinotopic_encoder, "using_dino", False))
 
     env = WCSTEnv(num_trials=200)
@@ -402,6 +419,10 @@ def main():
     parser.add_argument("--envs", type=str, default="dmts,wcst",
                         help="Comma-separated subset of {dmts,wcst}")
     parser.add_argument("--out-dir", type=str, default="runs/perception_probe")
+    parser.add_argument("--load-tectum", type=str, default=None,
+                        help="Load a trained tectum state_dict (from train_rlhf "
+                             "--save-tectum) before probing, to measure trained "
+                             "perception instead of the untrained init.")
     args = parser.parse_args()
 
     include_broadcast = not args.no_broadcast
@@ -413,7 +434,8 @@ def main():
 
     if "dmts" in envs:
         print("Collecting DMTS ...")
-        recs, dino = collect_dmts(args.episodes, args.seed, include_broadcast, args.mock_semantic)
+        recs, dino = collect_dmts(args.episodes, args.seed, include_broadcast,
+                                  args.mock_semantic, args.load_tectum)
         print(f"  collected {len(recs)} labeled frames")
         rows = _evaluate(recs, "sample", ["shape", "color", "size"], args.seed)
         rows += _evaluate(recs, "delay", ["shape", "color", "size"], args.seed)
@@ -421,7 +443,8 @@ def main():
 
     if "wcst" in envs:
         print("Collecting WCST ...")
-        recs, dino = collect_wcst(args.episodes, args.seed, include_broadcast, args.mock_semantic)
+        recs, dino = collect_wcst(args.episodes, args.seed, include_broadcast,
+                                  args.mock_semantic, args.load_tectum)
         print(f"  collected {len(recs)} labeled frames")
         rows = _evaluate(recs, "card", ["shape", "color", "count"], args.seed)
         _print_and_collect("wcst", rows, dino, all_csv)

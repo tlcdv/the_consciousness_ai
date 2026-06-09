@@ -1339,6 +1339,12 @@ def main():
     parser.add_argument("--log-dir", type=str, default="runs", help="Directory for metrics logs")
     parser.add_argument("--log-ei-every", type=int, default=50,
                         help="Compute EI every N episodes (0 to disable)")
+    parser.add_argument("--save-tectum", type=str, default=None,
+                        help="If set, save the trained tectum state_dict to this "
+                             "path at the end of training. Used by "
+                             "scripts/analysis/probe_perception_decodability.py "
+                             "--load-tectum to probe trained perception. Default "
+                             "None; no behaviour change when unset.")
 
     # -------------------------------------------------------------------------
     # Experiment flags (18 on/off toggles). Each defaults to a
@@ -1714,6 +1720,13 @@ def main():
             f"reward={ep_reward:.2f} | avg(last5)={avg_last_5:.2f} | "
             f"phi={avg_phi:.3f} | conscious={consciousness_ratio:.1%}"
         )
+
+    if getattr(args, "save_tectum", None):
+        save_dir = os.path.dirname(args.save_tectum)
+        if save_dir:
+            os.makedirs(save_dir, exist_ok=True)
+        torch.save(tectum.state_dict(), args.save_tectum)
+        logger.info(f"Saved trained tectum state_dict to {args.save_tectum}")
 
     metrics_logger.close()
     env.close()
