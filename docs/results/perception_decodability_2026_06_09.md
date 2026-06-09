@@ -117,12 +117,67 @@ change:
    DMTS/WCST regimes. If active inference is pursued, its target is the RSSM/capsule
    generative training (the collapse stage), not the encoder.
 
+## After-training re-probe (added same day)
+
+The untrained result above left one question open: does training recover
+tectum_content decodability, or is the 256-D collapse architectural? Tested by
+training DMTS for 100 episodes (`train_rlhf --env dmts --episodes 100 --save-tectum`),
+then re-probing the trained tectum (`--load-tectum`,
+`runs/perception_probe_trained/decodability.csv`, seed 42).
+
+**Training outcome first (FAILED): the agent did not learn DMTS.** Episode reward was
+flat and negative throughout (episode 0 = -40.69, episode 99 = -38.59,
+`runs/train_dmts_100/episodes.csv`). No behavioural learning occurred.
+
+Trained vs untrained tectum_content, DMTS sample phase:
+
+| feature | untrained | trained (100 ep) | obs_map | chance | major |
+|---------|----------:|-----------------:|--------:|-------:|------:|
+| shape (6) | 0.275 | 0.225 | 1.000 | 0.167 | 0.275 |
+| color (6) | 0.225 | 0.133 | 1.000 | 0.167 | 0.225 |
+| size (2)  | 0.525 | 0.600 | 1.000 | 0.500 | 0.525 |
+
+**Verdict: training did NOT recover tectum_content decodability.** After 100 episodes
+it remains at chance (shape and color sit at their majority/chance baselines; size
+shows a marginal bump but stays far below the 1.000 that obs_map carries). obs_map is
+unchanged at 1.000. The obs_map -> tectum_content collapse persists trained and
+untrained.
+
+Caveat (load-bearing): the agent never learned DMTS, so the reward-predictor that
+trains the tectum saw a near-flat signal. Two non-exclusive readings, both consistent
+with the data: (a) the reward-prediction-MSE + TDANN objective provides no pressure to
+preserve stimulus identity in the 256-D collapse, which is the architectural/objective
+gap; (b) on a task this agent cannot learn, there is no discriminative reward signal to
+train on regardless. This is the assessment's root bind restated: the agent cannot
+perform the consciousness tasks, which limits even the training-recovery test. A
+longer or multi-seed run is the formal confirmation, but the flat reward trajectory
+(no learning over 100 episodes) makes it unlikely that more episodes of the same
+objective change the result. Single seed; a measurement, not a law.
+
+**What this sharpens for the next build.** A reconstruction / variational-free-energy
+objective is the principled fix precisely because it would force the RSSM/capsule to
+encode what is needed to reconstruct the frame, which REQUIRES preserving shape/color
+in the latent. That is the pressure the current reward-MSE objective lacks. The
+cheaper immediate delta remains: route the policy at obs_map (the `--policy-input
+spatial` tap), which is decodable, instead of the collapsed tectum_content. Both are
+gated, FAILED-first, >= 3 seeds before any default change.
+
 ## Reproduce
 
 ```
 export PYPHI_WELCOME_OFF=yes
+# untrained probe (4-stage sweep)
 python -m scripts.analysis.probe_perception_decodability \
     --episodes 2 --seed 42 --out-dir runs/perception_probe_full
+
+# after-training re-probe
+python -m scripts.training.train_rlhf --env dmts --episodes 100 --max-steps 200 \
+    --phi-sample-every 5 --save-tectum runs/train_dmts_100/tectum.pt \
+    --log-dir runs/train_dmts_100
+python -m scripts.analysis.probe_perception_decodability \
+    --episodes 2 --no-broadcast --envs dmts --seed 42 \
+    --load-tectum runs/train_dmts_100/tectum.pt \
+    --out-dir runs/perception_probe_trained
 ```
 
 Unit tests for the decoder: `pytest tests/test_perception_probe.py -q`.
