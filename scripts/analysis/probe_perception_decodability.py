@@ -154,12 +154,15 @@ def _build_components(env_name: str, action_dim: int, seed: int, mock_semantic: 
     config["device"] = "cpu"
 
     comps = init_components(config)
+    # Positional unpack of the leading components this probe needs; trailing
+    # training-only components (control-repr / reconstruction heads and optimizers)
+    # are captured in *_ so future init_components growth does not break the probe.
     (tectum, workspace, reentrant, modulator, emotion_shaper, memory,
      action_core, semantic, gate, tectum_optimizer, reward_predictor,
      reward_optimizer, workspace_optimizer, auditory_specialist, self_model,
      rnd, rnd_optimizer, consolidation_mgr, riiu_phis, mock_sem,
      holonic_system, levin_evaluator, self_vector_module, self_vector_optimizer,
-     control_repr_head, control_repr_optimizer) = comps
+     *_) = comps
 
     # Forward-only probe: no phi needed. Detaching the gate keeps run_competition
     # from invoking pyphi every step (faster, and avoids the long-run segfault).

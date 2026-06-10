@@ -86,6 +86,10 @@ class StepMetrics:
     # better than "no change". Zero when --enable-self-vector is off.
     self_pred_mse: float = 0.0
     self_pred_skill: float = 0.0
+    # Perception fix: current-frame reconstruction MSE off tectum_content. Zero
+    # when --enable-recon is off. A falling trajectory means the reconstruction
+    # objective is training the tectum to retain stimulus identity.
+    recon_loss: float = 0.0
 
 
 class ConsciousnessMetricsLogger:
@@ -154,6 +158,7 @@ class ConsciousnessMetricsLogger:
             "levin_collective_intelligence", "levin_goal_directed",
             "levin_basal_cognition",
             "self_pred_mse", "self_pred_skill",
+            "recon_loss",
         ])
 
     def _init_episode_csv(self):
@@ -188,6 +193,7 @@ class ConsciousnessMetricsLogger:
             f"{metrics.levin_goal_directed:.6f}",
             f"{metrics.levin_basal_cognition:.6f}",
             f"{metrics.self_pred_mse:.6e}", f"{metrics.self_pred_skill:.6f}",
+            f"{metrics.recon_loss:.6e}",
         ])
         self._csv_file.flush()
 

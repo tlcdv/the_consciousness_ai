@@ -36,6 +36,7 @@ from models.self_model.action_selection_core import ActionSelectionCore
 from models.self_model.standard_actor_critic import StandardActorCritic
 from models.self_model.dqn_policy import DQNPolicy
 from models.core.control_representation import ControlRepresentationHead, obs_features
+from models.core.tectum_reconstruction import TectumReconstructionHead
 from models.self_model.self_representation_core import SelfRepresentationCore, SelfVectorModule
 from models.self_model.holonic_intelligence import HolonicSystem
 from models.memory.memory_core import MemoryCore
@@ -243,6 +244,16 @@ def build_config(args):
         # controllable representation. Default off (baseline bit-identical).
         "enable_control_repr": getattr(args, "enable_control_repr", False),
         "control_repr": {"weight": 1.0, "grid": 8, "hidden_dim": 128, "lr": 1e-3},
+        # Perception fix: reconstruct the current frame from tectum_content so the
+        # 256-D collapse must preserve stimulus identity (the obs_map ->
+        # tectum_content decodability gap localized 2026-06-09). Active-inference
+        # stage-1 likelihood term. Default off (baseline bit-identical).
+        "enable_recon": getattr(args, "enable_recon", False),
+        # foreground=True weights the reconstruction toward stimulus pixels (away
+        # from the trivial background). Naive MSE (foreground=False) was verified
+        # to FAIL on sparse DMTS frames (recon_loss minimized by rebuilding black).
+        "recon": {"weight": 1.0, "grid": 16, "hidden_dim": 256, "lr": 1e-3,
+                  "foreground": True},
     }
 
 
@@ -489,13 +500,36 @@ def init_components(config):
             f"(weight={cr_cfg.get('weight', 1.0)}, action-conditioned forward model)"
         )
 
+    # Perception fix: current-frame reconstruction head. Puts autoencoding pressure
+    # on tectum_content so the 256-D collapse must preserve stimulus identity.
+    # Trained on the tectum_optimizer path alongside the reward predictor. Default
+    # off (baseline bit-identical).
+    recon_head = None
+    recon_optimizer = None
+    if config.get("enable_recon", False):
+        rc_cfg = config.get("recon", {})
+        recon_head = TectumReconstructionHead(
+            content_dim=config["workspace_dim"],
+            grid=rc_cfg.get("grid", 16),
+            hidden_dim=rc_cfg.get("hidden_dim", 256),
+        ).to(device)
+        recon_optimizer = torch.optim.Adam(
+            recon_head.parameters(), lr=rc_cfg.get("lr", 1e-3)
+        )
+        logger.info(
+            f"Reconstruction objective enabled "
+            f"(weight={rc_cfg.get('weight', 1.0)}, grid={rc_cfg.get('grid', 16)}, "
+            f"current-frame autoencoding pressure on tectum_content)"
+        )
+
     return (tectum, workspace, reentrant, modulator, emotion_shaper, memory,
             action_core, semantic, gate, tectum_optimizer, reward_predictor,
             reward_optimizer, workspace_optimizer, auditory_specialist, self_model,
             rnd, rnd_optimizer, consolidation_mgr, riiu_phis, mock_semantic,
             holonic_system, levin_evaluator,
             self_vector_module, self_vector_optimizer,
-            control_repr_head, control_repr_optimizer)
+            control_repr_head, control_repr_optimizer,
+            recon_head, recon_optimizer)
 
 
 def frame_to_tensor(frame: np.ndarray, device: str) -> torch.Tensor:
@@ -549,7 +583,8 @@ def run_episode(episode_idx, config, tectum, workspace, reentrant,
                 mock_semantic=None,
                 holonic_system=None, levin_evaluator=None,
                 self_vector_module=None, self_vector_optimizer=None,
-                control_repr_head=None, control_repr_optimizer=None):
+                control_repr_head=None, control_repr_optimizer=None,
+                recon_head=None, recon_optimizer=None):
     device = config["device"]
     max_steps = config["max_steps"]
 
@@ -562,6 +597,9 @@ def run_episode(episode_idx, config, tectum, workspace, reentrant,
     # self-vector one-step self-prediction objective. None at episode start so
     # the first step trains nothing (no prior to predict from).
     prev_feat = None
+    # Perception fix: most-recent reconstruction MSE (updated every 5 steps in the
+    # tectum-optimizer block, logged every step). Stays 0.0 when --enable-recon off.
+    last_recon_loss = 0.0
     # Phase B: reset the reward EMAs so within-episode self-monitoring starts clean.
     if self_model is not None and hasattr(self_model, "reset_performance"):
         self_model.reset_performance()
@@ -1014,17 +1052,32 @@ def run_episode(episode_idx, config, tectum, workspace, reentrant,
                 control_loss = cr_cfg.get("weight", 1.0) * control_repr_head.loss(
                     tectum_content, action_t_cr, target_feats)
 
-            total_tectum_loss = pred_loss + topo_loss + control_loss
+            # Reconstruction objective (perception fix): rebuild the CURRENT frame
+            # from tectum_content, forcing the 256-D collapse to preserve stimulus
+            # identity. Gradient flows into the tectum through tectum_content.
+            recon_loss = torch.tensor(0.0, device=device)
+            if recon_head is not None:
+                rc_cfg = config.get("recon", {})
+                recon_loss = rc_cfg.get("weight", 1.0) * recon_head.loss(
+                    tectum_content, frame_tensor,
+                    foreground=rc_cfg.get("foreground", True))
+                last_recon_loss = float(recon_loss.item())
+
+            total_tectum_loss = pred_loss + topo_loss + control_loss + recon_loss
 
             tectum_optimizer.zero_grad()
             reward_optimizer.zero_grad()
             if control_repr_optimizer is not None:
                 control_repr_optimizer.zero_grad()
+            if recon_optimizer is not None:
+                recon_optimizer.zero_grad()
             total_tectum_loss.backward(retain_graph=True)
             tectum_optimizer.step()
             reward_optimizer.step()
             if control_repr_optimizer is not None:
                 control_repr_optimizer.step()
+            if recon_optimizer is not None:
+                recon_optimizer.step()
             # Force-detach recurrent state immediately after the optimizer
             # mutates tectum parameters in-place. Without this, a later
             # backward call through the BPTT-retained graph would reference
@@ -1273,6 +1326,7 @@ def run_episode(episode_idx, config, tectum, workspace, reentrant,
                 levin_basal_cognition=levin["basal_cognition"],
                 self_pred_mse=self_pred_mse,
                 self_pred_skill=self_pred_skill,
+                recon_loss=last_recon_loss,
             ))
 
             # Insight detection: hash broadcast embedding for meaningful novelty signal
@@ -1581,6 +1635,14 @@ def main():
                              "content + action, training the tectum (via the "
                              "tectum_optimizer) to be a controllable representation. "
                              "Default off (baseline bit-identical).")
+    parser.add_argument("--enable-recon", action="store_true",
+                        help="Perception fix: reconstruct the current (downsampled) "
+                             "frame from tectum_content, forcing the 256-D collapse to "
+                             "preserve stimulus identity (the obs_map -> tectum_content "
+                             "decodability gap localized 2026-06-09). Active-inference "
+                             "stage-1 likelihood term. Default off (baseline "
+                             "bit-identical). Validate by re-running the "
+                             "perception-decodability probe on a --save-tectum checkpoint.")
 
     args = parser.parse_args()
 
@@ -1610,7 +1672,8 @@ def main():
      riiu_phis, mock_semantic,
      holonic_system, levin_evaluator,
      self_vector_module, self_vector_optimizer,
-     control_repr_head, control_repr_optimizer) = init_components(config)
+     control_repr_head, control_repr_optimizer,
+     recon_head, recon_optimizer) = init_components(config)
 
     if args.env == "navigation":
         from simulations.environments.navigation_env import NavigationEnv
@@ -1665,6 +1728,8 @@ def main():
             self_vector_optimizer=self_vector_optimizer,
             control_repr_head=control_repr_head,
             control_repr_optimizer=control_repr_optimizer,
+            recon_head=recon_head,
+            recon_optimizer=recon_optimizer,
         )
         global_step += ep_steps
 
