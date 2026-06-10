@@ -289,17 +289,26 @@ def init_components(config):
 
     # P5 localization: if the policy reads the pre-capsule spatial tap, size its
     # input to that tap (computed via one dummy tectum forward, then reset).
-    if config.get("policy_input", "broadcast") == "spatial":
+    # 'spatial' feeds the flattened obs_map to a flat PFC; 'spatial-conv' feeds
+    # the same flattened obs_map but the PFC reshapes it and applies a conv stack
+    # (restores spatial processing, trained by the control gradient).
+    if config.get("policy_input", "broadcast") in ("spatial", "spatial-conv"):
         with torch.no_grad():
             dummy_frame = torch.zeros(1, 3, 224, 224, device=device)
             dummy_audio = torch.zeros(1, config["tectum_feature_dim"], 2, device=device)
             tectum(dummy_frame, dummy_audio)
+        obs_map_shape = tuple(tectum._last_obs_map.shape[1:])  # (C, H, W)
         spatial_dim = int(tectum._last_obs_map.reshape(1, -1).shape[1])
         tectum.reset_state(1)
         config["action_selection"]["policy_input_dim"] = spatial_dim
         # Bound the replay memory footprint at this larger input dim.
         config["action_selection"]["dqn_buffer"] = 5000
-        logger.info(f"Policy input: spatial obs_map tap, dim={spatial_dim}")
+        if config.get("policy_input") == "spatial-conv":
+            config["action_selection"]["policy_spatial_conv"] = True
+            config["action_selection"]["policy_spatial_shape"] = obs_map_shape
+            logger.info(f"Policy input: spatial-conv obs_map tap, shape={obs_map_shape}")
+        else:
+            logger.info(f"Policy input: spatial obs_map tap (flat), dim={spatial_dim}")
 
     if config.get("policy", "gonogo") == "standard":
         action_core = StandardActorCritic(config["action_selection"], emotion_shaper, memory)
@@ -862,10 +871,12 @@ def run_episode(episode_idx, config, tectum, workspace, reentrant,
         pinput = config.get("policy_input", "broadcast")
         if pinput == "tectum":
             policy_state = tectum_content.detach()
-        elif pinput == "spatial":
+        elif pinput in ("spatial", "spatial-conv"):
             # Detach: the policy must not backprop into the tectum (the tectum
             # optimizer mutates those params in-place every 5 steps, which would
-            # otherwise corrupt the policy's backward graph).
+            # otherwise corrupt the policy's backward graph). For spatial-conv the
+            # PFC reshapes this flat vector and convs it; the conv is trained by
+            # the control gradient (PFC params are in the policy optimizer).
             policy_state = tectum._last_obs_map.reshape(1, -1).detach()
         else:
             policy_state = broadcast
@@ -1624,14 +1635,17 @@ def main():
                              "competence bottleneck, holding the learner family "
                              "constant against the DQN-on-pixels baseline.")
     parser.add_argument("--policy-input", type=str, default="broadcast",
-                        choices=["broadcast", "tectum", "spatial"],
+                        choices=["broadcast", "tectum", "spatial", "spatial-conv"],
                         help="P5 localization probe: which representation the policy "
                              "reads. 'broadcast' (default) is the post-GNW broadcast; "
                              "'tectum' is the pre-GNW tectum_content (256-D, post "
                              "capsule collapse); 'spatial' is the topographic obs_map "
                              "(flattened grid, post retinotopic encoder + fusion, pre "
-                             "RSSM/capsule). Comparing DQN reward across taps localizes "
-                             "which pipeline stage loses the control-relevant signal.")
+                             "RSSM/capsule), read by a flat PFC; 'spatial-conv' is the "
+                             "same obs_map but the PFC applies a conv stack first "
+                             "(restores spatial processing, trained by the control "
+                             "gradient). Comparing reward across taps localizes which "
+                             "pipeline stage loses the control-relevant signal.")
     parser.add_argument("--enable-control-repr", action="store_true",
                         help="P5 fix: add an action-conditioned forward model that "
                              "predicts the next observation from the current tectum "

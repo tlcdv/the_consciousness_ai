@@ -18,26 +18,58 @@ class PrefrontalCortex(nn.Module):
     dynamic/sporadic broadcast from the Global Workspace and stabilizes it into 
     a persistent "policy context" (task goal/state representation).
     """
-    def __init__(self, workspace_dim: int, context_dim: int = 256):
+    def __init__(self, workspace_dim: int, context_dim: int = 256,
+                 spatial_conv: bool = False,
+                 spatial_shape: tuple[int, int, int] | None = None):
         super().__init__()
         self.context_dim = context_dim
-        
+
+        # Optional convolutional front-end. When the policy reads a topographic
+        # map (the --policy-input spatial-conv tap feeds the flattened obs_map),
+        # a flat GRU input cannot exploit the spatial structure: every flat
+        # readout of every representation plateaus far below a CNN over pixels
+        # (obs_map_routing_2026_06_10.md). This conv stack restores spatial
+        # processing in the perception->action path, trained by the control
+        # gradient (the PFC params are in the policy optimizer). The input is the
+        # detached obs_map, so no gradient flows into the tectum.
+        self.spatial_conv = spatial_conv
+        self.spatial_shape = spatial_shape
+        if spatial_conv:
+            assert spatial_shape is not None, "spatial_conv needs spatial_shape (C,H,W)"
+            c, _, _ = spatial_shape
+            self.conv = nn.Sequential(
+                nn.Conv2d(c, 32, 3, padding=1), nn.GELU(),
+                nn.Conv2d(32, 32, 3, stride=2, padding=1), nn.GELU(),
+                nn.Conv2d(32, 16, 3, stride=2, padding=1), nn.GELU(),
+                nn.AdaptiveAvgPool2d(4), nn.Flatten(),
+                nn.Linear(16 * 4 * 4, context_dim), nn.GELU(),
+            )
+            gru_input = context_dim
+        else:
+            self.conv = None
+            gru_input = workspace_dim
+
         # Recurrent layer to maintain context over time
-        self.working_memory = nn.GRUCell(workspace_dim, context_dim)
-        
+        self.working_memory = nn.GRUCell(gru_input, context_dim)
+
         # Projects to the Striatum (Basal Ganglia input)
         self.striatum_projection = nn.Linear(context_dim, context_dim)
-        
+
     def forward(self, workspace_broadcast: torch.Tensor, hidden_context: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
         """
         Args:
             workspace_broadcast: [B, workspace_dim] Output of Global Workspace
+                (or, when spatial_conv, the flattened topographic obs_map)
             hidden_context: [B, context_dim] Previous working memory state
-            
+
         Returns:
             pfc_state: [B, context_dim] Stable representation for the Basal Ganglia
             new_hidden: [B, context_dim] Updated working memory
         """
+        if self.conv is not None:
+            b = workspace_broadcast.shape[0]
+            spatial = workspace_broadcast.view(b, *self.spatial_shape)
+            workspace_broadcast = self.conv(spatial)
         new_hidden = self.working_memory(workspace_broadcast, hidden_context)
         pfc_state = F.gelu(self.striatum_projection(new_hidden))
         return pfc_state, new_hidden
@@ -188,8 +220,18 @@ class ActionSelectionCore:
         self.policy_input_dim = config.get("policy_input_dim", self.workspace_dim)
         pfc_input_dim = self.policy_input_dim + (self.self_vector_dim if self.use_self_vector else 0)
 
+        # Optional conv front-end on the PFC when the policy reads a topographic
+        # map (--policy-input spatial-conv). spatial_shape is (C, H, W) of the
+        # obs_map; pfc_input_dim must equal C*H*W (no self-vector in this mode).
+        self.policy_spatial_conv = config.get("policy_spatial_conv", False)
+        self.policy_spatial_shape = config.get("policy_spatial_shape", None)
+
         # Models
-        self.pfc = PrefrontalCortex(pfc_input_dim, self.context_dim).to(self.device)
+        self.pfc = PrefrontalCortex(
+            pfc_input_dim, self.context_dim,
+            spatial_conv=self.policy_spatial_conv,
+            spatial_shape=self.policy_spatial_shape,
+        ).to(self.device)
         self.bg = BasalGanglia(self.context_dim, self.action_dim).to(self.device)
         
         # Optimizer

@@ -143,6 +143,33 @@ class TestActionSelectionCore(unittest.TestCase):
         self.assertEqual(self.action_core.pfc.working_memory.input_size,
                          self.config['workspace_dim'])
 
+    def test_spatial_conv_pfc_processes_flattened_map(self):
+        """A conv-front-end PFC accepts the flattened topographic map [B, C*H*W],
+        reshapes it, convolves it, and returns a [B, context_dim] state. This is
+        the spatial-processing path for --policy-input spatial-conv."""
+        shape = (64, 16, 16)
+        flat = shape[0] * shape[1] * shape[2]
+        pfc = PrefrontalCortex(flat, 32, spatial_conv=True, spatial_shape=shape)
+        self.assertIsNotNone(pfc.conv)
+        hidden = torch.zeros(2, 32)
+        state, new_hidden = pfc(torch.randn(2, flat), hidden)
+        self.assertEqual(state.shape, (2, 32))
+        self.assertEqual(new_hidden.shape, (2, 32))
+
+    def test_spatial_conv_action_core_runs(self):
+        """ActionSelectionCore with policy_spatial_conv builds the conv PFC and
+        select_action runs end-to-end on a flattened obs_map input."""
+        shape = (64, 16, 16)
+        flat = shape[0] * shape[1] * shape[2]
+        cfg = dict(self.config)
+        cfg['policy_input_dim'] = flat
+        cfg['policy_spatial_conv'] = True
+        cfg['policy_spatial_shape'] = shape
+        core = ActionSelectionCore(cfg, self.emotion_shaper, self.memory)
+        self.assertIsNotNone(core.pfc.conv)
+        action, value = core.select_action(torch.randn(flat))
+        self.assertEqual(action.shape, (cfg['action_dim'],))
+
     def test_policy_input_dim_override_sizes_pfc(self):
         """With policy_input_dim set (e.g. the --policy-input spatial obs_map tap),
         the PFC accepts that-sized input and select_action runs. Previously the PFC
