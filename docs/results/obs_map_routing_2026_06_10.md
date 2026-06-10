@@ -169,6 +169,55 @@ consciousness-demanding regime where perception is not the bottleneck: WCST, whe
 the card is on-screen at decision and obs_map decodes it at 1.000. Measured by regime
 entry (rule changes reached, trials correct), broadcast vs spatial-conv.
 
+## WCST regime-entry test (the reframe's decisive experiment): perception is NOT the bottleneck
+
+Goal-aligned test from the reframe above: can a policy with obs_map access enter the
+WCST rule-change regime, where the card is on-screen and obs_map decodes it at 1.000?
+WCST, seed 42, 100 ep, 150 max-steps, broadcast (card at chance) vs spatial-conv
+(card decodable). Regime entry measured from env_episodes.csv (all from disk):
+
+| arm | rule changes (total / max) | consecutive correct (mean / max) | trials correct (mean / last-30) | reward |
+|-----|---------------------------:|---------------------------------:|--------------------------------:|-------:|
+| broadcast | 0 / 0 | 0.28 / 3 | 6.26 / 5.60 | 0.639 |
+| spatial-conv | 0 / 0 | 0.34 / 3 | 6.52 / 6.37 | 0.977 |
+
+A rule change needs 6 consecutive correct sorts. Both arms top out at 3 consecutive;
+neither triggers a single rule change in 100 episodes. spatial-conv (card decodable
+at 1.000) is marginally better (more correct sorts, reward 0.98 vs 0.64), but the gap
+to regime entry is enormous and perception access barely moves it.
+
+**Verdict: perception is NOT the WCST bottleneck.** The agent sees the card perfectly
+(obs_map = 1.000) and still cannot string together 6 correct sorts. Reference: the
+DQN baseline barely does WCST either (last-100 reward 2.06, experiment_comparison.md);
+the old consciousness agent was -1.94. WCST is hard for these RL agents because of the
+rule inference / cognitive flexibility it demands, not because of perception.
+
+## Conclusion of the 2026-06-10 investigation: the bottleneck is cognition, not perception
+
+Four experiments this session, FAILED-first:
+
+1. Reconstruction objective to repair the obs_map -> tectum_content collapse: FAILED,
+   the collapse is architectural (`tectum_reconstruction_2026_06_10.md`).
+2. Route the policy at the decodable obs_map (flat): NOT a recovery on dark_room.
+3. Route at obs_map with a conv reader (spatial processing + control gradient):
+   marginal, NOT a recovery on dark_room.
+4. Perception access on WCST (the goal task where perception is not the bottleneck):
+   does NOT unlock regime entry; the agent never reaches the rule-change regime.
+
+Across all four, perception is not the binding constraint for the project's goal
+(entering consciousness-demanding regimes where signatures are measured). The binding
+constraint is the agent's cognitive / learning capability: rule inference and
+sustained correct behavior (WCST), and by extension working memory (DMTS delay). The
+perception work fixed real bugs (the `--policy-input spatial` crash) and produced
+clean, reusable negative results that RULE OUT perception as the bottleneck, which is
+genuine progress, but the engineering to keep the goal in pursuit must now target
+cognition / learning, not perception.
+
+This does not contradict the biological thesis. The consciousness-demanding tasks
+were chosen precisely because they require meta-cognition (WCST) and working memory
+(DMTS); the finding is that the current agent's cognitive machinery cannot yet meet
+that demand, and that is where the next engineering belongs.
+
 ## Reproduce
 
 ```
