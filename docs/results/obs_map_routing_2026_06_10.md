@@ -120,6 +120,55 @@ All gated, default-off, FAILED-first, >= 3 seeds before any default change.
 - dark_room reward is retired as a target; used here as a mechanism signal, which is
   legitimate for "can the policy exploit decodable spatial input".
 
+## Direction-1 follow-up (same day): conv reader over obs_map, also NOT a recovery
+
+Implemented `--policy-input spatial-conv` (commit `92843d4`): a convolutional
+front-end on the policy's PFC that reshapes the flattened obs_map to [C, H, W],
+convolves it, and is trained by the control gradient (the obs_map input stays
+detached, so no gradient flows into the tectum). This adds the two ingredients the
+diagnosis named (spatial processing + control gradient) on the decodable obs_map.
+
+Result (dark_room, seed 42, 100 ep, all from disk):
+
+| arm | first-30 | last-30 | mean | positive eps |
+|-----|---------:|--------:|-----:|-------------:|
+| broadcast (flat, at chance) | 35.14 | 24.93 | 29.47 | 30 |
+| spatial (flat reader) | 14.30 | 25.47 | 12.75 | 38 |
+| spatial-conv (conv reader) | 14.09 | 30.56 | 17.96 | 39 |
+| DQN-on-pixels (CNN) | - | - | 92.00 (last-100) | - |
+
+Spatial-conv is the best of the three on last-30 (30.56 vs 25.47 flat-spatial vs
+24.93 broadcast) and finds the light most often (39 positive episodes). So spatial
+processing helps a little (conv beats flat on the same obs_map). But it does not
+recover competence: still ~3x below DQN-on-pixels, in the same 25-30 band. Single
+seed.
+
+Reading: the conv result removes "no spatial processing" as the *sole* cause but
+leaves a large residual gap. The biological front-end (retinotopic encoder + IE
+fusion + RSSM/capsule) appears lossy for the pixel-precise spatial information that
+dark_room navigation rewards, even at the obs_map stage that decodes object identity
+perfectly. A conv over obs_map cannot recover position information the front-end
+already blurred.
+
+## Strategic reframe (the honest consequence)
+
+dark_room reward is retired as a target (2026-06-02 reading #2): the architecture is
+biology-first and trades pixel-precise control for integration properties, so an
+agent underperforming a pixel-CNN on dark_room is expected, not a defect. The goal is
+consciousness signatures on the consciousness-demanding tasks (DMTS/WCST), measured
+by the Butlin indicator rubric and the pre-registered substrate-independence test
+(preregistered_predictions.md section 13).
+
+Crucially, DMTS/WCST do not need pixel-precise spatial control. They need stimulus
+identity (which obs_map decodes at 1.000, per perception_decodability_2026_06_09.md),
+plus working memory (DMTS delay) and rule inference (WCST). So the dark_room control
+deficit may be orthogonal to whether the agent can enter the DMTS/WCST regimes. The
+goal-aligned next test is therefore not more dark_room control work (a retired
+metric), but whether a policy with obs_map access (spatial-conv) can enter a
+consciousness-demanding regime where perception is not the bottleneck: WCST, where
+the card is on-screen at decision and obs_map decodes it at 1.000. Measured by regime
+entry (rule changes reached, trials correct), broadcast vs spatial-conv.
+
 ## Reproduce
 
 ```
