@@ -157,3 +157,55 @@ The only code change made with this assessment is a comment block above the
 experiment-flag group in `scripts/training/train_rlhf.py`, grouping the 18 toggles
 into live experiments, settled-default-with-legacy-alias, and dormant. It is
 comments only; training behaviour is bit-identical and the test suite is unchanged.
+
+## Addendum (2026-06-10): the perception-decodability probe sharpens Q2 and Q4
+
+Numbers re-verified from disk: `train_rlhf.py` is 1738 lines, 6 optimizers, 5
+`backward()` calls with 3 sharing one graph via `retain_graph=True` (lines 1023,
+1052, 1093), 47 argparse flags of which 18 are experiment toggles (9 `--ablate-*`,
+9 `--enable-*`), 95 files under `models/`, 73 test files, 15 results docs. The
+structural picture in the body stands; only the counts drifted, and "~8 backward
+paths" above is corrected to the precise 5 calls / 3 shared-graph.
+
+The perception-decodability probe (`docs/results/perception_decodability_2026_06_09.md`),
+run after this assessment was first written, does not overturn any of the four
+verdicts. It converts two of them from argument into measurement.
+
+**Q2 (smaller delta) is now precise, not just directional.** The body recommended
+"make one agent competent on one task, starting with the Phase 5 perception probe."
+That probe has run. It localizes the competence bottleneck to a single stage: a
+linear decode of stimulus identity is perfect off the spatial map (`pixels ->
+obs_map` is lossless, decode = 1.000 for shape/color/size/count) and collapses to the
+majority-class baseline off the compressed tectum representation (`obs_map ->
+tectum_content` decode = 0.13 to 0.60, each within 0.01 of chance). The policy and
+the workspace both read `tectum_content`/`broadcast`, so they operate on a
+representation that has already discarded the stimulus. Training DMTS for 100
+episodes did not recover it (reward flat at ~-39, decode still at chance). This makes
+the smaller delta both sharper and cheaper than "active-inference stage 1 = rebuild
+the encoder," which the probe shows targets the wrong stage:
+
+- Cheapest test: route the policy at `obs_map` via the existing `--policy-input
+  spatial` tap (added 2026-06-02), which is already decodable, and measure whether
+  the agent can enter the DMTS/WCST regime. No new objective, no new module.
+- Principled fix: a reconstruction / variational-free-energy objective on the
+  RSSM/capsule collapse stage, because reconstructing the frame forces the 256-D
+  latent to keep shape/color/count. The current tectum objectives (reward-prediction
+  MSE + TDANN) ask for neither.
+
+Both gated, default-off, FAILED-first, >= 3 seeds before any default flip. The
+body's caveat that the smaller delta is "explicitly not another binding mechanism or
+another phi formulation" is unchanged.
+
+**Q4 (coherence) gains a concrete mechanical instance of the deepest incoherence the
+body named.** The abstract claim was: Functionalist Emergentism needs the integrated
+state to be causally efficacious, yet most of the consciousness stack is measurement
+that does not drive behaviour. The probe shows a sharper version: the conscious
+bottleneck (the GNW broadcast) is not merely under-wired into learning, it is
+operating on content the upstream collapse has already degraded to chance. The
+workspace cannot integrate a stimulus identity it never receives. The fix is the
+body's (P3/P4 plus active inference), now with a named first target: the `obs_map ->
+tectum_content` handoff, not the encoder and not the policy.
+
+Net: the four verdicts hold. Q2 and Q4 are now backed by a measurement rather than an
+inference, and the recommended next step is unchanged in direction and cheaper in
+form: the spatial-tap test before any active-inference build.
