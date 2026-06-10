@@ -180,7 +180,13 @@ class ActionSelectionCore:
         # consistent.
         self.use_self_vector = config.get("use_self_vector", False)
         self.self_vector_dim = config.get("self_vector_dim", 64)
-        pfc_input_dim = self.workspace_dim + (self.self_vector_dim if self.use_self_vector else 0)
+        # Policy input width. Defaults to the workspace broadcast dim, but can be
+        # overridden when the policy reads a different tap (e.g. --policy-input
+        # spatial feeds the larger flattened obs_map). Previously the PFC was
+        # hardcoded to workspace_dim, so --policy-input spatial crashed the
+        # Go/No-Go policy (it only worked with the --policy dqn diagnostic).
+        self.policy_input_dim = config.get("policy_input_dim", self.workspace_dim)
+        pfc_input_dim = self.policy_input_dim + (self.self_vector_dim if self.use_self_vector else 0)
 
         # Models
         self.pfc = PrefrontalCortex(pfc_input_dim, self.context_dim).to(self.device)

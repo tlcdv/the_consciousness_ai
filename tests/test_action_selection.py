@@ -136,6 +136,25 @@ class TestActionSelectionCore(unittest.TestCase):
         self.assertEqual(action.shape, (self.config['action_dim'],))
         self.assertIsInstance(value, float)
 
+    def test_policy_input_dim_defaults_to_workspace_dim(self):
+        """Without policy_input_dim the PFC input width equals workspace_dim
+        (baseline bit-identical, the GRUCell input size is unchanged)."""
+        self.assertEqual(self.action_core.policy_input_dim, self.config['workspace_dim'])
+        self.assertEqual(self.action_core.pfc.working_memory.input_size,
+                         self.config['workspace_dim'])
+
+    def test_policy_input_dim_override_sizes_pfc(self):
+        """With policy_input_dim set (e.g. the --policy-input spatial obs_map tap),
+        the PFC accepts that-sized input and select_action runs. Previously the PFC
+        was hardcoded to workspace_dim, so a wider tap crashed the Go/No-Go policy."""
+        cfg = dict(self.config)
+        cfg['policy_input_dim'] = 256
+        core = ActionSelectionCore(cfg, self.emotion_shaper, self.memory)
+        self.assertEqual(core.pfc.working_memory.input_size, 256)
+        state = torch.randn(256)  # wider policy input
+        action, value = core.select_action(state)
+        self.assertEqual(action.shape, (cfg['action_dim'],))
+
     def test_emotional_modulation(self):
         """Emotional arousal should scale exploration noise variance."""
         state = torch.randn(1, self.config['workspace_dim'])

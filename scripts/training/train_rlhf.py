@@ -863,7 +863,10 @@ def run_episode(episode_idx, config, tectum, workspace, reentrant,
         if pinput == "tectum":
             policy_state = tectum_content.detach()
         elif pinput == "spatial":
-            policy_state = tectum._last_obs_map.reshape(1, -1)
+            # Detach: the policy must not backprop into the tectum (the tectum
+            # optimizer mutates those params in-place every 5 steps, which would
+            # otherwise corrupt the policy's backward graph).
+            policy_state = tectum._last_obs_map.reshape(1, -1).detach()
         else:
             policy_state = broadcast
 
