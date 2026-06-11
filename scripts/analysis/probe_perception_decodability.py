@@ -290,12 +290,20 @@ def collect_dmts(episodes, seed, include_broadcast, mock_semantic, load_tectum=N
                 audio = torch.zeros(1, config["tectum_feature_dim"], 2, device=config["device"])
                 tectum_content, vision_bid = tectum(frame, audio)
 
-                if phase in ("sample", "delay"):
+                if phase in ("sample", "delay", "choice"):
                     rec = {
-                        "group": "sample" if phase == "sample" else "delay",
+                        "group": phase,
                         "pixels": _downsample(obs),
                         "obs_map": tectum._last_obs_map.reshape(-1).cpu().numpy().astype(np.float64),
                         "tectum_content": tectum_content.reshape(-1).cpu().numpy().astype(np.float64),
+                        # RSSM deterministic recurrent state (h): the natural
+                        # working-memory store. At the delay phase the stimulus is
+                        # off-screen, so pixels/obs_map/tectum_content (current-frame
+                        # encodings) are blank; only a recurrent state could still
+                        # carry the sample. This tests whether working memory exists
+                        # in the RSSM. (z_state, the per-cell categorical latent, is
+                        # 262144-D and omitted; h is the global recurrent store.)
+                        "h_state": tectum.h_state.reshape(-1).cpu().numpy().astype(np.float64),
                         "labels": {
                             "shape": info["sample_shape"],
                             "color": info["sample_color"],
@@ -370,7 +378,7 @@ def collect_wcst(episodes, seed, include_broadcast, mock_semantic, load_tectum=N
 # --------------------------------------------------------------------------- #
 # Reporting
 # --------------------------------------------------------------------------- #
-_STAGES = ["pixels", "obs_map", "tectum_content", "broadcast"]
+_STAGES = ["pixels", "obs_map", "tectum_content", "broadcast", "h_state"]
 
 
 def _evaluate(records, group, label_keys, seed):
@@ -442,6 +450,7 @@ def main():
         print(f"  collected {len(recs)} labeled frames")
         rows = _evaluate(recs, "sample", ["shape", "color", "size"], args.seed)
         rows += _evaluate(recs, "delay", ["shape", "color", "size"], args.seed)
+        rows += _evaluate(recs, "choice", ["shape", "color", "size"], args.seed)
         _print_and_collect("dmts", rows, dino, all_csv)
 
     if "wcst" in envs:

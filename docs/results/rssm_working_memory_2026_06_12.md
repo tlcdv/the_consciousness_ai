@@ -1,0 +1,95 @@
+# RSSM working memory for DMTS (2026-06-11/12): the memory exists in h_state, but routing it to the policy FAILED to help matching
+
+After the 2026-06-10 investigation concluded that perception is not the bottleneck
+for entering the consciousness-demanding regimes (the bottleneck is cognition:
+working memory and rule inference, `obs_map_routing_2026_06_10.md`), this is the
+first cognition target: working memory for DMTS. The method was localize-first (a
+decodability probe of the recurrent state) before building, then a behavioral A/B.
+
+## Probe finding (positive, and important): working memory already exists in the RSSM
+
+Extended the perception-decodability probe to capture the RSSM deterministic
+recurrent state `h_state` (the natural working-memory store) and to record the DMTS
+delay and choice phases. Untrained components, seed 42. Decode of the held sample
+during the delay (stimulus off-screen):
+
+| label | obs_map | tectum_content | h_state | chance | n |
+|-------|--------:|---------------:|--------:|-------:|---:|
+| shape | 0.276 | 0.266 | **0.994** | 0.167 | 1074 |
+| color | 0.245 | 0.248 | **0.997** | 0.167 | 1074 |
+| size  | 0.536 | 0.536 | **0.994** | 0.500 | 1074 |
+
+`h_state` holds the sample at ~99% across the blank delay, while `obs_map` and
+`tectum_content` are at chance (the current frame is blank). So the RSSM recurrent
+state does maintain working memory. The reason the policy never benefits is the same
+capsule collapse the reconstruction experiment found
+(`tectum_reconstruction_2026_06_10.md`): the policy reads `tectum_content`/`broadcast`
+(post-collapse), which discard the held memory. The collapse destroys working memory
+as well as current-stimulus identity.
+
+## Choice-phase caveat (interference)
+
+At the choice phase (decision point, choice stimuli on-screen), `h_state` decodes the
+sample at chance (shape 0.250, color 0.167, size 0.500; n=40, noisy). The choice
+stimuli appear to overwrite the sample in the recurrent state. n is small because the
+choice phase is one step per trial, and an 8-episode re-probe OOM'd on this laptop
+(16384-D arrays x thousands of frames), so this is suggestive, not conclusive. But
+the mechanism (new stimulus overwrites the recurrent state) is physically expected.
+
+## The fix tested: route h_state to the policy
+
+`--policy-input rssm` (and `rssm-conv`) routes `h_state` to the policy's PFC. The bet:
+the PFC's own gated GRU sees the sample for the 15-40 delay steps and latches it into
+its own hidden state, holding it through the choice phase even as the RSSM's
+`h_state` gets overwritten. Default `--policy-input broadcast` is unchanged (baseline
+bit-identical).
+
+## Verdict: FAILED
+
+DMTS, seed 42, broadcast vs rssm, `trials_correct` (correct matches; +1.0 reward
+each), all loaded from disk:
+
+| arm | episodes | trials_correct (mean) | reward (mean) |
+|-----|---------:|----------------------:|--------------:|
+| broadcast | 100 (full) | 1.340 | -12.30 |
+| broadcast | 59 (matched) | 1.407 | -12.32 |
+| rssm | 59 | 0.627 | -26.70 |
+
+The `rssm` tap makes DMTS matching worse, not better (0.627 vs broadcast's 1.407 at
+matched episode count). Routing the held memory to the PFC does not let the policy
+match; the PFC GRU does not latch the sample to improve behavior in this budget.
+
+Robustness: the `rssm` arm was run three times (the first two stalled overnight when
+the laptop slept; the third ground very slowly and was committed as a 59-episode
+partial). All three agree: rssm `trials_correct` = 0.73 (45 ep), 0.79 (28 ep), 0.627
+(59 ep), every value well below broadcast's stable ~1.34-1.57. broadcast does not
+improve from 59 to 100 episodes (1.407 -> 1.340), so the partial does not understate
+rssm by comparison. The verdict is robust to the missing 41 episodes.
+
+## What this establishes and what is next (not built)
+
+Established: working memory exists in the RSSM `h_state` (99% across the delay) and is
+destroyed by the capsule collapse before the policy; and the simplest fix (route
+`h_state` to the PFC and rely on its gate to latch) does not work, because the held
+sample is also lost to choice-phase interference and the PFC does not latch it
+unaided.
+
+Next (not built this session): an explicit interference-protected latch, capture the
+held representation while the world is blank (the delay), freeze it when stimuli
+return (the choices), and feed the frozen sample to the policy at decision time. That
+is what PFC working memory does biologically (gate the store against interference). A
+learned update gate is the more general version.
+
+## Reproduce
+
+```
+export PYPHI_WELCOME_OFF=yes
+# working-memory probe (h_state decode at delay and choice phases)
+python -m scripts.analysis.probe_perception_decodability \
+    --episodes 2 --no-broadcast --envs dmts --seed 42 --out-dir runs/probe_rssm_memory
+# behavioral A/B
+python -m scripts.training.train_rlhf --env dmts --episodes 100 --max-steps 200 \
+    --seed 42 --policy-input broadcast --phi-sample-every 5 --log-dir runs/p1_dmts_broadcast
+python -m scripts.training.train_rlhf --env dmts --episodes 100 --max-steps 200 \
+    --seed 42 --policy-input rssm --phi-sample-every 5 --log-dir runs/p1_dmts_rssm
+```
