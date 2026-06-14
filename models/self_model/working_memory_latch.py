@@ -68,3 +68,60 @@ class WorkingMemoryLatch:
         if self.latched is not None:
             return self.latched
         return h_state.detach()
+
+
+class ObsMapSampleMemory:
+    """Gated obs_map working memory for DMTS.
+
+    The 2026-06-14 leakage-free correction showed the sample is genuinely absent from
+    the RSSM `h_state` but is encoded in `obs_map` (decodes the on-screen stimulus at
+    ~1.0). So a usable working memory must capture from `obs_map`, not `h_state`.
+
+    The gate distinguishes the SAMPLE from the CHOICES without phase labels using the
+    length of the preceding blank: the sample is the stimulus that follows the short
+    fixation blank, the choices follow the long delay blank. On a blank->stimulus
+    onset, capture `obs_map` only if the preceding blank run was short (fixation),
+    and hold it through the delay and choice. This keeps the captured sample
+    available at the decision point.
+
+    Causal and RL-free: depends only on frame energy and the blank-run length, never
+    on the task phase. Validate leakage-free (one record per trial).
+    """
+
+    def __init__(self, short_blank_max: int = 12, present_frac: float = 0.3,
+                 min_range: float = 1e-3):
+        self.short_blank_max = short_blank_max
+        self.present_frac = present_frac
+        self.min_range = min_range
+        self.reset()
+
+    def reset(self) -> None:
+        self.slot: torch.Tensor | None = None
+        self._blank_run = 0
+        self._prev_present = True  # so a leading blank starts a run
+        self._min_std: float | None = None
+        self._max_std: float | None = None
+
+    def _stimulus_present(self, frame: torch.Tensor) -> bool:
+        std = float(frame.float().std().item())
+        self._min_std = std if self._min_std is None else min(self._min_std, std)
+        self._max_std = std if self._max_std is None else max(self._max_std, std)
+        rng = self._max_std - self._min_std
+        if rng < self.min_range:
+            return False
+        return std > self._min_std + self.present_frac * rng
+
+    def update(self, obs_map: torch.Tensor, frame: torch.Tensor) -> torch.Tensor:
+        """Advance one step and return the held sample obs_map (or the current
+        obs_map if nothing captured yet)."""
+        present = self._stimulus_present(frame)
+        if not present:
+            self._blank_run += 1
+        else:
+            # blank -> stimulus onset: capture only if the preceding blank was a
+            # short fixation (not the long delay), so we grab the sample not a choice.
+            if not self._prev_present and 0 < self._blank_run <= self.short_blank_max:
+                self.slot = obs_map.detach().clone()
+            self._blank_run = 0
+        self._prev_present = present
+        return self.slot if self.slot is not None else obs_map.detach()

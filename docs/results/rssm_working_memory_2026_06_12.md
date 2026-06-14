@@ -49,6 +49,36 @@
 >
 > The original (leakage-inflated) write-up is kept below verbatim for the record.
 
+## Resolution (2026-06-14): a gated obs_map memory DOES hold the sample at choice (leakage-free)
+
+Acting on the corrected build direction (capture from `obs_map`, not `h_state`):
+`models/self_model/working_memory_latch.py` gains `ObsMapSampleMemory`. It captures
+the `obs_map` at the SAMPLE onset and holds it through the delay and choice. The gate
+is causal and RL-free: it distinguishes the sample from the choices by the length of
+the preceding blank (the sample follows the short ~10-step fixation blank, the
+choices follow the long 15-40 step delay blank), capturing only on a
+short-blank -> stimulus onset.
+
+Leakage-free validation (one record per trial, n=240, `scripts/analysis/probe_wm_leakage_free.py`),
+decode of the sample from the memory slot AT THE CHOICE PHASE:
+
+| representation at choice | shape | color | chance |
+|--------------------------|------:|------:|-------:|
+| gated obs_map mem_slot | 0.875 | 0.889 | 0.167 |
+| raw h_state (rssm tap / latch source) | ~0.11 | ~0.14 | 0.167 |
+
+The gated `obs_map` memory holds the sample at the decision point at ~0.88, from the
+source that actually encodes it. This is the first correctly-built, correctly-
+validated working-memory result of the arc: it uses `obs_map` (not the empty
+`h_state`) and is validated leakage-free (not per-step).
+
+Honest scope. This validates the MECHANISM (the sample is available at the choice
+phase). It does NOT validate behavior: whether a policy fed `mem_slot` learns to
+match is an RL question, deferred (this laptop trains DMTS poorly: overnight sleep
+stalls, ~6 min/episode late on the heavy taps). The gate is also DMTS-specific (it
+keys on the fixation-vs-delay blank-length difference); a general working memory
+needs a learned gate. Unit tests: `tests/test_working_memory_latch.py`.
+
 After the 2026-06-10 investigation concluded that perception is not the bottleneck
 for entering the consciousness-demanding regimes (the bottleneck is cognition:
 working memory and rule inference, `obs_map_routing_2026_06_10.md`), this is the
