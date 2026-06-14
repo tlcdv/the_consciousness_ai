@@ -38,6 +38,7 @@ from models.self_model.dqn_policy import DQNPolicy
 from models.core.control_representation import ControlRepresentationHead, obs_features
 from models.core.tectum_reconstruction import TectumReconstructionHead
 from models.self_model.self_representation_core import SelfRepresentationCore, SelfVectorModule
+from models.self_model.working_memory_latch import ObsMapSampleMemory
 from models.self_model.holonic_intelligence import HolonicSystem
 from models.memory.memory_core import MemoryCore
 from models.core.semantic_pathway import SemanticPathway
@@ -290,13 +291,18 @@ def init_components(config):
     # Tap sizing: if the policy reads a wide tectum tap, size its input to that tap
     # (computed via one dummy tectum forward, then reset). Tap source:
     #   spatial / spatial-conv -> obs_map  (current-frame topographic map)
-    #   rssm    / rssm-conv     -> h_state (RSSM deterministic recurrent state; the
-    #                              working-memory store that holds the DMTS sample
-    #                              across the delay, 99% decodable, while obs_map is
-    #                              blank). The -conv variants apply a conv front-end
-    #                              in the PFC; the flat variants feed the raw vector.
+    #   rssm    / rssm-conv     -> h_state (RSSM recurrent state; NOTE the
+    #                              2026-06-14 leakage correction: h_state does NOT
+    #                              retain the sample, the prior 99% was a leakage
+    #                              artifact. These taps are kept as a negative result.)
+    #   obsmem-conv            -> [current obs_map ; gated obs_map memory slot]
+    #                              stacked as channels for a conv PFC. The memory
+    #                              holds the DMTS sample (leakage-free 0.88 at choice);
+    #                              the conv compares the held sample to the current
+    #                              frame so the policy can match (the working path).
+    # The -conv variants apply a conv front-end in the PFC; flat variants feed raw.
     _pin = config.get("policy_input", "broadcast")
-    if _pin in ("spatial", "spatial-conv", "rssm", "rssm-conv"):
+    if _pin in ("spatial", "spatial-conv", "rssm", "rssm-conv", "obsmem-conv"):
         with torch.no_grad():
             dummy_frame = torch.zeros(1, 3, 224, 224, device=device)
             dummy_audio = torch.zeros(1, config["tectum_feature_dim"], 2, device=device)
@@ -304,6 +310,10 @@ def init_components(config):
         tap = tectum.h_state if _pin in ("rssm", "rssm-conv") else tectum._last_obs_map
         tap_shape = tuple(tap.shape[1:])  # (C, H, W)
         tap_dim = int(tap.reshape(1, -1).shape[1])
+        if _pin == "obsmem-conv":
+            # current obs_map + held memory slot, stacked on the channel axis
+            tap_shape = (tap_shape[0] * 2, tap_shape[1], tap_shape[2])
+            tap_dim = tap_dim * 2
         tectum.reset_state(1)
         config["action_selection"]["policy_input_dim"] = tap_dim
         # Bound the replay memory footprint at this larger input dim.
@@ -614,6 +624,10 @@ def run_episode(episode_idx, config, tectum, workspace, reentrant,
     # Perception fix: most-recent reconstruction MSE (updated every 5 steps in the
     # tectum-optimizer block, logged every step). Stays 0.0 when --enable-recon off.
     last_recon_loss = 0.0
+    # Gated obs_map working memory (DMTS). Fresh per episode. Captures the sample
+    # obs_map at the sample onset and holds it through delay+choice so the policy
+    # (--policy-input obsmem-conv) can compare the held sample to the current frame.
+    wm_memory = ObsMapSampleMemory() if config.get("policy_input") == "obsmem-conv" else None
     # Phase B: reset the reward EMAs so within-episode self-monitoring starts clean.
     if self_model is not None and hasattr(self_model, "reset_performance"):
         self_model.reset_performance()
@@ -873,6 +887,11 @@ def run_episode(episode_idx, config, tectum, workspace, reentrant,
         # broadcast; --policy-input tectum feeds the pre-GNW tectum_content instead
         # (same workspace_dim). Everything else (gate, phi, RND, memory bid) stays
         # on the broadcast. Detached so the policy never backprops into perception.
+        # Advance the gated obs_map working memory (if enabled) before the policy
+        # reads it, so the held sample is current for this step's decision.
+        if wm_memory is not None:
+            wm_slot = wm_memory.update(tectum._last_obs_map, frame_tensor)
+
         pinput = config.get("policy_input", "broadcast")
         if pinput == "tectum":
             policy_state = tectum_content.detach()
@@ -884,11 +903,18 @@ def run_episode(episode_idx, config, tectum, workspace, reentrant,
             # the control gradient (PFC params are in the policy optimizer).
             policy_state = tectum._last_obs_map.reshape(1, -1).detach()
         elif pinput in ("rssm", "rssm-conv"):
-            # RSSM deterministic recurrent state: holds the DMTS sample across the
-            # blank delay (99% decodable) when obs_map/tectum_content are blank. The
-            # PFC's own gated GRU can latch this during the delay and hold it through
-            # the choice phase. Detached for the same in-place reason as above.
+            # RSSM recurrent state. NOTE (2026-06-14 correction): h_state does NOT
+            # retain the DMTS sample; the prior "99% across the delay" was a
+            # train/test leakage artifact. Kept as a negative-result tap; the
+            # working path is obsmem-conv. Detached for the in-place reason above.
             policy_state = tectum.h_state.reshape(1, -1).detach()
+        elif pinput == "obsmem-conv":
+            # Stack the current obs_map (the choices at the decision) and the held
+            # sample obs_map (mem_slot, validated leakage-free at ~0.88) as channels,
+            # so the conv PFC can compare them and the policy can match.
+            cur = tectum._last_obs_map.reshape(1, -1).detach()
+            held = wm_slot.reshape(1, -1).detach()
+            policy_state = torch.cat([cur, held], dim=1)
         else:
             policy_state = broadcast
 
@@ -1647,7 +1673,7 @@ def main():
                              "constant against the DQN-on-pixels baseline.")
     parser.add_argument("--policy-input", type=str, default="broadcast",
                         choices=["broadcast", "tectum", "spatial", "spatial-conv",
-                                 "rssm", "rssm-conv"],
+                                 "rssm", "rssm-conv", "obsmem-conv"],
                         help="P5 localization probe: which representation the policy "
                              "reads. 'broadcast' (default) is the post-GNW broadcast; "
                              "'tectum' is the pre-GNW tectum_content (256-D, post "
