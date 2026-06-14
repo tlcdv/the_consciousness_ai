@@ -102,12 +102,47 @@ the start).
 **What this isolates.** The working-memory INFORMATION problem is solved (the gated
 obs_map memory delivers the sample). The remaining wall is LEARNING: the agent cannot
 learn the cognitive operation (compare held sample to current choices, pick the match)
-even with the sample available. This is the cognition/RL bottleneck in its purest
-form, the right information is present and the agent still cannot learn to use it.
-The next bottleneck is the policy/learning, not perception (solved) or working-memory
-availability (solved). Single seed; the laptop trains DMTS slowly, so a longer or
-multi-seed run could differ, but the absence of any upward trend over 100 episodes
-makes a budget-only explanation unlikely.
+even with the sample available. Single seed; the laptop trains DMTS slowly, so a
+longer or multi-seed run could differ, but the absence of any upward trend over 100
+episodes makes a budget-only explanation unlikely.
+
+## Final localization (2026-06-14): the wall is RL credit assignment, not representation
+
+Decisive diagnostic. Decode the CORRECT MATCH ACTION (`target_position`, which choice
+matches the sample; chance 0.5 for 2 choices) from the policy's own input
+`[current obs_map ; mem_slot]`, one record per trial (n=280, leakage-free):
+
+| decoder on [obs ; mem] | acc | chance |
+|------------------------|----:|-------:|
+| linear (logistic) | 0.571 | 0.500 |
+| non-linear (PCA-80 + MLP) | 0.845 | 0.500 |
+
+The match is at chance for a LINEAR decoder (matching is a non-linear comparison, a
+linear readout cannot compare two patterns) but a non-linear MLP extracts it at
+0.845. So the policy's input genuinely SUPPORTS the match, the information is present
+and a non-linear function of the input computes the correct action at 0.845.
+
+Yet the RL policy (the conv PFC of `obsmem-conv`, itself non-linear) given the same
+input does NOT learn to match (behavioral 1.19, no better than broadcast). Combining:
+
+- Information sufficient: yes (gated obs_map memory holds the sample, 0.88).
+- Representation supports the match: yes (supervised non-linear decode 0.845).
+- RL learns the match from sparse reward: NO (behavioral failure).
+
+**The bottleneck is RL credit assignment / the learning algorithm**, not perception,
+not working-memory availability, not the representation. A supervised learner extracts
+the match at 0.845; the Go/No-Go RL cannot learn from sparse reward what the
+supervised model learns from labels. This is the cognition bottleneck localized all
+the way down: every upstream layer is ruled out by a cheap decisive test.
+
+Concrete next directions (gated, FAILED-first, leakage-free / multi-seed where it
+applies): (1) a supervised auxiliary head on the policy that predicts the match action
+from `[obs ; mem]` (the match IS supervised-learnable at 0.845, so this should teach
+the matching operation and bypass the credit-assignment gap), (2) a stronger RL
+algorithm with better credit assignment (PPO / n-step returns) in place of the
+1-step Go/No-Go update, (3) a DMTS-shaped reward that is denser than the terminal
+match reward. The supervised-auxiliary route is the most direct given the 0.845
+result.
 
 After the 2026-06-10 investigation concluded that perception is not the bottleneck
 for entering the consciousness-demanding regimes (the bottleneck is cognition:
