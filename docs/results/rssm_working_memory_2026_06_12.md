@@ -34,6 +34,19 @@
 > the perception docs are NOT affected (those are current-frame encodings, and the
 > `obs_map` control here reconfirms `obs_map` is genuinely decodable).
 >
+> **Genuinely absent, not just non-linear (2026-06-14).** A non-linear decoder
+> (PCA-50 + MLP, one-per-trial) also reads `h_state` at chance (sample shape 0.167,
+> delay 0.139), while `obs_map` stays at 0.972 with the same pipeline. So the sample
+> is genuinely absent from `h_state`; the `obs_map -> h_state` encoding discards it.
+>
+> **Build direction (this is the carry-forward).** A working-memory mechanism must
+> capture from `obs_map` (which encodes the on-screen sample at ~1.0), NOT from
+> `h_state` (empty). The `rssm` tap and the latch both used `h_state`, the wrong
+> source. The remaining hard part is gating: distinguishing the sample (first
+> stimulus) from the choices (second stimulus) without phase labels, which needs a
+> learned gate (and therefore RL training) or a task-specific heuristic. Whatever is
+> built must be validated leakage-free (one record per trial), never per-step.
+>
 > The original (leakage-inflated) write-up is kept below verbatim for the record.
 
 After the 2026-06-10 investigation concluded that perception is not the bottleneck
