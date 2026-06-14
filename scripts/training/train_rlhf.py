@@ -39,6 +39,7 @@ from models.core.control_representation import ControlRepresentationHead, obs_fe
 from models.core.tectum_reconstruction import TectumReconstructionHead
 from models.self_model.self_representation_core import SelfRepresentationCore, SelfVectorModule
 from models.self_model.working_memory_latch import ObsMapSampleMemory
+from models.self_model.match_head import MatchHead, AuxMatchHead
 from models.self_model.holonic_intelligence import HolonicSystem
 from models.memory.memory_core import MemoryCore
 from models.core.semantic_pathway import SemanticPathway
@@ -255,6 +256,19 @@ def build_config(args):
         # to FAIL on sparse DMTS frames (recon_loss minimized by rebuilding black).
         "recon": {"weight": 1.0, "grid": 16, "hidden_dim": 256, "lr": 1e-3,
                   "foreground": True},
+        # DMTS supervised match head. Teaches the matching operation from the env's
+        # target_position label on the obsmem-conv input. Two modes: 'acting' (the
+        # head's argmax drives the choice; capability/pipeline ceiling test, uses
+        # the privileged label) and 'aux' (a linear head on the shared PFC trunk;
+        # tests whether a dense supervised gradient lifts the RL policy). Active
+        # only with --env dmts --policy-input obsmem-conv. Default off
+        # (baseline bit-identical). See docs/results/rssm_working_memory_2026_06_12.md
+        # (Final localization): the match is supervised-decodable 0.845 but the RL
+        # policy does not learn it.
+        "env": getattr(args, "env", "dark_room"),
+        "enable_match_head": getattr(args, "enable_match_head", False),
+        "match_head_mode": getattr(args, "match_head_mode", "acting"),
+        "match_head_lr": 1e-3,
     }
 
 
@@ -546,6 +560,42 @@ def init_components(config):
             f"current-frame autoencoding pressure on tectum_content)"
         )
 
+    # DMTS supervised match head. Only meaningful on the obsmem-conv tap (it reads
+    # [current obs_map ; held sample]) and the DMTS env (it trains on the env's
+    # target_position label). Disabled with a warning anywhere else. Default off
+    # (baseline bit-identical).
+    match_head = None
+    match_optimizer = None
+    if config.get("enable_match_head", False):
+        mode = config.get("match_head_mode", "acting")
+        if config.get("env") != "dmts" or config.get("policy_input") != "obsmem-conv":
+            logger.warning(
+                "--enable-match-head needs --env dmts --policy-input obsmem-conv; "
+                f"got env={config.get('env')} policy_input={config.get('policy_input')}. "
+                "Match head DISABLED."
+            )
+        else:
+            num_actions = config["action_selection"]["action_dim"]
+            lr = config.get("match_head_lr", 1e-3)
+            if mode == "aux":
+                ctx = config["action_selection"].get("context_dim", 256)
+                match_head = AuxMatchHead(ctx, num_actions).to(device)
+                # Shared-trunk: the aux CE gradient also shapes the policy's PFC.
+                match_optimizer = torch.optim.Adam(
+                    list(match_head.parameters()) + list(action_core.pfc.parameters()),
+                    lr=lr,
+                )
+            else:  # acting (default)
+                spatial_shape = config["action_selection"]["policy_spatial_shape"]
+                match_head = MatchHead(spatial_shape, num_actions).to(device)
+                match_optimizer = torch.optim.Adam(match_head.parameters(), lr=lr)
+            logger.info(
+                f"DMTS match head enabled (mode={mode}, num_actions={num_actions}). "
+                + ("Argmax drives the choice (capability/pipeline ceiling test, "
+                   "uses the privileged target label)." if mode != "aux" else
+                   "Aux loss shapes the shared PFC trunk; RL still selects the action.")
+            )
+
     return (tectum, workspace, reentrant, modulator, emotion_shaper, memory,
             action_core, semantic, gate, tectum_optimizer, reward_predictor,
             reward_optimizer, workspace_optimizer, auditory_specialist, self_model,
@@ -553,7 +603,8 @@ def init_components(config):
             holonic_system, levin_evaluator,
             self_vector_module, self_vector_optimizer,
             control_repr_head, control_repr_optimizer,
-            recon_head, recon_optimizer)
+            recon_head, recon_optimizer,
+            match_head, match_optimizer)
 
 
 def frame_to_tensor(frame: np.ndarray, device: str) -> torch.Tensor:
@@ -608,7 +659,8 @@ def run_episode(episode_idx, config, tectum, workspace, reentrant,
                 holonic_system=None, levin_evaluator=None,
                 self_vector_module=None, self_vector_optimizer=None,
                 control_repr_head=None, control_repr_optimizer=None,
-                recon_head=None, recon_optimizer=None):
+                recon_head=None, recon_optimizer=None,
+                match_head=None, match_optimizer=None):
     device = config["device"]
     max_steps = config["max_steps"]
 
@@ -624,6 +676,10 @@ def run_episode(episode_idx, config, tectum, workspace, reentrant,
     # Perception fix: most-recent reconstruction MSE (updated every 5 steps in the
     # tectum-optimizer block, logged every step). Stays 0.0 when --enable-recon off.
     last_recon_loss = 0.0
+    # DMTS supervised match head: most-recent choice-phase cross-entropy loss and
+    # accuracy. Stay 0.0 when --enable-match-head off.
+    last_match_loss = 0.0
+    last_match_acc = 0.0
     # Gated obs_map working memory (DMTS). Fresh per episode. Captures the sample
     # obs_map at the sample onset and holds it through delay+choice so the policy
     # (--policy-input obsmem-conv) can compare the held sample to the current frame.
@@ -1069,8 +1125,44 @@ def run_episode(episode_idx, config, tectum, workspace, reentrant,
         if hasattr(env, 'action_space') and hasattr(env.action_space, 'n'):
             env_action = int(np.argmax(action[:env.action_space.n]))
 
+        # --- DMTS supervised match head ---
+        # The current decision phase and target come from the PRE-step `info` (the
+        # info that produced the current frame). target_position is the matching
+        # choice position. In acting mode the head's argmax overrides the action at
+        # the choice phase; both modes train on the choice-phase label below.
+        match_decision = None
+        match_logits = None
+        if match_head is not None and isinstance(info, dict):
+            decision_phase = info.get("phase")
+            target_pos = info.get("target_position")
+            if decision_phase == "choice" and target_pos is not None:
+                match_decision = int(target_pos)
+                if config.get("match_head_mode", "acting") != "aux":
+                    match_logits = match_head(policy_state)
+                    env_action = int(match_logits.argmax(dim=1)[0].item())
+
         next_obs, env_reward, terminated, truncated, info = env.step(env_action)
         done = terminated or truncated
+
+        # Train the match head on the choice-phase decision (both modes). acting
+        # reuses the logits already computed for the action; aux forwards the
+        # policy's shared PFC trunk (zero hidden, so the live recurrent context is
+        # untouched) so the cross-entropy gradient also shapes the policy.
+        if (match_head is not None and match_optimizer is not None
+                and match_decision is not None):
+            target_t = torch.tensor([match_decision], device=device)
+            if config.get("match_head_mode", "acting") == "aux":
+                zero_h = torch.zeros(1, action_core.context_dim, device=device)
+                pfc_state, _ = action_core.pfc(policy_state, zero_h)
+                match_logits = match_head(pfc_state)
+            m_loss = match_head.loss(match_logits, target_t)
+            match_optimizer.zero_grad()
+            m_loss.backward()
+            match_optimizer.step()
+            last_match_loss = float(m_loss.item())
+            last_match_acc = float(
+                (match_logits.argmax(dim=1) == target_t).float().mean().item()
+            )
 
         # --- Tectum + reward predictor auxiliary training ---
         # Gives gradient signal to tectum parameters so phi/sync_R can evolve.
@@ -1378,6 +1470,8 @@ def run_episode(episode_idx, config, tectum, workspace, reentrant,
                 self_pred_mse=self_pred_mse,
                 self_pred_skill=self_pred_skill,
                 recon_loss=last_recon_loss,
+                match_head_loss=last_match_loss,
+                match_head_acc=last_match_acc,
             ))
 
             # Insight detection: hash broadcast embedding for meaningful novelty signal
@@ -1702,6 +1796,21 @@ def main():
                              "stage-1 likelihood term. Default off (baseline "
                              "bit-identical). Validate by re-running the "
                              "perception-decodability probe on a --save-tectum checkpoint.")
+    parser.add_argument("--enable-match-head", action="store_true",
+                        help="DMTS supervised match head. Trains on the env's "
+                             "target_position label from the obsmem-conv input "
+                             "[current obs_map ; held sample]. Needs --env dmts "
+                             "--policy-input obsmem-conv (disabled with a warning "
+                             "otherwise). Default off (baseline bit-identical). The "
+                             "match is supervised-decodable 0.845 offline but the RL "
+                             "policy does not learn it (rssm_working_memory_2026_06_12.md).")
+    parser.add_argument("--match-head-mode", type=str, default="acting",
+                        choices=["acting", "aux"],
+                        help="acting: the head's argmax drives the choice "
+                             "(capability/pipeline ceiling test, uses the privileged "
+                             "label). aux: a linear head on the shared PFC trunk "
+                             "shapes the representation while the RL policy still "
+                             "selects the action.")
 
     args = parser.parse_args()
 
@@ -1732,7 +1841,8 @@ def main():
      holonic_system, levin_evaluator,
      self_vector_module, self_vector_optimizer,
      control_repr_head, control_repr_optimizer,
-     recon_head, recon_optimizer) = init_components(config)
+     recon_head, recon_optimizer,
+     match_head, match_optimizer) = init_components(config)
 
     if args.env == "navigation":
         from simulations.environments.navigation_env import NavigationEnv
@@ -1789,6 +1899,8 @@ def main():
             control_repr_optimizer=control_repr_optimizer,
             recon_head=recon_head,
             recon_optimizer=recon_optimizer,
+            match_head=match_head,
+            match_optimizer=match_optimizer,
         )
         global_step += ep_steps
 

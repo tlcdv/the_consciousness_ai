@@ -90,6 +90,11 @@ class StepMetrics:
     # when --enable-recon is off. A falling trajectory means the reconstruction
     # objective is training the tectum to retain stimulus identity.
     recon_loss: float = 0.0
+    # DMTS supervised match head: choice-phase cross-entropy loss and accuracy.
+    # Zero when --enable-match-head is off. acc rising toward the 0.845 offline
+    # decodability means the live in-loop pipeline supports the match.
+    match_head_loss: float = 0.0
+    match_head_acc: float = 0.0
 
 
 class ConsciousnessMetricsLogger:
@@ -159,6 +164,7 @@ class ConsciousnessMetricsLogger:
             "levin_basal_cognition",
             "self_pred_mse", "self_pred_skill",
             "recon_loss",
+            "match_head_loss", "match_head_acc",
         ])
 
     def _init_episode_csv(self):
@@ -194,6 +200,7 @@ class ConsciousnessMetricsLogger:
             f"{metrics.levin_basal_cognition:.6f}",
             f"{metrics.self_pred_mse:.6e}", f"{metrics.self_pred_skill:.6f}",
             f"{metrics.recon_loss:.6e}",
+            f"{metrics.match_head_loss:.6e}", f"{metrics.match_head_acc:.6f}",
         ])
         self._csv_file.flush()
 
@@ -234,6 +241,10 @@ class ConsciousnessMetricsLogger:
             if metrics.self_pred_mse != 0.0 or metrics.self_pred_skill != 0.0:
                 self.writer.add_scalar("self_model/self_pred_mse", metrics.self_pred_mse, step)
                 self.writer.add_scalar("self_model/self_pred_skill", metrics.self_pred_skill, step)
+            # DMTS match head: log only when active.
+            if metrics.match_head_loss != 0.0 or metrics.match_head_acc != 0.0:
+                self.writer.add_scalar("match_head/loss", metrics.match_head_loss, step)
+                self.writer.add_scalar("match_head/acc", metrics.match_head_acc, step)
 
         # Buffer for insight detection
         self._cross_episode_rewards.append(metrics.reward)
