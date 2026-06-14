@@ -206,15 +206,21 @@ class MemoryCore:
                 )]
             )
 
+        # Store on CPU: memory is storage, not compute. This keeps all stored
+        # tensors on one device (so coherence/consolidation cosine ops never mix
+        # cuda and cpu once training runs on GPU) and avoids holding VRAM. Replay
+        # moves states back to the policy device when it re-forwards them.
+        def _to_cpu(x):
+            return x.detach().cpu() if hasattr(x, "detach") else x
         self.recent_experiences.append({
             "id": self._generate_memory_id(),
-            "state": state,
-            "action": action,
+            "state": _to_cpu(state),
+            "action": _to_cpu(action),
             "emotion": emotion_values,
             "attention": attention_level,
             "reward": reward,
             "narrative": narrative,
-            "vector": memory_vector,
+            "vector": _to_cpu(memory_vector),
             "priority": priority,
         })
 
@@ -348,6 +354,10 @@ class MemoryCore:
             if next_vec.dim() == 1:
                 next_vec = next_vec.unsqueeze(0)
 
+            # Defensive: put both on the same device (stored vectors are CPU, but
+            # guard against any cuda tensor sneaking in) before the cosine op.
+            curr_vec = curr_vec.cpu()
+            next_vec = next_vec.cpu()
             sim = torch.cosine_similarity(curr_vec, next_vec).item()
             coherence_scores.append(sim)
 
