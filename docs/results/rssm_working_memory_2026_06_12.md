@@ -74,10 +74,40 @@ validated working-memory result of the arc: it uses `obs_map` (not the empty
 
 Honest scope. This validates the MECHANISM (the sample is available at the choice
 phase). It does NOT validate behavior: whether a policy fed `mem_slot` learns to
-match is an RL question, deferred (this laptop trains DMTS poorly: overnight sleep
-stalls, ~6 min/episode late on the heavy taps). The gate is also DMTS-specific (it
-keys on the fixation-vs-delay blank-length difference); a general working memory
-needs a learned gate. Unit tests: `tests/test_working_memory_latch.py`.
+match is an RL question (next). The gate is also DMTS-specific (it keys on the
+fixation-vs-delay blank-length difference); a general working memory needs a learned
+gate. Unit tests: `tests/test_working_memory_latch.py`.
+
+## Behavioral test (2026-06-14): feeding the held sample to the policy FAILED to help
+
+Wired the memory into the policy: `--policy-input obsmem-conv` stacks the current
+`obs_map` (the choices at decision) and the held `mem_slot` (the sample) as channels
+into the conv PFC, so the policy can compare them and learn to match. DMTS, seed 42,
+100 episodes, 200 max-steps, vs the broadcast control (`trials_correct` = correct
+matches, +1.0 reward each), all from disk:
+
+| arm | trials_correct (mean / first30 / last30) | reward |
+|-----|------------------------------------------:|-------:|
+| broadcast (no held sample) | 1.340 / 1.667 / 1.400 | -12.30 |
+| obsmem-conv (held sample fed to policy) | 1.190 / 1.200 / 0.900 | -25.98 |
+
+**Verdict: FAILED.** Providing the held sample to the policy did not improve matching;
+`obsmem-conv` is slightly worse than broadcast and declines over training (first-30
+1.20 -> last-30 0.90). Neither arm learns DMTS (both cap at max 3 correct out of ~4-6
+trials/episode). The `mem_slot` provably carries the sample at choice (0.88 leakage-
+free), so the information is present at the decision point; the policy simply does not
+learn the matching operation in this budget (and the larger 128-channel input slows
+the start).
+
+**What this isolates.** The working-memory INFORMATION problem is solved (the gated
+obs_map memory delivers the sample). The remaining wall is LEARNING: the agent cannot
+learn the cognitive operation (compare held sample to current choices, pick the match)
+even with the sample available. This is the cognition/RL bottleneck in its purest
+form, the right information is present and the agent still cannot learn to use it.
+The next bottleneck is the policy/learning, not perception (solved) or working-memory
+availability (solved). Single seed; the laptop trains DMTS slowly, so a longer or
+multi-seed run could differ, but the absence of any upward trend over 100 episodes
+makes a budget-only explanation unlikely.
 
 After the 2026-06-10 investigation concluded that perception is not the bottleneck
 for entering the consciousness-demanding regimes (the bottleneck is cognition:
