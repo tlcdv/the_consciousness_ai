@@ -1,5 +1,41 @@
 # RSSM working memory for DMTS (2026-06-11/12): the memory exists in h_state, but routing it to the policy FAILED to help matching
 
+> ## CORRECTION (2026-06-14): the "h_state holds the sample at 99%" claim below is WRONG (train/test leakage)
+>
+> The central probe finding in this document, that the RSSM `h_state` decodes the
+> DMTS sample at ~99% across the delay, is a TRAIN/TEST LEAKAGE ARTIFACT and is
+> retracted. The probe decoded every delay step with a random train/test split.
+> Consecutive delay frames within a trial are near-identical and share the same
+> label, so the decoder memorized trials instead of generalizing across them.
+>
+> The leakage-free re-test (one record per trial, n=240, so no two records from the
+> same trial; same `linear_decode`) shows `h_state` is at CHANCE, even when the
+> stimulus is on screen:
+>
+> | representation | shape | color | chance |
+> |----------------|------:|------:|-------:|
+> | sample obs_map (on-screen, control) | 0.972 | 1.000 | 0.167 |
+> | sample h_state | 0.208 | 0.167 | 0.167 |
+> | delay h_state  | 0.111 | 0.139 | 0.167 |
+>
+> The `obs_map` control decodes the on-screen stimulus near-perfectly with the same
+> n and method, so the test is valid; `h_state` simply does not encode the sample.
+> The (untrained) RSSM does NOT build a usable working memory of the sample.
+>
+> Consequences: (1) the `--policy-input rssm` tap FAILED (verdict below stands) and
+> the interference-protected latch (`models/self_model/working_memory_latch.py`) is
+> moot, because there was never a retained sample to route or latch. Both mechanisms
+> were built on this false premise. (2) The leakage-free finding is the one to carry
+> forward: a working-memory capability for DMTS has to be BUILT (a mechanism that
+> actually encodes and retains the sample), not merely wired, because the current
+> RSSM does not retain it. (3) The probe's per-step decode of any recurrent/temporally
+> correlated state is leakage-prone; decode one record per trial (or group-by-trial
+> splits) for recurrent states. The on-screen `obs_map`/`tectum_content` findings in
+> the perception docs are NOT affected (those are current-frame encodings, and the
+> `obs_map` control here reconfirms `obs_map` is genuinely decodable).
+>
+> The original (leakage-inflated) write-up is kept below verbatim for the record.
+
 After the 2026-06-10 investigation concluded that perception is not the bottleneck
 for entering the consciousness-demanding regimes (the bottleneck is cognition:
 working memory and rule inference, `obs_map_routing_2026_06_10.md`), this is the

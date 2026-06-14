@@ -56,6 +56,7 @@ from scripts.training.train_rlhf import (
 )
 from simulations.environments.dmts_env import DMTSEnv
 from simulations.environments.wcst_env import WCSTEnv
+from models.self_model.working_memory_latch import WorkingMemoryLatch
 
 
 # --------------------------------------------------------------------------- #
@@ -276,12 +277,17 @@ def collect_dmts(episodes, seed, include_broadcast, mock_semantic, load_tectum=N
     using_dino = bool(getattr(tectum.retinotopic_encoder, "using_dino", False))
 
     env = DMTSEnv(num_trials=20)
+    # Interference-protected latch: captures h_state while the frame is blank and
+    # freezes it when a stimulus is present. Tests whether the latched state still
+    # carries the sample at the choice phase, where raw h_state is overwritten.
+    latch = WorkingMemoryLatch()
     records = []
     with torch.no_grad():
         for ep in range(episodes):
             obs, info = env.reset(seed=seed + ep)
             if hasattr(tectum, "reset_state"):
                 tectum.reset_state(1)
+            latch.reset()
             done = False
             steps = 0
             while not done and steps < 4000:
@@ -289,6 +295,9 @@ def collect_dmts(episodes, seed, include_broadcast, mock_semantic, load_tectum=N
                 frame = frame_to_tensor(obs, config["device"])
                 audio = torch.zeros(1, config["tectum_feature_dim"], 2, device=config["device"])
                 tectum_content, vision_bid = tectum(frame, audio)
+                # Advance the latch every step (it must see fixation/delay blanks to
+                # capture, and choice stimuli to freeze), regardless of phase.
+                latched = latch.update(tectum.h_state, frame)
 
                 if phase in ("sample", "delay", "choice"):
                     rec = {
@@ -304,6 +313,9 @@ def collect_dmts(episodes, seed, include_broadcast, mock_semantic, load_tectum=N
                         # in the RSSM. (z_state, the per-cell categorical latent, is
                         # 262144-D and omitted; h is the global recurrent store.)
                         "h_state": tectum.h_state.reshape(-1).cpu().numpy().astype(np.float64),
+                        # Interference-protected latched state: should still carry the
+                        # sample at the choice phase, where raw h_state does not.
+                        "latched_h": latched.reshape(-1).cpu().numpy().astype(np.float64),
                         "labels": {
                             "shape": info["sample_shape"],
                             "color": info["sample_color"],
@@ -378,7 +390,15 @@ def collect_wcst(episodes, seed, include_broadcast, mock_semantic, load_tectum=N
 # --------------------------------------------------------------------------- #
 # Reporting
 # --------------------------------------------------------------------------- #
-_STAGES = ["pixels", "obs_map", "tectum_content", "broadcast", "h_state"]
+# WARNING (2026-06-14): the recurrent stages here (h_state, latched_h) are decoded
+# per-step with a random train/test split, which LEAKS for temporally-correlated
+# states: consecutive delay frames within a trial are near-identical and share a
+# label, so the decoder memorizes trials. The delay-phase h_state "99%" reported on
+# 2026-06-12 was such an artifact; a leakage-free one-record-per-trial decode puts
+# h_state at chance (docs/results/rssm_working_memory_2026_06_12.md CORRECTION).
+# For recurrent states, decode one record per trial or use group-by-trial splits.
+# The current-frame stages (pixels, obs_map, tectum_content) are not affected.
+_STAGES = ["pixels", "obs_map", "tectum_content", "broadcast", "h_state", "latched_h"]
 
 
 def _evaluate(records, group, label_keys, seed):
