@@ -15,6 +15,7 @@ import argparse
 import os
 import sys
 
+import numpy as np
 import torch
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
@@ -101,6 +102,43 @@ def test_aux_match_head_learns_separable_mapping():
     labels = torch.randint(0, 5, (128,))
     acc = (head(batch(labels)).argmax(1) == labels).float().mean().item()
     assert acc > 0.6, f"aux head failed to learn separable mapping (acc={acc:.3f}, chance=0.2)"
+
+
+# ── Batched training (replay buffer) ─────────────────────────────────────────
+
+def test_match_head_buffer_remember_and_cap():
+    head = MatchHead(SPATIAL, num_actions=5, buffer_cap=10)
+    for i in range(15):
+        head.remember(torch.randn(1, 128 * 16 * 16), i % 5)
+    assert len(head.buffer_states) == 10  # capped
+    assert len(head.buffer_targets) == 10
+    assert head.buffer_targets[-1] == 14 % 5  # most recent kept
+
+
+def test_train_on_buffer_returns_none_when_too_small():
+    head = MatchHead(SPATIAL, num_actions=5)
+    opt = torch.optim.Adam(head.parameters(), lr=1e-3)
+    head.remember(torch.randn(1, 128 * 16 * 16), 1)
+    assert head.train_on_buffer(opt, batch_size=8, min_buffer=8) is None
+
+
+def test_train_on_buffer_learns_separable_mapping():
+    """Batched training over the buffer decodes a separable mapping above chance,
+    which the single-sample path is meant to fix."""
+    torch.manual_seed(0)
+    np.random.seed(0)
+    head = MatchHead(SPATIAL, num_actions=5)
+    opt = torch.optim.Adam(head.parameters(), lr=1e-3)
+    labels = torch.randint(0, 5, (200,))
+    states = _separable_spatial_batch(labels)
+    for i in range(200):
+        head.remember(states[i:i + 1], int(labels[i]))
+    acc = 0.0
+    for _ in range(150):
+        out = head.train_on_buffer(opt, batch_size=64, n_steps=1)
+        if out is not None:
+            acc = out[1]
+    assert acc > 0.6, f"batched buffer training failed to learn (acc={acc:.3f}, chance=0.2)"
 
 
 # ── Wiring: default-off and gated to dmts + obsmem-conv ───────────────────────

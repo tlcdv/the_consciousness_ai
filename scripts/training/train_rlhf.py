@@ -269,6 +269,14 @@ def build_config(args):
         "enable_match_head": getattr(args, "enable_match_head", False),
         "match_head_mode": getattr(args, "match_head_mode", "acting"),
         "match_head_lr": 1e-3,
+        # Batched head training (acting mode): accumulate choice records in a replay
+        # buffer and train with mini-batches every match_head_train_every steps,
+        # instead of one single-sample SGD step per choice. Tests the 2026-06-15
+        # leading hypothesis that the head failed at chance due to sparse online
+        # training, not signal absence. Default off (single-sample, prior behavior).
+        "match_head_batched": getattr(args, "match_head_batched", False),
+        "match_head_batch_size": 64,
+        "match_head_train_every": 10,
     }
 
 
@@ -1130,6 +1138,8 @@ def run_episode(episode_idx, config, tectum, workspace, reentrant,
         # info that produced the current frame). target_position is the matching
         # choice position. In acting mode the head's argmax overrides the action at
         # the choice phase; both modes train on the choice-phase label below.
+        _mh_mode = config.get("match_head_mode", "acting")
+        _mh_batched = (_mh_mode != "aux") and config.get("match_head_batched", False)
         match_decision = None
         match_logits = None
         if match_head is not None and isinstance(info, dict):
@@ -1137,21 +1147,26 @@ def run_episode(episode_idx, config, tectum, workspace, reentrant,
             target_pos = info.get("target_position")
             if decision_phase == "choice" and target_pos is not None:
                 match_decision = int(target_pos)
-                if config.get("match_head_mode", "acting") != "aux":
+                if _mh_mode != "aux":
                     match_logits = match_head(policy_state)
                     env_action = int(match_logits.argmax(dim=1)[0].item())
+                    if _mh_batched:
+                        # Store the choice record; training happens on schedule.
+                        match_head.remember(policy_state, match_decision)
 
         next_obs, env_reward, terminated, truncated, info = env.step(env_action)
         done = terminated or truncated
 
-        # Train the match head on the choice-phase decision (both modes). acting
-        # reuses the logits already computed for the action; aux forwards the
+        # Single-sample training on this choice decision. Runs for aux mode and for
+        # online acting; the batched acting path trains from the replay buffer below
+        # instead (one SGD step per choice was too sparse, 2026-06-15 FAILED).
+        # acting reuses the logits already computed for the action; aux forwards the
         # policy's shared PFC trunk (zero hidden, so the live recurrent context is
         # untouched) so the cross-entropy gradient also shapes the policy.
         if (match_head is not None and match_optimizer is not None
-                and match_decision is not None):
+                and match_decision is not None and not _mh_batched):
             target_t = torch.tensor([match_decision], device=device)
-            if config.get("match_head_mode", "acting") == "aux":
+            if _mh_mode == "aux":
                 zero_h = torch.zeros(1, action_core.context_dim, device=device)
                 pfc_state, _ = action_core.pfc(policy_state, zero_h)
                 match_logits = match_head(pfc_state)
@@ -1163,6 +1178,17 @@ def run_episode(episode_idx, config, tectum, workspace, reentrant,
             last_match_acc = float(
                 (match_logits.argmax(dim=1) == target_t).float().mean().item()
             )
+
+        # Batched acting head: train on mini-batches from the choice-record buffer.
+        if (match_head is not None and match_optimizer is not None and _mh_batched
+                and step % config.get("match_head_train_every", 10) == 0):
+            stats = match_head.train_on_buffer(
+                match_optimizer,
+                batch_size=config.get("match_head_batch_size", 64),
+                n_steps=1,
+            )
+            if stats is not None:
+                last_match_loss, last_match_acc = stats
 
         # --- Tectum + reward predictor auxiliary training ---
         # Gives gradient signal to tectum parameters so phi/sync_R can evolve.
@@ -1811,6 +1837,13 @@ def main():
                              "label). aux: a linear head on the shared PFC trunk "
                              "shapes the representation while the RL policy still "
                              "selects the action.")
+    parser.add_argument("--match-head-batched", action="store_true",
+                        help="acting mode only: accumulate choice records in a replay "
+                             "buffer and train the head with mini-batches every N "
+                             "steps, instead of one single-sample SGD step per choice. "
+                             "Tests whether the 2026-06-15 chance-level failure was "
+                             "sparse online training rather than signal absence "
+                             "(offline decode was 0.845). Default off.")
 
     args = parser.parse_args()
 

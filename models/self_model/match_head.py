@@ -33,6 +33,7 @@ compare the two spatial maps to find which choice position matches the sample.
 """
 from __future__ import annotations
 
+import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -47,7 +48,7 @@ class MatchHead(nn.Module):
     """
 
     def __init__(self, spatial_shape: tuple[int, int, int], num_actions: int,
-                 hidden: int = 32):
+                 hidden: int = 32, buffer_cap: int = 4000):
         super().__init__()
         c, h, w = spatial_shape
         self.spatial_shape = spatial_shape
@@ -59,6 +60,47 @@ class MatchHead(nn.Module):
             nn.AdaptiveAvgPool2d(4), nn.Flatten(),
             nn.Linear(16 * 4 * 4, num_actions),
         )
+        # Choice-record replay buffer (batched mode). The 2026-06-15 single-sample
+        # online head failed at chance because it got ~1 SGD step per choice (~240
+        # total, no batching). The buffer accumulates (state, target) per choice so
+        # the head can be trained with mini-batches, mirroring the offline classifier
+        # that decoded the match at 0.845.
+        self.buffer_states: list[torch.Tensor] = []
+        self.buffer_targets: list[int] = []
+        self.buffer_cap = buffer_cap
+
+    def remember(self, state: torch.Tensor, target: int) -> None:
+        """Store one choice record (detached state, integer target position)."""
+        self.buffer_states.append(state.detach())
+        self.buffer_targets.append(int(target))
+        if len(self.buffer_states) > self.buffer_cap:
+            self.buffer_states.pop(0)
+            self.buffer_targets.pop(0)
+
+    def train_on_buffer(self, optimizer, batch_size: int = 64, n_steps: int = 1,
+                        min_buffer: int = 8):
+        """Train the head with mini-batches sampled (with replacement) from the
+        choice-record buffer. Returns (loss, acc) of the last batch, or None if the
+        buffer is too small to start. acc here is the batch decode accuracy, the
+        clean signal the carried-forward per-step proxy could not give."""
+        n = len(self.buffer_states)
+        if n < min_buffer:
+            return None
+        device = self.buffer_states[0].device
+        last_loss = 0.0
+        last_acc = 0.0
+        for _ in range(n_steps):
+            idx = np.random.randint(0, n, size=batch_size)
+            states = torch.cat([self.buffer_states[i] for i in idx], dim=0)
+            targets = torch.tensor([self.buffer_targets[i] for i in idx], device=device)
+            logits = self(states)
+            loss = self.loss(logits, targets)
+            optimizer.zero_grad()
+            loss.backward()
+            optimizer.step()
+            last_loss = float(loss.item())
+            last_acc = float((logits.argmax(1) == targets).float().mean().item())
+        return last_loss, last_acc
 
     def forward(self, state: torch.Tensor) -> torch.Tensor:
         """state: [B, C*H*W] (flattened policy_state) or [B, C, H, W]. -> logits."""
