@@ -278,6 +278,7 @@ def build_config(args):
         "match_head_batch_size": 64,
         "match_head_train_every": 10,
         "capture_choice_records": getattr(args, "capture_choice_records", None),
+        "freeze_tectum": getattr(args, "freeze_tectum", False),
     }
 
 
@@ -1211,7 +1212,11 @@ def run_episode(episode_idx, config, tectum, workspace, reentrant,
         # Gives gradient signal to tectum parameters so phi/sync_R can evolve.
         # Reward prediction loss backprops through tectum_content into the
         # retinotopic encoder, RSSM, and capsule parameters.
-        if tectum_optimizer is not None and reward_predictor is not None and step % 5 == 0:
+        # Diagnostic (--freeze-tectum): skip all tectum-encoder training so the
+        # obs_map stays at its initialization. Isolates whether the reward-MSE +
+        # TDANN objectives degrade the in-loop match signal (2026-06-15 diagnosis).
+        if (tectum_optimizer is not None and reward_predictor is not None
+                and step % 5 == 0 and not config.get("freeze_tectum", False)):
             pred_reward = reward_predictor(tectum_content)
             reward_target = torch.tensor([[env_reward]], device=device)
             pred_loss = torch.nn.functional.mse_loss(pred_reward, reward_target)
@@ -1866,6 +1871,11 @@ def main():
                              "[obs;mem] + target_position per trial to this .npz path, "
                              "for offline decode (scripts/analysis/decode_choice_records.py). "
                              "Default off (no capture, no behavior change).")
+    parser.add_argument("--freeze-tectum", action="store_true",
+                        help="Diagnostic: skip all tectum-encoder training (reward-MSE + "
+                             "TDANN + control/recon), freezing the obs_map at init. "
+                             "Isolates whether tectum training degrades the in-loop match "
+                             "signal vs the trained run. Default off.")
 
     args = parser.parse_args()
 

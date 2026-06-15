@@ -224,3 +224,54 @@ it, neither of which holds. This connects to the project's standing finding that
 perception/tectum is trained by objectives (reward-MSE + TDANN) that are not aligned
 with preserving task-relevant identity (2026-06-09/10 perception-collapse and
 reconstruction results).
+
+---
+
+## Update 2026-06-16: in-loop degradation ISOLATED to tectum training
+
+Ran the controlled A/B. `--freeze-tectum` (new flag) skips all tectum-encoder
+training (reward-MSE + TDANN + control/recon), freezing the obs_map at init.
+Captured a frozen-tectum run with the SAME seed (0), pipeline, and acting policy as
+the trained-tectum capture, so the only difference is whether the tectum trains.
+Decoded with the same protocol. All numbers from disk.
+
+| records (seed 0 for in-loop) | n | PCA-80+MLP | conv MatchHead |
+|------------------------------|--:|-----------:|---------------:|
+| probe (untrained, scripted) | 280 | 0.738 | 0.56 |
+| **frozen-tectum in-loop** (untrained, acting, full pipeline) | 234 | **0.746** | 0.535 |
+| trained-tectum in-loop (trained, acting, full pipeline) | 239 | **0.458** | 0.625 |
+
+chance ~0.50-0.52.
+
+**Result: the in-loop degradation is caused by TECTUM TRAINING.** The controlled
+pair frozen (0.746) vs trained (0.458), same seed / pipeline / policy, differs only
+in whether the tectum encoder trains, and the match decodability drops by ~0.29. The
+frozen-tectum in-loop (0.746) reproduces the probe (0.738), which also rules OUT the
+pipeline and the `ObsMapSampleMemory` latch as causes (a frozen full pipeline matches
+the tectum-only probe). The reward-MSE + TDANN objectives that train the retinotopic
+encoder corrupt the obs_map's match-relevant content; this is the same misalignment
+seen in the 2026-06-09/10 perception-collapse and reconstruction results, now shown
+to actively DESTROY a task signal that the untrained encoder preserves.
+
+Honest scope: single seed (0), but a clean within-seed controlled A/B with a large
+effect (0.29, far outside the n~70 test-set noise). A 3-seed confirmation should
+precede any default change. The conv head remains inadequate independently (0.535 on
+the clean frozen records where PCA+MLP gets 0.746).
+
+### The fix is now concrete (gated, FAILED-first, >= 3 seeds)
+
+Both bottlenecks have actionable fixes:
+1. **Signal**: read the match from a NON-trained obs_map. Either run the match
+   pathway with `--freeze-tectum`, or stop-grad the obsmem tap, or replace the
+   tectum training objective with one that preserves stimulus identity (active
+   inference / identity-preserving reconstruction). The cheapest test is
+   `--freeze-tectum`, which restores the 0.746 signal in-loop.
+2. **Decoder**: replace the conv MatchHead (local conv + AdaptiveAvgPool, which
+   cannot express the non-local sample-vs-choice comparison and gets chance even on
+   clean records) with a GLOBAL head (flatten + MLP, like the PCA+MLP that decodes
+   at 0.74).
+
+Predicted capability test: `--freeze-tectum` + a flatten-MLP match head should drive
+behavioral trials_correct toward ~0.74 x trials (vs the ~chance 1.5 of every prior
+config), finally demonstrating in-loop DMTS matching. Only after that does the
+mission-aligned PPO fix become worth pursuing.
