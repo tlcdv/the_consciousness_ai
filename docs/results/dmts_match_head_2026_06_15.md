@@ -93,3 +93,64 @@ confirm the action-override path works end to end (it reliably drives a selectio
 at the choice phase). What it did NOT do is match correctly: it is at chance. The
 negative result is robust across 3 seeds (acting std 0.05). The "why" items are
 hypotheses to test, not established causes.
+
+---
+
+## Update 2026-06-15: batched-head retry also FAILED
+
+Tested the leading "training sparsity" hypothesis directly. Added a choice-record
+replay buffer + mini-batch training (`--match-head-batched`, commit `c0e36a8`):
+the acting head stores `(policy_state, target_position)` at every choice and trains
+on mini-batches (64) every 10 steps instead of one single-sample SGD step per
+choice. 3 seeds, DMTS, 80 ep x 200 steps (`runs/mhb/`, gitignored). num_choices=2.
+
+| metric | single-sample acting | **batched acting** | baseline |
+|--------|---------------------:|-------------------:|---------:|
+| trials_correct (mean +/- std) | 1.43 +/- 0.05 | **1.50 +/- 0.05** | 0.39 +/- 0.29 |
+| first-20 / last-20 | 1.45 / 1.48 | 1.52 / 1.60 | 0.52 / 0.47 |
+| behavioral acc (trials_correct / ~3.4) | ~0.42 | **~0.44 (chance)** | - |
+| head train/buffer acc (late) | ~0.47 | **0.697** | - |
+| reward | -34.38 | -34.27 | -35.87 |
+
+**Verdict: FAILED (3 seeds).** Batching did NOT make the head match correctly. The
+behavioral metric `trials_correct` is 1.50 +/- 0.05, flat across training, ~chance
+(0.44), and statistically the same as the single-sample head (1.43). The lift over
+baseline is still the "always commits to a selection" artifact, not matching.
+
+**The informative number: train accuracy plateaus at 0.70 while behavioral stays
+at chance (0.44).** Two things follow. (1) The head does not generalize the
+comparison to new trials (0.70 train vs 0.44 behavioral). (2) More telling, it
+cannot even FIT the buffer cleanly (0.70, not ~1.0). A high-capacity conv that
+plateaus at 0.70 on ~250 records suggests the buffer's `[obs;mem] -> target`
+mapping is partly inconsistent, i.e. the live held sample is not reliably the
+sample. This leans toward the **in-loop latch fidelity** explanation over pure
+overfitting or training sparsity.
+
+This RETRACTS the 2026-06-15 leading hypothesis ("sparse online training"): with
+proper batched training the head still fails, so sparsity was not the cause.
+
+### Honest correction to an earlier in-session claim
+
+A 6-episode smoke reported 0.956 "accuracy", read at the time as encouraging. That
+was the training/buffer accuracy on a tiny (~20-record) buffer that is trivially
+memorized, not generalization. Over a real 80-episode run the train accuracy
+settles to 0.70 and the behavioral accuracy is chance. The smoke number was
+misleading and is corrected here.
+
+### Decisive next diagnostic (gated, FAILED-first)
+
+The offline probe got 0.845 (PCA-80 + MLP, held-out, one-per-trial). The in-loop
+head gets ~0.44 behavioral and cannot fit the buffer past 0.70. To separate "the
+head architecture/optimization is the problem" from "the in-loop signal is
+degraded", **decode the captured in-loop choice records offline with the exact
+PCA-80 + MLP protocol**:
+- log the live `[obs;mem]` + `target_position` at each choice during a short run,
+  then fit/test the offline classifier on those records (one per trial, leakage-free).
+- If offline-on-in-loop-records reaches ~0.845, the signal is clean and the conv
+  head is the bottleneck (use a PCA-bottleneck / MLP head, add regularization).
+- If it is ~chance, the live `ObsMapSampleMemory` latch is degraded in-loop
+  (fix the latch, not the head). The 0.70 train-accuracy plateau predicts this.
+
+The mission-aligned PPO fix remains gated behind a successful head-capability
+result, which has NOT been achieved in either the single-sample or batched
+configuration.
