@@ -277,6 +277,7 @@ def build_config(args):
         "match_head_batched": getattr(args, "match_head_batched", False),
         "match_head_batch_size": 64,
         "match_head_train_every": 10,
+        "capture_choice_records": getattr(args, "capture_choice_records", None),
     }
 
 
@@ -688,6 +689,9 @@ def run_episode(episode_idx, config, tectum, workspace, reentrant,
     # accuracy. Stay 0.0 when --enable-match-head off.
     last_match_loss = 0.0
     last_match_acc = 0.0
+    # Diagnostic capture (--capture-choice-records): phase of the previous step so
+    # we log exactly one record (the first choice frame) per trial.
+    _cap_prev_phase = None
     # Gated obs_map working memory (DMTS). Fresh per episode. Captures the sample
     # obs_map at the sample onset and holds it through delay+choice so the policy
     # (--policy-input obsmem-conv) can compare the held sample to the current frame.
@@ -981,6 +985,19 @@ def run_episode(episode_idx, config, tectum, workspace, reentrant,
             policy_state = torch.cat([cur, held], dim=1)
         else:
             policy_state = broadcast
+
+        # --- Diagnostic: capture the first choice-frame [obs;mem] + target per trial ---
+        # Logs the live training-loop policy_state (obsmem-conv) at the moment the
+        # agent must match, for offline decode (PCA-80+MLP vs the conv head) to
+        # separate "conv head is the bottleneck" from "in-loop latch degraded".
+        # One record per trial (first choice frame), independent of the policy.
+        if (config.get("capture_choice_records") and config.get("policy_input") == "obsmem-conv"
+                and isinstance(info, dict) and info.get("phase") == "choice"
+                and _cap_prev_phase != "choice" and info.get("target_position") is not None):
+            config["_cap_X"].append(policy_state.detach().cpu().numpy().ravel().astype("float32"))
+            config["_cap_y"].append(int(info["target_position"]))
+        if isinstance(info, dict):
+            _cap_prev_phase = info.get("phase")
 
         # --- Self-vector loop (Phase 5 deliverable 1): SPR-style self-prediction ---
         # Build the agent's first-order feature vector, encode it to a self_vector,
@@ -1844,6 +1861,11 @@ def main():
                              "Tests whether the 2026-06-15 chance-level failure was "
                              "sparse online training rather than signal absence "
                              "(offline decode was 0.845). Default off.")
+    parser.add_argument("--capture-choice-records", type=str, default=None,
+                        help="Diagnostic (obsmem-conv only): log the first choice-frame "
+                             "[obs;mem] + target_position per trial to this .npz path, "
+                             "for offline decode (scripts/analysis/decode_choice_records.py). "
+                             "Default off (no capture, no behavior change).")
 
     args = parser.parse_args()
 
@@ -1854,6 +1876,11 @@ def main():
     config = build_config(args)
     device = config["device"]
     logger.info(f"Device: {device}")
+
+    # Diagnostic choice-record capture buffers (saved at end of training).
+    if config.get("capture_choice_records"):
+        config["_cap_X"] = []
+        config["_cap_y"] = []
 
     # Override action dim for discrete environments BEFORE init_components
     # so ActionSelectionCore is built with the correct output dimension
@@ -1996,6 +2023,16 @@ def main():
             os.makedirs(save_dir, exist_ok=True)
         torch.save(tectum.state_dict(), args.save_tectum)
         logger.info(f"Saved trained tectum state_dict to {args.save_tectum}")
+
+    if config.get("capture_choice_records") and config.get("_cap_X"):
+        cap_path = config["capture_choice_records"]
+        cap_dir = os.path.dirname(cap_path)
+        if cap_dir:
+            os.makedirs(cap_dir, exist_ok=True)
+        np.savez(cap_path,
+                 X=np.array(config["_cap_X"], dtype=np.float32),
+                 y=np.array(config["_cap_y"], dtype=np.int64))
+        logger.info(f"Saved {len(config['_cap_y'])} choice records to {cap_path}")
 
     metrics_logger.close()
     env.close()

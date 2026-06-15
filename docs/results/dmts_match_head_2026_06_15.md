@@ -154,3 +154,73 @@ PCA-80 + MLP protocol**:
 The mission-aligned PPO fix remains gated behind a successful head-capability
 result, which has NOT been achieved in either the single-sample or batched
 configuration.
+
+---
+
+## Update 2026-06-15: decisive offline decode (two compounding bottlenecks)
+
+Ran the decisive diagnostic: captured the live training-loop obsmem-conv
+policy_state `[current obs_map ; held sample]` + `target_position` at the first
+choice frame of each trial (`train_rlhf.py --capture-choice-records`, 80 ep acting,
+n=239, balanced), and decoded it offline two ways. Reproduced the prior "0.845"
+under PROBE conditions (untrained components, scripted policy) with a new committed
+script `scripts/analysis/probe_match_decode.py` (n=280, balanced) so probe-vs-in-loop
+is apples-to-apples (same decoder, `scripts/analysis/decode_choice_records.py`).
+
+| records | PCA-80 + MLP | PCA-80 + linear | conv MatchHead (offline, 200-300 ep) |
+|---------|-------------:|----------------:|-------------------------------------:|
+| **probe** (untrained, scripted), n=280 | **0.738** | 0.512 | train 0.582 / best-test 0.560 |
+| **in-loop** (trained, acting), n=239 | **0.458** | 0.431 | train 0.737 / best-test 0.625 |
+
+chance = 0.50-0.51. The conv "best-test" is the max over epochs (optimistic; with
+~72-84 test samples it is within noise of chance).
+
+### Two findings, both FAILED-first
+
+1. **The in-loop signal is degraded.** Probe `[obs;mem]` decodes the match at
+   0.738 (PCA+MLP), reproducing the prior ~0.845 qualitatively. The LIVE
+   training-loop `[obs;mem]` decodes at **0.458 = chance**. So the representation
+   the head actually sees at the decision does NOT carry the match. This is the
+   primary reason every in-loop head (single-sample, batched) failed.
+
+2. **The conv head is the wrong decoder.** Even on the CLEAN probe records, where
+   PCA+MLP reaches 0.738, the conv `MatchHead` gets 0.56 = chance. The match is a
+   non-local comparison (the held sample sits at the sample's spatial location; the
+   choices sit at the choice locations), and a local conv with `AdaptiveAvgPool`
+   cannot express "compare the sample to each choice region". The global PCA+MLP
+   can. So the conv architecture would fail even if the in-loop signal were clean.
+
+### What this corrects
+
+The prior "the representation supports the match (0.845)"
+(`rssm_working_memory_2026_06_12.md`, Final localization) holds ONLY under probe
+conditions (untrained components, scripted policy). It does NOT transfer to the live
+training loop, where the match is at chance. The 0.845 was an uncommitted
+probe-condition number; `probe_match_decode.py` makes a reproducible version (0.738)
+and `decode_choice_records.py` shows it does not hold in-loop.
+
+### Not isolated
+
+The cause of the in-loop degradation (0.738 probe -> 0.458 in-loop) is NOT pinned.
+An early-vs-late split of the in-loop records (first half vs second half, capture =
+episode order) was inconclusive: 0.528 vs 0.583, each within noise (n~36 test). So a
+"trained-tectum-degrades-it-over-episodes" story is NOT supported. Candidates left
+open: trained tectum (vs untrained probe), RSSM-state interaction, or a
+latch/timing difference in-loop. To isolate: capture in-loop records with a
+frozen/loaded tectum and with the latch instrumented, and decode each.
+
+### Next (gated, FAILED-first)
+
+The match-head approach is blocked by BOTH a degraded in-loop signal and an
+inadequate conv decoder. A productive path must fix the signal first (the decoder is
+moot if the in-loop `[obs;mem]` is at chance):
+1. Isolate the in-loop degradation (frozen-tectum capture + latch instrumentation),
+   then fix whichever stage destroys the match content.
+2. Only then, replace the conv head with a global comparison head (flatten+MLP, or a
+   sample-vs-choice correlation/attention head) that can express the non-local match.
+
+The PPO fix remains gated behind a clean in-loop signal AND a head that can decode
+it, neither of which holds. This connects to the project's standing finding that the
+perception/tectum is trained by objectives (reward-MSE + TDANN) that are not aligned
+with preserving task-relevant identity (2026-06-09/10 perception-collapse and
+reconstruction results).
