@@ -50,10 +50,24 @@ class RSSMReconstructionHead(nn.Module):
     """
 
     def __init__(self, rssm_channels: int, grid: int = 16,
-                 reduce_channels: int = 32, hidden_dim: int = 256):
+                 reduce_channels: int = 32, hidden_dim: int = 256,
+                 target_mode: str = "frame", feature_dim: int | None = None):
         super().__init__()
         self.grid = grid
-        self.target_dim = 3 * grid * grid
+        self.target_mode = target_mode
+        if target_mode == "obs_map":
+            # Reconstruct the dense, identity-rich obs_map feature map (decodes
+            # identity at ~1.0), the DINO-WM-style "predict the content map" target
+            # without needing a frozen DINOv2. A dense target resists the
+            # average-collapse that a sparse pixel target invites. obs_map is a raw
+            # post-GELU feature map (not in [0, 1]), so the output is linear.
+            if feature_dim is None:
+                raise ValueError("target_mode='obs_map' requires feature_dim")
+            self.target_dim = feature_dim * grid * grid
+            out_activation: nn.Module = nn.Identity()
+        else:  # frame (default): downsampled RGB, in [0, 1]
+            self.target_dim = 3 * grid * grid
+            out_activation = nn.Sigmoid()
         self.reduce = nn.Conv2d(rssm_channels, reduce_channels, kernel_size=1)
         self.net = nn.Sequential(
             nn.Flatten(),
@@ -61,7 +75,7 @@ class RSSMReconstructionHead(nn.Module):
             nn.LayerNorm(hidden_dim),
             nn.GELU(),
             nn.Linear(hidden_dim, self.target_dim),
-            nn.Sigmoid(),  # frame features are in [0, 1]
+            out_activation,
         )
 
     def reconstruct(self, state_tensor: torch.Tensor) -> torch.Tensor:
@@ -71,24 +85,35 @@ class RSSMReconstructionHead(nn.Module):
         reduced = self.reduce(state_tensor)
         return self.net(reduced)
 
-    def loss(self, state_tensor: torch.Tensor, frame: torch.Tensor,
+    def loss(self, state_tensor: torch.Tensor, target_source: torch.Tensor,
              foreground: bool = True) -> torch.Tensor:
-        """Reconstruction error between the prediction from the RSSM latent and the
-        downsampled current frame (stop-grad target).
+        """Reconstruction error between the prediction from the RSSM latent and a
+        stop-grad target derived from target_source.
 
         Gradient flows into state_tensor (and thus into the RSSM: posterior/prior nets,
         the ConvGRU, and back through obs_map into the encoder), forcing the latent to
-        retain the current stimulus. The target frame is detached so the loss trains the
-        RSSM representation, not the pixels.
+        retain the current stimulus. The target is detached so the loss trains the RSSM
+        representation, not the target.
 
-        foreground=True (default): per-element weighted MSE, weights proportional to each
-        element's deviation from the frame's mean, so the sparse stimulus dominates over
-        the trivial black background. Naive MSE (foreground=False) was verified to FAIL on
-        sparse DMTS frames (the loss is minimized by rebuilding black), so foreground is
-        the default here, matching TectumReconstructionHead.
+        target_mode='frame' (default): target_source is the raw RGB frame; the target is
+        the downsampled frame in [0, 1]. foreground=True (per-element weighted MSE,
+        weights proportional to deviation from the mean) is the default, so the sparse
+        stimulus dominates the trivial black background (naive MSE was verified to FAIL on
+        sparse DMTS frames).
+
+        target_mode='obs_map': target_source is the obs_map feature map
+        [B, feature_dim, grid, grid]; the target is its flattened, detached values. This
+        is a DENSE, identity-rich target (obs_map decodes identity at ~1.0), so plain MSE
+        is used (no sparse-background problem) and foreground is ignored.
         """
         pred = self.reconstruct(state_tensor)
-        target = obs_features(frame, grid=self.grid).detach()
+        if self.target_mode == "obs_map":
+            tgt = target_source
+            if tgt.dim() == 3:
+                tgt = tgt.unsqueeze(0)
+            target = tgt.reshape(tgt.shape[0], -1).detach()
+            return F.mse_loss(pred, target)
+        target = obs_features(target_source, grid=self.grid).detach()
         if target.dim() == 1:
             target = target.unsqueeze(0)
         if not foreground:

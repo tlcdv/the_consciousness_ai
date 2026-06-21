@@ -99,6 +99,55 @@ class TestRSSMReconstructionHead(unittest.TestCase):
         last = float(h.loss(latent, frame).item())
         self.assertLess(last, first)
 
+    # --- obs_map target mode (dense identity-rich feature-map target) ---
+
+    def _obs_head(self, rssm_channels=16, grid=8, feature_dim=12):
+        torch.manual_seed(0)
+        return RSSMReconstructionHead(rssm_channels, grid=grid, reduce_channels=8,
+                                      hidden_dim=32, target_mode="obs_map",
+                                      feature_dim=feature_dim)
+
+    def test_obs_map_mode_shape_and_linear_output(self):
+        """obs_map target: output dim = feature_dim*grid*grid, linear (obs_map is a raw
+        post-GELU feature map, not bounded to [0, 1])."""
+        h = self._obs_head(rssm_channels=16, grid=8, feature_dim=12)
+        out = h.reconstruct(torch.randn(2, 16, 8, 8))
+        self.assertEqual(out.shape, (2, 12 * 8 * 8))
+        # Linear output can leave [0, 1]; a sigmoid head could not represent obs_map.
+        self.assertFalse((out >= 0.0).all() and (out <= 1.0).all())
+
+    def test_obs_map_requires_feature_dim(self):
+        with self.assertRaises(ValueError):
+            RSSMReconstructionHead(16, grid=8, target_mode="obs_map", feature_dim=None)
+
+    def test_obs_map_loss_gradient_reaches_latent_and_target_stopgrad(self):
+        h = self._obs_head(rssm_channels=16, grid=8, feature_dim=12)
+        latent = torch.randn(1, 16, 8, 8, requires_grad=True)
+        obs_map = torch.randn(1, 12, 8, 8, requires_grad=True)  # raw feature map
+        loss = h.loss(latent, obs_map)
+        self.assertTrue(torch.isfinite(loss))
+        loss.backward()
+        self.assertIsNotNone(latent.grad)
+        self.assertGreater(float(latent.grad.abs().sum()), 0.0)
+        self.assertIsNone(obs_map.grad)  # target is stop-grad
+
+    def test_obs_map_latent_can_reduce_loss(self):
+        """Value test: moving the latent toward a fixed obs_map lowers the loss."""
+        h = self._obs_head(rssm_channels=16, grid=8, feature_dim=12)
+        for p in h.parameters():
+            p.requires_grad_(False)
+        obs_map = torch.randn(1, 12, 8, 8)
+        latent = torch.randn(1, 16, 8, 8, requires_grad=True)
+        opt = torch.optim.Adam([latent], lr=5e-2)
+        first = float(h.loss(latent, obs_map).item())
+        for _ in range(200):
+            opt.zero_grad()
+            loss = h.loss(latent, obs_map)
+            loss.backward()
+            opt.step()
+        last = float(h.loss(latent, obs_map).item())
+        self.assertLess(last, first)
+
 
 if __name__ == "__main__":
     unittest.main()

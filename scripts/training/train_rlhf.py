@@ -266,8 +266,13 @@ def build_config(args):
         # bit-identical). Validate by re-running the collapse-locus probe on a
         # --save-tectum checkpoint: z_state/h_state should decode identity above chance.
         "enable_wm_recon": getattr(args, "enable_wm_recon", False),
+        # target: "frame" (downsampled RGB, R1-pixels, FAILED 2026-06-21) or "obs_map"
+        # (the dense identity-rich obs_map feature map; DINO-WM-style content-map target
+        # without a frozen DINOv2; resists the average-collapse a sparse pixel target
+        # invites). Default "frame" keeps the original wm-recon behavior bit-identical.
         "wm_recon": {"weight": 1.0, "grid": 16, "reduce_channels": 32,
-                     "hidden_dim": 256, "lr": 1e-3, "foreground": True},
+                     "hidden_dim": 256, "lr": 1e-3, "foreground": True,
+                     "target": getattr(args, "wm_recon_target", "frame")},
         # DMTS supervised match head. Teaches the matching operation from the env's
         # target_position label on the obsmem-conv input. Two modes: 'acting' (the
         # head's argmax drives the choice; capability/pipeline ceiling test, uses
@@ -591,19 +596,27 @@ def init_components(config):
     if config.get("enable_wm_recon", False):
         wr_cfg = config.get("wm_recon", {})
         rssm_channels = tectum.feature_dim + tectum.rssm.categories * tectum.rssm.classes
+        wr_target = wr_cfg.get("target", "frame")
+        # obs_map target must reconstruct the full obs_map grid, so its grid is fixed
+        # to the tectum grid; the frame target downsamples to wr_cfg grid.
+        wr_grid = tectum.grid_size if wr_target == "obs_map" else wr_cfg.get("grid", 16)
         wm_recon_head = RSSMReconstructionHead(
             rssm_channels=rssm_channels,
-            grid=wr_cfg.get("grid", 16),
+            grid=wr_grid,
             reduce_channels=wr_cfg.get("reduce_channels", 32),
             hidden_dim=wr_cfg.get("hidden_dim", 256),
+            target_mode=wr_target,
+            feature_dim=tectum.feature_dim,
         ).to(device)
         wm_recon_optimizer = torch.optim.Adam(
             wm_recon_head.parameters(), lr=wr_cfg.get("lr", 1e-3)
         )
+        _tgt_desc = ("the dense obs_map feature map" if wr_target == "obs_map"
+                     else "the downsampled frame")
         logger.info(
             f"World-model reconstruction (R1) enabled "
-            f"(weight={wr_cfg.get('weight', 1.0)}, grid={wr_cfg.get('grid', 16)}, "
-            f"reconstructing the frame from the RSSM latent cat([h_t, z_flat]))"
+            f"(weight={wr_cfg.get('weight', 1.0)}, target={wr_target}, grid={wr_grid}, "
+            f"reconstructing {_tgt_desc} from the RSSM latent cat([h_t, z_flat]))"
         )
 
     # DMTS supervised match head. Only meaningful on the obsmem-conv tap (it reads
@@ -1303,9 +1316,16 @@ def run_episode(episode_idx, config, tectum, workspace, reentrant,
             if wm_recon_head is not None:
                 wr_cfg = config.get("wm_recon", {})
                 state_latent = getattr(tectum, "_last_state_tensor", None)
-                if state_latent is not None:
+                # target='obs_map' reconstructs the dense identity-rich obs_map feature
+                # map (stop-grad inside the head); target='frame' reconstructs the
+                # downsampled RGB frame. Both source the prediction from the RSSM latent.
+                if wr_cfg.get("target", "frame") == "obs_map":
+                    wm_target_source = getattr(tectum, "_last_obs_map", None)
+                else:
+                    wm_target_source = frame_tensor
+                if state_latent is not None and wm_target_source is not None:
                     wm_recon_loss = wr_cfg.get("weight", 1.0) * wm_recon_head.loss(
-                        state_latent, frame_tensor,
+                        state_latent, wm_target_source,
                         foreground=wr_cfg.get("foreground", True))
                     last_recon_loss = float(wm_recon_loss.item())
 
@@ -1916,6 +1936,15 @@ def main():
                              "bit-identical). Validate by re-running the collapse-locus "
                              "probe on a --save-tectum checkpoint: z_state/h_state should "
                              "decode identity above chance.")
+    parser.add_argument("--wm-recon-target", type=str, default="frame",
+                        choices=["frame", "obs_map"],
+                        help="R1 reconstruction target for --enable-wm-recon. 'frame' "
+                             "(default) reconstructs the downsampled RGB frame (R1-pixels, "
+                             "FAILED 2026-06-21, average-collapse on sparse stimuli). "
+                             "'obs_map' reconstructs the dense identity-rich obs_map "
+                             "feature map (the DINO-WM-style content-map target without a "
+                             "frozen DINOv2), which resists average-collapse. Tests "
+                             "whether the pixel target was the reason R1-pixels failed.")
     parser.add_argument("--enable-match-head", action="store_true",
                         help="DMTS supervised match head. Trains on the env's "
                              "target_position label from the obsmem-conv input "
