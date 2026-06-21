@@ -56,9 +56,9 @@ def pca_mlp_decode(X, y, seed: int = 0, test_size: float = 0.3, npca: int = 80):
     return clf.score(Xte, yte), chance
 
 
-def collect(episodes: int, seed: int):
+def collect(episodes: int, seed: int, load_tectum: str | None = None):
     cfg, tectum, *_ = _build_components("dmts", action_dim=5, seed=seed,
-                                        mock_semantic=False)
+                                        mock_semantic=False, load_tectum=load_tectum)
     env = DMTSEnv(num_trials=20)
     taps = {"obs_map": [], "z_state": [], "capsule_poses": [], "tectum_content": []}
     ys = {"shape": [], "color": []}
@@ -100,9 +100,16 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--episodes", type=int, default=14)
     ap.add_argument("--seed", type=int, default=42)
+    ap.add_argument("--load-tectum", type=str, default=None,
+                    help="Load a trained tectum state_dict (from train_rlhf "
+                         "--save-tectum) before probing, to measure the TRAINED "
+                         "RSSM/pipeline instead of the untrained init. Default None "
+                         "keeps the original untrained-probe behavior bit-identical.")
     args = ap.parse_args()
 
-    taps, ys = collect(args.episodes, args.seed)
+    mode = f"TRAINED tectum ({args.load_tectum})" if args.load_tectum else "UNTRAINED init"
+    print(f"collapse-locus probe mode: {mode}")
+    taps, ys = collect(args.episodes, args.seed, args.load_tectum)
     n = len(ys["shape"])
     print(f"LEAKAGE-FREE collapse-locus decode, n={n} trials (one record per trial)")
     print(f"pipeline order: obs_map -> z_state -> capsule_poses -> tectum_content\n")

@@ -74,3 +74,10 @@ Probe the TRAINED RSSM `z_state`: load a trained tectum into the probe (or add
 reward-only objective is confirmed as the cause and the world-model ELBO is the fix. If
 the trained `z_state` recovers identity, the loss was an untrained artifact and the
 picture changes. Single cheap run, gated, FAILED-first, before any R1 build.
+
+**DONE 2026-06-21: CONFIRMED.** The `--load-tectum` arg was added and the probe re-run
+on a plain DMTS 100-ep seed-42 trained tectum. Trained `z_state` stays at chance and
+trained `obs_map` stays at ~1.0, within noise of the untrained arm at every stage. The
+identity loss at the RSSM is not an untrained artifact; the reward-only RSSM objective
+is confirmed as the locus. Full A/B table and caveats:
+`docs/results/collapse_locus_trained_2026_06_21.md`.
