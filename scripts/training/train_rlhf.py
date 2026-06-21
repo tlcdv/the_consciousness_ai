@@ -37,6 +37,7 @@ from models.self_model.standard_actor_critic import StandardActorCritic
 from models.self_model.dqn_policy import DQNPolicy
 from models.core.control_representation import ControlRepresentationHead, obs_features
 from models.core.tectum_reconstruction import TectumReconstructionHead
+from models.core.rssm_reconstruction import RSSMReconstructionHead
 from models.self_model.self_representation_core import SelfRepresentationCore, SelfVectorModule
 from models.self_model.working_memory_latch import ObsMapSampleMemory
 from models.self_model.match_head import MatchHead, AuxMatchHead
@@ -256,6 +257,17 @@ def build_config(args):
         # to FAIL on sparse DMTS frames (recon_loss minimized by rebuilding black).
         "recon": {"weight": 1.0, "grid": 16, "hidden_dim": 256, "lr": 1e-3,
                   "foreground": True},
+        # R1 (active-inference stage 1): reconstruct the current frame from the
+        # pre-capsule RSSM latent cat([h_t, z_flat]) instead of from tectum_content.
+        # The collapse-locus probe (confirmed on a trained tectum 2026-06-21) shows
+        # stimulus identity dies at the RSSM step (obs_map ~1.0, z_state at chance),
+        # UPSTREAM of tectum_content, so the 2026-06-10 recon from tectum_content could
+        # not help. This sources the reconstruction at the locus. Default off (baseline
+        # bit-identical). Validate by re-running the collapse-locus probe on a
+        # --save-tectum checkpoint: z_state/h_state should decode identity above chance.
+        "enable_wm_recon": getattr(args, "enable_wm_recon", False),
+        "wm_recon": {"weight": 1.0, "grid": 16, "reduce_channels": 32,
+                     "hidden_dim": 256, "lr": 1e-3, "foreground": True},
         # DMTS supervised match head. Teaches the matching operation from the env's
         # target_position label on the obsmem-conv input. Two modes: 'acting' (the
         # head's argmax drives the choice; capability/pipeline ceiling test, uses
@@ -570,6 +582,30 @@ def init_components(config):
             f"current-frame autoencoding pressure on tectum_content)"
         )
 
+    # R1 (active-inference stage 1): world-model reconstruction head sourced from the
+    # pre-capsule RSSM latent (the collapse locus), not from tectum_content. Trained on
+    # the tectum_optimizer path alongside the reward predictor. Default off (baseline
+    # bit-identical).
+    wm_recon_head = None
+    wm_recon_optimizer = None
+    if config.get("enable_wm_recon", False):
+        wr_cfg = config.get("wm_recon", {})
+        rssm_channels = tectum.feature_dim + tectum.rssm.categories * tectum.rssm.classes
+        wm_recon_head = RSSMReconstructionHead(
+            rssm_channels=rssm_channels,
+            grid=wr_cfg.get("grid", 16),
+            reduce_channels=wr_cfg.get("reduce_channels", 32),
+            hidden_dim=wr_cfg.get("hidden_dim", 256),
+        ).to(device)
+        wm_recon_optimizer = torch.optim.Adam(
+            wm_recon_head.parameters(), lr=wr_cfg.get("lr", 1e-3)
+        )
+        logger.info(
+            f"World-model reconstruction (R1) enabled "
+            f"(weight={wr_cfg.get('weight', 1.0)}, grid={wr_cfg.get('grid', 16)}, "
+            f"reconstructing the frame from the RSSM latent cat([h_t, z_flat]))"
+        )
+
     # DMTS supervised match head. Only meaningful on the obsmem-conv tap (it reads
     # [current obs_map ; held sample]) and the DMTS env (it trains on the env's
     # target_position label). Disabled with a warning anywhere else. Default off
@@ -614,7 +650,8 @@ def init_components(config):
             self_vector_module, self_vector_optimizer,
             control_repr_head, control_repr_optimizer,
             recon_head, recon_optimizer,
-            match_head, match_optimizer)
+            match_head, match_optimizer,
+            wm_recon_head, wm_recon_optimizer)
 
 
 def frame_to_tensor(frame: np.ndarray, device: str) -> torch.Tensor:
@@ -670,7 +707,8 @@ def run_episode(episode_idx, config, tectum, workspace, reentrant,
                 self_vector_module=None, self_vector_optimizer=None,
                 control_repr_head=None, control_repr_optimizer=None,
                 recon_head=None, recon_optimizer=None,
-                match_head=None, match_optimizer=None):
+                match_head=None, match_optimizer=None,
+                wm_recon_head=None, wm_recon_optimizer=None):
     device = config["device"]
     max_steps = config["max_steps"]
 
@@ -1254,7 +1292,25 @@ def run_episode(episode_idx, config, tectum, workspace, reentrant,
                     foreground=rc_cfg.get("foreground", True))
                 last_recon_loss = float(recon_loss.item())
 
-            total_tectum_loss = pred_loss + topo_loss + control_loss + recon_loss
+            # R1 world-model reconstruction: rebuild the CURRENT frame from the
+            # pre-capsule RSSM latent cat([h_t, z_flat]) (the collapse locus), forcing
+            # the RSSM latent to preserve stimulus identity. Gradient flows into the
+            # RSSM (posterior/prior nets, ConvGRU) and back through obs_map into the
+            # encoder. Sourcing at the latent is the key difference from the FAILED
+            # 2026-06-10 recon from tectum_content (post-collapse). Reuses the
+            # last_recon_loss log slot (wm-recon and content-recon are not run together).
+            wm_recon_loss = torch.tensor(0.0, device=device)
+            if wm_recon_head is not None:
+                wr_cfg = config.get("wm_recon", {})
+                state_latent = getattr(tectum, "_last_state_tensor", None)
+                if state_latent is not None:
+                    wm_recon_loss = wr_cfg.get("weight", 1.0) * wm_recon_head.loss(
+                        state_latent, frame_tensor,
+                        foreground=wr_cfg.get("foreground", True))
+                    last_recon_loss = float(wm_recon_loss.item())
+
+            total_tectum_loss = (pred_loss + topo_loss + control_loss
+                                 + recon_loss + wm_recon_loss)
 
             tectum_optimizer.zero_grad()
             reward_optimizer.zero_grad()
@@ -1262,6 +1318,8 @@ def run_episode(episode_idx, config, tectum, workspace, reentrant,
                 control_repr_optimizer.zero_grad()
             if recon_optimizer is not None:
                 recon_optimizer.zero_grad()
+            if wm_recon_optimizer is not None:
+                wm_recon_optimizer.zero_grad()
             total_tectum_loss.backward(retain_graph=True)
             tectum_optimizer.step()
             reward_optimizer.step()
@@ -1269,6 +1327,8 @@ def run_episode(episode_idx, config, tectum, workspace, reentrant,
                 control_repr_optimizer.step()
             if recon_optimizer is not None:
                 recon_optimizer.step()
+            if wm_recon_optimizer is not None:
+                wm_recon_optimizer.step()
             # Force-detach recurrent state immediately after the optimizer
             # mutates tectum parameters in-place. Without this, a later
             # backward call through the BPTT-retained graph would reference
@@ -1844,6 +1904,18 @@ def main():
                              "stage-1 likelihood term. Default off (baseline "
                              "bit-identical). Validate by re-running the "
                              "perception-decodability probe on a --save-tectum checkpoint.")
+    parser.add_argument("--enable-wm-recon", action="store_true",
+                        help="R1 (active-inference stage 1): reconstruct the current "
+                             "(downsampled) frame from the PRE-CAPSULE RSSM latent "
+                             "cat([h_t, z_flat]), forcing the RSSM latent to preserve "
+                             "stimulus identity. The collapse-locus probe (confirmed on "
+                             "a trained tectum 2026-06-21) shows identity dies at the "
+                             "RSSM step, upstream of tectum_content, so the 2026-06-10 "
+                             "recon from tectum_content could not help; this sources the "
+                             "reconstruction at the locus. Default off (baseline "
+                             "bit-identical). Validate by re-running the collapse-locus "
+                             "probe on a --save-tectum checkpoint: z_state/h_state should "
+                             "decode identity above chance.")
     parser.add_argument("--enable-match-head", action="store_true",
                         help="DMTS supervised match head. Trains on the env's "
                              "target_position label from the obsmem-conv input "
@@ -1912,7 +1984,8 @@ def main():
      self_vector_module, self_vector_optimizer,
      control_repr_head, control_repr_optimizer,
      recon_head, recon_optimizer,
-     match_head, match_optimizer) = init_components(config)
+     match_head, match_optimizer,
+     wm_recon_head, wm_recon_optimizer) = init_components(config)
 
     if args.env == "navigation":
         from simulations.environments.navigation_env import NavigationEnv
@@ -1971,6 +2044,8 @@ def main():
             recon_optimizer=recon_optimizer,
             match_head=match_head,
             match_optimizer=match_optimizer,
+            wm_recon_head=wm_recon_head,
+            wm_recon_optimizer=wm_recon_optimizer,
         )
         global_step += ep_steps
 

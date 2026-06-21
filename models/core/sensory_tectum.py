@@ -368,6 +368,13 @@ class SensoryTectum(nn.Module):
         # 4. Extract content via capsule composition
         z_flat = z_t.view(B, -1, self.grid_size, self.grid_size)
         state_tensor = torch.cat([h_t, z_flat], dim=1)  # [B, C, H, W]
+        # Cache the grad-bearing pre-capsule RSSM latent (h_t + z_t) for the optional
+        # world-model reconstruction objective (R1, --enable-wm-recon). This is the
+        # exact tensor the collapse-locus probe shows loses stimulus identity; the
+        # recon head reconstructs the frame from it to force the latent to keep
+        # identity. Unconditional cache mirrors _last_obs_map (used by TDANN); when
+        # wm-recon is off it is simply unused, so the baseline stays bit-identical.
+        self._last_state_tensor = state_tensor
 
         workspace_content, capsule_activities, capsule_poses = self.capsule_layer(state_tensor)
 

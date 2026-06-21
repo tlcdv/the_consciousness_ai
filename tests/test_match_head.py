@@ -179,17 +179,27 @@ def _heads(components):
     return [c for c in components if isinstance(c, (MatchHead, AuxMatchHead))]
 
 
+def _match_optimizer(components):
+    """Locate the match optimizer position-independently: it is the tuple element
+    immediately following the match head. Returns None when no head was built.
+    Robust to future additions to the init_components return tuple."""
+    for i, c in enumerate(components):
+        if isinstance(c, (MatchHead, AuxMatchHead)):
+            return components[i + 1]
+    return None
+
+
 def test_match_head_disabled_by_default():
     components = init_components(_config())
     assert _heads(components) == []
-    assert components[-1] is None  # match_optimizer
+    assert _match_optimizer(components) is None  # no head, no match optimizer
 
 
 def test_match_head_acting_enabled_dmts_obsmem():
     components = init_components(_config(enable_match_head=True, match_head_mode="acting"))
     heads = _heads(components)
     assert len(heads) == 1 and isinstance(heads[0], MatchHead)
-    assert components[-1] is not None  # match_optimizer present
+    assert _match_optimizer(components) is not None  # match optimizer present
 
 
 def test_match_head_aux_enabled_uses_aux_head():
@@ -204,7 +214,7 @@ def test_match_head_disabled_when_not_obsmem_conv():
         _config(enable_match_head=True, policy_input="broadcast")
     )
     assert _heads(components) == []
-    assert components[-1] is None
+    assert _match_optimizer(components) is None
 
 
 def test_match_head_disabled_when_not_dmts():
@@ -213,4 +223,4 @@ def test_match_head_disabled_when_not_dmts():
         _config(enable_match_head=True, env="dark_room", policy_input="obsmem-conv")
     )
     assert _heads(components) == []
-    assert components[-1] is None
+    assert _match_optimizer(components) is None
