@@ -114,3 +114,12 @@ not at the encoder) holds cleanly in both trained and untrained conditions.
   untrained.
 
 Decision (R1 vs R2) is the user's call, with this confirmed table in hand.
+
+**UPDATE 2026-06-21: R1-pixels was BUILT and FAILED.** The user chose to proceed with
+R1. A reconstruction objective on the RSSM latent (--enable-wm-recon, commit 3f34294,
+reconstruct the frame from cat([h_t, z_flat])) was built, trained (recon_loss fell ~15x),
+and re-probed. It did NOT make z_state / capsule_poses / tectum_content decode identity:
+all stay at chance, indistinguishable from the reward-only arm. Reconstruction pressure
+at the locus does not put identity into the discrete RSSM latent. Full verdict +
+hypotheses (reconstruction != identity, the discrete categorical latent, pixel-vs-DINO
+target): `docs/results/collapse_locus_wmrecon_2026_06_21.md`.
