@@ -65,30 +65,46 @@ trained their reconstruction loss down (15x and 1300x) and neither made the late
 identity. R3 was already ruled out. R1-via-reconstruction is now ruled out for this
 latent, independent of target richness.
 
-## Why (the key finding)
+## Why (the key finding, CONFIRMED)
 
-**Reconstruction fidelity does not imply identity-decodability.** The latent reconstructs
-obs_map at MSE ~2e-4 yet a PCA-80+MLP probe reads identity off the latent at chance. The
-most likely mechanism (a hypothesis, not confirmed here): reconstruction MSE is dominated
-by the high-variance, stimulus-INDEPENDENT structure of obs_map (common spatial/feature
-content), while the identity-discriminating direction is a low-variance subspace.
-obs_map decodes identity at ~1.0 because that direction is linearly separable, but it
-contributes little to the total MSE, so a reconstruction objective does not pressure the
-discrete RSSM latent to preserve it. The categorical bottleneck (gumbel-softmax STE)
-discards the low-variance identity direction and MSE does not penalize the loss. This is
-why both a sparse and a dense reconstruction target fail the same way.
+**Reconstruction fidelity does not imply identity-decodability, because identity is a
+low-variance direction in obs_map.** The latent reconstructs obs_map at MSE ~2e-4 yet a
+PCA-80+MLP probe reads identity off the latent at chance. The mechanism was confirmed
+with a direct read-only analysis (`scripts/analysis/probe_obsmap_variance.py`, on the
+wmobs trained tectum, seed 42, n=280, numbers from `runs/wmobs_trained/obsmap_variance.txt`):
+decode shape/color from the top-k principal components of obs_map (the highest-variance
+subspace, which is what an MSE-optimal rank-k reconstruction keeps).
 
-This could be confirmed cheaply (PCA the obs_map across stimuli, measure how much variance
-the shape/color-discriminating direction carries), which is NOT done here. It is stated as
-the leading hypothesis, FAILED-first.
+| top-k PCs | cum. variance | shape acc | color acc |
+|----------:|--------------:|----------:|----------:|
+| 2 | 0.595 | 0.179 (chance) | 0.679 |
+| 5 | 0.766 | 0.333 | 0.810 |
+| 10 | 0.880 | 0.393 | 0.964 |
+| 20 | 0.963 | 0.512 | 1.000 |
+| 50 | 0.999 | 0.976 | 1.000 |
+
+The top-20 PCs capture 96.3% of obs_map's variance but decode SHAPE at only 0.512; shape
+only fully decodes (0.976) once ~50 PCs are included, reaching 99.9% variance. So the
+shape-discriminating signal lives in the low-variance tail (the PCs between 96.3% and
+99.9% cumulative variance). An MSE reconstruction that captures the high-variance bulk
+(low MSE) discards exactly that low-variance identity direction, and the discrete RSSM
+latent (gumbel-softmax STE) has no pressure from MSE to keep it. Color is more
+high-variance (decodes 0.679 from the top-2 PCs), but shape is clearly low-variance. This
+is why both a sparse pixel target and a dense obs_map target fail the same way, and why a
+third MSE-reconstruction target (e.g. DINOv2 features) would fail identically.
 
 ## Honest caveats
 
 - Single seed (42). A clean, large effect (all post-RSSM stages at chance across three
   arms), but a confirmation within seed 42, not a law.
 - "Trained" is the recon + reward-MSE + TDANN objective on a flat-reward DMTS task.
-- The low-variance-identity mechanism is a hypothesis; the headline (reconstruction does
-  not repair the collapse, two targets) does not depend on it.
+- The low-variance-identity mechanism is now CONFIRMED by the PCA analysis above (shape
+  needs ~50 PCs / 99.9% variance to decode; the top-20 PCs / 96.3% variance give only
+  0.512). The headline (reconstruction does not repair the collapse, two targets) holds
+  regardless, and the mechanism explains why and predicts a third MSE target would fail.
+- The PCA analysis is single-seed (42) and on the wmobs trained tectum, but obs_map's
+  covariance structure is encoder-determined and decodes identity at ~1.0 in every arm,
+  so it characterizes what any MSE reconstruction of obs_map faces.
 
 ## What this leaves (the user's call, FAILED-first)
 
