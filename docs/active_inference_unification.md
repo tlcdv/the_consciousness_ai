@@ -44,7 +44,11 @@ action as one objective: minimize (expected) free energy.
   between the generative world model and observations. The RSSM in `SensoryTectum`
   already optimizes a DreamerV3-style ELBO; this is variational free energy in all
   but name. The front-end (retinotopic encoder + fusion) would be trained as part of
-  that generative objective, not by a separate ad-hoc reward-MSE.
+  that generative objective, not by a separate ad-hoc reward-MSE. See also
+  [generative_world_models_perception.md](generative_world_models_perception.md) for the
+  reconstruction-target choice: predicting frozen DINOv2 patch features (DINO-WM) is an
+  identity-preserving alternative to pixel-level ELBO, and the tectum already encodes with
+  DINOv2.
 - **Action = expected free energy (EFE)**, which decomposes into:
   - **pragmatic value** - reach preferred observations (a *prior over outcomes*, where
     reward enters as a preference, not as the learning signal); and
