@@ -66,6 +66,14 @@ class GlobalWorkspace:
         self.ignition_threshold = config.get("ignition_threshold", 0.6)
         self.ignition_gain = config.get("ignition_gain", 10.0) # Steepness of sigmoid
         self.reverberation_alpha = config.get("reverberation_alpha", 0.7) # Decay rate
+        # Salience baseline for SELECTIVE ignition. GNW ignition should fire when the
+        # input salience rises ABOVE the recent baseline, not whenever an absolute
+        # constant is crossed. Without this, the AKOrN-boosted bids sit above the fixed
+        # ignition_threshold almost every step, the sigmoid saturates, and the sticky
+        # reverberation keeps current_strength above threshold forever, so is_conscious
+        # is always True (consciousness_ratio == 1.0, a non-discriminating signal).
+        self.baseline_alpha = config.get("ignition_baseline_alpha", 0.95)
+        self._energy_baseline = None
         self.max_history = config.get("max_history", 100)
 
         # Broadcast assembly mode (Phase A of the 2026-05-17 Phi-1 retest plan).
@@ -253,23 +261,33 @@ class GlobalWorkspace:
 
         # 3. Calculate Input Energy (Max Bound Bid)
         input_energy = max(bound_bids.values()) if bound_bids else 0.0
-        
-        # 4. Non-linear Ignition (Sigmoid)
-        # S(x) = 1 / (1 + e^(-k(x - theta)))
-        # Phase transition from subconscious (low) to conscious (high)
-        ignition_val = 1.0 / (1.0 + np.exp(-self.ignition_gain * (input_energy - self.ignition_threshold)))
-        
-        # 5. Reverberation (Recurrence)
-        # New State = Alpha * Old State + (1-Alpha) * New Input
-        # This gives the workspace "memory" (Working Memory)
+
+        # 3b. Update the salience baseline (EMA of input energy).
+        if self._energy_baseline is None:
+            self._energy_baseline = input_energy
+        else:
+            self._energy_baseline = (self.baseline_alpha * self._energy_baseline
+                                     + (1.0 - self.baseline_alpha) * input_energy)
+
+        # 4. Non-linear Ignition (Sigmoid on SALIENCE = energy above baseline).
+        # Centering on the running baseline makes ignition SELECTIVE: only
+        # above-baseline (more-salient-than-usual) moments ignite, so the
+        # consciousness signal discriminates instead of saturating to always-on.
+        salience = input_energy - self._energy_baseline
+        ignition_val = 1.0 / (1.0 + np.exp(-self.ignition_gain * salience))
+
+        # 5. Reverberation (Recurrence): working-memory persistence of ignition.
         current_strength = (self.reverberation_alpha * self.state.broadcast_strength) + \
                            ((1.0 - self.reverberation_alpha) * ignition_val)
-        
+
         self.state.broadcast_strength = current_strength
         self.state.competition_results = bound_bids
-        
-        # 6. Determine Consciousness (Threshold Check on Reverberated State)
-        self.state.is_conscious = current_strength >= self.ignition_threshold
+
+        # 6. Determine Consciousness: this moment is conscious when its salience
+        # exceeds the recent baseline (ignition_val >= 0.5 <=> input_energy >=
+        # baseline). Selective by construction, unlike the old absolute-threshold
+        # check on the reverberated state that saturated to always-True.
+        self.state.is_conscious = bool(ignition_val >= 0.5)
         
         # 7. Select Winners (If Conscious)
         winners = []
