@@ -38,6 +38,7 @@ from models.self_model.dqn_policy import DQNPolicy
 from models.core.control_representation import ControlRepresentationHead, obs_features
 from models.core.tectum_reconstruction import TectumReconstructionHead
 from models.core.rssm_reconstruction import RSSMReconstructionHead
+from models.core.world_model_objective import WorldModelObjective
 from models.self_model.self_representation_core import SelfRepresentationCore, SelfVectorModule
 from models.self_model.working_memory_latch import ObsMapSampleMemory
 from models.self_model.match_head import MatchHead, AuxMatchHead
@@ -273,6 +274,13 @@ def build_config(args):
         "wm_recon": {"weight": 1.0, "grid": 16, "reduce_channels": 32,
                      "hidden_dim": 256, "lr": 1e-3, "foreground": True,
                      "target": getattr(args, "wm_recon_target", "frame")},
+        # Stage 1 value-equivalent world model (--enable-wm-predict): predict reward +
+        # continue from the RSSM latent and train the prior/posterior KL as a loss, with
+        # per-trial BPTT through the delay. No decoder. Default off (bit-identical).
+        "enable_wm_predict": getattr(args, "enable_wm_predict", False),
+        "wm_predict": {"beta": getattr(args, "wm_predict_beta", 1.0),
+                       "free_bits": getattr(args, "wm_predict_free_bits", 1.0),
+                       "hidden_dim": 256, "lr": 1e-3, "max_buffer": 64},
         # DMTS supervised match head. Teaches the matching operation from the env's
         # target_position label on the obsmem-conv input. Two modes: 'acting' (the
         # head's argmax drives the choice; capability/pipeline ceiling test, uses
@@ -619,6 +627,30 @@ def init_components(config):
             f"reconstructing {_tgt_desc} from the RSSM latent cat([h_t, z_flat]))"
         )
 
+    # Stage 1 (model-based path): value-equivalent world-model objective on the RSSM
+    # latent. Predicts reward + continue from the latent and trains the prior/posterior
+    # KL as a loss; NO decoder (avoids the reconstruction-discards-identity failure).
+    # Trained per trial with BPTT through the delay (see run_episode). Default off
+    # (baseline bit-identical).
+    wm_predict_head = None
+    wm_predict_optimizer = None
+    if config.get("enable_wm_predict", False):
+        wp_cfg = config.get("wm_predict", {})
+        latent_channels = tectum.feature_dim + tectum.rssm.categories * tectum.rssm.classes
+        wm_predict_head = WorldModelObjective(
+            latent_channels=latent_channels,
+            grid=tectum.grid_size,
+            hidden_dim=wp_cfg.get("hidden_dim", 256),
+        ).to(device)
+        wm_predict_optimizer = torch.optim.Adam(
+            wm_predict_head.parameters(), lr=wp_cfg.get("lr", 1e-3)
+        )
+        logger.info(
+            f"Value-equivalent world model (Stage 1) enabled "
+            f"(beta={wp_cfg.get('beta', 1.0)}, free_bits={wp_cfg.get('free_bits', 1.0)}, "
+            f"reward+continue+KL on the RSSM latent, per-trial BPTT, no decoder)"
+        )
+
     # DMTS supervised match head. Only meaningful on the obsmem-conv tap (it reads
     # [current obs_map ; held sample]) and the DMTS env (it trains on the env's
     # target_position label). Disabled with a warning anywhere else. Default off
@@ -664,7 +696,8 @@ def init_components(config):
             control_repr_head, control_repr_optimizer,
             recon_head, recon_optimizer,
             match_head, match_optimizer,
-            wm_recon_head, wm_recon_optimizer)
+            wm_recon_head, wm_recon_optimizer,
+            wm_predict_head, wm_predict_optimizer)
 
 
 def frame_to_tensor(frame: np.ndarray, device: str) -> torch.Tensor:
@@ -721,7 +754,8 @@ def run_episode(episode_idx, config, tectum, workspace, reentrant,
                 control_repr_head=None, control_repr_optimizer=None,
                 recon_head=None, recon_optimizer=None,
                 match_head=None, match_optimizer=None,
-                wm_recon_head=None, wm_recon_optimizer=None):
+                wm_recon_head=None, wm_recon_optimizer=None,
+                wm_predict_head=None, wm_predict_optimizer=None):
     device = config["device"]
     max_steps = config["max_steps"]
 
@@ -791,6 +825,13 @@ def run_episode(episode_idx, config, tectum, workspace, reentrant,
     # it does not need to be carried.
     last_phi = 0.0
 
+    # Stage 1 value-equivalent world model: per-trial buffer of grad-bearing RSSM
+    # latents + KL logits + outcomes for BPTT through the delay. wm_prev_action is the
+    # previous action (one-hot) that conditions the RSSM forward; stays None when off.
+    wm_buffer = []
+    wm_prev_action = None
+    wm_action_dim = config["action_selection"]["action_dim"]
+
     for step in range(max_steps):
         global_step = global_step_offset + step
         frame_tensor = frame_to_tensor(obs, device)
@@ -813,7 +854,7 @@ def run_episode(episode_idx, config, tectum, workspace, reentrant,
             audio_bid_raw = 0.0
             audio_spatial = torch.zeros(1, config["tectum_feature_dim"], 2, device=device)
 
-        tectum_content, vision_bid = tectum(frame_tensor, audio_spatial)
+        tectum_content, vision_bid = tectum(frame_tensor, audio_spatial, action=wm_prev_action)
 
         # Stage 1: reflex emotion (pre-workspace, drives affective bid modulation)
         # Uses prev_env_reward (actual env reward, not shaped) for reward delta
@@ -1223,8 +1264,61 @@ def run_episode(episode_idx, config, tectum, workspace, reentrant,
                         # Store the choice record; training happens on schedule.
                         match_head.remember(policy_state, match_decision)
 
+        wm_phase_at_action = info.get("phase") if isinstance(info, dict) else None
         next_obs, env_reward, terminated, truncated, info = env.step(env_action)
         done = terminated or truncated
+
+        # Stage 1 value-equivalent world model: buffer this step's grad-bearing RSSM
+        # latent + KL logits + outcome. At the trial boundary (a choice was just made)
+        # or episode end, train with ONE BPTT-through-the-delay backward so the
+        # choice-phase reward gradient reaches the sample step. The single-step tectum
+        # optimizer block below is skipped when this is on (the WM objective replaces it).
+        if wm_predict_head is not None and wm_predict_optimizer is not None:
+            wm_buffer.append((
+                tectum._last_state_tensor,
+                tectum._last_prior_logits,
+                tectum._last_post_logits,
+                float(env_reward),
+                0.0 if done else 1.0,
+            ))
+            oh = torch.zeros(1, wm_action_dim, device=device)
+            try:
+                ai = int(env_action)
+            except (TypeError, ValueError):
+                ai = 0
+            if 0 <= ai < wm_action_dim:
+                oh[0, ai] = 1.0
+            wm_prev_action = oh
+            wp_cfg = config.get("wm_predict", {})
+            flush = (done or wm_phase_at_action == "choice"
+                     or len(wm_buffer) >= wp_cfg.get("max_buffer", 120))
+            if flush and len(wm_buffer) > 0:
+                beta = wp_cfg.get("beta", 1.0)
+                fb = wp_cfg.get("free_bits", 1.0)
+                wm_loss = 0.0
+                for (lat, pr, po, rew, nd) in wm_buffer:
+                    rew_t = torch.tensor([[rew]], device=device)
+                    nd_t = torch.tensor([[nd]], device=device)
+                    wm_loss = wm_loss + (
+                        wm_predict_head.kl_loss(pr, po, beta=beta, free_bits=fb)
+                        + wm_predict_head.reward_loss(lat, rew_t)
+                        + wm_predict_head.continue_loss(lat, nd_t)
+                    )
+                wm_loss = wm_loss / len(wm_buffer)
+                tectum_optimizer.zero_grad()
+                wm_predict_optimizer.zero_grad()
+                wm_loss.backward()
+                torch.nn.utils.clip_grad_norm_(tectum.parameters(), 10.0)
+                tectum_optimizer.step()
+                wm_predict_optimizer.step()
+                last_recon_loss = float(wm_loss.item())  # logged via the recon_loss column
+                # Detach the recurrent state to close the BPTT graph at the trial boundary.
+                if tectum.h_state is not None:
+                    tectum.h_state = tectum.h_state.detach()
+                if tectum.z_state is not None:
+                    tectum.z_state = tectum.z_state.detach()
+                tectum._steps_since_detach = 0
+                wm_buffer = []
 
         # Single-sample training on this choice decision. Runs for aux mode and for
         # online acting; the batched acting path trains from the replay buffer below
@@ -1267,7 +1361,8 @@ def run_episode(episode_idx, config, tectum, workspace, reentrant,
         # obs_map stays at its initialization. Isolates whether the reward-MSE +
         # TDANN objectives degrade the in-loop match signal (2026-06-15 diagnosis).
         if (tectum_optimizer is not None and reward_predictor is not None
-                and step % 5 == 0 and not config.get("freeze_tectum", False)):
+                and step % 5 == 0 and not config.get("freeze_tectum", False)
+                and not config.get("enable_wm_predict", False)):
             pred_reward = reward_predictor(tectum_content)
             reward_target = torch.tensor([[env_reward]], device=device)
             pred_loss = torch.nn.functional.mse_loss(pred_reward, reward_target)
@@ -1935,6 +2030,22 @@ def main():
                              "bit-identical). Validate by re-running the collapse-locus "
                              "probe on a --save-tectum checkpoint: z_state/h_state should "
                              "decode identity above chance.")
+    parser.add_argument("--enable-wm-predict", action="store_true",
+                        help="Stage 1 of the model-based path: a value-equivalent "
+                             "(MuZero / Dreamer-without-decoder) world-model objective on "
+                             "the RSSM latent. Predicts reward + continue and trains the "
+                             "prior/posterior KL as a loss, with per-trial BPTT through "
+                             "the delay so the choice-phase reward gradient reaches the "
+                             "sample step. No decoder, so it avoids the "
+                             "reconstruction-discards-identity failure. Also "
+                             "action-conditions the RSSM and disables the single-step "
+                             "reward-MSE tectum loss. Default off (baseline bit-identical). "
+                             "Validate with the leakage-free working-memory probe on a "
+                             "--save-tectum checkpoint.")
+    parser.add_argument("--wm-predict-beta", type=float, default=1.0,
+                        help="KL weight (beta) for the value-equivalent world-model loss.")
+    parser.add_argument("--wm-predict-free-bits", type=float, default=1.0,
+                        help="Free-bits floor (nats) for the balanced KL loss.")
     parser.add_argument("--wm-recon-target", type=str, default="frame",
                         choices=["frame", "obs_map"],
                         help="R1 reconstruction target for --enable-wm-recon. 'frame' "
@@ -2002,6 +2113,9 @@ def main():
     # DQN-on-broadcast (--policy dqn) discretizes continuous action spaces
     # (dark_room, navigation) into 9 bins; discrete envs map one Q per action.
     config["action_selection"]["env_continuous"] = args.env in ("dark_room", "navigation")
+    if config.get("enable_wm_predict"):
+        # The RSSM action embedding needs the finalized action dim before the tectum is built.
+        config["wm_action_dim"] = config["action_selection"]["action_dim"]
 
     (tectum, workspace, reentrant, modulator, emotion_shaper, memory,
      action_core, semantic, gate, tectum_optimizer, reward_predictor,
@@ -2013,7 +2127,15 @@ def main():
      control_repr_head, control_repr_optimizer,
      recon_head, recon_optimizer,
      match_head, match_optimizer,
-     wm_recon_head, wm_recon_optimizer) = init_components(config)
+     wm_recon_head, wm_recon_optimizer,
+     wm_predict_head, wm_predict_optimizer) = init_components(config)
+
+    if config.get("enable_wm_predict"):
+        # Never auto-detach the recurrent state mid-episode; the WM objective detaches at
+        # trial boundaries (see run_episode) so BPTT can span the full delay.
+        tectum.bptt_window = 10**9
+        # Free the heavy capsule/workspace graph per step (it is not on the WM loss path).
+        tectum.detach_downstream = True
 
     if args.env == "navigation":
         from simulations.environments.navigation_env import NavigationEnv
@@ -2074,6 +2196,8 @@ def main():
             match_optimizer=match_optimizer,
             wm_recon_head=wm_recon_head,
             wm_recon_optimizer=wm_recon_optimizer,
+            wm_predict_head=wm_predict_head,
+            wm_predict_optimizer=wm_predict_optimizer,
         )
         global_step += ep_steps
 

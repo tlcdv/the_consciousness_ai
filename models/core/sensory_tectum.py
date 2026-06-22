@@ -160,13 +160,16 @@ class RSSMCore(nn.Module):
       h_t: Deterministic hidden state (GRU)
       z_t: Stochastic latent state (Discrete Categorical per spatial location)
     """
-    def __init__(self, feature_dim: int = 64, grid_size: int = 16, num_categories: int = 32, num_classes: int = 32):
+    def __init__(self, feature_dim: int = 64, grid_size: int = 16, num_categories: int = 32, num_classes: int = 32, action_dim: int = 0):
         super().__init__()
         self.feature_dim = feature_dim
         self.grid_size = grid_size
         self.categories = num_categories
         self.classes = num_classes
-        
+        # Optional action-conditioning for the value-equivalent world model. Built only
+        # when action_dim > 0, so the baseline ConvGRU step is bit-identical when off.
+        self.action_embed = nn.Linear(action_dim, feature_dim) if action_dim > 0 else None
+
         # Deterministic Recurrence: ConvGRU
         # (Using standard Conv2d logic manually for a simplified GRU step)
         self.gru_update = nn.Conv2d(feature_dim + (num_categories * num_classes), feature_dim * 2, kernel_size=3, padding=1)
@@ -200,13 +203,22 @@ class RSSMCore(nn.Module):
         # 1. Deterministic update (h_t) based on previous state and action
         # Simplifying action integration: just project and add if present
         z_reshaped = z_prev.view(-1, self.categories * self.classes, self.grid_size, self.grid_size)
-        gru_in = torch.cat([h_prev, z_reshaped], dim=1)
-        
+
+        # Action-conditioning: add the projected action to the deterministic state used to
+        # compute the GRU gates and candidate. The residual update still carries h_prev.
+        # No-op when action_embed is None or action is None -> baseline bit-identical.
+        h_cond = h_prev
+        if action is not None and self.action_embed is not None:
+            a = self.action_embed(action)  # [B, feature_dim]
+            h_cond = h_prev + a.view(a.shape[0], self.feature_dim, 1, 1)
+
+        gru_in = torch.cat([h_cond, z_reshaped], dim=1)
+
         # ConvGRU math
         update_gate = torch.sigmoid(self.gru_update(gru_in))
         reset_gate = torch.sigmoid(self.gru_reset(gru_in))
-        
-        cand_in = torch.cat([h_prev * reset_gate, z_reshaped], dim=1)
+
+        cand_in = torch.cat([h_cond * reset_gate, z_reshaped], dim=1)
         candidate = torch.tanh(self.gru_candidate(cand_in))
         
         # Update h_t
@@ -246,7 +258,8 @@ class SensoryTectum(nn.Module):
         workspace_dim = config.get("workspace_dim", 256)
 
         self.topo_map = TopographicMap(self.grid_size, self.feature_dim)
-        self.rssm = RSSMCore(self.feature_dim, self.grid_size)
+        self.rssm = RSSMCore(self.feature_dim, self.grid_size,
+                             action_dim=config.get("wm_action_dim", 0))
 
         # Retinotopic encoder: DINOv2-B/14 (frozen) -> [B, feature_dim, grid_size, grid_size]
         # Falls back to conv stack when DINOv2 weights unavailable (CI/testing)
@@ -291,6 +304,11 @@ class SensoryTectum(nn.Module):
         self._last_capsule_poses = None
         self._last_capsule_activities = None
 
+        # When True, the capsule/workspace path uses a detached RSSM latent so its graph
+        # is not retained across a value-equivalent world-model BPTT trial (set by the
+        # training loop under --enable-wm-predict). Default False -> baseline unchanged.
+        self.detach_downstream = False
+
     def reset_state(self, batch_size: int = 1):
         device = next(self.parameters()).device
         self.h_state = torch.zeros(batch_size, self.feature_dim, self.grid_size, self.grid_size, device=device)
@@ -310,7 +328,8 @@ class SensoryTectum(nn.Module):
         self._steps_since_detach = 0
         
     def forward(self, vision_features: torch.Tensor, audio_spatial: torch.Tensor,
-                body_schema: torch.Tensor | None = None) -> tuple[torch.Tensor, float]:
+                body_schema: torch.Tensor | None = None,
+                action: torch.Tensor | None = None) -> tuple[torch.Tensor, float]:
         """
         Process incoming streams, update the world model, and generate a bid for the workspace.
 
@@ -337,8 +356,19 @@ class SensoryTectum(nn.Module):
         # Cache spatial features for topographic loss computation in training loop
         self._last_obs_map = obs_map
 
-        # 2. Update RSSM World Model
-        h_t, z_t, prior_logits, post_logits = self.rssm.step(obs_map, self.h_state, self.z_state)
+        # 2. Update RSSM World Model (optionally action-conditioned). When the value-
+        # equivalent world model owns the per-trial BPTT graph, detach obs_map into the
+        # RSSM so the heavy full-resolution encoder activations are not retained across
+        # the whole trial. The WM then trains the RSSM (gru / posterior / prior, where
+        # working memory lives), not the encoder, which already produces an identity-rich
+        # obs_map. Off by default -> baseline bit-identical.
+        rssm_obs = obs_map.detach() if self.detach_downstream else obs_map
+        h_t, z_t, prior_logits, post_logits = self.rssm.step(
+            rssm_obs, self.h_state, self.z_state, action=action)
+        # Cache the grad-bearing prior/posterior logits for the optional value-equivalent
+        # world-model objective (--enable-wm-predict). Unused when off -> bit-identical.
+        self._last_prior_logits = prior_logits
+        self._last_post_logits = post_logits
 
         # 2b. Truncated BPTT save. Detach every bptt_window steps so the
         # graph stays bounded but a loss at the end of the window can flow
@@ -376,7 +406,13 @@ class SensoryTectum(nn.Module):
         # wm-recon is off it is simply unused, so the baseline stays bit-identical.
         self._last_state_tensor = state_tensor
 
-        workspace_content, capsule_activities, capsule_poses = self.capsule_layer(state_tensor)
+        # When the value-equivalent world model owns the recurrent graph (it trains the
+        # RSSM directly from state_tensor with per-trial BPTT), the capsule/workspace path
+        # does not need to be grad-bearing, so detaching its input keeps the heavy
+        # downstream graph (capsule + reentrant settle) from being retained across the
+        # whole trial. Off by default -> baseline bit-identical.
+        capsule_input = state_tensor.detach() if self.detach_downstream else state_tensor
+        workspace_content, capsule_activities, capsule_poses = self.capsule_layer(capsule_input)
 
         # Cache for reentrant feedback
         self._last_content = workspace_content.detach()
