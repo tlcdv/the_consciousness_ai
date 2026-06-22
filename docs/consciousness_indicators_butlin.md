@@ -93,6 +93,36 @@ quantitative signatures that test whether those mechanisms do measurable work:
    conclude no current system is conscious; this rubric tracks indicator coverage, not
    a verdict.
 
+## Status update 2026-06-21: the integrated content is identity-free (RPT-2 / causal efficacy)
+
+This session characterized a property that bears directly on the integration indicators
+and is reported here so the rubric reflects it honestly.
+
+- **RPT-2 (integrated perceptual representations): characterized as LOSSY, not just
+  unmeasured.** The collapse-locus probe (confirmed on a trained tectum,
+  [collapse_locus_trained_2026_06_21.md](results/collapse_locus_trained_2026_06_21.md))
+  shows stimulus identity is decodable at ~1.0 in obs_map but at chance in the RSSM
+  latent, the capsule poses, the 256-D tectum_content, AND the post-GNW broadcast (the
+  broadcast equals tectum_content,
+  [perception_decodability_2026_06_09.md](results/perception_decodability_2026_06_09.md)).
+  The integration pathway discards task-relevant identity at the RSSM step; identity is a
+  low-variance direction in obs_map that MSE compression drops (PCA-confirmed,
+  [collapse_locus_wmobs_2026_06_21.md](results/collapse_locus_wmobs_2026_06_21.md)). Two
+  world-model reconstruction objectives at the locus FAILED to recover it. So "integrated
+  representation" is present structurally but is identity-free in content.
+- **Causal efficacy / substrate-independence (section 13): BLOCKED-AND-CHARACTERIZED.**
+  The policy and workspace read identity-free content, so the agent cannot enter the
+  DMTS/WCST diagnostic regimes, and SI-1 (a task-accuracy advantage over DQN) cannot be
+  measured on a non-functional agent. The blocker is now characterized (perception
+  collapse, reconstruction-robust) plus the separate RL second wall (2026-06-14/15). The
+  pre-registered section-13 thresholds are NOT revised; it stays UNTESTED.
+- **Honest scope.** This does not refute the structural presence of the GWT/RPT
+  mechanisms (GWT-1..3 remain IMPLEMENTED structurally); it characterizes that the
+  *content* flowing through them is task-uninformative on these tasks. A single
+  unifying "low-variation" root was considered and RETRACTED: phi varies but is
+  low-magnitude, sync_R is low-variation, and the ignition gate was threshold-saturated
+  (fixed this session to selective ignition); these are distinct weaknesses, not one root.
+
 ## Caveat
 
 Indicator coverage is necessary-evidence framing, not proof. A system can satisfy
