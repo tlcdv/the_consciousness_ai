@@ -24,9 +24,9 @@ Required obligations under Apache-2.0:
 3. Mark modifications as such.
 4. Include a NOTICE file if upstream provides one (none observed).
 
-## Corrected CLAUDE.md claim
+## Corrected session-log claim
 
-CLAUDE.md (2026-04-06 entry and 2026-05-14 entry) describes RIIU as "MIT license". This is incorrect. The actual license is Apache-2.0. Both are permissive and compatible with this project, but the specific identifier in CLAUDE.md should be updated when the next session log entry is written.
+The project session log (2026-04-06 entry and 2026-05-14 entry) describes RIIU as "MIT license". This is incorrect. The actual license is Apache-2.0. Both are permissive and compatible with this project, but the specific identifier in the session log should be updated when the next session log entry is written.
 
 ## Chosen path
 
@@ -48,4 +48,4 @@ Copy the upstream Apache-2.0 LICENSE text to `third_party/RIIU_LICENSE` so the o
 ## Rejected alternatives
 
 - **Clean-room reimplementation from the paper formula alone:** rejected because the upstream license is permissive and vendoring is cheaper and reduces risk of subtle implementation drift.
-- **No license consideration before coding:** rejected explicitly. CLAUDE.md misidentified the license; verifying first prevented a CC BY-NC-SA mistake.
+- **No license consideration before coding:** rejected explicitly. The session log misidentified the license; verifying first prevented a CC BY-NC-SA mistake.

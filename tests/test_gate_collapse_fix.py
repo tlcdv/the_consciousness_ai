@@ -153,7 +153,7 @@ def test_floor_change_widens_binarized_state_visits():
 def test_iit_state_arity_remains_5():
     """Regression: the IIT state tuple must always have arity 5 (one per
     gate node). Past bugs from 4-tuple state pollution would silently
-    invalidate the TPM (see CLAUDE.md 2026-05-03 entry)."""
+    invalidate the TPM (see the project session log, 2026-05-03 entry)."""
     metrics = IITMetrics()
     from models.core.consciousness_gating import GatingState
     gs = GatingState(

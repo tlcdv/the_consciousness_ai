@@ -80,7 +80,7 @@ GATE_NODE_LABELS = (
 
 # Adaptive binarization floors per gate dimension. The adaptation_rate floor
 # was lowered from 0.001 to 1e-5 on 2026-05-17 (Phase C of the Phi-1 retest
-# plan, ~/.claude/plans/let-s-plan-the-next-misty-parasol.md): adaptation
+# plan): adaptation
 # is scaled to [0, 0.02] in models/core/consciousness_gating.py:187, so the
 # running median was below 0.001 and binarization was always 0, removing
 # adaptation from the 5-bit state entirely. Lowering the floor lets

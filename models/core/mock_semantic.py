@@ -1,7 +1,6 @@
 """Deterministic semantic module for Phi-1 testability.
 
-Phase D of the 2026-05-17 Phi-1 retest plan
-(~/.claude/plans/let-s-plan-the-next-misty-parasol.md).
+Phase D of the 2026-05-17 Phi-1 retest plan.
 
 The semantic pathway (`models/core/semantic_pathway.py`) requires Qwen2-VL
 to produce non-zero embeddings. Without Qwen2-VL loaded, the semantic

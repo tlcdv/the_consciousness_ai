@@ -1774,8 +1774,7 @@ def main():
                              "tectum, audio) in parallel and log all three "
                              "phi values per step. The --riiu-source flag "
                              "still selects which one drives reward. Used "
-                             "for the 2026-05-17 substrate-probe experiment "
-                             "(see ~/.claude/plans/let-s-plan-the-next-misty-parasol.md).")
+                             "for the 2026-05-17 substrate-probe experiment.")
 
     parser.add_argument("--seed", type=int, default=None,
                         help="Global RNG seed. None inherits ambient state. "

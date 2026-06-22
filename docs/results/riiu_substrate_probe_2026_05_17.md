@@ -9,7 +9,7 @@
 ## Headline
 
 **No substrate wins the Phase B6 selection criteria.** Per the decision gate
-in `~/.claude/plans/let-s-plan-the-next-misty-parasol.md`, Phase C
+in the internal plan, Phase C
 (3-seed verification) is SKIPPED. The project moves to Phase 5 of
 `docs/roadmap.md` (Dynamic Self-Representation & Meta-Cognition) with the
 conclusion that the current architecture's binding+phi+gate stack does not

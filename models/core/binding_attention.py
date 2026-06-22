@@ -1,6 +1,6 @@
 """AKOrN-modulated cross-attention for content-level binding (Phase B).
 
-Phase B of the 2026-05-19 plan (~/.claude/plans/let-s-plan-the-next-misty-parasol.md).
+Phase B of the 2026-05-19 plan.
 Addresses failure modes 2 and 3 from the 2026-05-17 diagnosis:
   - AKOrN binds phases of scalar bids, not content tensors
   - Reentrant feedback updates bids only, not content

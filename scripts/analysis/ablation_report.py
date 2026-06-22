@@ -6,7 +6,7 @@ historical pre-fix references) into one pandas table, prints the comparison,
 and applies the strict acceptance thresholds from the plan.
 
 Honesty rule: every cited number is loaded from disk in this script's own
-invocation. No copy-paste from prior runs or CLAUDE.md.
+invocation. No copy-paste from prior runs or the project session log.
 
 Usage:
     python -m scripts.analysis.ablation_report

@@ -10,10 +10,10 @@
 | AKOrN GitHub repo (correct URL) | https://github.com/autonomousvision/akorn | **NO LICENSE file** | 2026-05-19 |
 | AKOrN paper | https://arxiv.org/abs/2410.13821 | arxiv nonexclusive-distrib/1.0 (paper text) | 2026-05-19 |
 | AKOrN project page | https://takerum.github.io/akorn_project_page/ | not inspected | 2026-05-19 |
-| Prior CLAUDE.md claim | "MIT license" | **INCORRECT** | 2026-02-21 entry |
-| Prior CLAUDE.md URL guess | github.com/loeweX/AKOrN | **404 NOT FOUND** | 2026-05-19 |
+| Prior session-log claim | "MIT license" | **INCORRECT** | 2026-02-21 entry |
+| Prior session-log URL guess | github.com/loeweX/AKOrN | **404 NOT FOUND** | 2026-05-19 |
 
-Both CLAUDE.md misclaims (the license type and the repo owner) are now corrected by this decision doc.
+Both session-log misclaims (the license type and the repo owner) are now corrected by this decision doc.
 
 ## Legal analysis
 
@@ -21,7 +21,7 @@ Both CLAUDE.md misclaims (the license type and the repo owner) are now corrected
 
 **arXiv paper under nonexclusive-distrib/1.0**: this is arXiv's standard distribution agreement. The paper TEXT may be redistributed. Mathematical formulas described in published academic papers are not copyrightable subject matter (Feist v. Rural, Baker v. Selden). Scientific ideas, methods, and equations are free for any party to implement.
 
-**Our existing `models/core/oscillatory_binding.py`**: written 2026-02-21 onward (per the CLAUDE.md session log). Implements the standard Kuramoto-on-N-spheres dynamics from the published paper. The Explore agent this session verified the code: it uses standard PyTorch operations (einsum, torch.norm) on standard mathematical formulas (mean-field order parameter, tangent-plane projection). This is a clean-room implementation derived from the published paper's mathematical content, not a port of the GitHub code. We are free to use it.
+**Our existing `models/core/oscillatory_binding.py`**: written 2026-02-21 onward (per the project session log). Implements the standard Kuramoto-on-N-spheres dynamics from the published paper. The Explore agent this session verified the code: it uses standard PyTorch operations (einsum, torch.norm) on standard mathematical formulas (mean-field order parameter, tangent-plane projection). This is a clean-room implementation derived from the published paper's mathematical content, not a port of the GitHub code. We are free to use it.
 
 ## Chosen path
 
@@ -37,7 +37,7 @@ Both CLAUDE.md misclaims (the license type and the repo owner) are now corrected
 
 - The project's own LICENSE.md is a custom "Non-Commercial Open Source License"
 - We add no third-party licensed code in Phase B (zero new entries in `third_party/`)
-- The decision honors the CLAUDE.md NEVER LIE protocol: the prior MIT claim and the wrong URL are both corrected here
+- The decision honors the project's NEVER LIE protocol: the prior MIT claim and the wrong URL are both corrected here
 
 ## Notes for future sessions
 
@@ -52,5 +52,5 @@ For Phase B and Phase B-alt (GASPnet contingency), neither vendoring path is nee
 ## Rejected alternatives
 
 - **Vendor from autonomousvision/akorn without an explicit license**: rejected. This would be a copyright violation. Even if the authors clearly intend the code to be permissive, the lack of an explicit grant means redistribution is not authorized.
-- **Use loeweX/AKOrN per prior CLAUDE.md**: rejected. URL is 404. CLAUDE.md was wrong about both the owner and the license.
+- **Use loeweX/AKOrN per prior session-log claim**: rejected. URL is 404. The session log was wrong about both the owner and the license.
 - **Skip license verification**: rejected per plan Phase 1 protocol. The 30-minute cost prevented a much larger error.

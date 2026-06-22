@@ -86,7 +86,7 @@ the remaining windows.
 
 The new architecture systematically addresses the five structural failure
 modes diagnosed in this session (see plan
-`~/.claude/plans/let-s-plan-the-next-misty-parasol.md`):
+the internal plan):
 
 1. **Winner-take-all broadcast** -> fixed by Phase A attention-weighted
    fusion. The synthetic-drive test in `tests/test_attention_broadcast.py`

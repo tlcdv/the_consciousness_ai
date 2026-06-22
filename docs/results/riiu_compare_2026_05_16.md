@@ -102,7 +102,7 @@ that the criterion D test was not designed to catch.
 Per the 2026-05-14 ablation campaign (`docs/results/ablation_2026_05_14.md`)
 the architecture's Phi-1 prediction (r > 0.4) fails across all 5
 architectural variants of the pyphi pipeline. This RIIU comparison was
-proposed in CLAUDE.md as the "fundamentally different phi formulation" that
+proposed in the session log as the "fundamentally different phi formulation" that
 might escape the architecture's limits.
 
 The empirical result: **RIIU does not escape the limit either, over the full

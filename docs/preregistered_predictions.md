@@ -144,7 +144,7 @@ The 2026-04-14 Phase 3 result of **Phi-1 PASS at r=1.000 is RETRACTED**. That
 correlation was an algebraic tautology: in `scripts/training/train_rlhf.py`
 prior to commit `06f96db` the reported phi value was literally
 `phi_result.phi + sync_R * 0.1`. With `phi_result.phi` pinned at 0 by other
-defects in the pipeline (see CLAUDE.md 2026-04-27 session log), the reported
+defects in the pipeline (see the project session log, 2026-04-27 entry), the reported
 "phi" was numerically equal to `sync_R / 10`, so any Pearson correlation
 with `sync_R` was guaranteed to be 1.000. This was a measurement artifact,
 not a finding.
@@ -284,7 +284,7 @@ competition in dark_room (the dominant case), the broadcast tensor IS
 the tectum_content tensor. The substrate hypothesis disproved itself
 through this structural finding.
 
-Per the decision gate in `~/.claude/plans/let-s-plan-the-next-misty-parasol.md`
+Per the decision gate in the internal plan
 Phase B, the 3-seed verification (Phase C) is SKIPPED. The project moves
 forward to Phase 5 of `docs/roadmap.md` (Dynamic Self-Representation &
 Meta-Cognition). The Phi-1 prediction stands FAILED across pathways
@@ -296,7 +296,7 @@ Full details in [riiu_substrate_probe_2026_05_17.md](results/riiu_substrate_prob
 
 **Status:** PRE-REGISTERED, UNTESTED at registration time
 **Architecture commit hash:** `42fe78b` (head of main at registration)
-**Plan:** `~/.claude/plans/let-s-plan-the-next-misty-parasol.md`
+**Plan:** the internal plan
 
 ### Why this is a new pre-registration, not a re-test
 
@@ -460,7 +460,7 @@ Meta-Cognition) with this on permanent record.
 
 **Status:** PRE-REGISTERED, UNTESTED at registration time
 **Architecture commit hash:** `dfdcf83` (Phase B implementation, head of main at registration)
-**Plan:** `~/.claude/plans/let-s-plan-the-next-misty-parasol.md` (2026-05-19 plan)
+**Plan:** the internal plan (2026-05-19 plan)
 
 ### Why this is a NEW pre-registration, not a re-interpretation
 

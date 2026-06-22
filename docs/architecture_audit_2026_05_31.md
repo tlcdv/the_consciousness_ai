@@ -24,8 +24,8 @@ to a file/line or a disk-loaded number. No code was changed to produce this.
 | Entry point | Used by | Status |
 |-------------|---------|--------|
 | `scripts/training/train_rlhf.py` | the actual research training loop | **canonical**; wires components directly, uses neither orchestrator below |
-| `models/core/consciousness_core.py` `ConsciousnessCore` | `simulations/api/simulation_manager.py:31`, `models/predictive/emotional_predictor.py:18` | orchestrator shell; CLAUDE.md documents it as not used in training |
-| `models/agent/consciousness_agent.py` `ConsciousnessAgent` | `scripts/training/train_emotional_agent.py:10` | **deprecated** (CLAUDE.md 2026-04-06); parallel/dead track |
+| `models/core/consciousness_core.py` `ConsciousnessCore` | `simulations/api/simulation_manager.py:31`, `models/predictive/emotional_predictor.py:18` | orchestrator shell; the project session log documents it as not used in training |
+| `models/agent/consciousness_agent.py` `ConsciousnessAgent` | `scripts/training/train_emotional_agent.py:10` | **deprecated** (project session log, 2026-04-06); parallel/dead track |
 
 ### Components inside `train_rlhf.py`, by role
 

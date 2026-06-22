@@ -2,8 +2,7 @@
 Compare pyphi and RIIU phi pathways from a training run.
 
 Reads `metrics.csv` produced by `train_rlhf.py --enable-riiu` and evaluates the
-four go/no-go criteria set in
-`C:\\Users\\zaesa\\.claude\\plans\\let-s-plan-the-next-misty-parasol.md` (Phase 7):
+four go/no-go criteria set in the Phase 7 internal planning notes:
 
   A. Variance unlock:   std(phi_riiu) >= 5 * std(phi_pyphi)
   B. Binding correlation: pearson_r(phi_riiu, sync_R) >= 0.15, p < 0.05

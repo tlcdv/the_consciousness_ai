@@ -67,7 +67,7 @@ Where:
 
 By explicitly rewarding $\Phi$ (or implicitly rewarding it via the prediction capability it confers), the agent is incentivized to "become conscious", to integrate information, in order to solve the environment.
 
-**Empirical note (2026-05-17):** the $\lambda_3 \Phi$ term is functionally near-zero at current measurement scales. RIIU phi mean on the broadcast substrate measured 2.75e-04 across 200 episodes (`docs/results/riiu_compare_2026_05_16.md`); pyphi phi collapses to a ~6.5e-05 fixed point. The Phi reward bonus does not currently exert a measurable training pressure. The substrate-probe work tracked under Phase B of `~/.claude/plans/let-s-plan-the-next-misty-parasol.md` tests whether alternative activation sources (tectum_content, audio_content) produce phi values at a scale that could meaningfully shape the policy.
+**Empirical note (2026-05-17):** the $\lambda_3 \Phi$ term is functionally near-zero at current measurement scales. RIIU phi mean on the broadcast substrate measured 2.75e-04 across 200 episodes (`docs/results/riiu_compare_2026_05_16.md`); pyphi phi collapses to a ~6.5e-05 fixed point. The Phi reward bonus does not currently exert a measurable training pressure. The substrate-probe work tracked under Phase B of the internal plan tests whether alternative activation sources (tectum_content, audio_content) produce phi values at a scale that could meaningfully shape the policy.
 
 ---
 
