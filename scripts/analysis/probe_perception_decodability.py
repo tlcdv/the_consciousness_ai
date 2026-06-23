@@ -145,7 +145,7 @@ def _torch_probe(X, y_idx, n_classes, seed, test_size):
 # Component construction (reuses train_rlhf builders, no edits to that file)
 # --------------------------------------------------------------------------- #
 def _build_components(env_name: str, action_dim: int, seed: int, mock_semantic: bool,
-                      load_tectum: str | None = None):
+                      load_tectum: str | None = None, wm_action_dim: int = 0):
     args = types.SimpleNamespace(
         action_dim=action_dim, lr=1e-3, episodes=1, max_steps=200,
         env=env_name, enable_audio=False, enable_mock_semantic=mock_semantic,
@@ -153,6 +153,9 @@ def _build_components(env_name: str, action_dim: int, seed: int, mock_semantic: 
     )
     config = build_config(args)
     config["device"] = "cpu"
+    # When loading a --enable-wm-predict checkpoint, the RSSM was built with an action
+    # embedding (action_dim>0); build the same so the action_embed weights load cleanly.
+    config["wm_action_dim"] = wm_action_dim
 
     comps = init_components(config)
     # Positional unpack of the leading components this probe needs; trailing

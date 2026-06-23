@@ -278,9 +278,13 @@ def build_config(args):
         # continue from the RSSM latent and train the prior/posterior KL as a loss, with
         # per-trial BPTT through the delay. No decoder. Default off (bit-identical).
         "enable_wm_predict": getattr(args, "enable_wm_predict", False),
+        # max_buffer caps the per-trial BPTT length; set to span a full DMTS trial
+        # (fixation 10 + sample 20 + delay up to 40 + choice ~= 71) so the choice-phase
+        # reward gradient reaches the sample step without a mid-trial flush. The
+        # encoder-detached RSSM chain is small, so this stays well within memory.
         "wm_predict": {"beta": getattr(args, "wm_predict_beta", 1.0),
                        "free_bits": getattr(args, "wm_predict_free_bits", 1.0),
-                       "hidden_dim": 256, "lr": 1e-3, "max_buffer": 64},
+                       "hidden_dim": 256, "lr": 1e-3, "max_buffer": 80},
         # DMTS supervised match head. Teaches the matching operation from the env's
         # target_position label on the obsmem-conv input. Two modes: 'acting' (the
         # head's argmax drives the choice; capability/pipeline ceiling test, uses
@@ -1318,6 +1322,7 @@ def run_episode(episode_idx, config, tectum, workspace, reentrant,
                 if tectum.z_state is not None:
                     tectum.z_state = tectum.z_state.detach()
                 tectum._steps_since_detach = 0
+                del wm_loss
                 wm_buffer = []
 
         # Single-sample training on this choice decision. Runs for aux mode and for
@@ -1743,6 +1748,11 @@ def run_episode(episode_idx, config, tectum, workspace, reentrant,
 
     avg_phi = phi_accum / max(steps_taken, 1)
     consciousness_ratio = conscious_steps / max(steps_taken, 1)
+    # Release the caching allocator's reserved memory between episodes when the
+    # value-equivalent world model retains a per-trial BPTT graph; prevents the
+    # cross-episode reserved-memory creep that OOM'd a 100-episode run.
+    if config.get("enable_wm_predict") and str(device).startswith("cuda"):
+        torch.cuda.empty_cache()
     return total_reward, steps_taken, avg_phi, consciousness_ratio
 
 
