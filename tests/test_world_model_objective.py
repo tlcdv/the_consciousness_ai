@@ -37,7 +37,7 @@ class TestWorldModelObjective(unittest.TestCase):
         o = self._obj()
         lat = _latent()
         lat.requires_grad_(True)
-        loss = o.reward_loss(lat, torch.randn(2, 1))
+        loss = o.reward_loss(lat, None, torch.randn(2, 1))
         self.assertTrue(torch.isfinite(loss))
         loss.backward()
         self.assertIsNotNone(lat.grad)
@@ -46,7 +46,7 @@ class TestWorldModelObjective(unittest.TestCase):
     def test_reward_target_is_stop_grad(self):
         o = self._obj()
         tgt = torch.randn(2, 1, requires_grad=True)
-        loss = o.reward_loss(_latent(), tgt)
+        loss = o.reward_loss(_latent(), None, tgt)
         loss.backward()
         self.assertIsNone(tgt.grad)
 
@@ -81,13 +81,29 @@ class TestWorldModelObjective(unittest.TestCase):
         lat.requires_grad_(True)
         tgt = torch.randn(2, 1)
         opt = torch.optim.Adam([lat], lr=5e-2)
-        first = float(o.reward_loss(lat, tgt).item())
+        first = float(o.reward_loss(lat, None, tgt).item())
         for _ in range(200):
             opt.zero_grad()
-            loss = o.reward_loss(lat, tgt)
+            loss = o.reward_loss(lat, None, tgt)
             loss.backward()
             opt.step()
-        self.assertLess(float(o.reward_loss(lat, tgt).item()), first)
+        self.assertLess(float(o.reward_loss(lat, None, tgt).item()), first)
+
+    def test_action_conditioned_reward_head(self):
+        """With action_dim>0 the reward head is conditioned on the action: different
+        actions give different predicted rewards (a DMTS choice reward depends on the
+        action), and the gradient reaches the action input."""
+        torch.manual_seed(0)
+        o = WorldModelObjective(latent_channels=16, grid=4, hidden_dim=32, action_dim=5)
+        lat = _latent()
+        a1 = torch.zeros(2, 5); a1[:, 0] = 1.0
+        a2 = torch.zeros(2, 5); a2[:, 3] = 1.0
+        self.assertFalse(torch.allclose(o.predict_reward(lat, a1),
+                                        o.predict_reward(lat, a2)))
+        a = torch.randn(2, 5, requires_grad=True)
+        o.reward_loss(lat, a, torch.randn(2, 1)).backward()
+        self.assertIsNotNone(a.grad)
+        self.assertGreater(float(a.grad.abs().sum()), 0.0)
 
 
 class TestRSSMActionConditioning(unittest.TestCase):

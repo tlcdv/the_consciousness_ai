@@ -42,17 +42,39 @@ class WorldModelObjective(nn.Module):
     retain the task-relevant working memory.
     """
 
-    def __init__(self, latent_channels: int, grid: int = 16, hidden_dim: int = 256):
+    def __init__(self, latent_channels: int, grid: int = 16, hidden_dim: int = 256,
+                 action_dim: int = 0):
         super().__init__()
         self.grid = grid
-        self.reward_head = _head(latent_channels, grid, hidden_dim, 1)
+        self.action_dim = action_dim
+        # Reward is predicted from the latent AND the action (value-equivalent / MuZero:
+        # the reward depends on the action taken, e.g. which DMTS choice). A latent-only
+        # reward head is ill-posed for an action-dependent reward and gives weak, ambiguous
+        # gradient pressure on the latent. The continue head stays latent-only (episode end
+        # is not action-dependent here).
+        self.reward_reduce = nn.Conv2d(latent_channels, 32, kernel_size=1)
+        self.reward_mlp = nn.Sequential(
+            nn.Linear(32 * grid * grid + action_dim, hidden_dim),
+            nn.LayerNorm(hidden_dim),
+            nn.GELU(),
+            nn.Linear(hidden_dim, 1),
+        )
         self.continue_head = _head(latent_channels, grid, hidden_dim, 1)
 
-    def predict_reward(self, latent: torch.Tensor) -> torch.Tensor:
-        """latent [B, C, H, W] (or [C, H, W]) -> predicted reward [B, 1]."""
+    def predict_reward(self, latent: torch.Tensor,
+                       action: torch.Tensor | None = None) -> torch.Tensor:
+        """latent [B, C, H, W] (+ action [B, action_dim]) -> predicted reward [B, 1]."""
         if latent.dim() == 3:
             latent = latent.unsqueeze(0)
-        return self.reward_head(latent)
+        reduced = self.reward_reduce(latent).flatten(1)
+        if self.action_dim > 0:
+            if action is None:
+                action = torch.zeros(reduced.shape[0], self.action_dim,
+                                     device=reduced.device)
+            elif action.dim() == 1:
+                action = action.unsqueeze(0)
+            reduced = torch.cat([reduced, action], dim=1)
+        return self.reward_mlp(reduced)
 
     def predict_continue_logit(self, latent: torch.Tensor) -> torch.Tensor:
         """latent -> logit for P(not done) [B, 1]."""
@@ -60,12 +82,13 @@ class WorldModelObjective(nn.Module):
             latent = latent.unsqueeze(0)
         return self.continue_head(latent)
 
-    def reward_loss(self, latent: torch.Tensor, target_reward: torch.Tensor) -> torch.Tensor:
-        """MSE between predicted reward (from the latent) and the observed reward
+    def reward_loss(self, latent: torch.Tensor, action: torch.Tensor | None,
+                    target_reward: torch.Tensor) -> torch.Tensor:
+        """MSE between predicted reward (from latent + action) and the observed reward
         (stop-grad target). The gradient flows into the latent, so the RSSM must carry
-        whatever predicts the reward; at the choice phase, with BPTT through the delay,
-        that requires holding the sample."""
-        pred = self.predict_reward(latent)
+        whatever predicts the action-dependent reward; at the choice phase, with BPTT
+        through the delay, that requires holding the sample."""
+        pred = self.predict_reward(latent, action)
         tgt = target_reward.detach().reshape(pred.shape)
         return F.mse_loss(pred, tgt)
 

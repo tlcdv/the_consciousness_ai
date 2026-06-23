@@ -645,6 +645,7 @@ def init_components(config):
             latent_channels=latent_channels,
             grid=tectum.grid_size,
             hidden_dim=wp_cfg.get("hidden_dim", 256),
+            action_dim=config.get("wm_action_dim", 0),
         ).to(device)
         wm_predict_optimizer = torch.optim.Adam(
             wm_predict_head.parameters(), lr=wp_cfg.get("lr", 1e-3)
@@ -1278,13 +1279,8 @@ def run_episode(episode_idx, config, tectum, workspace, reentrant,
         # choice-phase reward gradient reaches the sample step. The single-step tectum
         # optimizer block below is skipped when this is on (the WM objective replaces it).
         if wm_predict_head is not None and wm_predict_optimizer is not None:
-            wm_buffer.append((
-                tectum._last_state_tensor,
-                tectum._last_prior_logits,
-                tectum._last_post_logits,
-                float(env_reward),
-                0.0 if done else 1.0,
-            ))
+            # one-hot of the action taken THIS step (it determines env_reward, e.g. the
+            # DMTS choice), used both to condition the reward head and the next RSSM step.
             oh = torch.zeros(1, wm_action_dim, device=device)
             try:
                 ai = int(env_action)
@@ -1292,6 +1288,14 @@ def run_episode(episode_idx, config, tectum, workspace, reentrant,
                 ai = 0
             if 0 <= ai < wm_action_dim:
                 oh[0, ai] = 1.0
+            wm_buffer.append((
+                tectum._last_state_tensor,
+                tectum._last_prior_logits,
+                tectum._last_post_logits,
+                oh,
+                float(env_reward),
+                0.0 if done else 1.0,
+            ))
             wm_prev_action = oh
             wp_cfg = config.get("wm_predict", {})
             flush = (done or wm_phase_at_action == "choice"
@@ -1300,12 +1304,12 @@ def run_episode(episode_idx, config, tectum, workspace, reentrant,
                 beta = wp_cfg.get("beta", 1.0)
                 fb = wp_cfg.get("free_bits", 1.0)
                 wm_loss = 0.0
-                for (lat, pr, po, rew, nd) in wm_buffer:
+                for (lat, pr, po, act, rew, nd) in wm_buffer:
                     rew_t = torch.tensor([[rew]], device=device)
                     nd_t = torch.tensor([[nd]], device=device)
                     wm_loss = wm_loss + (
                         wm_predict_head.kl_loss(pr, po, beta=beta, free_bits=fb)
-                        + wm_predict_head.reward_loss(lat, rew_t)
+                        + wm_predict_head.reward_loss(lat, act, rew_t)
                         + wm_predict_head.continue_loss(lat, nd_t)
                     )
                 wm_loss = wm_loss / len(wm_buffer)
