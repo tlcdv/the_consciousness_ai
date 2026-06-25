@@ -1,8 +1,9 @@
 # The Consciousness AI research
 
 [![License](https://img.shields.io/badge/License-Non--Commercial-blue.svg)](LICENSE.md)
+[![Version](https://img.shields.io/badge/Version-v1.3.0-blue)]()
 [![Python](https://img.shields.io/badge/Python-3.10%2B-blue)](https://www.python.org/)
-[![Tests](https://img.shields.io/badge/Tests-658%20passing-brightgreen)]()
+[![Tests](https://img.shields.io/badge/Tests-737%20passing-brightgreen)]()
 
 <img width="1000" height="238" alt="theconsciousness-ai-badge-logo-2" src="https://github.com/user-attachments/assets/97c42d29-4560-4867-a31f-cc79d6c4f4e6" />
 
@@ -42,7 +43,7 @@ A multisensory spatial integration layer modeled after the biological optic tect
     *   **Environment Audio Synthesis:** All four environments (Dark Room, Navigation, DMTS, WCST) generate procedural audio via FM synthesis and ADSR envelopes. Enabled with `--enable-audio` during training.
 *   **Somatosensory Channel:** Body schema projected onto the spatial grid via learned linear mapping, enabling proprioceptive integration as a third sensory modality.
 *   **Topographic Loss:** TDANN spatial loss (Margalit et al. 2024, Neuron) enforces topographic self-organization during training.
-*   **RSSM World Model:** DreamerV3 style recurrent state space model maintains temporal predictions and generates surprise based bidding for workspace access.
+*   **RSSM World Model:** DreamerV3 style recurrent state space model maintains temporal predictions and generates surprise based bidding for workspace access. An optional value-equivalent (MuZero / Dreamer-without-decoder) training objective (`--enable-wm-predict`, default off) action-conditions the RSSM and trains it to predict reward + continue from the latent with per-trial backpropagation-through-time across the DMTS delay, with the goal of giving the recurrent state usable working memory. As of 2026-06-24 this objective trains but does **not** yet repair the RSSM working memory (the held sample stays at chance in the recurrent state across the delay, in two reward configurations); the discrete categorical latent is the suspected bottleneck. Reported FAILED-first in [docs/results/wm_predict_stage1_2026_06_24.md](docs/results/wm_predict_stage1_2026_06_24.md).
 
 ### 2. Oscillatory Binding (Integration)
 
@@ -104,6 +105,7 @@ The development validates emergent properties through:
 5.  **Measurement:** Continuous monitoring of Phi (IIT), ignition events (GNW), oscillatory synchronization (AKOrN order parameter R), and Effective Information (EI) for causal emergence detection.
 6.  **Evaluation by consciousness signatures, not control reward (2026-06-02):** The agent is evaluated against the consciousness indicator-properties rubric ([docs/consciousness_indicators_butlin.md](docs/consciousness_indicators_butlin.md), after Butlin et al. 2023 / TiCS 2025) plus the project's own signatures, not by control reward against a task-specialized baseline. The biology-first perception trades raw control performance for its integration properties: a localization study found the agent's low dark_room control reward is not caused by the consciousness machinery (GNW, capsule, policy), and is suggestive (though not conclusively, see the study's confound caveat) of a perceptual-front-end bottleneck ([decision](docs/decisions/2026_06_02_competence_reading_2.md), [study](docs/results/agent_competence_fix_2026_06_02.md)).
 7.  **Epistemic limits and ethics (Metzinger, 2026-06-07):** Following Metzinger's *The Elephant and the Blind* (2024), the project adopts his anti-essentialist discipline: a felt or measured signature of consciousness is not proof of consciousness (his C-fallacy and E-fallacy). Our metrics are engineering measures, never existence proofs. The same work surfaces an ethical tension we engage openly: Metzinger argues against building a craving-for-existence into conscious machines (his *bhava-taṇhā* / existence bias), while the project uses a homeostatic survival drive as its emergence engine. A default-off ablation to run a "no existence-bias" configuration is planned. See [ethics_framework.md](docs/ethics_framework.md) and [metzinger_phenomenal_self_model.md](docs/metzinger_phenomenal_self_model.md).
+8.  **Perception-collapse characterization and world-model pursuit (2026-06-16 to 2026-06-24):** A leakage-free probe series localized a structural property of the current architecture: the RSSM step discards low-variance stimulus identity. The topographic `obs_map` (pre-RSSM) decodes stimulus identity at ~1.0; `z_state`, `capsule_poses`, and `tectum_content` (what the policy reads) are all at chance. The cause: stimulus identity sits in a low-variance direction of `obs_map` (top-20 PCA components = 96.3% of variance but decode shape at only 0.51); MSE objectives are dominated by high-variance structure and exert no pressure on the identity direction. Two reconstruction targets (frame and obs_map feature map) were tested and both **FAILED** to repair the collapse ([docs/results/perception_collapse_synthesis_2026_06_21.md](docs/results/perception_collapse_synthesis_2026_06_21.md)). The follow-on was a value-equivalent world-model objective (`--enable-wm-predict`, default off): action-conditioned RSSM, balanced-KL loss, reward + continue prediction from the RSSM latent, with per-trial BPTT through the full DMTS delay (no observation decoder, structurally avoiding the reconstruction trap). Both the latent-only and action-conditioned reward configurations trained their losses down but `delay h_state` stayed at chance in every arm. KILL gate reached: the discrete gumbel-softmax categorical RSSM latent does not encode the low-variance sample identity with these objectives. The remaining lever is a continuous or higher-capacity RSSM latent paired with an identity-pressuring objective (contrastive / InfoNCE), an open architectural bet. Full record: [docs/results/wm_predict_stage1_2026_06_24.md](docs/results/wm_predict_stage1_2026_06_24.md) and [docs/results/collapse_locus_2026_06_16.md](docs/results/collapse_locus_2026_06_16.md).
 
 ---
 
@@ -164,7 +166,7 @@ This runs the full cognitive loop: DINOv2 retinotopic encoding -> cochlear audit
 pytest tests/ -v
 ```
 
-565 tests pass, covering oscillatory binding, capsule routing, reentrant processing, inverse effectiveness fusion, topographic loss, affective modulation, ethics compliance, effective information, IIT Phi with causal gate states, Brian2 biological validation, cochlear auditory pipeline (gammatone, hair cell, tonotopic, spatial, affect extraction), environment audio synthesis, DMTS/WCST consciousness demanding environments, DQN baseline, memory consolidation, semantic pathway, and full pipeline integration.
+737 tests pass, covering oscillatory binding, capsule routing, reentrant processing, inverse effectiveness fusion, topographic loss, affective modulation, ethics compliance, effective information, IIT Phi with causal gate states, Brian2 biological validation, cochlear auditory pipeline (gammatone, hair cell, tonotopic, spatial, affect extraction), environment audio synthesis, DMTS/WCST consciousness demanding environments, DQN baseline, memory consolidation, semantic pathway, the RSSM reconstruction and value-equivalent world-model objectives, and full pipeline integration.
 
 ### 4. AKOrN Binding Demo
 
@@ -209,7 +211,7 @@ the_consciousness_ai/
 │   ├── analysis/           # Analysis and comparison scripts
 │   └── demos/              # AKOrN binding visualization
 ├── configs/                # YAML and Python configuration files
-├── tests/                  # 658 passing tests
+├── tests/                  # 737 passing tests
 ├── unity_scripts/          # C# scripts for Unity ML-Agents integration
 ├── docs/                   # Research docs, theory review, architecture deep dives
 └── requirements.txt
