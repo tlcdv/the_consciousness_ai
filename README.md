@@ -240,6 +240,10 @@ the_consciousness_ai/
 *   [**Simulation Guide**](docs/simulation_guide.md): How to build compatible environments.
 *   [**Ethics Framework**](docs/ethics_framework.md): Asimov compliance filter design.
 
+## Support the Project
+
+If you find this research valuable and would like to support the ongoing development of the architecture, you can do so by purchasing official project gear from our [merchandise store](https://theconsciousness.ai/merch/). All proceeds directly fund the infrastructure, API costs, and developer time required to maintain this open-source initiative.
+
 ## Contributing
 
 We welcome contributions from researchers in AI, Neuroscience, and Cognitive Science. Please read our [Contribution Guidelines](docs/contributing.md).
