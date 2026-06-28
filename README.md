@@ -5,6 +5,11 @@
 [![Python](https://img.shields.io/badge/Python-3.10%2B-blue)](https://www.python.org/)
 [![Tests](https://img.shields.io/badge/Tests-737%20passing-brightgreen)]()
 
+[![Project Website](https://img.shields.io/badge/Project-Website-181717?logo=googlechrome&logoColor=white)](https://theconsciousness.ai/)
+[![Architecture](https://img.shields.io/badge/Architecture-ACM-0052CC?logo=read-the-docs&logoColor=white)](https://theconsciousness.ai/acm/)
+[![Philosophy](https://img.shields.io/badge/Philosophy-Functionalist_Emergentism-8A2BE2?logo=gitbook&logoColor=white)](https://theconsciousness.ai/functionalist-emergentism/)
+[![Store](https://img.shields.io/badge/Store-Merch-E34F26?logo=shopify&logoColor=white)](https://theconsciousness.ai/merch/)
+
 <img width="1000" height="238" alt="theconsciousness-ai-badge-logo-2" src="https://github.com/user-attachments/assets/97c42d29-4560-4867-a31f-cc79d6c4f4e6" />
 
 **The Consciousness AI** is a research framework investigating the emergence of synthetic awareness. Unlike traditional AI that mimics intelligent output, this system generates behavior through an internal struggle for **Emotional Homeostasis** and **Integrated Information**.
