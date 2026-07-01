@@ -55,6 +55,10 @@ Consciousness emerges from the interaction of these feedback loops:
 
 ## Component Structure
 
+> For the complete, current index of every module and where it lives, see
+> [repository_map.md](repository_map.md). The list below is a curated subset of the most
+> important files, grouped by concept.
+
 ### 1. `models/core/`
 *   **`global_workspace.py`**: Central workspace. Runs competition, AKOrN binding, sigmoid ignition, and reverberation.
 *   **`sensory_tectum.py`**: Topographic spatial maps with DreamerV3 RSSM, trimodal inverse effectiveness fusion, capsule composition.

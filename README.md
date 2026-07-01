@@ -233,6 +233,7 @@ the_consciousness_ai/
 *   [**Merker: Subcortical Consciousness**](docs/merker_subcortical_consciousness.md): Independent clinical and comparative case for the tectum-first thesis that the architecture rests on.
 *   [**Affective Consciousness (Solms, Panksepp)**](docs/affective_consciousness_solms_panksepp.md): The neuroscience grounding for the emotional-homeostasis engine, linking the affective core to the Phase 6 active-inference objective.
 *   [**Generative World Models for Perception**](docs/generative_world_models_perception.md): External world-model architectures (DINO-WM, object-centric/slot models) framed as design options for the RSSM identity-collapse fix.
+*   [**Repository Map**](docs/repository_map.md): Where everything lives. The navigation index mapping directories, key components to files, and the docs, kept current from the tree.
 *   [**Architecture Deep Dive**](docs/architecture.md): System design overview.
 *   [**Biological Neural Architecture Research**](docs/biological_neural_architecture_research.md): Full biological grounding, gap analysis, and implementation roadmap.
 *   [**Theory of Emergence**](docs/theory_of_consciousness.md): Scientific basis of the Emotional RL approach.
