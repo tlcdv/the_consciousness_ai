@@ -148,6 +148,45 @@ direction (Phase 6 below) is elevated: the localization gives it a measured moti
 since the front-end is lossy precisely because it is trained ad-hoc (reward-MSE + TDANN
 topography) rather than by a principled free-energy / prediction-error objective.
 
+### Status 2026-07-02: world-model bet FAILED; signature instruments found degenerate
+
+Two chapters since 2026-06-02, both FAILED-first:
+
+1. **Perception fix via reconstruction: exhausted.** Two world-model reconstruction
+   targets on the RSSM latent (frame, then the dense obs_map feature map) both trained
+   their loss down and neither put stimulus identity into the latent. Mechanism confirmed
+   by PCA: identity is a low-variance direction in obs_map, so MSE reconstruction discards
+   it. [`results/perception_collapse_synthesis_2026_06_21.md`](results/perception_collapse_synthesis_2026_06_21.md).
+
+2. **Working memory via a value-equivalent world model: FAILED at its kill gate.** A
+   MuZero/Dreamer-without-decoder objective (`--enable-wm-predict`, default off:
+   action-conditioned RSSM, balanced KL with free bits, reward+continue heads, per-trial
+   BPTT through the DMTS delay) trained its loss down in two reward-head designs, but the
+   RSSM recurrent state `delay h_state` stayed at chance (0.10 to 0.21 vs chance 0.167).
+   The discrete gumbel-softmax categorical latent is the wall, now shown at the
+   recurrent-state level too.
+   [`results/wm_predict_stage1_2026_06_24.md`](results/wm_predict_stage1_2026_06_24.md).
+   The remaining lever (a continuous / higher-capacity latent + an identity-pressuring
+   objective) is a larger architectural bet, escalated to the owner, not pursued.
+
+Decision (2026-07-02): stop chasing task competence for now; pursue the signatures that
+do not require it (the 2026-06-02 reading-#2 direction). A zero-compute assessment of the
+signature instruments themselves
+([`results/signature_assessment_2026_07.md`](results/signature_assessment_2026_07.md))
+found most of them degenerate on the current agent: gate-level EI is frozen at a
+Laplace-floor value (0.031178) reproduced by a constant trajectory, so the ~12x
+"causal-emergence ratio" is a state-space-size artifact; GNW ignition is saturated
+(99.8 to 100 percent of steps conscious, the selective-ignition fix surviving only as an
+early-training transient); sync_R is invariant (0.2662 to 0.2666) across five training
+objectives; and RIIU/Levin/self-prediction are all zero (default-off modules). The one
+objective-sensitive signature is phi (~1.1e-3 reconstruction-family vs ~3.1e-4
+world-model runs, single seed, near-zero magnitude). The degeneracies share the
+already-characterized low-variation root. Consequence for the roadmap: the Phase 5
+signature experiments and the Phase 6 active-inference unification both need the workspace
+content to actually vary first; measuring indicator coverage on the current frozen
+instruments would overstate what is measured. Pre-registered EI/Phi thresholds and the
+section-13 substrate-independence thresholds are NOT revised.
+
 ## Phase 5: Dynamic Self-Representation & Meta-Cognition
 
 - **Goal:** Implement a dynamic, learned self-model and explore meta-cognitive capabilities.

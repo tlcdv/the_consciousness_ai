@@ -123,6 +123,46 @@ and is reported here so the rubric reflects it honestly.
   low-magnitude, sync_R is low-variation, and the ignition gate was threshold-saturated
   (fixed this session to selective ignition); these are distinct weaknesses, not one root.
 
+## Status update 2026-07-02: the signature instruments are largely degenerate on the current agent
+
+A zero-compute assessment over five recent trained runs
+([signature_assessment_2026_07.md](results/signature_assessment_2026_07.md)) checked
+whether the measured-signature instruments discriminate anything before any further
+coverage claims. Findings, applied to the rubric:
+
+- **GWT-2 (bottleneck + selective attention): the ignition half is SATURATED, not
+  selective in practice.** 99.79 to 100 percent of steps are flagged conscious in every
+  run, including the two trained after the selective-ignition fix; the fix's quiet steps
+  all fall in the first ~15 episodes and never recur. Mechanically, ignition fires when
+  input energy exceeds its own running average, and the workspace input energy is
+  near-constant on DMTS. Structural status stays IMPLEMENTED; the measured ignition
+  signature is currently non-discriminating.
+- **Causal-emergence evidence (EI, used to support the emergence framing of the rubric):
+  the current instrument cannot provide it.** Gate-level EI is bit-identical
+  (0.031178) in every 50-episode window of every run, reproduced exactly by a
+  single-state trajectory: the gates never leave one joint tertile state. The macro
+  level sits at or near its own constant floor (0.373712), and the "emergence ratio"
+  ~12x at the frozen windows equals the ratio of the two floors, a state-space-size
+  artifact that favors "emergence" under degeneracy. EI-based claims are suspended
+  until the micro level actually transitions and the floor bias is handled.
+- **RPT-2 (integration): the binding signature is objective-invariant.** Mean sync_R is
+  0.2662 to 0.2666 across five different training objectives (same seed and env). The
+  Phi-1 chapter stays closed; this adds that binding synchrony does not respond to the
+  training objective at all in the tested regime.
+- **Phi (IIT-adjacent magnitude): the one objective-sensitive signature.** Computed-step
+  phi means: ~1.1e-3 in the three reconstruction-family runs vs ~3.1e-4 in the two
+  action-conditioned world-model runs (~3.6x lower), CVs 0.78 to 1.2, absolute
+  magnitudes near zero throughout. Single seed; hypothesis-grade sensitivity.
+- **Inactive instruments.** RIIU phi (all variants), all five Levin metrics, and
+  self-prediction are exactly zero in all five runs (default-off modules), and the PAD
+  dominance channel is structurally zero. Coverage rows that depend on these modules
+  have no measured signal in the assessed runs.
+
+No indicator status changes: nothing here adds an IMPLEMENTED, and the structural
+presence of the mechanisms is not refuted. What changes is the evidentiary baseline:
+measured-signature claims must cite this assessment and its degeneracy findings first.
+Section 13 remains BLOCKED-AND-CHARACTERIZED with thresholds untouched.
+
 ## Caveat
 
 Indicator coverage is necessary-evidence framing, not proof. A system can satisfy
