@@ -38,6 +38,7 @@ from models.self_model.dqn_policy import DQNPolicy
 from models.core.control_representation import ControlRepresentationHead, obs_features
 from models.core.tectum_reconstruction import TectumReconstructionHead
 from models.core.rssm_reconstruction import RSSMReconstructionHead
+from models.core.rssm_identity import RSSMIdentityHead
 from models.core.world_model_objective import WorldModelObjective
 from models.self_model.self_representation_core import SelfRepresentationCore, SelfVectorModule
 from models.self_model.working_memory_latch import ObsMapSampleMemory
@@ -52,6 +53,12 @@ from models.evaluation.phi_riiu import RIIUPhi
 from models.evaluation.levin_consciousness_metrics import LevinConsciousnessEvaluator
 from models.memory.optimized_store import MemoryConsolidationManager
 from scripts.training.metrics_logger import ConsciousnessMetricsLogger, StepMetrics
+from simulations.environments._stimulus_renderer import SHAPE_NAMES, COLOR_NAMES
+
+# Label-to-index maps for the latent identity gate (--enable-latent-id). The DMTS env
+# reports sample_shape / sample_color by name in info; the head trains on indices.
+_SHAPE_IDX = {name: i for i, name in enumerate(SHAPE_NAMES)}
+_COLOR_IDX = {name: i for i, name in enumerate(COLOR_NAMES)}
 
 logging.basicConfig(
     level=logging.INFO,
@@ -274,6 +281,15 @@ def build_config(args):
         "wm_recon": {"weight": 1.0, "grid": 16, "reduce_channels": 32,
                      "hidden_dim": 256, "lr": 1e-3, "foreground": True,
                      "target": getattr(args, "wm_recon_target", "frame")},
+        # Path B stage 1 (--enable-latent-id): supervised identity gate on the RSSM
+        # latent. CE on the DMTS sample's shape+color from cat([h_t, z_flat]), sample
+        # phase only, privileged env labels. A diagnostic ceiling test (like the match
+        # head): if even direct supervision cannot make z_state decode identity on the
+        # collapse-locus probe, the discrete latent is the wall and no label-free
+        # objective will do better. Default off (baseline bit-identical).
+        "enable_latent_id": getattr(args, "enable_latent_id", False),
+        "latent_id": {"weight": 1.0, "reduce_channels": 32, "hidden_dim": 256,
+                      "lr": 1e-3},
         # Stage 1 value-equivalent world model (--enable-wm-predict): predict reward +
         # continue from the RSSM latent and train the prior/posterior KL as a loss, with
         # per-trial BPTT through the delay. No decoder. Default off (bit-identical).
@@ -656,6 +672,47 @@ def init_components(config):
             f"reward+continue+KL on the RSSM latent, per-trial BPTT, no decoder)"
         )
 
+    # Path B stage 1: supervised identity gate on the RSSM latent. Maximum identity
+    # pressure at the collapse locus (privileged DMTS sample labels, sample phase
+    # only), a diagnostic ceiling test like the match head, NOT a shipped mechanism.
+    # Trains inside the single-step tectum-optimizer block, so it is incompatible
+    # with --enable-wm-predict (which replaces that block). Default off (baseline
+    # bit-identical).
+    latent_id_head = None
+    latent_id_optimizer = None
+    if config.get("enable_latent_id", False):
+        if config.get("enable_wm_predict", False):
+            logger.warning(
+                "--enable-latent-id trains in the single-step tectum optimizer "
+                "block, which --enable-wm-predict replaces. Latent identity head "
+                "DISABLED."
+            )
+        elif config.get("env") != "dmts":
+            logger.warning(
+                "--enable-latent-id trains on DMTS sample_shape/sample_color "
+                f"labels; got env={config.get('env')}. Latent identity head "
+                "DISABLED."
+            )
+        else:
+            li_cfg = config.get("latent_id", {})
+            rssm_channels = tectum.feature_dim + tectum.rssm.categories * tectum.rssm.classes
+            latent_id_head = RSSMIdentityHead(
+                rssm_channels=rssm_channels,
+                grid=tectum.grid_size,
+                reduce_channels=li_cfg.get("reduce_channels", 32),
+                hidden_dim=li_cfg.get("hidden_dim", 256),
+                num_shapes=len(SHAPE_NAMES),
+                num_colors=len(COLOR_NAMES),
+            ).to(device)
+            latent_id_optimizer = torch.optim.Adam(
+                latent_id_head.parameters(), lr=li_cfg.get("lr", 1e-3)
+            )
+            logger.info(
+                f"Latent identity gate (Path B stage 1) enabled "
+                f"(weight={li_cfg.get('weight', 1.0)}, CE on sample shape+color "
+                f"from the RSSM latent cat([h_t, z_flat]), sample phase only)"
+            )
+
     # DMTS supervised match head. Only meaningful on the obsmem-conv tap (it reads
     # [current obs_map ; held sample]) and the DMTS env (it trains on the env's
     # target_position label). Disabled with a warning anywhere else. Default off
@@ -702,7 +759,8 @@ def init_components(config):
             recon_head, recon_optimizer,
             match_head, match_optimizer,
             wm_recon_head, wm_recon_optimizer,
-            wm_predict_head, wm_predict_optimizer)
+            wm_predict_head, wm_predict_optimizer,
+            latent_id_head, latent_id_optimizer)
 
 
 def frame_to_tensor(frame: np.ndarray, device: str) -> torch.Tensor:
@@ -760,7 +818,8 @@ def run_episode(episode_idx, config, tectum, workspace, reentrant,
                 recon_head=None, recon_optimizer=None,
                 match_head=None, match_optimizer=None,
                 wm_recon_head=None, wm_recon_optimizer=None,
-                wm_predict_head=None, wm_predict_optimizer=None):
+                wm_predict_head=None, wm_predict_optimizer=None,
+                latent_id_head=None, latent_id_optimizer=None):
     device = config["device"]
     max_steps = config["max_steps"]
 
@@ -1270,6 +1329,18 @@ def run_episode(episode_idx, config, tectum, workspace, reentrant,
                         match_head.remember(policy_state, match_decision)
 
         wm_phase_at_action = info.get("phase") if isinstance(info, dict) else None
+
+        # Path B latent identity gate: labels for the frame the tectum just processed
+        # come from the PRE-step info (the info that produced the current frame),
+        # sample phase only. Consumed by the tectum-optimizer block below.
+        latent_id_label = None
+        if latent_id_head is not None and isinstance(info, dict) \
+                and info.get("phase") == "sample":
+            _li_s = _SHAPE_IDX.get(info.get("sample_shape"))
+            _li_c = _COLOR_IDX.get(info.get("sample_color"))
+            if _li_s is not None and _li_c is not None:
+                latent_id_label = (_li_s, _li_c)
+
         next_obs, env_reward, terminated, truncated, info = env.step(env_action)
         done = terminated or truncated
 
@@ -1433,8 +1504,24 @@ def run_episode(episode_idx, config, tectum, workspace, reentrant,
                         foreground=wr_cfg.get("foreground", True))
                     last_recon_loss = float(wm_recon_loss.item())
 
+            # Path B stage 1 identity gate: supervised CE (sample shape + color) on
+            # the pre-capsule RSSM latent, sample phase only. Maximum identity
+            # pressure at the collapse locus; gradient flows into the RSSM exactly
+            # like wm_recon. Reuses the recon_loss and match_head_acc log slots (the
+            # recon, match-head, and latent-id flags are mutually exclusive runs).
+            latent_id_loss = torch.tensor(0.0, device=device)
+            if latent_id_head is not None and latent_id_label is not None:
+                li_state = getattr(tectum, "_last_state_tensor", None)
+                if li_state is not None:
+                    li_cfg = config.get("latent_id", {})
+                    li_loss, li_acc = latent_id_head.loss(
+                        li_state, latent_id_label[0], latent_id_label[1])
+                    latent_id_loss = li_cfg.get("weight", 1.0) * li_loss
+                    last_recon_loss = float(latent_id_loss.item())
+                    last_match_acc = li_acc
+
             total_tectum_loss = (pred_loss + topo_loss + control_loss
-                                 + recon_loss + wm_recon_loss)
+                                 + recon_loss + wm_recon_loss + latent_id_loss)
 
             tectum_optimizer.zero_grad()
             reward_optimizer.zero_grad()
@@ -1444,6 +1531,8 @@ def run_episode(episode_idx, config, tectum, workspace, reentrant,
                 recon_optimizer.zero_grad()
             if wm_recon_optimizer is not None:
                 wm_recon_optimizer.zero_grad()
+            if latent_id_optimizer is not None:
+                latent_id_optimizer.zero_grad()
             total_tectum_loss.backward(retain_graph=True)
             tectum_optimizer.step()
             reward_optimizer.step()
@@ -1453,6 +1542,8 @@ def run_episode(episode_idx, config, tectum, workspace, reentrant,
                 recon_optimizer.step()
             if wm_recon_optimizer is not None:
                 wm_recon_optimizer.step()
+            if latent_id_optimizer is not None:
+                latent_id_optimizer.step()
             # Force-detach recurrent state immediately after the optimizer
             # mutates tectum parameters in-place. Without this, a later
             # backward call through the BPTT-retained graph would reference
@@ -2056,6 +2147,17 @@ def main():
                              "reward-MSE tectum loss. Default off (baseline bit-identical). "
                              "Validate with the leakage-free working-memory probe on a "
                              "--save-tectum checkpoint.")
+    parser.add_argument("--enable-latent-id", action="store_true",
+                        help="Path B stage 1 diagnostic: supervised identity gate on "
+                             "the RSSM latent. CE on the DMTS sample's shape+color from "
+                             "cat([h_t, z_flat]) during the sample phase, privileged env "
+                             "labels (a ceiling test like the match head, not a shipped "
+                             "mechanism). Answers whether the discrete latent can carry "
+                             "identity under the maximum possible pressure; if not, no "
+                             "label-free objective will do better. DMTS only; "
+                             "incompatible with --enable-wm-predict. Default off "
+                             "(baseline bit-identical). Validate with the collapse-locus "
+                             "probe on a --save-tectum checkpoint.")
     parser.add_argument("--wm-predict-beta", type=float, default=1.0,
                         help="KL weight (beta) for the value-equivalent world-model loss.")
     parser.add_argument("--wm-predict-free-bits", type=float, default=1.0,
@@ -2142,7 +2244,8 @@ def main():
      recon_head, recon_optimizer,
      match_head, match_optimizer,
      wm_recon_head, wm_recon_optimizer,
-     wm_predict_head, wm_predict_optimizer) = init_components(config)
+     wm_predict_head, wm_predict_optimizer,
+     latent_id_head, latent_id_optimizer) = init_components(config)
 
     if config.get("enable_wm_predict"):
         # Never auto-detach the recurrent state mid-episode; the WM objective detaches at
@@ -2212,6 +2315,8 @@ def main():
             wm_recon_optimizer=wm_recon_optimizer,
             wm_predict_head=wm_predict_head,
             wm_predict_optimizer=wm_predict_optimizer,
+            latent_id_head=latent_id_head,
+            latent_id_optimizer=latent_id_optimizer,
         )
         global_step += ep_steps
 
