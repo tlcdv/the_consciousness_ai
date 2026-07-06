@@ -187,6 +187,29 @@ content to actually vary first; measuring indicator coverage on the current froz
 instruments would overstate what is measured. Pre-registered EI/Phi thresholds and the
 section-13 substrate-independence thresholds are NOT revised.
 
+### Status 2026-07-05: latent-identity ceiling test FAILED; forward plan is a gated tree
+
+The Path B stage-1 diagnostic ran and FAILED. A supervised cross-entropy on the DMTS
+sample's shape and color, applied directly to the pre-capsule RSSM latent with privileged
+env labels (`--enable-latent-id`, default off), never left the chance floor in training
+(3.84 to 3.61 vs 2 ln 6 = 3.584) and the leakage-free collapse-locus probe kept z_state in
+the chance band (0.214 to 0.250; obs_map control 0.988 to 1.000). A defective head is
+excluded (a frozen-head unit value test trains the loss down, and the reconstruction heads
+trained 15x/1300x through the identical gradient path). Verdict:
+[`results/latent_identity_ceiling_2026_07.md`](results/latent_identity_ceiling_2026_07.md).
+The perception collapse is now robust to reward, reconstruction (two targets), a
+value-equivalent world model, AND direct supervision; the discrete gumbel-softmax RSSM
+latent is the confirmed wall. Label-free contrastive objectives on this latent are ruled
+out (strictly weaker pressure than the supervision that failed).
+
+The multi-session forward plan is a gated decision tree in
+[`roadmap_next_2026_07.md`](roadmap_next_2026_07.md): Track A repairs the degenerate
+signature instruments (low/zero compute, mission progress independent of the agent), Track
+B stages the last perception lever (continuous / higher-capacity latent, gated by the
+reused ceiling-test harness), Track C reaches competence and the pre-registered section-13
+test only after B succeeds and the separate RL learning wall is confronted. Pre-registered
+EI/Phi and section-13 thresholds are not revised.
+
 ## Phase 5: Dynamic Self-Representation & Meta-Cognition
 
 - **Goal:** Implement a dynamic, learned self-model and explore meta-cognitive capabilities.
