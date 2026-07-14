@@ -22,16 +22,22 @@ First execution pass on this roadmap:
   threshold problem. Same doc, A2 section, plus `scripts/analysis/probe_ignition_signal.py`.
 - **B0 (ceiling-test weight sweep): done** (`46d7464`). Weights 1/10/100 all keep the CE at
   the chance floor and z_state at chance; the FAILED discrete-latent verdict is airtight.
-- **B1 (continuous latent): PASS** (`docs/results/b1_continuous_latent_2026_07.md`). A
-  default-off continuous Gaussian latent makes z_state decode identity (0.71 to 1.0 vs
+- **B1 (continuous latent): PASS, replicated (3 seeds)** (`docs/results/b1_continuous_latent_2026_07.md`).
+  A default-off continuous Gaussian latent makes z_state decode identity (0.71 to 1.0 vs
   chance 0.167), confirmed structural by a reward-only control. The discrete gumbel latent
-  was the wall. Single seed, so it is a hypothesis pending >= 3 seeds; the mode stays
-  default-off. The collapse MOVED downstream: capsule_poses and tectum_content are still at
-  chance, so the new locus is the capsule routing. Task reward stayed flat (RL wall separate).
+  was the wall. Replicated at seeds 42/43/44 (all decode z_state well above chance);
+  capsule_poses and tectum_content at chance in all three. Mode stays default-off (task
+  reward still flat, no competence justification for a default change yet).
+- **B1 downstream diagnosis: the loss is the FINAL capsule routing layer.** A read-only
+  capsule-internal probe (`scripts/analysis/probe_capsule_locus.py`) shows identity
+  survives primary_caps, routing L0, and routing L1, then drops to chance only at routing
+  L2 (the squeeze from 8 output capsules to 4). Not the whole stack, not mere
+  dimensionality, the final dynamic-routing-by-agreement step.
 
-Next per the tree: replicate the continuous result at >= 3 seeds (gate before any default
-change), and/or open a B2-like thread on the capsule stage (the new identity locus). C1
-(RL wall) remains independent. These are owner decisions.
+Next per the tree: a default-off capsule experiment to carry identity into tectum_content
+(widen the final routing level / read from routing L1 / change the final routing), OR pivot
+to C1 (the RL learning wall), which gates task competence independently of how far identity
+is carried. These are owner decisions, not auto-started.
 
 ## Where we are (all verified on disk, 2026-07-05)
 
