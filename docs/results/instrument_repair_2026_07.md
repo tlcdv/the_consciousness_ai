@@ -1,4 +1,4 @@
-# Instrument repair (2026-07): EI floor correction (Track A1)
+# Instrument repair (2026-07): EI floor correction (A1) + ignition diagnosis (A2)
 
 Track A of the forward roadmap (`docs/roadmap_next_2026_07.md`) repairs the degenerate
 signature instruments the 2026-07 assessment
@@ -82,9 +82,55 @@ is the A1 output that feeds the next step):
 - This is the same low-variation root as the perception collapse and the ignition
   saturation: the content driving the gates barely changes step to step.
 
+## A2: ignition selectivity. VERDICT: not fixable at the gate; the signal carries no task structure
+
+The assessment showed ignition saturated (99.8 to 100 percent of steps conscious;
+`is_conscious == input_energy >= EMA(input_energy)` in
+`models/core/global_workspace.py`). A2 asked whether any thresholding scheme could make
+it selective. Diagnosis first, no mechanism built.
+
+**Step 1 (zero compute, proxy).** Over the six existing runs, `broadcast_mag` dips below
+its own alpha 0.95 EMA on 50 to 56 percent of steps in four runs (median relative dip
+1e-3 to 3e-3, evenly spread over training), while the two post-fix wm-predict runs show
+the logged gate going quiet only in the first ~3000 steps. So the workspace output
+oscillates as millinoise around its mean; an EMA gate on such a signal is a coin flip,
+not task selectivity. The proxy cannot settle the question because the gate reads
+`max(bound_bids)`, which is not logged.
+
+**Step 2 (instrumented forward probe, `scripts/analysis/probe_ignition_signal.py`).**
+Forward-only DMTS episodes through the standard pipeline (no training), recovering the
+exact gate signal from consecutive EMA baselines and tagging every step with the task
+phase. Two arms, 5300 steps each (3 episodes, seed 42, 60 trials):
+
+| arm | fixation energy | sample | delay | choice | sample-vs-delay d | ignited (all phases) |
+|---|---:|---:|---:|---:|---:|---:|
+| trained (latentid tectum) | 1.498533 | 1.498976 | 1.499055 | 1.498991 | -0.024 | 0.998 to 0.999 |
+| untrained init | 1.499040 | 1.499632 | 1.499822 | 1.499955 | -0.056 | 0.998 to 1.000 |
+
+The gate signal is phase-invariant to within |d| < 0.06 in both arms (within-phase std
+~3e-3 on a ~1.499 signal that sits against its ~1.5 ceiling; the AKOrN-boosted winning
+bid is effectively pinned). Salience is positive on ~99.8 percent of steps in EVERY
+phase. Sample ONSET does produce a consistently positive salience (mean +0.00067,
+60 of 60 onsets), but it is 0.03 percent of the signal scale and salience is positive
+nearly everywhere, so it separates nothing. `broadcast_mag` is equally phase-invariant
+(|d| <= 0.03).
+
+**Verdict: FAILED as a fixable-instrument, honestly characterized.** No threshold, EMA,
+or centering scheme on `max(bound_bids)` can produce task-selective ignition, because
+the signal contains no task contrast to select on. The saturation is a CONTENT problem:
+the module bids do not vary with what is on screen. This is the same root as the
+perception collapse (identity-free content propagating to the workspace) and it moves
+the fix out of the instrument and into perception (Track B). No cosmetic parameter
+tuning was done, per the standing rule. The probe stays in the repo as the measurement
+tool that will show when ignition BECOMES selectable (a future agent whose bids carry
+task structure will show a nonzero sample-vs-delay d here first).
+
 ## Status move
 
-The EI instrument's math is corrected and the corrected reading is now logged by default.
+A2 adds no status move either: ignition remains un-measurable as a selective signature on
+this agent, now with the cause pinned to the phase-invariant gate signal rather than the
+threshold logic. The EI instrument's math is corrected and the corrected reading is now
+logged by default.
 No Butlin indicator status is moved on the strength of this: the corrected EI shows the
 emergence comparison remains un-measurable on the current agent (frozen micro level), which
 is an honest negative, not progress from PARTIAL to IMPLEMENTED. The value delivered is
