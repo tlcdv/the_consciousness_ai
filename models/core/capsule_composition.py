@@ -244,12 +244,25 @@ class HierarchicalCapsuleComposition(nn.Module):
     def __init__(self, rssm_channels, grid_size, workspace_dim=256,
                  num_primary_caps=8, primary_dim=8,
                  hierarchy_spec=None, routing_iterations=3,
-                 reentrant_iterations=2, feedback_alpha=0.5):
-        # type: (int, int, int, int, int, list[tuple[int, int]] | None, int, int, float) -> None
+                 reentrant_iterations=2, feedback_alpha=0.5,
+                 workspace_source="final"):
+        # type: (int, int, int, int, int, list[tuple[int, int]] | None, int, int, float, str) -> None
         super().__init__()
 
         if hierarchy_spec is None:
             hierarchy_spec = list(self.DEFAULT_HIERARCHY)
+
+        # Which capsule poses feed the workspace projection. "final" (default) uses only
+        # the last routing level's poses, the baseline. "all_levels" concatenates every
+        # routing level's poses before the projection: the 2026-07 capsule-locus probe
+        # showed stimulus identity survives routing levels 0 and 1 and dies only at the
+        # final squeeze to 4 capsules, so reading all levels carries identity into
+        # workspace_content / tectum_content (what the policy reads) while leaving the
+        # returned final capsule_poses (and downstream payloads) unchanged.
+        if workspace_source not in ("final", "all_levels"):
+            raise ValueError(
+                f"workspace_source must be final or all_levels, got {workspace_source}")
+        self.workspace_source = workspace_source
 
         self.num_levels = 1 + len(hierarchy_spec)  # primary + routing levels
         self.reentrant_iterations = reentrant_iterations
@@ -296,9 +309,15 @@ class HierarchicalCapsuleComposition(nn.Module):
             lower_dim = level_dims[i + 1]    # level i+1 in full hierarchy = routing level i
             self.feedback_projections.append(nn.Linear(higher_dim, lower_dim))
 
-        # Final projection to workspace dimension
+        # Final projection to workspace dimension. In all_levels mode the projection
+        # reads the concatenation of every routing level's poses, so its input width is
+        # the sum over levels; in final mode it is just the last level (baseline).
         final_num_caps, final_dim = hierarchy_spec[-1]
-        self.workspace_proj = nn.Linear(final_num_caps * final_dim, workspace_dim)
+        if workspace_source == "all_levels":
+            proj_in = sum(nc * cd for nc, cd in hierarchy_spec)
+        else:
+            proj_in = final_num_caps * final_dim
+        self.workspace_proj = nn.Linear(proj_in, workspace_dim)
 
         # Cache for reentrant feedback and inspection
         self._last_poses = None
@@ -393,8 +412,14 @@ class HierarchicalCapsuleComposition(nn.Module):
         # Extract final outputs
         capsule_poses, capsule_activities = level_results[-1]
 
-        # Project to workspace
-        flat_poses = capsule_poses.reshape(B, -1)
+        # Project to workspace. all_levels concatenates every routing level's poses (so
+        # identity present at lower levels reaches workspace_content); final uses only the
+        # last level (baseline, bit-identical). The RETURNED capsule_poses stays the final
+        # level either way, so structured payloads and reentrant feedback are unchanged.
+        if self.workspace_source == "all_levels":
+            flat_poses = torch.cat([lr[0].reshape(B, -1) for lr in level_results], dim=1)
+        else:
+            flat_poses = capsule_poses.reshape(B, -1)
         workspace_content = self.workspace_proj(flat_poses)
 
         # Cache for external access

@@ -98,6 +98,11 @@ def build_config(args):
         # gumbel-softmax categorical latent; "continuous" = a Gaussian latent of the
         # same shape, tested against the collapse-locus / ceiling probes.
         "rssm_latent_mode": getattr(args, "rssm_latent_mode", "discrete"),
+        # Capsule workspace source (Path B downstream fix). "final" (default) projects
+        # workspace_content from the last routing level only; "all_levels" concatenates
+        # every routing level, carrying the identity that survives the lower levels into
+        # tectum_content (what the policy reads). See the 2026-07 capsule-locus probe.
+        "capsule_workspace_source": getattr(args, "capsule_workspace_source", "final"),
         "workspace_dim": 256,
         "workspace": {
             "broadcast_threshold": 0.6,
@@ -340,6 +345,7 @@ def init_components(config):
         "tectum_grid_size": config["tectum_grid_size"],
         "workspace_dim": config["workspace_dim"],
         "rssm_latent_mode": config.get("rssm_latent_mode", "discrete"),
+        "capsule_workspace_source": config.get("capsule_workspace_source", "final"),
     }
     if config.get("ablate_bptt"):
         tectum_config["bptt_window"] = 1
@@ -2174,6 +2180,16 @@ def main():
                              "latent was the wall that blocked stimulus identity. Pair "
                              "with --enable-latent-id + the collapse-locus probe to test "
                              "it, and with --save-tectum to checkpoint.")
+    parser.add_argument("--capsule-workspace-source", type=str, default="final",
+                        choices=["final", "all_levels"],
+                        help="Which capsule poses feed workspace_content (Path B "
+                             "downstream fix). 'final' (default, bit-identical) uses only "
+                             "the last routing level. 'all_levels' concatenates every "
+                             "routing level so the stimulus identity that survives the "
+                             "lower levels (see the 2026-07 capsule-locus probe) reaches "
+                             "tectum_content, what the policy reads. Pair with "
+                             "--rssm-latent-mode continuous (identity must be in z_state "
+                             "first) and re-probe tectum_content.")
     parser.add_argument("--latent-id-weight", type=float, default=1.0,
                         help="Loss weight for the latent identity gate. The 2026-07-05 "
                              "ceiling test ran at 1.0 and FAILED with the CE at the "

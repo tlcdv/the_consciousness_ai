@@ -57,10 +57,12 @@ def pca_mlp_decode(X, y, seed: int = 0, test_size: float = 0.3, npca: int = 80):
 
 
 def collect(episodes: int, seed: int, load_tectum: str | None = None,
-            latent_mode: str = "discrete"):
+            latent_mode: str = "discrete",
+            capsule_workspace_source: str = "final"):
     cfg, tectum, *_ = _build_components("dmts", action_dim=5, seed=seed,
                                         mock_semantic=False, load_tectum=load_tectum,
-                                        latent_mode=latent_mode)
+                                        latent_mode=latent_mode,
+                                        capsule_workspace_source=capsule_workspace_source)
     env = DMTSEnv(num_trials=20)
     taps = {"obs_map": [], "z_state": [], "capsule_poses": [], "tectum_content": []}
     ys = {"shape": [], "color": []}
@@ -113,11 +115,18 @@ def main():
                          "match the checkpoint: a --rssm-latent-mode continuous run "
                          "must be probed with --latent-mode continuous or the state "
                          "dict will not load (the continuous latent adds cont_logvar).")
+    ap.add_argument("--capsule-workspace-source", type=str, default="final",
+                    choices=["final", "all_levels"],
+                    help="Capsule workspace source to BUILD before loading. Must match "
+                         "the checkpoint: an --capsule-workspace-source all_levels run "
+                         "has a wider workspace_proj and will not load under final.")
     args = ap.parse_args()
 
     mode = f"TRAINED tectum ({args.load_tectum})" if args.load_tectum else "UNTRAINED init"
-    print(f"collapse-locus probe mode: {mode} | latent_mode={args.latent_mode}")
-    taps, ys = collect(args.episodes, args.seed, args.load_tectum, args.latent_mode)
+    print(f"collapse-locus probe mode: {mode} | latent_mode={args.latent_mode} "
+          f"| capsule_source={args.capsule_workspace_source}")
+    taps, ys = collect(args.episodes, args.seed, args.load_tectum, args.latent_mode,
+                       args.capsule_workspace_source)
     n = len(ys["shape"])
     print(f"LEAKAGE-FREE collapse-locus decode, n={n} trials (one record per trial)")
     print(f"pipeline order: obs_map -> z_state -> capsule_poses -> tectum_content\n")

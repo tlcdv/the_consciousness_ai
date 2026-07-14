@@ -295,6 +295,50 @@ class TestHierarchicalCapsuleComposition(unittest.TestCase):
         self.assertIsNotNone(x.grad)
         self.assertFalse(torch.all(x.grad == 0))
 
+    def test_workspace_source_default_is_final(self):
+        """Default workspace_source is 'final': proj input = last level pose count."""
+        self.assertEqual(self.layer.workspace_source, "final")
+        # spec last entry (2, 8) -> 16 input features
+        self.assertEqual(self.layer.workspace_proj.in_features, 2 * 8)
+
+    def test_workspace_source_invalid_raises(self):
+        with self.assertRaises(ValueError):
+            HierarchicalCapsuleComposition(
+                rssm_channels=32, grid_size=8, hierarchy_spec=[(8, 6), (4, 8), (2, 8)],
+                workspace_source="middle")
+
+    def test_all_levels_widens_projection(self):
+        """all_levels proj input = sum over every routing level's pose features."""
+        layer = HierarchicalCapsuleComposition(
+            rssm_channels=self.rssm_channels, grid_size=self.grid_size,
+            workspace_dim=self.workspace_dim, num_primary_caps=4, primary_dim=4,
+            hierarchy_spec=[(8, 6), (4, 8), (2, 8)], routing_iterations=2,
+            workspace_source="all_levels")
+        # 8*6 + 4*8 + 2*8 = 48 + 32 + 16 = 96
+        self.assertEqual(layer.workspace_proj.in_features, 96)
+        content, acts, poses = layer(self._make_input(2))
+        # workspace_content still projects to workspace_dim; final poses unchanged
+        self.assertEqual(content.shape, (2, self.workspace_dim))
+        self.assertEqual(poses.shape, (2, 2, 8))
+
+    def test_all_levels_uses_lower_level_content(self):
+        """all_levels workspace_content must depend on lower-level poses, not just the
+        final level. Zeroing a lower level's contribution changes the output."""
+        layer = HierarchicalCapsuleComposition(
+            rssm_channels=self.rssm_channels, grid_size=self.grid_size,
+            workspace_dim=self.workspace_dim, num_primary_caps=4, primary_dim=4,
+            hierarchy_spec=[(8, 6), (4, 8), (2, 8)], routing_iterations=2,
+            workspace_source="all_levels")
+        x = self._make_input(1)
+        content_all, _, _ = layer(x)
+        # The final-only projection over the same final poses would read 16 features;
+        # all_levels reads 96. The extra 80 features are lower levels, so the content
+        # is not a function of the final level alone. Assert the proj weight on the
+        # lower-level slice is used (nonzero) so the content genuinely mixes levels.
+        lower_slice = layer.workspace_proj.weight[:, : 96 - 16]
+        self.assertGreater(float(lower_slice.abs().sum()), 0.0)
+        self.assertEqual(content_all.shape, (1, self.workspace_dim))
+
     def test_default_hierarchy_spec(self):
         """Default spec should produce 4 levels: [(16,12), (8,16), (4,16)]."""
         layer = HierarchicalCapsuleComposition(

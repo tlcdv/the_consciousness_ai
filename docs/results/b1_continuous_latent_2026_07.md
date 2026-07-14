@@ -127,6 +127,36 @@ default-off experiment, none built yet): widen the final level (more output caps
 output_dim), read workspace content from routing L1 (8 caps) where identity is still
 present, or alter the final routing (fewer agreement iterations / skip connection).
 
+## Capsule fix: identity now reaches tectum_content (2026-07-06)
+
+Acting on the diagnosis, a default-off `--capsule-workspace-source all_levels` projects
+workspace_content from the concatenation of every routing level (where identity survives)
+instead of only the final 4-capsule level. The returned final capsule_poses and the
+structured payloads are unchanged; only what the workspace/policy reads (tectum_content) is
+enriched. Baseline bit-identical when off (verified: default == final, identical state-dict
+and forward; all_levels changes only `workspace_proj.weight` width). Run: continuous latent
++ all_levels, DMTS 100 ep seed 42 (`runs/capfix_alllevels`).
+
+| tap | continuous (final source) | continuous + all_levels |
+|-----|--------------------------:|------------------------:|
+| obs_map shape / color | ~1.0 | 0.988/0.976 , 1.000/0.988 |
+| z_state shape / color | 0.88/0.71 , 0.98/0.77 | 0.988/0.762 , 1.000/0.869 |
+| capsule_poses (final) | chance | shape 0.167/0.238 , color 0.452/0.321 |
+| **tectum_content shape** | **chance (~0.19)** | **0.524 / 0.833** |
+| **tectum_content color** | **chance (~0.23)** | **0.988 / 0.976** |
+
+For the first time, tectum_content, the 256-D content the policy and the global workspace
+read, decodes stimulus identity (pca+mlp shape 0.833, color 0.976, chance 0.167). The full
+perception chain is now intact end to end: obs_map -> continuous z_state -> (all capsule
+levels) -> tectum_content. As designed, the final capsule_poses stays near chance (all_levels
+does not change the final level, only the projection source), so structured payloads that
+read capsule_poses are unaffected.
+
+Honest limits: single seed (42); the mode stays default-off. Task reward is still flat and
+negative (first-10 -39.09, last-10 -37.88): the agent does not learn DMTS. The perception
+chain is complete, but making identity AVAILABLE to the policy did not by itself produce
+learning, which is exactly the separate RL / credit-assignment wall (Track C1, next).
+
 ## The new fork (owner decision)
 
 The RSSM wall is broken and replicated (3 seeds); the loss is now pinned to the final

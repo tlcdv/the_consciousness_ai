@@ -146,11 +146,13 @@ def _torch_probe(X, y_idx, n_classes, seed, test_size):
 # --------------------------------------------------------------------------- #
 def _build_components(env_name: str, action_dim: int, seed: int, mock_semantic: bool,
                       load_tectum: str | None = None, wm_action_dim: int = 0,
-                      latent_mode: str = "discrete"):
+                      latent_mode: str = "discrete",
+                      capsule_workspace_source: str = "final"):
     args = types.SimpleNamespace(
         action_dim=action_dim, lr=1e-3, episodes=1, max_steps=200,
         env=env_name, enable_audio=False, enable_mock_semantic=mock_semantic,
         seed=seed, rssm_latent_mode=latent_mode,
+        capsule_workspace_source=capsule_workspace_source,
     )
     config = build_config(args)
     config["device"] = "cpu"
