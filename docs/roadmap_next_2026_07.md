@@ -9,6 +9,30 @@ success axis is unchanged: consciousness signatures (the Butlin rubric in
 `docs/consciousness_indicators_butlin.md`) and causal efficacy on DMTS/WCST (the
 pre-registered section 13 test in `docs/preregistered_predictions.md`), never task reward.
 
+## Status 2026-07-06: A1/A2 done, B0 closed, B1 is a PASS (the RSSM wall broke; it moved downstream)
+
+First execution pass on this roadmap:
+
+- **A1 (EI floor correction): done** (`46d7464`). The instrument is corrected; the honest
+  reading is the micro/gate level is frozen everywhere while the macro/workspace level has
+  real structure, so the old 12x ratio was macro structure over a Laplace floor. See
+  `docs/results/instrument_repair_2026_07.md`.
+- **A2 (ignition): done, not fixable at the gate** (`0a87d9b`). The gate signal is
+  phase-invariant (sample-vs-delay |d| < 0.06); the saturation is a content problem, not a
+  threshold problem. Same doc, A2 section, plus `scripts/analysis/probe_ignition_signal.py`.
+- **B0 (ceiling-test weight sweep): done** (`46d7464`). Weights 1/10/100 all keep the CE at
+  the chance floor and z_state at chance; the FAILED discrete-latent verdict is airtight.
+- **B1 (continuous latent): PASS** (`docs/results/b1_continuous_latent_2026_07.md`). A
+  default-off continuous Gaussian latent makes z_state decode identity (0.71 to 1.0 vs
+  chance 0.167), confirmed structural by a reward-only control. The discrete gumbel latent
+  was the wall. Single seed, so it is a hypothesis pending >= 3 seeds; the mode stays
+  default-off. The collapse MOVED downstream: capsule_poses and tectum_content are still at
+  chance, so the new locus is the capsule routing. Task reward stayed flat (RL wall separate).
+
+Next per the tree: replicate the continuous result at >= 3 seeds (gate before any default
+change), and/or open a B2-like thread on the capsule stage (the new identity locus). C1
+(RL wall) remains independent. These are owner decisions.
+
 ## Where we are (all verified on disk, 2026-07-05)
 
 Two blockers are now characterized to the point of being actionable:

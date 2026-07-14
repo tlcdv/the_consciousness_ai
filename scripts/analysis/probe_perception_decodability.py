@@ -145,11 +145,12 @@ def _torch_probe(X, y_idx, n_classes, seed, test_size):
 # Component construction (reuses train_rlhf builders, no edits to that file)
 # --------------------------------------------------------------------------- #
 def _build_components(env_name: str, action_dim: int, seed: int, mock_semantic: bool,
-                      load_tectum: str | None = None, wm_action_dim: int = 0):
+                      load_tectum: str | None = None, wm_action_dim: int = 0,
+                      latent_mode: str = "discrete"):
     args = types.SimpleNamespace(
         action_dim=action_dim, lr=1e-3, episodes=1, max_steps=200,
         env=env_name, enable_audio=False, enable_mock_semantic=mock_semantic,
-        seed=seed,
+        seed=seed, rssm_latent_mode=latent_mode,
     )
     config = build_config(args)
     config["device"] = "cpu"

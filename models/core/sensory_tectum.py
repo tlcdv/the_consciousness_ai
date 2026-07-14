@@ -160,15 +160,32 @@ class RSSMCore(nn.Module):
       h_t: Deterministic hidden state (GRU)
       z_t: Stochastic latent state (Discrete Categorical per spatial location)
     """
-    def __init__(self, feature_dim: int = 64, grid_size: int = 16, num_categories: int = 32, num_classes: int = 32, action_dim: int = 0):
+    def __init__(self, feature_dim: int = 64, grid_size: int = 16, num_categories: int = 32, num_classes: int = 32, action_dim: int = 0, latent_mode: str = "discrete"):
         super().__init__()
         self.feature_dim = feature_dim
         self.grid_size = grid_size
         self.categories = num_categories
         self.classes = num_classes
+        # Latent representation for z_t. "discrete" (default): per-cell categorical with
+        # gumbel-softmax STE, the baseline. "continuous" (Path B1): a Gaussian latent of
+        # the SAME [B, categories, classes, grid, grid] shape, reusing the prior/posterior
+        # nets as the mean and adding one log-variance parameter. The B1 bet tests whether
+        # the discrete latent was the wall that blocked stimulus identity (the 2026-07
+        # ceiling test showed even direct supervision could not push identity into the
+        # discrete latent). Every downstream shape is identical, so the capsule/workspace
+        # path is unchanged; only the sampling and KL differ.
+        if latent_mode not in ("discrete", "continuous"):
+            raise ValueError(f"latent_mode must be discrete or continuous, got {latent_mode}")
+        self.latent_mode = latent_mode
         # Optional action-conditioning for the value-equivalent world model. Built only
         # when action_dim > 0, so the baseline ConvGRU step is bit-identical when off.
         self.action_embed = nn.Linear(action_dim, feature_dim) if action_dim > 0 else None
+        # Continuous mode: one shared log-variance per (category, class) channel. The
+        # prior/posterior nets supply the MEAN (reused unchanged); this is the only new
+        # parameter. Not created in discrete mode -> baseline state_dict is bit-identical.
+        if latent_mode == "continuous":
+            self.cont_logvar = nn.Parameter(
+                torch.zeros(1, num_categories, num_classes, 1, 1))
 
         # Deterministic Recurrence: ConvGRU
         # (Using standard Conv2d logic manually for a simplified GRU step)
@@ -227,17 +244,31 @@ class RSSMCore(nn.Module):
         # 2. Prior prediction (Dreaming / Prediction)
         prior_logits = self.prior_net(h_t)
         prior_logits = prior_logits.view(-1, self.categories, self.classes, self.grid_size, self.grid_size)
-        
+
+        if self.latent_mode == "continuous":
+            # Gaussian latent: prior_logits/posterior_logits are reinterpreted as MEANS
+            # (same nets, same shape). Sample by reparameterization when training, take
+            # the mode (mean) in eval so decoding/probes are deterministic. The returned
+            # "logits" slots carry the means, consumed by the Gaussian KL in the tectum.
+            prior_sample = self._reparam(prior_logits)
+            if obs_map is not None:
+                post_in = torch.cat([h_t, obs_map], dim=1)
+                posterior_mean = self.posterior_net(post_in).view(
+                    -1, self.categories, self.classes, self.grid_size, self.grid_size)
+                z_t = self._reparam(posterior_mean)
+                return h_t, z_t, prior_logits, posterior_mean
+            return h_t, prior_sample, prior_logits, prior_logits
+
         # Straight-Through Estimator (STE) for discrete sampling
         # In a real training loop we use reparameterization, here we use argmax/gumbel
         prior_sample = F.gumbel_softmax(prior_logits, tau=1.0, hard=True, dim=2)
-        
+
         if obs_map is not None:
             # 3. Posterior update (Reality)
             post_in = torch.cat([h_t, obs_map], dim=1)
             posterior_logits = self.posterior_net(post_in)
             posterior_logits = posterior_logits.view(-1, self.categories, self.classes, self.grid_size, self.grid_size)
-            
+
             # STE Sample
             z_t = F.gumbel_softmax(posterior_logits, tau=1.0, hard=True, dim=2)
             return h_t, z_t, prior_logits, posterior_logits
@@ -245,6 +276,17 @@ class RSSMCore(nn.Module):
             # Blind prediction
             z_t = prior_sample
             return h_t, z_t, prior_logits, prior_logits
+
+    def _reparam(self, mean: torch.Tensor) -> torch.Tensor:
+        """Gaussian reparameterization with the shared per-channel log-variance.
+
+        Training: mean + eps * std (a real sample, gradient flows to mean and logvar).
+        Eval: the mean (mode), so probes and decoding see a deterministic latent.
+        """
+        if not self.training:
+            return mean
+        std = torch.exp(0.5 * self.cont_logvar)
+        return mean + torch.randn_like(mean) * std
 
 class SensoryTectum(nn.Module):
     """
@@ -258,8 +300,10 @@ class SensoryTectum(nn.Module):
         workspace_dim = config.get("workspace_dim", 256)
 
         self.topo_map = TopographicMap(self.grid_size, self.feature_dim)
+        self.latent_mode = config.get("rssm_latent_mode", "discrete")
         self.rssm = RSSMCore(self.feature_dim, self.grid_size,
-                             action_dim=config.get("wm_action_dim", 0))
+                             action_dim=config.get("wm_action_dim", 0),
+                             latent_mode=self.latent_mode)
 
         # Retinotopic encoder: DINOv2-B/14 (frozen) -> [B, feature_dim, grid_size, grid_size]
         # Falls back to conv stack when DINOv2 weights unavailable (CI/testing)
@@ -316,13 +360,19 @@ class SensoryTectum(nn.Module):
         # pre-fix bias where every episode started with class 0 peaked, which
         # gave the world model the same arbitrary initial belief on every
         # reset and biased ablation comparisons.
-        uniform_p = 1.0 / self.rssm.classes
-        self.z_state = torch.full(
-            (batch_size, self.rssm.categories, self.rssm.classes,
-             self.grid_size, self.grid_size),
-            uniform_p,
-            device=device,
-        )
+        if self.latent_mode == "continuous":
+            # Continuous latent: start at the zero mean (standard-normal prior mode).
+            self.z_state = torch.zeros(
+                batch_size, self.rssm.categories, self.rssm.classes,
+                self.grid_size, self.grid_size, device=device)
+        else:
+            uniform_p = 1.0 / self.rssm.classes
+            self.z_state = torch.full(
+                (batch_size, self.rssm.categories, self.rssm.classes,
+                 self.grid_size, self.grid_size),
+                uniform_p,
+                device=device,
+            )
         # Episode boundary: reset the BPTT cycle counter so the new
         # episode starts with a fresh K-step window.
         self._steps_since_detach = 0
@@ -383,14 +433,23 @@ class SensoryTectum(nn.Module):
             self.z_state = z_t
         
         # 3. Calculate Prediction Error (Surprise)
-        # KL Divergence: KL(posterior || prior) = sum q * log(q/p)
-        # This measures how much the observed reality (posterior) diverges from 
-        # the model's expectation (prior). High KL = high surprise = novel input.
-        # F.kl_div expects (log_input, target) and computes sum(target * (log(target) - log_input))
-        # So: F.kl_div(log_prior, posterior) = KL(posterior || prior)
-        q = F.softmax(post_logits, dim=2)   # posterior (reality)
-        log_p = F.log_softmax(prior_logits, dim=2)  # prior (prediction)
-        kl_div = F.kl_div(log_p, q, reduction='batchmean')
+        if self.latent_mode == "continuous":
+            # Gaussian KL between posterior N(post_mean, var) and prior N(prior_mean, var)
+            # with the shared per-channel variance. Equal variances cancel the log and
+            # trace terms, leaving KL = 0.5 * sum (post_mean - prior_mean)^2 / var,
+            # averaged over the batch (batchmean, matching the discrete branch).
+            var = torch.exp(self.rssm.cont_logvar)
+            kl_map = 0.5 * (post_logits - prior_logits) ** 2 / (var + 1e-8)
+            kl_div = kl_map.sum() / post_logits.shape[0]
+        else:
+            # KL Divergence: KL(posterior || prior) = sum q * log(q/p)
+            # This measures how much the observed reality (posterior) diverges from
+            # the model's expectation (prior). High KL = high surprise = novel input.
+            # F.kl_div expects (log_input, target) and computes sum(target * (log(target) - log_input))
+            # So: F.kl_div(log_prior, posterior) = KL(posterior || prior)
+            q = F.softmax(post_logits, dim=2)   # posterior (reality)
+            log_p = F.log_softmax(prior_logits, dim=2)  # prior (prediction)
+            kl_div = F.kl_div(log_p, q, reduction='batchmean')
         
         # Scale bid to [0, 1] using tanh
         bid = torch.tanh(kl_div).item()

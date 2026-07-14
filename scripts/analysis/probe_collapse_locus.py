@@ -56,9 +56,11 @@ def pca_mlp_decode(X, y, seed: int = 0, test_size: float = 0.3, npca: int = 80):
     return clf.score(Xte, yte), chance
 
 
-def collect(episodes: int, seed: int, load_tectum: str | None = None):
+def collect(episodes: int, seed: int, load_tectum: str | None = None,
+            latent_mode: str = "discrete"):
     cfg, tectum, *_ = _build_components("dmts", action_dim=5, seed=seed,
-                                        mock_semantic=False, load_tectum=load_tectum)
+                                        mock_semantic=False, load_tectum=load_tectum,
+                                        latent_mode=latent_mode)
     env = DMTSEnv(num_trials=20)
     taps = {"obs_map": [], "z_state": [], "capsule_poses": [], "tectum_content": []}
     ys = {"shape": [], "color": []}
@@ -105,11 +107,17 @@ def main():
                          "--save-tectum) before probing, to measure the TRAINED "
                          "RSSM/pipeline instead of the untrained init. Default None "
                          "keeps the original untrained-probe behavior bit-identical.")
+    ap.add_argument("--latent-mode", type=str, default="discrete",
+                    choices=["discrete", "continuous"],
+                    help="RSSM latent mode to BUILD before loading (Path B1). Must "
+                         "match the checkpoint: a --rssm-latent-mode continuous run "
+                         "must be probed with --latent-mode continuous or the state "
+                         "dict will not load (the continuous latent adds cont_logvar).")
     args = ap.parse_args()
 
     mode = f"TRAINED tectum ({args.load_tectum})" if args.load_tectum else "UNTRAINED init"
-    print(f"collapse-locus probe mode: {mode}")
-    taps, ys = collect(args.episodes, args.seed, args.load_tectum)
+    print(f"collapse-locus probe mode: {mode} | latent_mode={args.latent_mode}")
+    taps, ys = collect(args.episodes, args.seed, args.load_tectum, args.latent_mode)
     n = len(ys["shape"])
     print(f"LEAKAGE-FREE collapse-locus decode, n={n} trials (one record per trial)")
     print(f"pipeline order: obs_map -> z_state -> capsule_poses -> tectum_content\n")

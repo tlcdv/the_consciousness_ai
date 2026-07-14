@@ -94,6 +94,10 @@ def build_config(args):
         "device": "cuda" if torch.cuda.is_available() else "cpu",
         "tectum_feature_dim": 64,
         "tectum_grid_size": 16,
+        # RSSM latent representation (Path B1). "discrete" (default) = the baseline
+        # gumbel-softmax categorical latent; "continuous" = a Gaussian latent of the
+        # same shape, tested against the collapse-locus / ceiling probes.
+        "rssm_latent_mode": getattr(args, "rssm_latent_mode", "discrete"),
         "workspace_dim": 256,
         "workspace": {
             "broadcast_threshold": 0.6,
@@ -335,6 +339,7 @@ def init_components(config):
         "tectum_feature_dim": config["tectum_feature_dim"],
         "tectum_grid_size": config["tectum_grid_size"],
         "workspace_dim": config["workspace_dim"],
+        "rssm_latent_mode": config.get("rssm_latent_mode", "discrete"),
     }
     if config.get("ablate_bptt"):
         tectum_config["bptt_window"] = 1
@@ -2159,6 +2164,16 @@ def main():
                              "incompatible with --enable-wm-predict. Default off "
                              "(baseline bit-identical). Validate with the collapse-locus "
                              "probe on a --save-tectum checkpoint.")
+    parser.add_argument("--rssm-latent-mode", type=str, default="discrete",
+                        choices=["discrete", "continuous"],
+                        help="RSSM z_t latent representation (Path B1). 'discrete' "
+                             "(default) = the baseline gumbel-softmax categorical latent, "
+                             "bit-identical. 'continuous' = a Gaussian latent of the same "
+                             "shape (prior/posterior nets reused as the mean, one shared "
+                             "log-variance added), the B1 bet on whether the discrete "
+                             "latent was the wall that blocked stimulus identity. Pair "
+                             "with --enable-latent-id + the collapse-locus probe to test "
+                             "it, and with --save-tectum to checkpoint.")
     parser.add_argument("--latent-id-weight", type=float, default=1.0,
                         help="Loss weight for the latent identity gate. The 2026-07-05 "
                              "ceiling test ran at 1.0 and FAILED with the CE at the "
