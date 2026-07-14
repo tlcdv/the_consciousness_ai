@@ -34,10 +34,20 @@ First execution pass on this roadmap:
   L2 (the squeeze from 8 output capsules to 4). Not the whole stack, not mere
   dimensionality, the final dynamic-routing-by-agreement step.
 
-Next per the tree: a default-off capsule experiment to carry identity into tectum_content
-(widen the final routing level / read from routing L1 / change the final routing), OR pivot
-to C1 (the RL learning wall), which gates task competence independently of how far identity
-is carried. These are owner decisions, not auto-started.
+- **Capsule fix + signature ablation (the mission payoff):** `all_levels` carries identity
+  to tectum_content (`b1_continuous_latent_2026_07.md`), and a signatures-first ablation
+  (`signature_ablation_2026_07.md`) shows that delivering identity to the broadcast moves
+  three integration markers, robust across 3 seeds: broadcast content variation (~2x), phi
+  max (~2.2x), corrected macro EI (~3x). RPT-2 in the Butlin rubric is no longer "lossy".
+  Honest non-responders (kept): ignition (did not survive replication), sync_R (flat), and
+  the micro/gate EI level (frozen). This is the first replicated, ablation-causal signature
+  response in the project, and it is the mission scoreboard (signatures, not reward) moving.
+
+Next per the tree (owner decisions, not auto-started): (a) extend the signature front, the
+gate/micro-EI level is the next frozen locus and ignition is still content-limited; (b) the
+secondary task-competence path, C1 localized the DMTS wall to the policy-head + RL credit
+assignment (`rl_wall_diagnosis_2026_07.md`), needed only for section-13 SI-1. Per reading #2
+the signature front is primary; competence is the bigger, secondary bet.
 
 ## Where we are (all verified on disk, 2026-07-05)
 

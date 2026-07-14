@@ -163,6 +163,41 @@ presence of the mechanisms is not refuted. What changes is the evidentiary basel
 measured-signature claims must cite this assessment and its degeneracy findings first.
 Section 13 remains BLOCKED-AND-CHARACTERIZED with thresholds untouched.
 
+## Status update 2026-07-06: the integration pathway is repaired and integration markers respond (RPT-2 no longer lossy)
+
+This session fixed the pathway the 2026-06-21 update flagged as the central defect. A
+continuous RSSM latent ([b1_continuous_latent_2026_07.md](results/b1_continuous_latent_2026_07.md))
+plus an all-levels capsule projection now carry stimulus identity all the way to
+tectum_content / the broadcast (decodable 0.83 shape / 0.98 color, from chance before). An
+ablation-and-markers study over the OFF -> HALF -> ON perception ladder
+([signature_ablation_2026_07.md](results/signature_ablation_2026_07.md), the method of
+arXiv:2512.19155) measured whether delivering identity to the broadcast moves the signatures.
+
+- **RPT-2 (integrated perceptual representations): the "LOSSY / identity-free"
+  characterization is SUPERSEDED for the fixed configuration.** The integrated content now
+  carries identity, and three integration markers respond, robust across 3 seeds
+  (non-overlapping HALF-vs-ON seed ranges): broadcast content variation (CV ~2x), phi max
+  (~2.2x), and the floor-corrected macro EI (~3x). This is the first replicated,
+  ablation-causal signature response to an architectural change in the project. RPT-2 stays
+  PARTIAL, not IMPLEMENTED: it is single-configuration, DMTS-only, task reward is still flat,
+  and two integration signals below do NOT respond.
+- **GWT-2 (ignition): NOT moved.** The seed-42 ladder suggested the gate de-saturates, but
+  the response did not survive 3 seeds (quiet-step counts overlap; seed 44 reverses).
+  Ignition stays saturated and content-limited (consistent with the A2 probe showing the
+  gate signal is phase-invariant). The perception fix alone does not make the gate selective.
+- **RPT-2 binding (sync_R): still objective/perception-invariant** (0.251 to 0.257 across
+  the ablation), consistent with the closed Phi-1 chapter.
+- **EI causal emergence: macro level now carries real structure, micro level still frozen.**
+  The corrected macro EI responds to the fix, but the gate/micro EI stays at the constant-
+  trajectory floor (0.000 corrected) at every rung, so the causal-emergence RATIO remains
+  ill-posed (a real macro numerator over a frozen micro denominator). The gate discretization
+  is the next distinct locus, not addressed by this fix.
+
+No indicator is promoted to IMPLEMENTED and no consciousness claim is made. The honest net:
+the integration content defect that blocked every measured signature is repaired with a
+replicated signature response, while binding, ignition selectivity, and gate-level emergence
+remain open. Pre-registered thresholds (EI, Phi-1, section 13) are unchanged.
+
 ## Caveat
 
 Indicator coverage is necessary-evidence framing, not proof. A system can satisfy
