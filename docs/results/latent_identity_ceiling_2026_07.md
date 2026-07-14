@@ -90,12 +90,37 @@ observations, never came to separate identities, which is exactly the property u
 test. Chance-floor CE plus chance-level offline decode is the failure the ceiling test
 was designed to expose.
 
+## Loss-weight sweep (B0): the FAILED verdict survives 100x pressure
+
+The weight-1 run above left one honest hole: the loss weight was not swept, so "the CE
+cannot leave the floor" could in principle have been a too-weak-gradient artifact. Two
+further runs close it (`--latent-id-weight 10` and `100`, otherwise identical: DMTS 100 ep
+seed 42, `runs/latentid_w10` and `runs/latentid_w100`, 100 episode rows each verified).
+CE below is UNWEIGHTED (logged loss divided by the weight) so it compares to the same
+2 ln 6 = 3.5835 floor.
+
+| weight | unweighted CE Q1 -> Q4 | z_state shape (lin/mlp) | z_state color (lin/mlp) | reward first10 -> last10 |
+|-------:|:----------------------:|:-----------------------:|:-----------------------:|:------------------------:|
+| 1   | 3.838 -> 3.613 | 0.214 / 0.238 | 0.226 / 0.250 | -35.63 -> -35.52 |
+| 10  | 3.974 -> 3.607 | 0.179 / 0.107 | 0.226 / 0.119 | (flat) |
+| 100 | 3.797 -> 3.664 | 0.131 / 0.131 | 0.250 / 0.250 | -35.69 -> -35.32 |
+
+At every weight the unweighted CE stays at the 3.58 chance floor (it does not fall with
+more pressure; the last-quarter values are within 0.08 of the floor and of each other),
+and the collapse-locus probe keeps z_state in the same 0.11 to 0.25 noise band with the
+obs_map control at 0.988 to 1.000. Scaling the identity gradient 100x changes nothing.
+This refutes the weak-gradient explanation and makes the discrete-latent verdict airtight:
+the wall is not the amount of identity pressure, it is the latent's capacity to hold
+identity at all. Probe outputs: `runs/latentid_w10/probe_output.txt`,
+`runs/latentid_w100/probe_output.txt`.
+
 ## Honest scope
 
-- Single seed (42), single env (DMTS), one machine, batch-1 online training with 1407
-  labeled events. A larger loss weight, higher LR, or more episodes were not swept; the
-  wm-recon precedent (losses falling orders of magnitude in the same regime) argues
-  against sample count as the binding factor, but this was not ablated.
+- Single seed (42), single env (DMTS), one machine, batch-1 online training. The loss
+  weight IS now swept (1, 10, 100 above); the CE floor is invariant to it. LR on the
+  head/latent path and episode count were not separately swept, but the wm-recon
+  precedent (losses falling orders of magnitude in the same regime) and the flat 100x
+  weight result both argue the binding factor is the latent, not the optimization budget.
 - The z_state mlp 0.238/0.250 values are nominally above chance in isolation; they
   match the noise band documented across prior arms and show no consistency with the
   linear probe or across stages. Treated as noise, consistent with prior verdicts.

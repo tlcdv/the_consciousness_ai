@@ -14,6 +14,8 @@ import numpy as np
 
 from models.evaluation.effective_information import (
     compute_effective_information,
+    constant_trajectory_floor,
+    corrected_effective_information,
     compare_ei_levels,
     discretize_continuous,
     _build_tpm,
@@ -120,6 +122,91 @@ class TestEffectiveInformation(unittest.TestCase):
 
         self.assertFalse(result["emergent"])
         self.assertLess(result["ratio"], 1.0)
+
+
+class TestFloorCorrection(unittest.TestCase):
+    """The constant-trajectory Laplace floor and its subtraction.
+
+    The 2026-07 signature assessment showed the raw EI of a FROZEN trajectory is a
+    positive constant depending only on (num_states, window length), bit-identical
+    across five runs (0.031178 for 243 states at window 10000), and that the ~12x
+    'emergence ratio' was the ratio of two such floors. These tests pin that value,
+    verify the analytic floor matches the computed EI exactly, and verify the
+    corrected EI kills the artifact without killing real transition structure.
+    """
+
+    def test_analytic_floor_matches_computed_ei(self):
+        """The closed-form floor must equal compute_effective_information on a
+        constant trajectory, for a range of state counts and window lengths."""
+        for num_states in (2, 8, 243):
+            for length in (10, 200, 10000):
+                simulated = compute_effective_information(
+                    [np.zeros(length, dtype=int)], num_states)
+                analytic = constant_trajectory_floor(num_states, length)
+                self.assertAlmostEqual(analytic, simulated, places=12,
+                                       msg=f"N={num_states} L={length}")
+
+    def test_floor_reproduces_the_observed_frozen_values(self):
+        """Pin the exact frozen values from the 2026-07 assessment: 243 states and
+        8 states at window 10000 (the values seen in every run's episodes.csv)."""
+        self.assertAlmostEqual(constant_trajectory_floor(243, 10000),
+                               0.031178, places=6)
+        self.assertAlmostEqual(constant_trajectory_floor(8, 10000),
+                               0.373712, places=6)
+
+    def test_constant_trajectory_corrected_to_zero(self):
+        """A frozen trajectory must report corrected EI exactly 0."""
+        for num_states in (8, 243):
+            corrected = corrected_effective_information(
+                [np.zeros(10000, dtype=int)], num_states)
+            self.assertEqual(corrected, 0.0)
+
+    def test_transitioning_trajectory_stays_positive(self):
+        """Real deterministic transition structure must survive the correction."""
+        cycle = np.array(list(range(4)) * 50)
+        raw = compute_effective_information([cycle], 4)
+        corrected = corrected_effective_information([cycle], 4)
+        self.assertGreater(corrected, 0.5)
+        self.assertLess(corrected, raw)  # correction only subtracts
+
+    def test_corrected_never_exceeds_raw(self):
+        rng = np.random.RandomState(0)
+        traj = [rng.randint(0, 8, size=500)]
+        raw = compute_effective_information(traj, 8)
+        corrected = corrected_effective_information(traj, 8)
+        self.assertLessEqual(corrected, raw)
+        self.assertGreaterEqual(corrected, 0.0)
+
+    def test_frozen_both_levels_not_emergent_after_correction(self):
+        """The core artifact: two frozen levels gave raw ratio ~12x (floor ratio).
+        After correction both are 0, the ratio is 0, and emergent_corr is False."""
+        frozen_micro = [np.zeros(10000, dtype=int)]
+        frozen_macro = [np.zeros(10000, dtype=int)]
+        result = compare_ei_levels(frozen_micro, 243, frozen_macro, 8)
+        # raw reproduces the artifact
+        self.assertAlmostEqual(result["ei_gates"], 0.031178, places=6)
+        self.assertAlmostEqual(result["ei_workspace"], 0.373712, places=6)
+        self.assertGreater(result["ratio"], 10.0)
+        self.assertTrue(result["emergent"])  # the documented bias
+        # corrected kills it
+        self.assertEqual(result["ei_gates_corr"], 0.0)
+        self.assertEqual(result["ei_workspace_corr"], 0.0)
+        self.assertEqual(result["ratio_corr"], 0.0)
+        self.assertFalse(result["emergent_corr"])
+
+    def test_real_macro_structure_still_emergent_after_correction(self):
+        """Correction must not erase genuine emergence: random micro, deterministic
+        macro stays emergent on the corrected reading."""
+        rng = np.random.RandomState(42)
+        gate_trajs = [rng.randint(0, 4, size=200)]
+        ws_trajs = [np.array(list(range(4)) * 50)]
+        result = compare_ei_levels(gate_trajs, 4, ws_trajs, 4)
+        self.assertTrue(result["emergent_corr"])
+        self.assertGreater(result["ratio_corr"], 1.0)
+
+    def test_short_trajectory_floor_is_zero(self):
+        self.assertEqual(constant_trajectory_floor(8, 1), 0.0)
+        self.assertEqual(constant_trajectory_floor(1, 100), 0.0)
 
 
 class TestDiscretize(unittest.TestCase):

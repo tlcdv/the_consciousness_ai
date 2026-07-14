@@ -288,7 +288,8 @@ def build_config(args):
         # collapse-locus probe, the discrete latent is the wall and no label-free
         # objective will do better. Default off (baseline bit-identical).
         "enable_latent_id": getattr(args, "enable_latent_id", False),
-        "latent_id": {"weight": 1.0, "reduce_channels": 32, "hidden_dim": 256,
+        "latent_id": {"weight": getattr(args, "latent_id_weight", 1.0),
+                      "reduce_channels": 32, "hidden_dim": 256,
                       "lr": 1e-3},
         # Stage 1 value-equivalent world model (--enable-wm-predict): predict reward +
         # continue from the RSSM latent and train the prior/posterior KL as a loss, with
@@ -2158,6 +2159,13 @@ def main():
                              "incompatible with --enable-wm-predict. Default off "
                              "(baseline bit-identical). Validate with the collapse-locus "
                              "probe on a --save-tectum checkpoint.")
+    parser.add_argument("--latent-id-weight", type=float, default=1.0,
+                        help="Loss weight for the latent identity gate. The 2026-07-05 "
+                             "ceiling test ran at 1.0 and FAILED with the CE at the "
+                             "chance floor; the weight sweep (10, 100) closes the "
+                             "not-swept caveat in that verdict. NOTE: the logged "
+                             "recon_loss slot carries the WEIGHTED loss, so divide by "
+                             "this weight before comparing to the 2 ln 6 = 3.584 floor.")
     parser.add_argument("--wm-predict-beta", type=float, default=1.0,
                         help="KL weight (beta) for the value-equivalent world-model loss.")
     parser.add_argument("--wm-predict-free-bits", type=float, default=1.0,
@@ -2351,20 +2359,29 @@ def main():
 
         # EI computation at configured interval
         ei_gates, ei_workspace, ei_ratio = 0.0, 0.0, 0.0
+        ei_gates_corr, ei_workspace_corr, ei_ratio_corr = 0.0, 0.0, 0.0
         if args.log_ei_every > 0 and (ep + 1) % args.log_ei_every == 0:
             ei_result = metrics_logger.compute_and_log_ei(ep)
             ei_gates = ei_result["ei_gates"]
             ei_workspace = ei_result["ei_workspace"]
             ei_ratio = ei_result["ratio"]
+            ei_gates_corr = ei_result["ei_gates_corr"]
+            ei_workspace_corr = ei_result["ei_workspace_corr"]
+            ei_ratio_corr = ei_result["ratio_corr"]
             logger.info(
                 f"  EI: gates={ei_gates:.4f} workspace={ei_workspace:.4f} "
-                f"ratio={ei_ratio:.2f} emergent={ei_result['emergent']}"
+                f"ratio={ei_ratio:.2f} emergent={ei_result['emergent']} | "
+                f"floor-corrected: gates={ei_gates_corr:.4f} "
+                f"workspace={ei_workspace_corr:.4f} ratio={ei_ratio_corr:.2f} "
+                f"emergent={ei_result['emergent_corr']}"
             )
 
         metrics_logger.log_episode(
             episode=ep, total_reward=ep_reward, steps=ep_steps,
             avg_phi=avg_phi, consciousness_ratio=consciousness_ratio,
             ei_gates=ei_gates, ei_workspace=ei_workspace, ei_ratio=ei_ratio,
+            ei_gates_corr=ei_gates_corr, ei_workspace_corr=ei_workspace_corr,
+            ei_ratio_corr=ei_ratio_corr,
         )
 
         logger.info(

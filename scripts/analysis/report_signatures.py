@@ -31,7 +31,10 @@ import numpy as np
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
-from models.evaluation.effective_information import compute_effective_information
+from models.evaluation.effective_information import (
+    compute_effective_information,
+    constant_trajectory_floor,
+)
 
 DEFAULT_RUNS = [
     "collapse_trained",
@@ -154,6 +157,10 @@ def main() -> None:
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--log-dir", default="runs")
     ap.add_argument("--runs", nargs="*", default=DEFAULT_RUNS)
+    ap.add_argument("--ei-window-len", type=int, default=10000,
+                    help="Trajectory length per logged EI window, for the post-hoc "
+                         "floor correction (log_ei_every * max_steps; 50 * 200 = "
+                         "10000 for the 2026-06/07 DMTS runs).")
     args = ap.parse_args()
 
     results = []
@@ -215,6 +222,32 @@ def main() -> None:
     if ws_values:
         # the LOWEST recurring workspace value is the candidate frozen floor
         diagnose_constant_ei(ws_values[0], 8, "ei_workspace (lowest observed)")
+
+    # Post-hoc floor-corrected EI (constant-trajectory Laplace baseline subtracted;
+    # models/evaluation/effective_information.py). Runs from 2026-07 onward log the
+    # corrected values directly (ei_*_corr columns); for older runs this recomputes
+    # them from the raw logged values, valid because the floor depends only on
+    # (state count, window length).
+    L = args.ei_window_len
+    floor_g = constant_trajectory_floor(243, L)
+    floor_w = constant_trajectory_floor(8, L)
+    print(f"\n== Floor-corrected EI (window={L}: floor_gates={floor_g:.6f}, "
+          f"floor_workspace={floor_w:.6f}) ==")
+    eps = 1e-6  # episodes.csv logs 6 decimals; sub-precision residues are frozen
+    for r in results:
+        for ep, g, w, _ in r["ei_windows"]:
+            cg = max(0.0, g - floor_g)
+            cw = max(0.0, w - floor_w)
+            cg = cg if cg >= eps else 0.0
+            cw = cw if cw >= eps else 0.0
+            if cg > 0:
+                cr = f"{cw / cg:.4f}"
+            elif cw > 0:
+                cr = "inf (micro frozen, macro not)"
+            else:
+                cr = "0 (both levels frozen)"
+            print(f"  {r['run']:22s} @ep{ep:<3d} corr_gates={cg:.6f} "
+                  f"corr_workspace={cw:.6f} corr_ratio={cr}")
 
 
 if __name__ == "__main__":

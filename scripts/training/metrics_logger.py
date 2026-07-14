@@ -173,6 +173,10 @@ class ConsciousnessMetricsLogger:
         self._ep_csv_writer.writerow([
             "episode", "total_reward", "steps", "avg_phi",
             "consciousness_ratio", "ei_gates", "ei_workspace", "ei_ratio",
+            # Floor-corrected EI (constant-trajectory Laplace baseline subtracted;
+            # see models/evaluation/effective_information.py). The raw columns are
+            # kept unchanged for continuity with pre-2026-07 runs.
+            "ei_gates_corr", "ei_workspace_corr", "ei_ratio_corr",
         ])
 
     def log_step(self, metrics: StepMetrics):
@@ -267,6 +271,9 @@ class ConsciousnessMetricsLogger:
         ei_gates: float = 0.0,
         ei_workspace: float = 0.0,
         ei_ratio: float = 0.0,
+        ei_gates_corr: float = 0.0,
+        ei_workspace_corr: float = 0.0,
+        ei_ratio_corr: float = 0.0,
     ):
         """Log episode-level summary."""
         # CSV
@@ -274,6 +281,8 @@ class ConsciousnessMetricsLogger:
             episode, f"{total_reward:.4f}", steps, f"{avg_phi:.6e}",
             f"{consciousness_ratio:.4f}",
             f"{ei_gates:.6f}", f"{ei_workspace:.6f}", f"{ei_ratio:.4f}",
+            f"{ei_gates_corr:.6f}", f"{ei_workspace_corr:.6f}",
+            f"{ei_ratio_corr:.4f}",
         ])
         self._ep_csv_file.flush()
 
@@ -287,6 +296,10 @@ class ConsciousnessMetricsLogger:
                 self.writer.add_scalar("emergence/ei_gates", ei_gates, episode)
                 self.writer.add_scalar("emergence/ei_workspace", ei_workspace, episode)
                 self.writer.add_scalar("emergence/ei_ratio", ei_ratio, episode)
+                self.writer.add_scalar("emergence/ei_gates_corr", ei_gates_corr, episode)
+                self.writer.add_scalar("emergence/ei_workspace_corr",
+                                       ei_workspace_corr, episode)
+                self.writer.add_scalar("emergence/ei_ratio_corr", ei_ratio_corr, episode)
 
         # Reset per-episode buffers
         self._episode_broadcast_mags.clear()
@@ -323,10 +336,13 @@ class ConsciousnessMetricsLogger:
         """
         from models.evaluation.effective_information import (
             compute_effective_information,
+            corrected_effective_information,
             discretize_continuous,
         )
 
-        result = {"ei_gates": 0.0, "ei_workspace": 0.0, "ratio": 0.0, "emergent": False}
+        result = {"ei_gates": 0.0, "ei_workspace": 0.0, "ratio": 0.0, "emergent": False,
+                  "ei_gates_corr": 0.0, "ei_workspace_corr": 0.0, "ratio_corr": 0.0,
+                  "emergent_corr": False}
 
         if len(self._gate_trajectory) < 10:
             return result
@@ -358,11 +374,33 @@ class ConsciousnessMetricsLogger:
         ratio = ei_workspace / max(ei_gates, 1e-8)
         emergent = ei_workspace > ei_gates
 
+        # Floor-corrected EI: subtract the constant-trajectory Laplace baseline so a
+        # frozen trajectory reports 0 instead of a state-count-dependent constant
+        # (the 2026-07 assessment showed the raw ~12x "emergence ratio" can be the
+        # ratio of two such floors). Raw values stay logged for continuity.
+        ei_gates_corr = corrected_effective_information(
+            [np.array(gate_discrete)], num_gate_states
+        )
+        ei_workspace_corr = corrected_effective_information(
+            [np.array(ws_discrete)], num_workspace_states
+        )
+        if ei_gates_corr > 0:
+            ratio_corr = ei_workspace_corr / ei_gates_corr
+        elif ei_workspace_corr > 0:
+            ratio_corr = float("inf")
+        else:
+            ratio_corr = 0.0
+        emergent_corr = ei_workspace_corr > ei_gates_corr
+
         result = {
             "ei_gates": ei_gates,
             "ei_workspace": ei_workspace,
             "ratio": ratio,
             "emergent": emergent,
+            "ei_gates_corr": ei_gates_corr,
+            "ei_workspace_corr": ei_workspace_corr,
+            "ratio_corr": ratio_corr,
+            "emergent_corr": emergent_corr,
         }
 
         if self.writer is not None:
@@ -370,6 +408,11 @@ class ConsciousnessMetricsLogger:
             self.writer.add_scalar("emergence/ei_workspace", ei_workspace, episode)
             self.writer.add_scalar("emergence/ei_ratio", ratio, episode)
             self.writer.add_scalar("emergence/emergent", int(emergent), episode)
+            self.writer.add_scalar("emergence/ei_gates_corr", ei_gates_corr, episode)
+            self.writer.add_scalar("emergence/ei_workspace_corr",
+                                   ei_workspace_corr, episode)
+            self.writer.add_scalar("emergence/emergent_corr",
+                                   int(emergent_corr), episode)
 
         # Clear trajectory buffers for next window
         self._gate_trajectory.clear()
