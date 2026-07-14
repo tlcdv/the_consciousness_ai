@@ -64,11 +64,30 @@ direction through instead of quantizing it away.
 - phi (~9.8e-4 continuous vs ~1.1e-3 discrete) and sync_R (0.254 vs 0.267) are close to the
   discrete values; the continuous latent does not by itself move the other signatures.
 
+## Replication: 3 seeds, reward-only (2026-07-06)
+
+The single-seed result was replicated at two further seeds, continuous latent, reward-only
+(no identity supervision), DMTS 100 ep each. z_state decodes identity well above chance in
+every seed; capsule_poses and tectum_content stay at chance in every seed.
+
+| seed | z_state shape (lin/mlp) | z_state color (lin/mlp) | capsule_poses (shape/color) | tectum_content |
+|-----:|:-----------------------:|:-----------------------:|:---------------------------:|:--------------:|
+| 42 (reward-only) | 0.976 / 0.726 | 1.000 / 0.845 | chance | chance |
+| 43 | 0.988 / 0.976 | 1.000 / 0.988 | chance | chance |
+| 44 | 0.988 / 0.988 | 0.988 / 0.952 | chance | chance |
+
+obs_map control ~1.0 in all three. The z_state identity decode is now a REPLICATED result
+(3/3 seeds, all far above the 0.167 chance line), not a single-seed hypothesis. The
+downstream capsule collapse is equally consistent (3/3 seeds at chance), which makes the
+capsule stage the well-supported next locus. The continuous mode stays default-off (the
+default change would need a task-competence justification, which this does not yet provide:
+reward is still flat, below).
+
 ## Honest scope
 
-- **Single seed (42), single env (DMTS), one machine.** This is a strong hypothesis, not a
-  law. Per the project rule, >= 3 seeds are required before any default change; the
-  continuous mode stays default-off until then.
+- **Three seeds (42, 43, 44), single env (DMTS), one machine.** The z_state identity result
+  is replicated. What is NOT established: any task-reward benefit (flat, below), and any
+  effect in other envs (WCST, dark_room) or at larger scale.
 - The linear z_state probe on a 262144-D tap can overfit, but the pca+mlp probe (80 PCs +
   MLP, held-out test) also decodes at 0.71 to 0.85, well above chance, so the signal is
   real, not probe overfit.
@@ -77,18 +96,49 @@ direction through instead of quantizing it away.
 - All numbers loaded from `runs/b1_continuous` and `runs/b1_continuous_rewardonly`
   (episodes.csv, metrics.csv, probe_output.txt) this session.
 
+## Downstream diagnosis: identity dies at the FINAL routing layer (2026-07-06)
+
+With identity now in z_state, a read-only probe inside the capsule hierarchy
+(`scripts/analysis/probe_capsule_locus.py`, continuous seed-42 checkpoint, n=280 trials,
+leakage-free) decodes the sample shape/color from each internal capsule level. Identity is
+carried most of the way and collapses at exactly one layer:
+
+| capsule level (hierarchy) | dim | shape (lin/mlp) | color (lin/mlp) |
+|---|---:|---:|---:|
+| z_state (input to capsules) | 278528 | 0.583 / 0.595 | 1.000 / 0.738 |
+| primary_caps (stride-2 conv) | 4096 | 0.452 / 0.738 | 0.952 / 0.845 |
+| routing L0 (16 caps, 12-D) | 192 | 0.345 / 0.690 | 0.798 / 0.869 |
+| routing L1 (8 caps, 16-D) | 128 | 0.357 / 0.571 | 0.714 / 0.821 |
+| **routing L2 (4 caps, 16-D, FINAL)** | **64** | **0.190 / 0.190** | **0.226 / 0.226** |
+
+Chance ~0.193 (shape) / 0.221 (color). Identity survives the stride-2 primary conv and the
+first two routing levels (pca+mlp shape 0.69 to 0.74, color 0.82 to 0.87, all well above
+chance), then drops to chance ONLY at the final routing layer, the squeeze from 8 output
+capsules (128-D) to 4 output capsules (64-D). The `capsule_poses` and `tectum_content` the
+workspace reads are the output of that final layer.
+
+This is precise: the loss is not the whole capsule stack and not mere dimensionality (64-D
+can hold 36 identity classes, and the 128-D level one step up still decodes it). It is the
+final dynamic-routing-by-agreement step into 4 capsules. Candidate mechanisms for the next
+sub-question (not yet tested): the softmax coupling over only 4 outputs plus the agreement
+updates average identity away; the squash saturation at the top; or the 4-capsule count is
+simply too few to keep 36 identities separable after routing. Fix directions (each a
+default-off experiment, none built yet): widen the final level (more output caps or higher
+output_dim), read workspace content from routing L1 (8 caps) where identity is still
+present, or alter the final routing (fewer agreement iterations / skip connection).
+
 ## The new fork (owner decision)
 
-The RSSM wall is broken; two threads open, neither auto-started:
+The RSSM wall is broken and replicated (3 seeds); the loss is now pinned to the final
+capsule routing layer. Status of the threads:
 
-1. **Replicate first (cheap, recommended before building on it):** run the continuous
-   reward-only config at 2 more seeds and re-probe z_state, to move the single-seed
-   hypothesis to a >= 3-seed result before any default change or downstream work.
-2. **Chase the identity downstream:** the collapse now sits at the capsule routing
-   (`HierarchicalCapsuleComposition`, `models/core/capsule_composition.py`). A collapse
-   probe already localizes it; the question is whether the capsule dynamic-routing
-   discards identity the way the discrete latent did, and whether a capsule-level change
-   preserves it into tectum_content (what the policy and workspace actually read).
-
-The RL learning wall (Track C1) remains independent and still gates task competence and
-the section-13 test regardless of how far identity is carried.
+1. **Replication: DONE** (3/3 seeds above; z_state identity confirmed reward-only).
+2. **Downstream locus: DIAGNOSED** (final routing layer, above). The next step is a
+   default-off capsule experiment to carry identity into tectum_content: widen the final
+   routing level, read workspace content from routing L1 (where identity is still present),
+   or change the final routing. This is a real architectural bet and a new build, so it is
+   an owner decision, not auto-started.
+3. **The RL learning wall (Track C1)** remains independent and still gates task competence
+   and the section-13 test regardless of how far identity is carried. All perception work
+   so far leaves task reward flat: carrying identity to tectum_content is necessary for the
+   policy to USE it, but the 2026-06-14/15 result warns it may not be sufficient.
