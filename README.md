@@ -3,10 +3,10 @@
 [![License](https://img.shields.io/badge/License-Non--Commercial-blue.svg)](LICENSE.md)
 [![Version](https://img.shields.io/badge/Version-v1.3.0-blue)]()
 [![Python](https://img.shields.io/badge/Python-3.10%2B-blue)](https://www.python.org/)
-[![Tests](https://img.shields.io/badge/Tests-737%20passing-brightgreen)]()
+[![Tests](https://img.shields.io/badge/Tests-764%20passing-brightgreen)]()
 
 [![Project Website](https://img.shields.io/badge/Project-Website-181717?logo=googlechrome&logoColor=white)](https://theconsciousness.ai/)
-[![Architecture](https://img.shields.io/badge/Architecture-ACM-0052CC?logo=read-the-docs&logoColor=white)](https://theconsciousness.ai/acm/)
+[![Architecture](https://img.shields.io/badge/Architecture-Technical-0052CC?logo=read-the-docs&logoColor=white)](https://theconsciousness.ai/architecture/)
 [![Philosophy](https://img.shields.io/badge/Philosophy-Functionalist_Emergentism-8A2BE2?logo=gitbook&logoColor=white)](https://theconsciousness.ai/functionalist-emergentism/)
 [![Store](https://img.shields.io/badge/Store-Merch-E34F26?logo=shopify&logoColor=white)](https://theconsciousness.ai/merch/)
 
@@ -216,7 +216,7 @@ the_consciousness_ai/
 │   ├── analysis/           # Analysis and comparison scripts
 │   └── demos/              # AKOrN binding visualization
 ├── configs/                # YAML and Python configuration files
-├── tests/                  # 737 passing tests
+├── tests/                  # 764 passing tests
 ├── unity_scripts/          # C# scripts for Unity ML-Agents integration
 ├── docs/                   # Research docs, theory review, architecture deep dives
 └── requirements.txt
