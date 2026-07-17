@@ -1,7 +1,7 @@
 # The Consciousness AI research
 
 [![License](https://img.shields.io/badge/License-Non--Commercial-blue.svg)](LICENSE.md)
-[![Version](https://img.shields.io/badge/Version-v1.3.0-blue)]()
+[![Version](https://img.shields.io/badge/Version-v1.4.0-blue)]()
 [![Python](https://img.shields.io/badge/Python-3.10%2B-blue)](https://www.python.org/)
 [![Tests](https://img.shields.io/badge/Tests-768%20passing-brightgreen)]()
 
