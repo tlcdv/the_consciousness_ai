@@ -39,6 +39,7 @@ from models.core.control_representation import ControlRepresentationHead, obs_fe
 from models.core.tectum_reconstruction import TectumReconstructionHead
 from models.core.rssm_reconstruction import RSSMReconstructionHead
 from models.core.rssm_identity import RSSMIdentityHead
+from models.core.rssm_contrastive import RSSMContrastiveHead
 from models.core.world_model_objective import WorldModelObjective
 from models.self_model.self_representation_core import SelfRepresentationCore, SelfVectorModule
 from models.self_model.working_memory_latch import ObsMapSampleMemory
@@ -300,6 +301,22 @@ def build_config(args):
         "latent_id": {"weight": getattr(args, "latent_id_weight", 1.0),
                       "reduce_channels": 32, "hidden_dim": 256,
                       "lr": 1e-3},
+        # Path B stage 2 (--enable-latent-contrastive): label-free InfoNCE on the
+        # pre-capsule RSSM latent. Trial structure is the contrastive signal: same-trial
+        # sample-phase and choice-phase latents are pulled together, cross-trial pairs
+        # are pushed apart. The head trains at trial boundaries from a FIFO bank of
+        # (sample_avg, choice_avg) pairs. Default off (baseline bit-identical).
+        "enable_latent_contrastive": getattr(args, "enable_latent_contrastive", False),
+        "latent_contrastive": {
+            "train_every": getattr(args, "latent_contrastive_train_every", 4),
+            "min_pairs": getattr(args, "latent_contrastive_min_pairs", 4),
+            "lr": getattr(args, "latent_contrastive_lr", 1e-3),
+            "temperature": getattr(args, "latent_contrastive_temperature", 0.1),
+            "proj_dim": getattr(args, "latent_contrastive_proj_dim", 128),
+            "buffer_size": getattr(args, "latent_contrastive_buffer_size", 64),
+            "reduce_channels": 32,
+            "hidden_dim": 256,
+        },
         # Stage 1 value-equivalent world model (--enable-wm-predict): predict reward +
         # continue from the RSSM latent and train the prior/posterior KL as a loss, with
         # per-trial BPTT through the delay. No decoder. Default off (bit-identical).
@@ -725,6 +742,43 @@ def init_components(config):
                 f"from the RSSM latent cat([h_t, z_flat]), sample phase only)"
             )
 
+    # Path B stage 2: label-free contrastive InfoNCE on the pre-capsule RSSM latent.
+    # Uses the DMTS trial structure: sample-phase and choice-phase latents from the
+    # same trial are pulled together, cross-trial pairs pushed apart. Unlike the
+    # single-step heads above, this trains at trial boundaries from a FIFO bank of
+    # trial-level (sample_avg, choice_avg) pairs. Default off (baseline bit-identical).
+    latent_contrastive_head = None
+    latent_contrastive_optimizer = None
+    if config.get("enable_latent_contrastive", False):
+        if config.get("env") != "dmts":
+            logger.warning(
+                "--enable-latent-contrastive uses the DMTS trial structure; "
+                f"got env={config.get('env')}. Contrastive head DISABLED."
+            )
+        else:
+            lc_cfg = config.get("latent_contrastive", {})
+            rssm_channels = tectum.feature_dim + tectum.rssm.categories * tectum.rssm.classes
+            latent_contrastive_head = RSSMContrastiveHead(
+                rssm_channels=rssm_channels,
+                grid=tectum.grid_size,
+                reduce_channels=lc_cfg.get("reduce_channels", 32),
+                hidden_dim=lc_cfg.get("hidden_dim", 256),
+                proj_dim=lc_cfg.get("proj_dim", 128),
+                temperature=lc_cfg.get("temperature", 0.1),
+            ).to(device)
+            latent_contrastive_optimizer = torch.optim.Adam(
+                latent_contrastive_head.parameters(),
+                lr=lc_cfg.get("lr", 1e-3),
+            )
+            logger.info(
+                f"Latent contrastive head (Path B stage 2) enabled "
+                f"(train_every={lc_cfg.get('train_every', 4)} trials, "
+                f"min_pairs={lc_cfg.get('min_pairs', 4)}, "
+                f"buffer_size={lc_cfg.get('buffer_size', 64)}, "
+                f"temperature={lc_cfg.get('temperature', 0.1)}, "
+                f"proj_dim={lc_cfg.get('proj_dim', 128)})"
+            )
+
     # DMTS supervised match head. Only meaningful on the obsmem-conv tap (it reads
     # [current obs_map ; held sample]) and the DMTS env (it trains on the env's
     # target_position label). Disabled with a warning anywhere else. Default off
@@ -772,7 +826,8 @@ def init_components(config):
             match_head, match_optimizer,
             wm_recon_head, wm_recon_optimizer,
             wm_predict_head, wm_predict_optimizer,
-            latent_id_head, latent_id_optimizer)
+            latent_id_head, latent_id_optimizer,
+            latent_contrastive_head, latent_contrastive_optimizer)
 
 
 def frame_to_tensor(frame: np.ndarray, device: str) -> torch.Tensor:
@@ -831,7 +886,8 @@ def run_episode(episode_idx, config, tectum, workspace, reentrant,
                 match_head=None, match_optimizer=None,
                 wm_recon_head=None, wm_recon_optimizer=None,
                 wm_predict_head=None, wm_predict_optimizer=None,
-                latent_id_head=None, latent_id_optimizer=None):
+                latent_id_head=None, latent_id_optimizer=None,
+                latent_contrastive_head=None, latent_contrastive_optimizer=None):
     device = config["device"]
     max_steps = config["max_steps"]
 
@@ -907,6 +963,18 @@ def run_episode(episode_idx, config, tectum, workspace, reentrant,
     wm_buffer = []
     wm_prev_action = None
     wm_action_dim = config["action_selection"]["action_dim"]
+
+    # Path B stage 2 contrastive: bank of (sample_avg, trial_id) pairs aggregated
+    # at the end of each sample phase. During the choice phase, the current step's
+    # grad-bearing RSSM latent is contrasted against the bank (same-trial positive,
+    # cross-trial negatives) inside the tectum optimizer block. The backward flows
+    # through the head AND the RSSM, giving full identity pressure on the latent.
+    _c_bank = []              # list of (sample_proj, trial_id) tuples (detached)
+    _c_trial_sample = []      # per-step projected latents in the current sample phase
+    _c_prev_phase = None      # phase tracker for sample->* boundary
+    _c_lc_cfg = config.get("latent_contrastive", {})
+    _c_min_pairs = _c_lc_cfg.get("min_pairs", 4)
+    _c_c_weight = _c_lc_cfg.get("weight", 0.1)
 
     for step in range(max_steps):
         global_step = global_step_offset + step
@@ -1353,6 +1421,26 @@ def run_episode(episode_idx, config, tectum, workspace, reentrant,
             if _li_s is not None and _li_c is not None:
                 latent_id_label = (_li_s, _li_c)
 
+        # Path B stage 2 contrastive: aggregate detached projected latents during the
+        # sample phase into a per-trial buffer. At the sample->* boundary, average
+        # the buffer into a (sample_avg, trial_id) pair and store in the bank. During
+        # the choice phase, the contrastive loss is computed online inside the tectum
+        # optimizer block using the current step's grad-bearing latent.
+        if latent_contrastive_head is not None and isinstance(info, dict):
+            _c_phase = info.get("phase")
+            _c_state = getattr(tectum, "_last_state_tensor", None)
+            if _c_prev_phase == "sample" and _c_phase != "sample" and _c_trial_sample:
+                sample_avg = torch.stack(_c_trial_sample).mean(dim=0)
+                _c_bank.append((sample_avg, info.get("trial", 0)))
+                if len(_c_bank) > _c_lc_cfg.get("buffer_size", 64):
+                    _c_bank.pop(0)
+                _c_trial_sample = []
+            if _c_state is not None and _c_phase == "sample":
+                with torch.no_grad():
+                    _c_proj = latent_contrastive_head(_c_state)
+                _c_trial_sample.append(_c_proj.detach())
+            _c_prev_phase = _c_phase
+
         next_obs, env_reward, terminated, truncated, info = env.step(env_action)
         done = terminated or truncated
 
@@ -1411,6 +1499,8 @@ def run_episode(episode_idx, config, tectum, workspace, reentrant,
                 tectum._steps_since_detach = 0
                 del wm_loss
                 wm_buffer = []
+
+
 
         # Single-sample training on this choice decision. Runs for aux mode and for
         # online acting; the batched acting path trains from the replay buffer below
@@ -1532,8 +1622,33 @@ def run_episode(episode_idx, config, tectum, workspace, reentrant,
                     last_recon_loss = float(latent_id_loss.item())
                     last_match_acc = li_acc
 
+            # Path B stage 2 contrastive: online InfoNCE during choice phase using
+            # the current step's grad-bearing latent vs the bank of trial sample_avgs.
+            # Same-trial sample_avg is the positive; cross-trial sample_avgs are
+            # negatives. Gradient flows through the head AND the RSSM latent.
+            contrastive_loss = torch.tensor(0.0, device=device)
+            if (latent_contrastive_head is not None and _c_bank
+                    and isinstance(info, dict) and info.get("phase") == "choice"):
+                _c_state = getattr(tectum, "_last_state_tensor", None)
+                if _c_state is not None:
+                    cur_trial = info.get("trial", 0)
+                    cur_proj = latent_contrastive_head(_c_state)
+                    pos_avg = None
+                    neg_avgs = []
+                    for s_avg, t_id in _c_bank:
+                        if t_id == cur_trial:
+                            pos_avg = s_avg
+                        else:
+                            neg_avgs.append(s_avg)
+                    if pos_avg is not None and len(neg_avgs) + 1 >= _c_min_pairs:
+                        pos = pos_avg.unsqueeze(0)
+                        neg = torch.stack(neg_avgs)
+                        contrastive_loss = _c_c_weight * latent_contrastive_head.loss(
+                            cur_proj, pos, neg)
+
             total_tectum_loss = (pred_loss + topo_loss + control_loss
-                                 + recon_loss + wm_recon_loss + latent_id_loss)
+                                 + recon_loss + wm_recon_loss + latent_id_loss
+                                 + contrastive_loss)
 
             tectum_optimizer.zero_grad()
             reward_optimizer.zero_grad()
@@ -1545,6 +1660,8 @@ def run_episode(episode_idx, config, tectum, workspace, reentrant,
                 wm_recon_optimizer.zero_grad()
             if latent_id_optimizer is not None:
                 latent_id_optimizer.zero_grad()
+            if latent_contrastive_optimizer is not None:
+                latent_contrastive_optimizer.zero_grad()
             total_tectum_loss.backward(retain_graph=True)
             tectum_optimizer.step()
             reward_optimizer.step()
@@ -1556,6 +1673,8 @@ def run_episode(episode_idx, config, tectum, workspace, reentrant,
                 wm_recon_optimizer.step()
             if latent_id_optimizer is not None:
                 latent_id_optimizer.step()
+            if latent_contrastive_optimizer is not None:
+                latent_contrastive_optimizer.step()
             # Force-detach recurrent state immediately after the optimizer
             # mutates tectum parameters in-place. Without this, a later
             # backward call through the BPTT-retained graph would reference
@@ -2197,6 +2316,35 @@ def main():
                              "not-swept caveat in that verdict. NOTE: the logged "
                              "recon_loss slot carries the WEIGHTED loss, so divide by "
                              "this weight before comparing to the 2 ln 6 = 3.584 floor.")
+    parser.add_argument("--enable-latent-contrastive", action="store_true",
+                        help="Path B stage 2 (label-free): InfoNCE contrastive objective "
+                             "on the pre-capsule RSSM latent. Uses the DMTS trial "
+                             "structure as the contrastive signal: same-trial sample and "
+                             "choice latents are pulled together, cross-trial pairs "
+                             "pushed apart. Trains its own head at trial boundaries "
+                             "(only the head, not the RSSM backbone, because the "
+                             "contrastive backward is many steps after the latents were "
+                             "generated). DMTS only; compatible with other objectives. "
+                             "Default off (baseline bit-identical).")
+    parser.add_argument("--latent-contrastive-train-every", type=int, default=4,
+                        help="Train the contrastive head every N trials (default 4). "
+                             "Must have at least --latent-contrastive-min-pairs * 2 "
+                             "trials accumulated before the first train.")
+    parser.add_argument("--latent-contrastive-min-pairs", type=int, default=4,
+                        help="Minimum trial pairs in the bank before the first "
+                             "contrastive train (default 4). Lower = faster early "
+                             "update but noisier gradients.")
+    parser.add_argument("--latent-contrastive-lr", type=float, default=1e-3,
+                        help="Learning rate for the contrastive head (default 1e-3).")
+    parser.add_argument("--latent-contrastive-temperature", type=float, default=0.1,
+                        help="InfoNCE temperature (default 0.1). Lower = harder "
+                             "negative separation.")
+    parser.add_argument("--latent-contrastive-proj-dim", type=int, default=128,
+                        help="Projection dimension for the contrastive head "
+                             "(default 128).")
+    parser.add_argument("--latent-contrastive-buffer-size", type=int, default=64,
+                        help="Max trial pairs in the FIFO bank (default 64). Older "
+                             "pairs are evicted when the bank is full.")
     parser.add_argument("--wm-predict-beta", type=float, default=1.0,
                         help="KL weight (beta) for the value-equivalent world-model loss.")
     parser.add_argument("--wm-predict-free-bits", type=float, default=1.0,
@@ -2284,7 +2432,8 @@ def main():
      match_head, match_optimizer,
      wm_recon_head, wm_recon_optimizer,
      wm_predict_head, wm_predict_optimizer,
-     latent_id_head, latent_id_optimizer) = init_components(config)
+     latent_id_head, latent_id_optimizer,
+     latent_contrastive_head, latent_contrastive_optimizer) = init_components(config)
 
     if config.get("enable_wm_predict"):
         # Never auto-detach the recurrent state mid-episode; the WM objective detaches at
@@ -2356,6 +2505,8 @@ def main():
             wm_predict_optimizer=wm_predict_optimizer,
             latent_id_head=latent_id_head,
             latent_id_optimizer=latent_id_optimizer,
+            latent_contrastive_head=latent_contrastive_head,
+            latent_contrastive_optimizer=latent_contrastive_optimizer,
         )
         global_step += ep_steps
 
