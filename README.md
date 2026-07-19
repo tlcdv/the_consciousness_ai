@@ -3,7 +3,7 @@
 [![License](https://img.shields.io/badge/License-Non--Commercial-blue.svg)](LICENSE.md)
 [![Version](https://img.shields.io/badge/Version-v1.4.0-blue)]()
 [![Python](https://img.shields.io/badge/Python-3.10%2B-blue)](https://www.python.org/)
-[![Tests](https://img.shields.io/badge/Tests-768%20passing-brightgreen)]()
+[![Tests](https://img.shields.io/badge/Tests-784%20passing-brightgreen)]()
 
 [![Project Website](https://img.shields.io/badge/Project-Website-181717?logo=googlechrome&logoColor=white)](https://theconsciousness.ai/)
 [![Architecture](https://img.shields.io/badge/Architecture-Technical-0052CC?logo=read-the-docs&logoColor=white)](https://theconsciousness.ai/architecture/)
