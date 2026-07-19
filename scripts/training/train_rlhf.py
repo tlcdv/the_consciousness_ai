@@ -35,6 +35,7 @@ from models.emotion.reward_shaping import EmotionalRewardShaper
 from models.self_model.action_selection_core import ActionSelectionCore
 from models.self_model.standard_actor_critic import StandardActorCritic
 from models.self_model.dqn_policy import DQNPolicy
+from models.self_model.attention_dqn_policy import AttentionDQNPolicy
 from models.core.control_representation import ControlRepresentationHead, obs_features
 from models.core.tectum_reconstruction import TectumReconstructionHead
 from models.core.rssm_reconstruction import RSSMReconstructionHead
@@ -308,7 +309,7 @@ def build_config(args):
         # (sample_avg, choice_avg) pairs. Default off (baseline bit-identical).
         "enable_latent_contrastive": getattr(args, "enable_latent_contrastive", False),
         "latent_contrastive": {
-            "train_every": getattr(args, "latent_contrastive_train_every", 4),
+            "weight": getattr(args, "latent_contrastive_weight", 0.1),
             "min_pairs": getattr(args, "latent_contrastive_min_pairs", 4),
             "lr": getattr(args, "latent_contrastive_lr", 1e-3),
             "temperature": getattr(args, "latent_contrastive_temperature", 0.1),
@@ -429,6 +430,9 @@ def init_components(config):
     elif config.get("policy", "gonogo") == "dqn":
         action_core = DQNPolicy(config["action_selection"], emotion_shaper, memory)
         logger.info("Policy: DQNPolicy (DQN on broadcast) [P5 confirmation]")
+    elif config.get("policy", "gonogo") == "attention-dqn":
+        action_core = AttentionDQNPolicy(config["action_selection"], emotion_shaper, memory)
+        logger.info("Policy: AttentionDQNPolicy (spatial attention for DMTS match) [C1]")
     else:
         action_core = ActionSelectionCore(
             config["action_selection"],
@@ -744,9 +748,10 @@ def init_components(config):
 
     # Path B stage 2: label-free contrastive InfoNCE on the pre-capsule RSSM latent.
     # Uses the DMTS trial structure: sample-phase and choice-phase latents from the
-    # same trial are pulled together, cross-trial pairs pushed apart. Unlike the
-    # single-step heads above, this trains at trial boundaries from a FIFO bank of
-    # trial-level (sample_avg, choice_avg) pairs. Default off (baseline bit-identical).
+    # same trial are pulled together, cross-trial pairs pushed apart. The loss runs
+    # ONLINE on choice-phase steps (not at trial boundaries) against a FIFO bank of
+    # detached per-trial sample averages, and is summed into the tectum loss so the
+    # gradient reaches the RSSM. Default off (baseline bit-identical).
     latent_contrastive_head = None
     latent_contrastive_optimizer = None
     if config.get("enable_latent_contrastive", False):
@@ -772,7 +777,7 @@ def init_components(config):
             )
             logger.info(
                 f"Latent contrastive head (Path B stage 2) enabled "
-                f"(train_every={lc_cfg.get('train_every', 4)} trials, "
+                f"(weight={lc_cfg.get('weight', 0.1)}, "
                 f"min_pairs={lc_cfg.get('min_pairs', 4)}, "
                 f"buffer_size={lc_cfg.get('buffer_size', 64)}, "
                 f"temperature={lc_cfg.get('temperature', 0.1)}, "
@@ -972,9 +977,13 @@ def run_episode(episode_idx, config, tectum, workspace, reentrant,
     _c_bank = []              # list of (sample_proj, trial_id) tuples (detached)
     _c_trial_sample = []      # per-step projected latents in the current sample phase
     _c_prev_phase = None      # phase tracker for sample->* boundary
+    _c_prev_trial = 0         # trial id of the most recent sample-phase step
+    _c_step_phase = None      # pre-env.step phase, paired with _last_state_tensor
+    _c_step_trial = 0         # pre-env.step trial, paired with _last_state_tensor
     _c_lc_cfg = config.get("latent_contrastive", {})
     _c_min_pairs = _c_lc_cfg.get("min_pairs", 4)
     _c_c_weight = _c_lc_cfg.get("weight", 0.1)
+    _c_fire_count = 0         # times the contrastive loss actually contributed a gradient
 
     for step in range(max_steps):
         global_step = global_step_offset + step
@@ -1426,12 +1435,29 @@ def run_episode(episode_idx, config, tectum, workspace, reentrant,
         # the buffer into a (sample_avg, trial_id) pair and store in the bank. During
         # the choice phase, the contrastive loss is computed online inside the tectum
         # optimizer block using the current step's grad-bearing latent.
+        #
+        # IMPORTANT (fixed 2026-07-19): the phase/trial labels used by the choice-phase
+        # block below MUST be captured HERE, before env.step() reassigns `info`. The
+        # tectum forward that produced _last_state_tensor ran on the observation paired
+        # with the CURRENT `info`, so reading `info` after env.step() labels the latent
+        # with the NEXT step's phase. That off-by-one made the delay->choice transition
+        # anchor the contrastive loss on a DELAY-phase latent (blank screen), which
+        # breaks the premise that the anchor shows the stimulus.
+        _c_step_phase = info.get("phase") if isinstance(info, dict) else None
+        _c_step_trial = info.get("trial", 0) if isinstance(info, dict) else 0
         if latent_contrastive_head is not None and isinstance(info, dict):
-            _c_phase = info.get("phase")
+            _c_phase = _c_step_phase
             _c_state = getattr(tectum, "_last_state_tensor", None)
             if _c_prev_phase == "sample" and _c_phase != "sample" and _c_trial_sample:
-                sample_avg = torch.stack(_c_trial_sample).mean(dim=0)
-                _c_bank.append((sample_avg, info.get("trial", 0)))
+                # squeeze(0): head.forward returns [1, D] for a single latent, so the
+                # per-trial mean is [1, D]. Bank entries MUST be stored as [D] so that
+                # torch.stack(neg_avgs) yields [K, D] (2-D), which is the shape
+                # RSSMContrastiveHead.loss broadcasts correctly. Storing [1, D] makes
+                # the stack [K, 1, D] (3-D), which skips the broadcast branch and feeds
+                # bmm a batch dim of K against an anchor batch of 1: a hard crash for
+                # K >= 2, and silently wrong elementwise math for K == 1.
+                sample_avg = torch.stack(_c_trial_sample).mean(dim=0).squeeze(0)
+                _c_bank.append((sample_avg, _c_prev_trial))
                 if len(_c_bank) > _c_lc_cfg.get("buffer_size", 64):
                     _c_bank.pop(0)
                 _c_trial_sample = []
@@ -1439,6 +1465,7 @@ def run_episode(episode_idx, config, tectum, workspace, reentrant,
                 with torch.no_grad():
                     _c_proj = latent_contrastive_head(_c_state)
                 _c_trial_sample.append(_c_proj.detach())
+                _c_prev_trial = _c_step_trial
             _c_prev_phase = _c_phase
 
         next_obs, env_reward, terminated, truncated, info = env.step(env_action)
@@ -1499,8 +1526,6 @@ def run_episode(episode_idx, config, tectum, workspace, reentrant,
                 tectum._steps_since_detach = 0
                 del wm_loss
                 wm_buffer = []
-
-
 
         # Single-sample training on this choice decision. Runs for aux mode and for
         # online acting; the batched acting path trains from the replay buffer below
@@ -1626,12 +1651,16 @@ def run_episode(episode_idx, config, tectum, workspace, reentrant,
             # the current step's grad-bearing latent vs the bank of trial sample_avgs.
             # Same-trial sample_avg is the positive; cross-trial sample_avgs are
             # negatives. Gradient flows through the head AND the RSSM latent.
+            #
+            # Uses _c_step_phase / _c_step_trial (captured BEFORE env.step) rather than
+            # `info`, which by this point describes the NEXT step. See the note at the
+            # aggregation block above.
             contrastive_loss = torch.tensor(0.0, device=device)
             if (latent_contrastive_head is not None and _c_bank
-                    and isinstance(info, dict) and info.get("phase") == "choice"):
+                    and _c_step_phase == "choice"):
                 _c_state = getattr(tectum, "_last_state_tensor", None)
                 if _c_state is not None:
-                    cur_trial = info.get("trial", 0)
+                    cur_trial = _c_step_trial
                     cur_proj = latent_contrastive_head(_c_state)
                     pos_avg = None
                     neg_avgs = []
@@ -1645,6 +1674,7 @@ def run_episode(episode_idx, config, tectum, workspace, reentrant,
                         neg = torch.stack(neg_avgs)
                         contrastive_loss = _c_c_weight * latent_contrastive_head.loss(
                             cur_proj, pos, neg)
+                        _c_fire_count += 1
 
             total_tectum_loss = (pred_loss + topo_loss + control_loss
                                  + recon_loss + wm_recon_loss + latent_id_loss
@@ -1974,6 +2004,28 @@ def run_episode(episode_idx, config, tectum, workspace, reentrant,
 
     avg_phi = phi_accum / max(steps_taken, 1)
     consciousness_ratio = conscious_steps / max(steps_taken, 1)
+
+    # The contrastive objective can be enabled and still contribute NOTHING: the bank is
+    # per-episode, and min_pairs entries require that many COMPLETED sample phases inside
+    # a single episode. At the standard 200-step DMTS episode only ~2 to 3 trials finish,
+    # so the default min_pairs=4 is never reached and the loss never fires. Warn loudly,
+    # because a silent zero-gradient run looks exactly like a genuine FAILED verdict and
+    # must never be reported as one.
+    if latent_contrastive_head is not None:
+        if _c_fire_count == 0:
+            logger.warning(
+                f"Episode {episode_idx}: --enable-latent-contrastive is ON but the "
+                f"contrastive loss fired 0 times, so it contributed NO gradient. The "
+                f"bank held {len(_c_bank)} trial(s); min_pairs={_c_min_pairs} are "
+                f"required within a single episode. Raise --max-steps, or lower "
+                f"--latent-contrastive-min-pairs. Do NOT interpret this run as evidence "
+                f"about the contrastive objective."
+            )
+        else:
+            logger.info(
+                f"Episode {episode_idx}: contrastive loss fired {_c_fire_count} time(s) "
+                f"(bank {len(_c_bank)} trials, min_pairs={_c_min_pairs})."
+            )
     # Release the caching allocator's reserved memory between episodes when the
     # value-equivalent world model retains a per-trial BPTT graph; prevents the
     # cross-episode reserved-memory creep that OOM'd a 100-episode run.
@@ -2215,14 +2267,25 @@ def main():
                              "--enable-self-vector. Default off (PFC input dim = "
                              "workspace_dim, baseline bit-identical).")
     parser.add_argument("--policy", type=str, default="gonogo",
-                        choices=["gonogo", "standard", "dqn"],
+                        choices=["gonogo", "standard", "dqn", "attention-dqn"],
                         help="P5 diagnosis: which policy consumes the broadcast. "
                              "'gonogo' (default) is the Go/No-Go ActionSelectionCore; "
                              "'standard' is a plain A2C head (StandardActorCritic); "
                              "'dqn' is an off-policy DQN head (DQNPolicy) used to "
                              "confirm whether the broadcast representation is the "
                              "competence bottleneck, holding the learner family "
-                             "constant against the DQN-on-pixels baseline.")
+                             "constant against the DQN-on-pixels baseline. "
+                             "'attention-dqn' is a spatial-attention DQN for DMTS "
+                             "match-to-sample (C1 RL wall): cross-attention between "
+                             "held sample and 4 choice positions on the obs_map grid.")
+    parser.add_argument("--attn-d-model", type=int, default=128,
+                        help="AttentionDQNPolicy: model dimension for cross-attention. Default 128.")
+    parser.add_argument("--attn-d-ff", type=int, default=256,
+                        help="AttentionDQNPolicy: feedforward dimension in Q-head. Default 256.")
+    parser.add_argument("--attn-n-heads", type=int, default=4,
+                        help="AttentionDQNPolicy: number of attention heads. Default 4.")
+    parser.add_argument("--attn-patch-size", type=int, default=3,
+                        help="AttentionDQNPolicy: patch size around choice positions (3x3). Default 3.")
     parser.add_argument("--policy-input", type=str, default="broadcast",
                         choices=["broadcast", "tectum", "spatial", "spatial-conv",
                                  "rssm", "rssm-conv", "obsmem-conv"],
@@ -2236,7 +2299,7 @@ def main():
                              "(restores spatial processing, trained by the control "
                              "gradient). 'rssm' / 'rssm-conv' feed the RSSM recurrent "
                              "state h_state (the working-memory store that holds the "
-                             "DMTS sample across the blank delay at 99% decodability, "
+                             "DMTS sample across the blank delay at 99%% decodability, "
                              "while obs_map/tectum_content are blank); the PFC GRU can "
                              "latch it. Comparing reward across taps localizes which "
                              "pipeline stage loses the control-relevant signal.")
@@ -2321,15 +2384,18 @@ def main():
                              "on the pre-capsule RSSM latent. Uses the DMTS trial "
                              "structure as the contrastive signal: same-trial sample and "
                              "choice latents are pulled together, cross-trial pairs "
-                             "pushed apart. Trains its own head at trial boundaries "
-                             "(only the head, not the RSSM backbone, because the "
-                             "contrastive backward is many steps after the latents were "
-                             "generated). DMTS only; compatible with other objectives. "
-                             "Default off (baseline bit-identical).")
-    parser.add_argument("--latent-contrastive-train-every", type=int, default=4,
-                        help="Train the contrastive head every N trials (default 4). "
-                             "Must have at least --latent-contrastive-min-pairs * 2 "
-                             "trials accumulated before the first train.")
+                             "pushed apart. The loss is computed online on choice-phase "
+                             "steps and added to the tectum loss, so the backward trains "
+                             "the head AND the RSSM backbone (this is the point: the "
+                             "identity pressure must reach the latent). Sample-phase "
+                             "entries in the bank are detached. DMTS only; compatible "
+                             "with other objectives. Default off (baseline "
+                             "bit-identical).")
+    parser.add_argument("--latent-contrastive-weight", type=float, default=0.1,
+                        help="Loss weight for the contrastive term (default 0.1). Sweep "
+                             "this before calling the objective FAILED: the B0 latent-id "
+                             "ceiling test only became airtight after a 1/10/100 weight "
+                             "sweep showed the result was not a weak-gradient artifact.")
     parser.add_argument("--latent-contrastive-min-pairs", type=int, default=4,
                         help="Minimum trial pairs in the bank before the first "
                              "contrastive train (default 4). Lower = faster early "

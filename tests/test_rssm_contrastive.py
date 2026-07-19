@@ -125,3 +125,62 @@ class TestRSSMContrastiveHead:
         loss = h.loss(anchor, positive, negatives)
         assert loss.dim() == 0
         assert loss.item() >= 0.0
+
+
+class TestTrainingLoopCallingConvention:
+    """Regression tests for the shapes train_rlhf.py ACTUALLY passes.
+
+    The original 10 unit tests all passed well-formed [B, D] / [B, K, D] tensors and
+    never exercised the training loop's real convention, where the bank is built from
+    head.forward() outputs that carry a leading batch dim of 1. That gap let a crashing
+    integration ship green: torch.stack of K entries shaped [1, D] gives [K, 1, D],
+    which skips the 2-D broadcast branch and feeds bmm mismatched batch dims.
+    """
+
+    def _head(self):
+        return RSSMContrastiveHead(
+            rssm_channels=16, grid=8, reduce_channels=8,
+            hidden_dim=32, proj_dim=8, temperature=0.1,
+        )
+
+    def _bank_entry(self, h, n_steps=3):
+        """Mirror train_rlhf: average n_steps of head.forward on a single latent."""
+        projs = [h(torch.randn(16, 8, 8)).detach() for _ in range(n_steps)]
+        # squeeze(0) is the contract the training loop must honour.
+        return torch.stack(projs).mean(dim=0).squeeze(0)
+
+    @pytest.mark.parametrize("k", [1, 2, 5, 16])
+    def test_loss_from_bank_shapes_does_not_crash(self, k):
+        """K negatives drawn from the bank must work for every K, not just K == 1."""
+        h = self._head()
+        anchor = h(torch.randn(16, 8, 8))
+        pos = self._bank_entry(h).unsqueeze(0)
+        neg = torch.stack([self._bank_entry(h) for _ in range(k)])
+        assert pos.shape == (1, 8)
+        assert neg.shape == (k, 8), "bank stack must be 2-D [K, D]"
+        loss = h.loss(anchor, pos, neg)
+        assert loss.dim() == 0
+        assert torch.isfinite(loss)
+
+    def test_identical_anchor_positive_and_negative_gives_ln_of_count(self):
+        """Sanity value: with all vectors identical, InfoNCE reduces to ln(1 + K).
+
+        This pins the math. The pre-fix code returned 8.75 here instead of ln(2),
+        because a [1, D] positive broadcast into an elementwise product rather than
+        a dot product.
+        """
+        h = self._head()
+        v = h(torch.randn(16, 8, 8)).detach().squeeze(0)
+        anchor = v.unsqueeze(0)
+        for k in (1, 3):
+            neg = torch.stack([v] * k)
+            loss = h.loss(anchor, v.unsqueeze(0), neg)
+            expected = torch.log(torch.tensor(1.0 + k))
+            assert torch.allclose(loss, expected, atol=1e-4), (
+                f"k={k}: expected ln({1 + k})={expected:.4f}, got {loss.item():.4f}"
+            )
+
+    def test_bank_entry_is_one_dimensional(self):
+        """The bank contract: entries are [D], never [1, D]."""
+        h = self._head()
+        assert self._bank_entry(h).dim() == 1

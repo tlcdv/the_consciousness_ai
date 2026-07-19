@@ -125,16 +125,131 @@ tuning was done, per the standing rule. The probe stays in the repo as the measu
 tool that will show when ignition BECOMES selectable (a future agent whose bids carry
 task structure will show a nonzero sample-vs-delay d here first).
 
-## Status move
+## A3: dormant-module micro-benchmark (RIIU, Levin, self-vector)
 
-A2 adds no status move either: ignition remains un-measurable as a selective signature on
-this agent, now with the cause pinned to the phase-invariant gate signal rather than the
-threshold logic. The EI instrument's math is corrected and the corrected reading is now
-logged by default.
-No Butlin indicator status is moved on the strength of this: the corrected EI shows the
-emergence comparison remains un-measurable on the current agent (frozen micro level), which
-is an honest negative, not progress from PARTIAL to IMPLEMENTED. The value delivered is
-that a future agent with non-frozen gates will now be measured correctly instead of scored
-by a floor artifact. Pre-registered EI thresholds in `docs/preregistered_predictions.md`
-are not revised; they refer to the raw quantity and are left intact, with this document
-recording that the raw quantity was floor-biased on these runs.
+Roadmap Track A3: verify the three dormant measurement modules produce non-degenerate
+signals on the current perception-fixed agent (`--rssm-latent-mode continuous`,
+`--capsule-workspace-source all_levels`).
+
+**Method.** Three DMTS episodes (200 steps each, seeds default/43/44), all three modules
+enabled: `--enable-riiu --riiu-probe-all --enable-audio --enable-levin-metrics
+--enable-self-vector`. The agent carried no task competence (reward -35.86, -37.16,
+-40.66; trials_correct 3, 1, 0 out of the episode's trials, consistent with chance). The
+goal was to check whether each module's logged csv column has non-zero variance, not to
+solve DMTS. One 200-step episode per seed, so every number below is a within-episode
+statistic on an UNTRAINED module, not a trained-agent signature.
+
+**Results (3-seed aggregate).** Data from `runs/a3_microbench/metrics.csv`,
+`runs/a3_seed43/metrics.csv`, `runs/a3_seed44/metrics.csv` (200 rows each):
+
+| Signal | no_seed mean [cv] | seed_43 mean [cv] | seed_44 mean [cv] | Interpretation |
+|--------|------------------:|------------------:|------------------:|----------------|
+| `phi_riiu_broadcast` | 0.01316 [0.85] | 0.07195 [1.4] | 0.003591 [2.0] | **REPLICATED non-degenerate variance in all 3 seeds** |
+| `phi_riiu_tectum` | 0.01316 [0.85] | 0.07468 [1.3] | 0.003885 [1.8] | Same pattern as broadcast |
+| `phi_riiu_audio` | 0 [nan] | 0 [nan] | 0 [nan] | All zeros. DMTS has no audio input. |
+| `levin_bioelectric_complexity` | 0.1744 [0.0003] | 0.1779 [0.0029] | 0.1679 [0.002] | Frozen (CV < 0.003 across seeds) |
+| `levin_morphological_adaptation` | 9.3e-6 [0.48] | 0.0059 [3.3] | 0.0027 [4.8] | Near-zero magnitude, noisy |
+| `levin_collective_intelligence` | 0.4964 [0.0002] | 0.5083 [0.0012] | 0.5 [0.0025] | Frozen at ~0.5 |
+| `levin_goal_directed` | 0 [nan] | 0 [nan] | 0 [nan] | Confirmed zero (no goal embeddings) |
+| `self_pred_mse` | 0.0033 [4.1] | 0.0051 [4.5] | 0.0017 [4.2] | High CV, tiny magnitude |
+| `self_pred_skill` | -0.79 [-0.57] | -0.82 [-0.47] | -0.81 [-0.57] | Negative (below persistence baseline) |
+
+The `self_pred_skill` CVs are negative because the mean is negative; the sign is kept
+rather than dropped, since a negative CV is a reminder that the ratio is not a dispersion
+measure when the mean crosses zero.
+
+Note on `phi_riiu_broadcast` vs `phi_riiu_tectum`: in seed 42 the two columns are
+BIT-IDENTICAL at every one of the 200 rows (both mean 0.0131583, cv 0.8513, max 0.04525).
+That is expected, not a coincidence: the broadcast is built from the winning vision
+payload, which IS tectum_content (`perception_decodability_2026_06_09.md`). The two
+columns are therefore ONE signal, not two independent substrates, and must not be read as
+mutual confirmation. They diverge slightly in seeds 43 and 44 only because a non-vision
+module won some steps.
+
+Episodes.csv: EI values all zero in all 3 seeds (200 steps too short for the 10000-step EI
+window). `consciousness_ratio` = 1.0000, 0.9200, 0.8550 (seeds 42, 43, 44): NOT pinned at
+1.0, unlike every run in the `signature_assessment_2026_07.md` set. `avg_phi` (pyphi) =
+3.958e-03, 1.655e-03, 3.318e-04, a ~12x spread across seeds.
+
+### A3: what this does and does not show
+
+**What it shows.** The RIIU column is not frozen. It reports a varying value in all 3
+seeds (CV 0.85 to 2.0) where the pyphi-on-gates instrument and the corrected micro EI
+both read constants. RIIU measures a sliding-window SVD residual (the variance of the
+activation after subtracting the dominant singular mode), NOT the 5 discrete gate values
+that pyphi and the EI correction found frozen. So RIIU is the first phi-family column in
+this project that is READABLE rather than pinned. That is an instrument-readiness result.
+
+**What it does NOT show, stated plainly so it is not misread later.** This is NOT evidence
+of integrated information in the agent:
+
+1. The modules are UNTRAINED and randomly initialized. A random SVD residual varies
+   because the input varies and the weights are random. Non-zero variance is the null
+   expectation here, not a positive finding. Variance is not integration.
+2. There is NO ablation and NO comparison arm. The project's own standard for an indicator
+   move (set by the 2026-07-06 signature ablation, which used OFF/HALF/ON over the
+   perception ladder across 3 seeds) is a CAUSAL response to a manipulation. Nothing was
+   manipulated here.
+3. The across-seed spread is ~20x (0.0036 to 0.072 broadcast mean). A quantity that moves
+   20x with the random seed is not yet a characterized signature. The earlier draft of
+   this section waved this off as "expected for untrained random initialization"; that
+   reasoning cuts against the claim, not for it, because it concedes the variation is
+   initialization noise.
+4. Broadcast and tectum are one signal, not two (see the note above the fold).
+
+**Therefore no Butlin indicator moves on the strength of A3.** RPT-2 stays PARTIAL. The
+deliverable is a working instrument, not a measured signature. What A3 buys is that a
+future ablation CAN now be read on the phi axis, where previously the column was frozen
+and no manipulation could have registered.
+
+### A3: the non-findings (honest characterizations)
+
+- **Levin metrics** remain frozen because they compute on the broadcast/holon content, which
+  is still near-constant (the perception fix moved identity into tectum_content but the
+  broadcast magnitude itself remains ~1.135 with micro-variation). The Levin modules are
+  not the bottleneck; content is. They will activate when the broadcast carries varied
+  content (which requires the RL/credit-assignment wall, Track C1, to be solved).
+- **Self-vector** self-prediction fails (skill < 0) for the same reason: the first-order
+  features are too static. The predictor overfits to noise and underperforms the persistence
+  baseline. This will improve when the broadcast carries richer dynamics.
+- **Audio RIIU** requires an environment with actual audio input (not DMTS). Not a wiring
+  defect.
+
+### A3: recommended next step
+
+RIIU is readable, which makes it a candidate AXIS for an ablation, not a result on its own.
+The `phi_riiu_*` columns are already logged per-step to metrics.csv when `--enable-riiu` is
+on. The decisive next experiment is the same design that produced the only replicated
+signature this project has: run the existing OFF/HALF/ON perception ladder
+(`signature_ablation_2026_07.md`) with `--enable-riiu` on, across >= 3 seeds, and ask
+whether RIIU phi RESPONDS to the manipulation. A signal that varies with the seed but not
+with the ablation is noise. Only a replicated ablation response would justify a status
+move, and the gate should be pre-stated before the runs.
+
+Do NOT use RIIU phi as a reward source (`--riiu-source broadcast`) yet. Optimizing an
+instrument that has not been shown to track anything is how a metric gets gamed, and it
+would destroy its value as a measurement.
+
+Levin and self-vector remain OFF by default unless explicitly enabled for a content-rich
+environment. No flag defaults change.
+
+## Status moves (updated with A3)
+
+- **Butlin RPT-2 (integrated information)**: NO MOVE. Stays PARTIAL. RIIU is readable
+  where pyphi-on-gates is frozen, but a readable instrument on untrained modules with no
+  ablation is not a measured signature. An earlier draft of this section moved RPT-2 to
+  IMPLEMENTED; that was not supported by the data and is retracted here.
+- **Butlin C1-GWT (global availability)**: no move, but the stated REASON is corrected.
+  Ignition is NOT pinned at 1.0 in these runs (`consciousness_ratio` 1.0000, 0.9200,
+  0.8550). An earlier draft asserted a flat 1.0 and reasoned from it; that was wrong.
+  The honest position is that these three 200-step episodes are too short, and too
+  confounded with the newly enabled modules, to say whether the `b568c52` selectivity is
+  holding. It is an OPEN question, worth a read-only check against the saturated runs in
+  `signature_assessment_2026_07.md`, not a settled negative.
+- **Butlin EI (emergence)**: no move (micro level still frozen).
+- **Levin intrinsic metrics**: no move (content-limited, not instrument-limited).
+- **Self-model (PSM-1)**: no move (content-limited).
+
+Pre-registered thresholds in `docs/preregistered_predictions.md` are not revised. RIIU phi
+thresholds are not registered there (this is a new measurement pathway developed after
+registration).
