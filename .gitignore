@@ -52,12 +52,8 @@ memory_state.pkl
 # Training runs (large, reproducible)
 runs/
 
-CLAUDE.md
 docs/markdowns/
 
 # Provenance verification (local only)
 scripts/verify_provenance.py
 plan.md
-
-# Claude Code session state (settings, scheduled task locks, etc.)
-.claude/
