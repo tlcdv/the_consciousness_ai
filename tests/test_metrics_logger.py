@@ -223,5 +223,77 @@ class TestResetAndClose(unittest.TestCase):
         logger.close()
 
 
+class TestCausalEmergence2(unittest.TestCase):
+    """CE 2.0 (SVD heuristic) wiring in the logger. The metric itself is tested in
+    tests/test_causal_emergence_svd.py; here we check the logger integration."""
+
+    def setUp(self):
+        self.tmpdir = tempfile.mkdtemp()
+        self.logger = ConsciousnessMetricsLogger(
+            log_dir=self.tmpdir, use_tensorboard=False
+        )
+
+    def tearDown(self):
+        self.logger.close()
+
+    def test_episode_header_has_ce2_columns(self):
+        self.logger.close()
+        with open(os.path.join(self.tmpdir, "episodes.csv")) as f:
+            header = next(csv.reader(f))
+        for col in ("ce2_gates", "ce2_workspace", "ce2_ratio",
+                    "ce2_complexity_gates", "ce2_complexity_workspace",
+                    "ce2_rssm", "ce2_complexity_rssm"):
+            self.assertIn(col, header)
+
+    def test_disabled_by_default_leaves_buffers_empty(self):
+        self.assertFalse(self.logger._ce2_enabled)
+        m = StepMetrics(global_step=0, phi=0.1, sync_r=0.5, is_conscious=True,
+                        reward=1.0, broadcast_mag=0.5,
+                        gate_state=(0.1, 0.2, 0.3, 0.4, 0.5),
+                        workspace_state=(0.5, 0.1, 0.5))
+        self.logger.log_step(m)
+        self.assertEqual(len(self.logger._ce2_gate_trajectory), 0)
+
+    def test_ce2_zero_with_insufficient_data(self):
+        self.logger.enable_ce2(num_classes=4)
+        res = self.logger.compute_and_log_ce2(episode=0)
+        self.assertEqual(res["ce2_gates"], 0.0)
+        self.assertEqual(res["ce2_complexity_gates"], 0)
+        self.assertEqual(res["ce2_rssm"], 0.0)
+
+    def test_ce2_gate_workspace_finite_and_buffers_cleared(self):
+        self.logger.enable_ce2(num_classes=4)
+        rng = np.random.default_rng(0)
+        for i in range(30):
+            m = StepMetrics(global_step=i, phi=0.1, sync_r=0.5, is_conscious=True,
+                            reward=1.0, broadcast_mag=0.5,
+                            gate_state=tuple(rng.random(5).tolist()),
+                            workspace_state=tuple(rng.random(3).tolist()))
+            self.logger.log_step(m)
+        self.assertGreater(len(self.logger._ce2_gate_trajectory), 0)
+        res = self.logger.compute_and_log_ce2(episode=0)
+        self.assertGreaterEqual(res["ce2_gates"], 0.0)
+        self.assertGreaterEqual(res["ce2_workspace"], 0.0)
+        self.assertIn("ce2_emergent", res)
+        self.assertEqual(len(self.logger._ce2_gate_trajectory), 0)  # cleared
+
+    def test_ce2_rssm_from_recorded_latents_and_counts_reset(self):
+        self.logger.enable_ce2(num_classes=4)
+        for field in ([0, 2], [1, 3], [0, 2], [1, 3], [0, 2]):
+            self.logger.record_latent_step(np.array(field))
+        res = self.logger.compute_and_log_ce2(episode=0)
+        self.assertGreaterEqual(res["ce2_rssm"], 0.0)
+        self.assertIsInstance(res["ce2_complexity_rssm"], int)
+        self.assertEqual(self.logger._latent_counts.sum(), 0.0)  # reset after use
+
+    def test_reset_latent_window_breaks_cross_episode_pairing(self):
+        self.logger.enable_ce2(num_classes=4)
+        self.logger.record_latent_step(np.array([0, 1]))
+        self.logger.reset_latent_window()
+        self.logger.record_latent_step(np.array([2, 3]))
+        # No transition counted across the reset boundary.
+        self.assertEqual(self.logger._latent_counts.sum(), 0.0)
+
+
 if __name__ == "__main__":
     unittest.main()

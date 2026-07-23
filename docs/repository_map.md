@@ -85,7 +85,8 @@ structure only, kept current from the actual tree.
 ### Metrics and signatures (models/evaluation)
 - `iit_phi.py` -- IIT Phi from causal gate states (pyphi + geometric proxy).
 - `phi_riiu.py` -- RIIU sliding-window SVD-residual phi (diagnostic, opt-in).
-- `effective_information.py` -- Hoel's EI for causal emergence.
+- `effective_information.py` -- Hoel's EI for causal emergence (DEPRECATED 2026-07; see `causal_emergence_svd.py`).
+- `causal_emergence_svd.py` -- Causal Emergence 2.0 SVD heuristic (Hoel 2025, arXiv:2503.13395v3); successor to EI, logged via `--log-ce2-every`.
 - `causal_emergence.py` -- causal-emergence helpers.
 - `levin_consciousness_metrics.py` -- Levin-framework consciousness metrics.
 - `consciousness_monitor.py` -- metric-only consciousness evaluation.

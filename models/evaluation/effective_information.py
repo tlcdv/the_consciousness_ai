@@ -1,6 +1,13 @@
 """
 Effective Information (EI) for Causal Emergence Detection
 
+DEPRECATED (2026-07): superseded by the Causal Emergence 2.0 SVD heuristic in
+models/evaluation/causal_emergence_svd.py (Hoel 2025, arXiv:2503.13395v3), which
+drops the log2(n) size term and the uniform max-entropy intervention assumption
+this module relies on. Retained for continuity with pre-2026-07 runs and the
+EI-1/EI-2/EI-3 pre-registered predictions; new work should log CE 2.0 via
+--log-ce2-every. Full removal is deferred until CE 2.0 is validated across >= 3 seeds.
+
 Implements Erik Hoel's causal emergence framework (PNAS 2013) to
 measure whether macro-level states (workspace) carry more causal
 information than micro-level states (individual gates).

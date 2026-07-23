@@ -13,6 +13,8 @@ This document defines falsifiable predictions about the system's behavior at spe
 
 **Measurement method:** `compare_ei_levels()` in `models/evaluation/effective_information.py`. Gate-level EI computed from individual ConsciousnessGate node trajectories. Workspace-level EI computed from the discretized GNW broadcast vector trajectory.
 
+> **Instrument update (2026-07):** EI is deprecated in favor of the Causal Emergence 2.0 SVD heuristic (`models/evaluation/causal_emergence_svd.py`; Hoel 2025, arXiv:2503.13395v3), logged via `--log-ce2-every` as `ce2_gates` / `ce2_workspace` / `ce2_rssm` plus emergent-complexity counts. The EI-1/EI-2/EI-3 predictions and their recorded verdicts below are retained unchanged for continuity. No CE 2.0 predictions are pre-registered here yet: they must be authored before any CE 2.0 run is used to test them, and CE 2.0 requires >= 3-seed replication before any headline claim. Applying this coarse-grain-of-Markov-chains heuristic to a trained neural latent is exploratory and is not validated by the source paper.
+
 ### Prediction EI-1: EI emergence onset
 
 **Claim:** EI(workspace) > EI(gates) will first occur between episode 500 and episode 2000 of Dark Room training.

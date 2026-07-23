@@ -151,6 +151,17 @@ class ConsciousnessMetricsLogger:
         self._gate_trajectory: list[tuple[float, ...]] = []
         self._workspace_trajectory: list[tuple[float, ...]] = []
 
+        # Causal Emergence 2.0 (SVD heuristic) state. Kept separate from the EI
+        # buffers above so enabling CE 2.0 never alters EI's window. Everything
+        # here stays inert until enable_ce2() is called (only when
+        # --log-ce2-every > 0), so the default path is bit-identical.
+        self._ce2_enabled: bool = False
+        self._ce2_num_classes: int = 32
+        self._ce2_gate_trajectory: list[tuple[float, ...]] = []
+        self._ce2_workspace_trajectory: list[tuple[float, ...]] = []
+        self._latent_counts = None   # [num_classes, num_classes] transition counts
+        self._latent_prev = None     # previous step's latent index field
+
     def _init_csv(self):
         self._csv_file = open(self._csv_path, "w", newline="")
         self._csv_writer = csv.writer(self._csv_file)
@@ -177,6 +188,14 @@ class ConsciousnessMetricsLogger:
             # see models/evaluation/effective_information.py). The raw columns are
             # kept unchanged for continuity with pre-2026-07 runs.
             "ei_gates_corr", "ei_workspace_corr", "ei_ratio_corr",
+            # Causal Emergence 2.0 (SVD heuristic; see models/evaluation/
+            # causal_emergence_svd.py). Zeros unless --log-ce2-every > 0. ce2_gates/
+            # ce2_workspace mirror the EI gate/workspace TPMs; ce2_rssm scores the
+            # RSSM discrete-latent class-transition TPM. The complexity columns count
+            # causally contributing scales (singular values above the non-trivial mean).
+            "ce2_gates", "ce2_workspace", "ce2_ratio",
+            "ce2_complexity_gates", "ce2_complexity_workspace",
+            "ce2_rssm", "ce2_complexity_rssm",
         ])
 
     def log_step(self, metrics: StepMetrics):
@@ -261,6 +280,14 @@ class ConsciousnessMetricsLogger:
         if metrics.workspace_state is not None:
             self._workspace_trajectory.append(metrics.workspace_state)
 
+        # Buffer for CE 2.0 (separate lists so the CE 2.0 window is independent of
+        # the EI window). No-op unless enable_ce2() has been called.
+        if self._ce2_enabled:
+            if metrics.gate_state is not None:
+                self._ce2_gate_trajectory.append(metrics.gate_state)
+            if metrics.workspace_state is not None:
+                self._ce2_workspace_trajectory.append(metrics.workspace_state)
+
     def log_episode(
         self,
         episode: int,
@@ -274,6 +301,13 @@ class ConsciousnessMetricsLogger:
         ei_gates_corr: float = 0.0,
         ei_workspace_corr: float = 0.0,
         ei_ratio_corr: float = 0.0,
+        ce2_gates: float = 0.0,
+        ce2_workspace: float = 0.0,
+        ce2_ratio: float = 0.0,
+        ce2_complexity_gates: int = 0,
+        ce2_complexity_workspace: int = 0,
+        ce2_rssm: float = 0.0,
+        ce2_complexity_rssm: int = 0,
     ):
         """Log episode-level summary."""
         # CSV
@@ -283,6 +317,9 @@ class ConsciousnessMetricsLogger:
             f"{ei_gates:.6f}", f"{ei_workspace:.6f}", f"{ei_ratio:.4f}",
             f"{ei_gates_corr:.6f}", f"{ei_workspace_corr:.6f}",
             f"{ei_ratio_corr:.4f}",
+            f"{ce2_gates:.6f}", f"{ce2_workspace:.6f}", f"{ce2_ratio:.4f}",
+            ce2_complexity_gates, ce2_complexity_workspace,
+            f"{ce2_rssm:.6f}", ce2_complexity_rssm,
         ])
         self._ep_csv_file.flush()
 
@@ -417,6 +454,112 @@ class ConsciousnessMetricsLogger:
         # Clear trajectory buffers for next window
         self._gate_trajectory.clear()
         self._workspace_trajectory.clear()
+
+        return result
+
+    # ----------------------------------------------------------------- #
+    # Causal Emergence 2.0 (SVD heuristic, Hoel 2025, arXiv:2503.13395v3)
+    # ----------------------------------------------------------------- #
+    def enable_ce2(self, num_classes: int = 32):
+        """Turn on CE 2.0 capture (call when --log-ce2-every > 0).
+
+        Allocates the RSSM latent transition-count matrix and starts the separate
+        gate/workspace buffers used by compute_and_log_ce2. Idempotent."""
+        from models.evaluation.causal_emergence_svd import new_transition_counts
+        self._ce2_enabled = True
+        self._ce2_num_classes = int(num_classes)
+        self._latent_counts = new_transition_counts(self._ce2_num_classes)
+        self._latent_prev = None
+
+    def reset_latent_window(self):
+        """Drop the previous latent field so no transition is counted across an
+        episode reset (the RSSM state resets between episodes). No-op when CE 2.0
+        is disabled."""
+        self._latent_prev = None
+
+    def record_latent_step(self, index_field):
+        """Accumulate one RSSM latent transition (prev -> current) into the pooled
+        count matrix. index_field is a flat int array of per-variable class indices
+        for the current step (from causal_emergence_svd.latent_class_indices)."""
+        if not self._ce2_enabled or self._latent_counts is None:
+            return
+        from models.evaluation.causal_emergence_svd import update_transition_counts
+        if self._latent_prev is not None:
+            update_transition_counts(self._latent_counts, self._latent_prev, index_field)
+        self._latent_prev = index_field
+
+    def compute_and_log_ce2(self, episode: int, num_gate_states: int = 243,
+                            num_workspace_states: int = 8) -> dict:
+        """
+        CE 2.0 (SVD heuristic) at the gate and workspace levels, plus the RSSM
+        latent, from CE 2.0's own buffers.
+
+        The gate/workspace discretization mirrors compute_and_log_ei exactly (fixed
+        tertile bins for the 5 gate dims -> 3^5 = 243 states; workspace sum binned to
+        num_workspace_states), so CE 2.0 and EI score identical TPMs and can be
+        compared honestly. The RSSM TPM is the pooled class->class transition matrix
+        accumulated by record_latent_step. Returns a dict of ce2_* scores and
+        emergent-complexity counts, then clears its buffers and the latent counts.
+        """
+        from models.evaluation.effective_information import discretize_continuous
+        from models.evaluation.causal_emergence_svd import (
+            compute_ce2_from_trajectories, compute_ce2_from_tpm, counts_to_tpm,
+        )
+
+        result = {"ce2_gates": 0.0, "ce2_workspace": 0.0, "ce2_ratio": 0.0,
+                  "ce2_emergent": False, "ce2_complexity_gates": 0,
+                  "ce2_complexity_workspace": 0, "ce2_rssm": 0.0,
+                  "ce2_complexity_rssm": 0}
+
+        # Gate + workspace CE 2.0 (needs a minimum window for a meaningful TPM).
+        if len(self._ce2_gate_trajectory) >= 10:
+            gate_discrete = []
+            for g in self._ce2_gate_trajectory:
+                joint_idx = 0
+                for i, val in enumerate(g):
+                    trit = 0 if val < 1 / 3 else (1 if val < 2 / 3 else 2)
+                    joint_idx += trit * (3 ** i)
+                gate_discrete.append(joint_idx)
+            ws_flat = ([sum(w) for w in self._ce2_workspace_trajectory]
+                       if self._ce2_workspace_trajectory else [0.0] * len(gate_discrete))
+            ws_discrete = discretize_continuous(ws_flat, num_workspace_states)
+
+            g_res = compute_ce2_from_trajectories([np.array(gate_discrete)], num_gate_states)
+            w_res = compute_ce2_from_trajectories([np.array(ws_discrete)], num_workspace_states)
+            result["ce2_gates"] = g_res.causal_emergence
+            result["ce2_workspace"] = w_res.causal_emergence
+            result["ce2_ratio"] = w_res.causal_emergence / max(g_res.causal_emergence, 1e-8)
+            result["ce2_emergent"] = w_res.causal_emergence > g_res.causal_emergence
+            result["ce2_complexity_gates"] = g_res.emergent_complexity
+            result["ce2_complexity_workspace"] = w_res.emergent_complexity
+
+        # RSSM latent CE 2.0 from the pooled transition counts.
+        if self._latent_counts is not None and self._latent_counts.sum() > 0:
+            r_res = compute_ce2_from_tpm(counts_to_tpm(self._latent_counts, laplace=1.0))
+            result["ce2_rssm"] = r_res.causal_emergence
+            result["ce2_complexity_rssm"] = r_res.emergent_complexity
+        elif self._ce2_enabled:
+            # No transitions pooled this window: the per-step record_latent_step
+            # wiring did not fire. Surface it rather than silently logging zeros.
+            logger.warning(
+                "CE 2.0 enabled but no RSSM latent transitions were recorded this "
+                "window; check the run_episode latent capture (z_state argmax)."
+            )
+
+        if self.writer is not None:
+            self.writer.add_scalar("emergence/ce2_gates", result["ce2_gates"], episode)
+            self.writer.add_scalar("emergence/ce2_workspace", result["ce2_workspace"], episode)
+            self.writer.add_scalar("emergence/ce2_ratio", result["ce2_ratio"], episode)
+            self.writer.add_scalar("emergence/ce2_rssm", result["ce2_rssm"], episode)
+            self.writer.add_scalar("emergence/ce2_complexity_rssm",
+                                   result["ce2_complexity_rssm"], episode)
+
+        # Reset CE 2.0 buffers and latent counts for the next window.
+        self._ce2_gate_trajectory.clear()
+        self._ce2_workspace_trajectory.clear()
+        if self._latent_counts is not None:
+            self._latent_counts[:] = 0.0
+        self._latent_prev = None
 
         return result
 

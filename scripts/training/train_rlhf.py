@@ -105,6 +105,11 @@ def build_config(args):
         # every routing level, carrying the identity that survives the lower levels into
         # tectum_content (what the policy reads). See the 2026-07 capsule-locus probe.
         "capsule_workspace_source": getattr(args, "capsule_workspace_source", "final"),
+        # Causal Emergence 2.0 (SVD heuristic) diagnostic. 0 (default) disables it,
+        # keeping the baseline bit-identical. When > 0, run_episode accumulates the
+        # RSSM latent transition TPM per step and the main loop scores it per episode.
+        "log_ce2_every": getattr(args, "log_ce2_every", 0),
+        "ce2_num_classes": getattr(args, "ce2_num_classes", 32),
         "workspace_dim": 256,
         "workspace": {
             "broadcast_threshold": 0.6,
@@ -937,6 +942,10 @@ def run_episode(episode_idx, config, tectum, workspace, reentrant,
     # Reset recurrent state between episodes
     tectum.h_state = None
     tectum.z_state = None
+    # CE 2.0: drop the previous latent field so the reset above is not counted as a
+    # transition. No-op when CE 2.0 is disabled.
+    if metrics_logger is not None and config.get("log_ce2_every", 0) > 0:
+        metrics_logger.reset_latent_window()
     if hasattr(action_core, 'pfc_hidden'):
         action_core.pfc_hidden = None
 
@@ -1880,6 +1889,17 @@ def run_episode(episode_idx, config, tectum, workspace, reentrant,
             # Workspace state from broadcast magnitude bins
             ws_state = (broadcast_mag, phi, sync_r)
 
+            # CE 2.0 (SVD heuristic) latent capture. Off by default; only runs when
+            # --log-ce2-every > 0. Reads the live RSSM latent z_state (set by the
+            # tectum step above) and records one pooled class->class transition.
+            if config.get("log_ce2_every", 0) > 0 and tectum.z_state is not None:
+                from models.evaluation.causal_emergence_svd import latent_class_indices
+                metrics_logger.record_latent_step(latent_class_indices(
+                    tectum.z_state,
+                    config.get("rssm_latent_mode", "discrete"),
+                    config.get("ce2_num_classes", 32),
+                ))
+
             # --- Levin metrics (Phase 5 deliverable 4): diagnostic only ---
             # The holonic + bioelectric modules run in inference mode (no grad,
             # not in the policy gradient) as fixed measurement functions on the
@@ -2049,6 +2069,19 @@ def main():
     parser.add_argument("--log-dir", type=str, default="runs", help="Directory for metrics logs")
     parser.add_argument("--log-ei-every", type=int, default=50,
                         help="Compute EI every N episodes (0 to disable)")
+    parser.add_argument("--log-ce2-every", type=int, default=0,
+                        help="Compute Causal Emergence 2.0 (SVD heuristic, Hoel "
+                             "2025) every N episodes (0 = disabled, the default; "
+                             "baseline stays bit-identical). Additive diagnostic "
+                             "that runs alongside --log-ei-every on its own buffers; "
+                             "logs ce2_gates/ce2_workspace/ce2_rssm and the "
+                             "emergent-complexity counts to episodes.csv. Deprecates "
+                             "EI (see models/evaluation/effective_information.py).")
+    parser.add_argument("--ce2-num-classes", type=int, default=32,
+                        help="Number of discrete states for the RSSM CE 2.0 TPM. "
+                             "Defaults to 32 = the RSSM categorical class count "
+                             "(z_state.argmax over the class axis). Only used when "
+                             "--log-ce2-every > 0.")
     parser.add_argument("--save-tectum", type=str, default=None,
                         help="If set, save the trained tectum state_dict to this "
                              "path at the end of training. Used by "
@@ -2524,6 +2557,8 @@ def main():
     metrics_logger = ConsciousnessMetricsLogger(
         log_dir=args.log_dir, use_tensorboard=True
     )
+    if getattr(args, "log_ce2_every", 0) > 0:
+        metrics_logger.enable_ce2(num_classes=getattr(args, "ce2_num_classes", 32))
 
     logger.info(f"Starting training: {args.episodes} episodes, {args.max_steps} max steps each")
     logger.info(f"Metrics logging to: {args.log_dir}")
@@ -2605,6 +2640,28 @@ def main():
         rewards_history.append(ep_reward)
         avg_last_5 = np.mean(rewards_history[-5:])
 
+        # Causal Emergence 2.0 (SVD heuristic) at configured interval. Additive
+        # diagnostic; scored on CE 2.0's own gate/workspace buffers and the RSSM
+        # latent TPM, fully independent of the EI computation below.
+        (ce2_gates, ce2_workspace, ce2_ratio, ce2_complexity_gates,
+         ce2_complexity_workspace, ce2_rssm, ce2_complexity_rssm) = (
+            0.0, 0.0, 0.0, 0, 0, 0.0, 0)
+        if args.log_ce2_every > 0 and (ep + 1) % args.log_ce2_every == 0:
+            ce2 = metrics_logger.compute_and_log_ce2(ep)
+            ce2_gates = ce2["ce2_gates"]
+            ce2_workspace = ce2["ce2_workspace"]
+            ce2_ratio = ce2["ce2_ratio"]
+            ce2_complexity_gates = ce2["ce2_complexity_gates"]
+            ce2_complexity_workspace = ce2["ce2_complexity_workspace"]
+            ce2_rssm = ce2["ce2_rssm"]
+            ce2_complexity_rssm = ce2["ce2_complexity_rssm"]
+            logger.info(
+                f"  CE2: gates={ce2_gates:.4f} workspace={ce2_workspace:.4f} "
+                f"ratio={ce2_ratio:.2f} emergent={ce2['ce2_emergent']} "
+                f"rssm={ce2_rssm:.4f} | complexity gates={ce2_complexity_gates} "
+                f"workspace={ce2_complexity_workspace} rssm={ce2_complexity_rssm}"
+            )
+
         # EI computation at configured interval
         ei_gates, ei_workspace, ei_ratio = 0.0, 0.0, 0.0
         ei_gates_corr, ei_workspace_corr, ei_ratio_corr = 0.0, 0.0, 0.0
@@ -2630,6 +2687,10 @@ def main():
             ei_gates=ei_gates, ei_workspace=ei_workspace, ei_ratio=ei_ratio,
             ei_gates_corr=ei_gates_corr, ei_workspace_corr=ei_workspace_corr,
             ei_ratio_corr=ei_ratio_corr,
+            ce2_gates=ce2_gates, ce2_workspace=ce2_workspace, ce2_ratio=ce2_ratio,
+            ce2_complexity_gates=ce2_complexity_gates,
+            ce2_complexity_workspace=ce2_complexity_workspace,
+            ce2_rssm=ce2_rssm, ce2_complexity_rssm=ce2_complexity_rssm,
         )
 
         logger.info(
