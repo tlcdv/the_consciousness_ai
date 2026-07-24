@@ -24,7 +24,7 @@ The system architecture fosters emergent consciousness through orchestrated spec
     *   **Capsule Composition:** 4-level nested hierarchy (Sabour 2017) between tectum and workspace. Multi-level reentrant feedback: higher levels send predictions down, lower levels send errors up.
     *   **Reentrant Processing:** 5-10 adaptive convergence cycles with predictive coding. The settled state after convergence IS the conscious content.
     *   **Integrated Information (Phi):** Measured via ConsciousnessGate states (attention, stability, adaptation, coherence, confidence) as the IIT subsystem. Sliding-window TPM tracks real-time dynamics.
-    *   **Effective Information (EI):** Hoel's framework (PNAS 2013) for causal emergence detection. Tertile quantile binning captures gate trajectory structure.
+    *   **Causal Emergence 2.0 (CE 2.0):** The current causal-emergence instrument (Hoel 2025, SVD heuristic on the transition probability matrix), superseding the deprecated Effective Information (EI, Hoel PNAS 2013). Reported at gate, workspace, and RSSM-latent levels behind `--log-ce2-every` (default off). Diagnostic only, under validation.
 
 4.  **Simulation (The Body):**
     *   **Dark Room:** Built in Gymnasium environment. The agent starts in darkness and must find a light source to reduce prediction error.
@@ -77,7 +77,8 @@ Consciousness emerges from the interaction of these feedback loops:
 
 ### 3. `models/evaluation/`
 *   **`iit_phi.py`**: IIT Phi from causal gate states. Sliding-window TPM, adaptive binarization, geometric proxy.
-*   **`effective_information.py`**: Hoel's EI framework for causal emergence.
+*   **`causal_emergence_svd.py`**: Causal Emergence 2.0 (Hoel 2025), the current causal-emergence instrument, superseding EI.
+*   **`effective_information.py`**: Hoel's EI framework for causal emergence (deprecated 2026-07; retained for continuity).
 *   **`consciousness_monitor.py`**: Metric-only consciousness evaluation (no circular progress factor).
 
 ### 4. `models/audio/`
@@ -99,7 +100,7 @@ Consciousness emerges from the interaction of these feedback loops:
 ### 7. `scripts/training/`
 *   **`train_rlhf.py`**: Full cognitive loop training. Exercises all components.
 *   **`train_baseline_dqn.py`**: Vanilla DQN for controlled comparison.
-*   **`metrics_logger.py`**: TensorBoard + CSV logging with EI computation and insight detection.
+*   **`metrics_logger.py`**: TensorBoard + CSV logging with EI and CE 2.0 computation and insight detection.
 
 ---
 
@@ -110,5 +111,5 @@ We validate emergence by observing specific dynamics:
 1.  **Anticipatory Behavior:** Does the agent act to prevent future anxiety, implying a mental model of time?
 2.  **Insight (Phi Spikes):** Do spikes in Integrated Information correlate with the agent solving novel problems?
 3.  **Homeostasis:** Does the agent autonomously maintain a stable internal emotional state without explicit hard-coded rules?
-4.  **Causal Emergence:** Does EI(workspace) exceed EI(gates), indicating the whole carries information the parts do not?
+4.  **Causal Emergence:** Does the workspace carry causal structure the parts do not? Measured with Causal Emergence 2.0 (CE 2.0, Hoel 2025), superseding the deprecated EI comparison, whose gate-level estimate degenerated to a constant floor.
 5.  **Binding Necessity:** Does disrupting oscillatory synchronization degrade performance on consciousness-demanding tasks (DMTS, WCST)?

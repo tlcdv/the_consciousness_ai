@@ -74,8 +74,9 @@ quantitative signatures that test whether those mechanisms do measurable work:
 
 - **IIT phi** (`models/evaluation/iit_phi.py`) - integration (RPT-2, GWT). In-training
   Phi-1 coupling FAILED; phi varies but does not track binding. Reported honestly.
-- **Effective Information / causal emergence** (Hoel; `effective_information.py`) -
-  whether the workspace is a stronger causal macro-variable than its parts.
+- **Causal emergence** (Hoel; Causal Emergence 2.0 in `causal_emergence_svd.py`, superseding the
+  deprecated EI in `effective_information.py`) - whether the workspace is a stronger causal
+  macro-variable than its parts. Instrument under validation; it promotes no indicator on its own.
 - **Levin metrics** (`levin_consciousness_metrics.py`) - bioelectric complexity,
   collective intelligence, basal cognition; run as untrained diagnostics today.
 - **Behavioral integration** on DMTS (working memory + binding) and WCST
