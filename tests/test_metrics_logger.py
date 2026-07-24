@@ -242,7 +242,8 @@ class TestCausalEmergence2(unittest.TestCase):
             header = next(csv.reader(f))
         for col in ("ce2_gates", "ce2_workspace", "ce2_ratio",
                     "ce2_complexity_gates", "ce2_complexity_workspace",
-                    "ce2_rssm", "ce2_complexity_rssm"):
+                    "ce2_rssm", "ce2_complexity_rssm",
+                    "ce2_gates_states", "ce2_workspace_states"):
             self.assertIn(col, header)
 
     def test_disabled_by_default_leaves_buffers_empty(self):

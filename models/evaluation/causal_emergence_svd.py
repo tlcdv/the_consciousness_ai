@@ -21,6 +21,21 @@ The heuristic, verified against the source paper (Supplementary S3):
      (sigma_i - gamma_star) for the qualifiers are the per-scale causal
      contributions (the causal apportioning).
 
+DEGENERACY CONFOUND (read before interpreting any value). CE 2.0 measures the
+coarse-graining gain still AVAILABLE, so it RISES as the input trajectory becomes
+more degenerate. Measured over 2000 steps with 243 states:
+
+    distinct states:   1        2        10       50       243
+    CE 2.0:            0.8779   0.7978   0.4329   0.1108   0.0148
+
+A higher value therefore does NOT mean "more emergent"; it can mean "more frozen".
+Always read a value alongside trajectory_degeneracy(), and compare it against
+frozen_trajectory_ce2_value() to check the input was not frozen. Comparing two
+levels with different state-space sizes (e.g. 243-state gates vs 8-state workspace)
+is confounded by this. The 2026-07 dark_room pilot found the gate and workspace
+trajectories were both frozen, so their CE 2.0 values were exactly the frozen-input
+reference (docs/results/ce2_pilot_calibration_2026_07.md).
+
 HONESTY CAVEAT. Applying a heuristic designed for coarse-grains of model Markov
 chains to a trained neural world-model latent is exploratory and is NOT validated
 by the source paper. S3 itself states the SVD adaptation is "just one proposal ...
@@ -43,6 +58,8 @@ __all__ = [
     "CE2Result",
     "compute_ce2_from_tpm",
     "compute_ce2_from_trajectories",
+    "frozen_trajectory_ce2_value",
+    "trajectory_degeneracy",
     "latent_class_indices",
     "build_latent_tpm",
     "new_transition_counts",
@@ -124,6 +141,64 @@ def compute_ce2_from_trajectories(trajectories: list[np.ndarray],
     """Build a TPM from integer-index trajectories (via _build_tpm) then score it."""
     tpm = _build_tpm(trajectories, num_states)
     return compute_ce2_from_tpm(tpm, eps=eps)
+
+
+def frozen_trajectory_ce2_value(num_states: int, traj_len: int,
+                                eps: float = 1e-9) -> float:
+    """
+    The CE 2.0 value a fully frozen (single-state) trajectory produces.
+
+    This is a CEILING, not a floor, and it must NOT be subtracted. CE 2.0 decreases
+    monotonically as a trajectory gets richer, because sigma_2 minus gamma_star
+    measures the coarse-graining gain still AVAILABLE, and a maximally degenerate
+    microscale has the most available. Measured over 2000 steps with 243 states:
+
+        distinct states:      1        2        10       50       243
+        CE 2.0:               0.8779   0.7978   0.4329   0.1108   0.0148
+
+    So an observed value at or near this reference means the input trajectory is
+    degenerate, NOT that the level is strongly emergent. Use it as a diagnostic:
+    compare an observed CE 2.0 against this reference to detect a frozen input.
+
+    On the 2026-07 dark_room pilot the gate level (243 states, 2000-step window)
+    matched this reference exactly (0.877884) in all 50 windows, and the workspace
+    level (8 states) matched at 0.662874, proving both trajectories were frozen.
+    See docs/results/ce2_pilot_calibration_2026_07.md.
+    """
+    frozen = [np.zeros(int(traj_len), dtype=np.int64)]
+    return compute_ce2_from_trajectories(frozen, num_states, eps=eps).causal_emergence
+
+
+def trajectory_degeneracy(trajectories: list[np.ndarray], num_states: int) -> dict:
+    """
+    Diagnose whether a trajectory set is rich enough for CE 2.0 to be interpretable.
+
+    Because CE 2.0 rises as the input degenerates, a value computed on a frozen or
+    near-frozen trajectory is an artifact of the discretization, not a causal
+    property of the system. This reports the evidence needed to judge that:
+
+        distinct_states  - how many of num_states the trajectory actually visits
+        n_transitions    - number of t -> t+1 pairs contributing to the TPM
+        coverage         - distinct_states / num_states
+        degenerate       - True when fewer than 2 distinct states are visited, so
+                           the TPM carries no observed transition structure at all
+
+    A True `degenerate` flag means the accompanying CE 2.0 value should not be read
+    as signal.
+    """
+    visited: set[int] = set()
+    n_transitions = 0
+    for traj in trajectories:
+        arr = np.asarray(traj).reshape(-1)
+        visited.update(int(x) for x in arr if 0 <= int(x) < num_states)
+        n_transitions += max(0, len(arr) - 1)
+    distinct = len(visited)
+    return {
+        "distinct_states": distinct,
+        "n_transitions": n_transitions,
+        "coverage": distinct / float(num_states) if num_states else 0.0,
+        "degenerate": distinct < 2,
+    }
 
 
 # --------------------------------------------------------------------------- #

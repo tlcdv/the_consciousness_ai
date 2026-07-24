@@ -23,6 +23,8 @@ from models.evaluation.causal_emergence_svd import (
     CE2Result,
     compute_ce2_from_tpm,
     compute_ce2_from_trajectories,
+    frozen_trajectory_ce2_value,
+    trajectory_degeneracy,
     latent_class_indices,
     build_latent_tpm,
     new_transition_counts,
@@ -186,3 +188,46 @@ class TestIncrementalCounting:
         tpm_inc = counts_to_tpm(counts, laplace=1.0)
         tpm_pooled = build_latent_tpm([f0, f1, f2], 3)
         assert np.allclose(tpm_inc, tpm_pooled)
+
+
+class TestDegeneracyConfound:
+    """CE 2.0 rises as the input trajectory degenerates, because sigma_2 minus
+    gamma_star measures the coarse-graining gain still AVAILABLE. These tests lock
+    that behaviour in so a high value is never misread as strong emergence."""
+
+    def test_ce2_decreases_as_trajectory_gets_richer(self):
+        L, N = 2000, 243
+        rng = np.random.default_rng(0)
+        frozen = np.zeros(L, dtype=np.int64)
+        two = np.tile([0, 1], L // 2).astype(np.int64)
+        cyc = (np.arange(L) % 10).astype(np.int64)
+        rich = rng.integers(0, N, L).astype(np.int64)
+        vals = [compute_ce2_from_trajectories([t], N).causal_emergence
+                for t in (frozen, two, cyc, rich)]
+        assert vals[0] > vals[1] > vals[2] > vals[3], vals
+
+    def test_frozen_reference_matches_the_2026_07_pilot(self):
+        # The dark_room pilot's gate and workspace values were constant across all
+        # 50 windows and equal to the frozen-input reference at the 2000-step
+        # window, proving both trajectories were frozen rather than emergent.
+        assert frozen_trajectory_ce2_value(243, 2000) == pytest.approx(0.877884, abs=1e-6)
+        assert frozen_trajectory_ce2_value(8, 2000) == pytest.approx(0.662874, abs=1e-6)
+
+    def test_frozen_reference_is_length_dependent(self):
+        a = frozen_trajectory_ce2_value(243, 100)
+        b = frozen_trajectory_ce2_value(243, 2000)
+        c = frozen_trajectory_ce2_value(243, 10000)
+        assert a < b < c
+
+    def test_degeneracy_flags_a_frozen_trajectory(self):
+        d = trajectory_degeneracy([np.zeros(500, dtype=np.int64)], 243)
+        assert d["distinct_states"] == 1
+        assert d["degenerate"] is True
+        assert d["n_transitions"] == 499
+
+    def test_degeneracy_passes_a_varied_trajectory(self):
+        rng = np.random.default_rng(1)
+        d = trajectory_degeneracy([rng.integers(0, 243, 2000).astype(np.int64)], 243)
+        assert d["distinct_states"] > 100
+        assert d["degenerate"] is False
+        assert 0.0 < d["coverage"] <= 1.0

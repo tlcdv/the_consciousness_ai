@@ -4,6 +4,11 @@
 instrument-integration record, not an experiment result. No causal-emergence claim
 may be drawn from it until CE 2.0 is replicated across >= 3 seeds (42/43/44).
 
+**Update: the first calibration pilot FAILED.** The gate and workspace CE 2.0 values
+were frozen-input artifacts, reproduced exactly by a constant trajectory of the same
+window length. See
+[ce2_pilot_calibration_2026_07.md](ce2_pilot_calibration_2026_07.md).
+
 ## What was built
 Causal Emergence 2.0 (Hoel 2025, arXiv:2503.13395v3, Supplementary S3) as an
 additive, default-off, diagnostic-only metric that supersedes Hoel's 2013 Effective
@@ -41,7 +46,10 @@ Information (EI / "CE 1.0"), which had a documented floor artifact
   `episodes.csv` columns are exactly zero and existing EI columns are unchanged.
 
 ## Not done / owner decisions pending
-- No >= 3-seed run, so no verdict on what CE 2.0 measures in this system.
+- The first calibration pilot FAILED (frozen-input artifacts at the gate and workspace
+  levels), so there is still no verdict on what CE 2.0 measures on a non-degenerate
+  input. The 3-seed campaign is on hold until the gate discretization actually
+  transitions; running it now would reproduce the artifacts three times.
 - No CE 2.0 predictions pre-registered (see `docs/preregistered_predictions.md`).
 - EI is deprecated in docs but retained (tests + pre-registration intact). Flipping
   the default off EI, and deleting the EI path, are deferred until CE 2.0 is

@@ -196,6 +196,10 @@ class ConsciousnessMetricsLogger:
             "ce2_gates", "ce2_workspace", "ce2_ratio",
             "ce2_complexity_gates", "ce2_complexity_workspace",
             "ce2_rssm", "ce2_complexity_rssm",
+            # Distinct discretized states actually visited in the window. CE 2.0
+            # rises as a trajectory freezes, so a value with a state count of 1 is a
+            # discretization artifact, not emergence. Always read the two together.
+            "ce2_gates_states", "ce2_workspace_states",
         ])
 
     def log_step(self, metrics: StepMetrics):
@@ -308,6 +312,8 @@ class ConsciousnessMetricsLogger:
         ce2_complexity_workspace: int = 0,
         ce2_rssm: float = 0.0,
         ce2_complexity_rssm: int = 0,
+        ce2_gates_states: int = 0,
+        ce2_workspace_states: int = 0,
     ):
         """Log episode-level summary."""
         # CSV
@@ -320,6 +326,7 @@ class ConsciousnessMetricsLogger:
             f"{ce2_gates:.6f}", f"{ce2_workspace:.6f}", f"{ce2_ratio:.4f}",
             ce2_complexity_gates, ce2_complexity_workspace,
             f"{ce2_rssm:.6f}", ce2_complexity_rssm,
+            ce2_gates_states, ce2_workspace_states,
         ])
         self._ep_csv_file.flush()
 
@@ -504,12 +511,14 @@ class ConsciousnessMetricsLogger:
         from models.evaluation.effective_information import discretize_continuous
         from models.evaluation.causal_emergence_svd import (
             compute_ce2_from_trajectories, compute_ce2_from_tpm, counts_to_tpm,
+            trajectory_degeneracy,
         )
 
         result = {"ce2_gates": 0.0, "ce2_workspace": 0.0, "ce2_ratio": 0.0,
                   "ce2_emergent": False, "ce2_complexity_gates": 0,
                   "ce2_complexity_workspace": 0, "ce2_rssm": 0.0,
-                  "ce2_complexity_rssm": 0}
+                  "ce2_complexity_rssm": 0, "ce2_gates_states": 0,
+                  "ce2_workspace_states": 0}
 
         # Gate + workspace CE 2.0 (needs a minimum window for a meaningful TPM).
         if len(self._ce2_gate_trajectory) >= 10:
@@ -524,14 +533,30 @@ class ConsciousnessMetricsLogger:
                        if self._ce2_workspace_trajectory else [0.0] * len(gate_discrete))
             ws_discrete = discretize_continuous(ws_flat, num_workspace_states)
 
-            g_res = compute_ce2_from_trajectories([np.array(gate_discrete)], num_gate_states)
-            w_res = compute_ce2_from_trajectories([np.array(ws_discrete)], num_workspace_states)
+            g_traj = [np.array(gate_discrete)]
+            w_traj = [np.array(ws_discrete)]
+            # Degeneracy first: CE 2.0 RISES as a trajectory freezes, so a value
+            # computed on a frozen input is a discretization artifact, not emergence.
+            g_deg = trajectory_degeneracy(g_traj, num_gate_states)
+            w_deg = trajectory_degeneracy(w_traj, num_workspace_states)
+            g_res = compute_ce2_from_trajectories(g_traj, num_gate_states)
+            w_res = compute_ce2_from_trajectories(w_traj, num_workspace_states)
             result["ce2_gates"] = g_res.causal_emergence
             result["ce2_workspace"] = w_res.causal_emergence
             result["ce2_ratio"] = w_res.causal_emergence / max(g_res.causal_emergence, 1e-8)
             result["ce2_emergent"] = w_res.causal_emergence > g_res.causal_emergence
             result["ce2_complexity_gates"] = g_res.emergent_complexity
             result["ce2_complexity_workspace"] = w_res.emergent_complexity
+            result["ce2_gates_states"] = g_deg["distinct_states"]
+            result["ce2_workspace_states"] = w_deg["distinct_states"]
+            if g_deg["degenerate"] or w_deg["degenerate"]:
+                logger.warning(
+                    "CE 2.0 computed on a degenerate trajectory (gate distinct "
+                    "states=%d, workspace=%d). CE 2.0 rises as the input freezes, so "
+                    "these values are discretization artifacts, not emergence. See "
+                    "docs/results/ce2_pilot_calibration_2026_07.md",
+                    g_deg["distinct_states"], w_deg["distinct_states"],
+                )
 
         # RSSM latent CE 2.0 from the pooled transition counts.
         if self._latent_counts is not None and self._latent_counts.sum() > 0:

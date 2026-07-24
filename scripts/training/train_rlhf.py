@@ -2644,8 +2644,9 @@ def main():
         # diagnostic; scored on CE 2.0's own gate/workspace buffers and the RSSM
         # latent TPM, fully independent of the EI computation below.
         (ce2_gates, ce2_workspace, ce2_ratio, ce2_complexity_gates,
-         ce2_complexity_workspace, ce2_rssm, ce2_complexity_rssm) = (
-            0.0, 0.0, 0.0, 0, 0, 0.0, 0)
+         ce2_complexity_workspace, ce2_rssm, ce2_complexity_rssm,
+         ce2_gates_states, ce2_workspace_states) = (
+            0.0, 0.0, 0.0, 0, 0, 0.0, 0, 0, 0)
         if args.log_ce2_every > 0 and (ep + 1) % args.log_ce2_every == 0:
             ce2 = metrics_logger.compute_and_log_ce2(ep)
             ce2_gates = ce2["ce2_gates"]
@@ -2655,11 +2656,15 @@ def main():
             ce2_complexity_workspace = ce2["ce2_complexity_workspace"]
             ce2_rssm = ce2["ce2_rssm"]
             ce2_complexity_rssm = ce2["ce2_complexity_rssm"]
+            ce2_gates_states = ce2["ce2_gates_states"]
+            ce2_workspace_states = ce2["ce2_workspace_states"]
             logger.info(
                 f"  CE2: gates={ce2_gates:.4f} workspace={ce2_workspace:.4f} "
                 f"ratio={ce2_ratio:.2f} emergent={ce2['ce2_emergent']} "
                 f"rssm={ce2_rssm:.4f} | complexity gates={ce2_complexity_gates} "
-                f"workspace={ce2_complexity_workspace} rssm={ce2_complexity_rssm}"
+                f"workspace={ce2_complexity_workspace} rssm={ce2_complexity_rssm} "
+                f"| distinct states gates={ce2_gates_states} "
+                f"workspace={ce2_workspace_states} (1 = frozen, value is an artifact)"
             )
 
         # EI computation at configured interval
@@ -2691,6 +2696,8 @@ def main():
             ce2_complexity_gates=ce2_complexity_gates,
             ce2_complexity_workspace=ce2_complexity_workspace,
             ce2_rssm=ce2_rssm, ce2_complexity_rssm=ce2_complexity_rssm,
+            ce2_gates_states=ce2_gates_states,
+            ce2_workspace_states=ce2_workspace_states,
         )
 
         logger.info(
