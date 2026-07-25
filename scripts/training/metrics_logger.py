@@ -97,6 +97,18 @@ class StepMetrics:
     match_head_acc: float = 0.0
 
 
+def _gate_cells(gate_state, n: int = 5) -> list[str]:
+    """
+    Format the raw gate node values for the per-step CSV, padded to n columns.
+
+    Returns empty strings when no gate is active (or when the fallback
+    competition-results path supplies fewer than n values), so the column count
+    stays fixed regardless of configuration.
+    """
+    vals = list(gate_state) if gate_state is not None else []
+    return [f"{float(vals[i]):.6f}" if i < len(vals) else "" for i in range(n)]
+
+
 class ConsciousnessMetricsLogger:
     """
     Logs consciousness metrics to TensorBoard and/or CSV.
@@ -151,6 +163,15 @@ class ConsciousnessMetricsLogger:
         self._gate_trajectory: list[tuple[float, ...]] = []
         self._workspace_trajectory: list[tuple[float, ...]] = []
 
+        # Gate discretization mode, shared by EI and CE 2.0 so both score the same
+        # TPM. "tertile" (default) = fixed [1/3, 2/3] boundaries, baseline
+        # bit-identical. "quantile" = per-dimension terciles from the window's own
+        # distribution, set via set_gate_binning(). The 2026-07 gate-binning diagnosis
+        # found the gate nodes vary in a ~0.01-wide band around 0.49, which fixed
+        # tertiles collapse to one joint state of 243 (see
+        # docs/results/ce2_pilot_calibration_2026_07.md).
+        self._gate_binning: str = "tertile"
+
         # Causal Emergence 2.0 (SVD heuristic) state. Kept separate from the EI
         # buffers above so enabling CE 2.0 never alters EI's window. Everything
         # here stays inert until enable_ce2() is called (only when
@@ -176,6 +197,12 @@ class ConsciousnessMetricsLogger:
             "self_pred_mse", "self_pred_skill",
             "recon_loss",
             "match_head_loss", "match_head_acc",
+            # Raw ConsciousnessGate node values. Logged so the gate discretization can
+            # be diagnosed directly: the 2026-07 assessment inferred the gates were
+            # saturated into one tertile joint state from the EI floor, but the raw
+            # per-dimension variation was never measured. Empty when no gate is active.
+            "gate_attention", "gate_stability", "gate_adaptation",
+            "gate_coherence", "gate_confidence",
         ])
 
     def _init_episode_csv(self):
@@ -228,6 +255,7 @@ class ConsciousnessMetricsLogger:
             f"{metrics.self_pred_mse:.6e}", f"{metrics.self_pred_skill:.6f}",
             f"{metrics.recon_loss:.6e}",
             f"{metrics.match_head_loss:.6e}", f"{metrics.match_head_acc:.6f}",
+            *_gate_cells(metrics.gate_state),
         ])
         self._csv_file.flush()
 
@@ -365,6 +393,61 @@ class ConsciousnessMetricsLogger:
         )
         self._env_ep_csv_file.flush()
 
+    def set_gate_binning(self, mode: str):
+        """Select the gate discretization used by EI and CE 2.0. 'tertile' (default,
+        baseline bit-identical) or 'quantile'."""
+        if mode not in ("tertile", "quantile"):
+            raise ValueError(f"gate binning must be 'tertile' or 'quantile', got {mode}")
+        self._gate_binning = mode
+
+    def _discretize_gate_window(self, trajectory, var_floor: float = 1e-4) -> list:
+        """
+        Map a window of gate-state tuples to joint tertile indices in [0, 3^d).
+
+        'tertile' (default): fixed [1/3, 2/3] boundaries. Bit-identical to the
+        pre-2026-07 inline code, so the baseline is unchanged when the flag is off.
+
+        'quantile': per-dimension terciles from the window's own distribution, so a
+        gate signal that lives in a narrow band (the 2026-07 diagnosis found ~0.01
+        wide around 0.49) is actually resolved. A dimension whose std is at or below
+        var_floor is treated as dead and pinned to bin 0, so a near-constant channel
+        (e.g. gate_adaptation, std ~6e-6) is not split into noise.
+        """
+        if not trajectory:
+            return []
+        if self._gate_binning != "quantile":
+            out = []
+            for g in trajectory:
+                joint_idx = 0
+                for i, val in enumerate(g):
+                    if val < 1 / 3:
+                        trit = 0
+                    elif val < 2 / 3:
+                        trit = 1
+                    else:
+                        trit = 2
+                    joint_idx += trit * (3 ** i)
+                out.append(joint_idx)
+            return out
+        mat = np.asarray(trajectory, dtype=float)
+        edges = []
+        for i in range(mat.shape[1]):
+            col = mat[:, i]
+            edges.append(None if col.std() <= var_floor
+                         else np.quantile(col, [1 / 3, 2 / 3]))
+        out = []
+        for g in mat:
+            joint_idx = 0
+            for i in range(mat.shape[1]):
+                e = edges[i]
+                if e is None:
+                    trit = 0
+                else:
+                    trit = 0 if g[i] < e[0] else (1 if g[i] < e[1] else 2)
+                joint_idx += trit * (3 ** i)
+            out.append(joint_idx)
+        return out
+
     def compute_and_log_ei(self, episode: int, num_gate_states: int = 243,
                            num_workspace_states: int = 8) -> dict:
         """
@@ -391,19 +474,8 @@ class ConsciousnessMetricsLogger:
         if len(self._gate_trajectory) < 10:
             return result
 
-        # Fixed tertile boundaries: gate outputs are sigmoid-bounded [0, 1]
-        gate_discrete = []
-        for g in self._gate_trajectory:
-            joint_idx = 0
-            for i, val in enumerate(g):
-                if val < 1 / 3:
-                    trit = 0
-                elif val < 2 / 3:
-                    trit = 1
-                else:
-                    trit = 2
-                joint_idx += trit * (3 ** i)
-            gate_discrete.append(joint_idx)
+        # Gate discretization (tertile by default, or quantile via --gate-binning).
+        gate_discrete = self._discretize_gate_window(self._gate_trajectory)
 
         ws_flat = [sum(w) for w in self._workspace_trajectory] if self._workspace_trajectory else [0.0] * len(gate_discrete)
         ws_discrete = discretize_continuous(ws_flat, num_workspace_states)
@@ -522,13 +594,7 @@ class ConsciousnessMetricsLogger:
 
         # Gate + workspace CE 2.0 (needs a minimum window for a meaningful TPM).
         if len(self._ce2_gate_trajectory) >= 10:
-            gate_discrete = []
-            for g in self._ce2_gate_trajectory:
-                joint_idx = 0
-                for i, val in enumerate(g):
-                    trit = 0 if val < 1 / 3 else (1 if val < 2 / 3 else 2)
-                    joint_idx += trit * (3 ** i)
-                gate_discrete.append(joint_idx)
+            gate_discrete = self._discretize_gate_window(self._ce2_gate_trajectory)
             ws_flat = ([sum(w) for w in self._ce2_workspace_trajectory]
                        if self._ce2_workspace_trajectory else [0.0] * len(gate_discrete))
             ws_discrete = discretize_continuous(ws_flat, num_workspace_states)

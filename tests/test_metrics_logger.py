@@ -296,5 +296,68 @@ class TestCausalEmergence2(unittest.TestCase):
         self.assertEqual(self.logger._latent_counts.sum(), 0.0)
 
 
+class TestGateBinning(unittest.TestCase):
+    """The --gate-binning discretization shared by EI and CE 2.0."""
+
+    def setUp(self):
+        self.tmpdir = tempfile.mkdtemp()
+        self.logger = ConsciousnessMetricsLogger(
+            log_dir=self.tmpdir, use_tensorboard=False
+        )
+
+    def tearDown(self):
+        self.logger.close()
+
+    @staticmethod
+    def _reference_tertile(traj):
+        """The pre-refactor inline logic, kept here as the bit-identical oracle."""
+        out = []
+        for g in traj:
+            idx = 0
+            for i, val in enumerate(g):
+                trit = 0 if val < 1 / 3 else (1 if val < 2 / 3 else 2)
+                idx += trit * (3 ** i)
+            out.append(idx)
+        return out
+
+    def test_default_is_tertile(self):
+        self.assertEqual(self.logger._gate_binning, "tertile")
+
+    def test_tertile_is_bit_identical_to_old_inline_logic(self):
+        rng = np.random.default_rng(0)
+        traj = [tuple(rng.random(5).tolist()) for _ in range(200)]
+        self.assertEqual(self.logger._discretize_gate_window(traj),
+                         self._reference_tertile(traj))
+
+    def test_set_gate_binning_validates(self):
+        with self.assertRaises(ValueError):
+            self.logger.set_gate_binning("octile")
+
+    def test_tertile_collapses_narrow_band_signal(self):
+        # Values in a ~0.01 band around 0.49 all land in the middle tertile -> 1 state.
+        rng = np.random.default_rng(1)
+        traj = [tuple(0.49 + 0.005 * rng.standard_normal(5)) for _ in range(500)]
+        self.logger.set_gate_binning("tertile")
+        d = self.logger._discretize_gate_window(traj)
+        self.assertEqual(len(set(d)), 1)
+
+    def test_quantile_resolves_narrow_band_signal(self):
+        rng = np.random.default_rng(1)
+        traj = [tuple(0.49 + 0.005 * rng.standard_normal(5)) for _ in range(500)]
+        self.logger.set_gate_binning("quantile")
+        d = self.logger._discretize_gate_window(traj)
+        self.assertGreater(len(set(d)), 1)
+
+    def test_quantile_pins_a_dead_dimension(self):
+        # Dim 0 varies; dim 1 is near-constant (std well below var_floor). The dead
+        # dim must contribute no additional states: distinct joint states must equal
+        # the distinct states of dim 0 alone (<= 3 tertiles).
+        rng = np.random.default_rng(2)
+        traj = [(0.2 + 0.2 * rng.random(), 0.0101) for _ in range(400)]
+        self.logger.set_gate_binning("quantile")
+        d = self.logger._discretize_gate_window(traj)
+        self.assertLessEqual(len(set(d)), 3)
+
+
 if __name__ == "__main__":
     unittest.main()

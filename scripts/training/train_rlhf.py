@@ -2082,6 +2082,17 @@ def main():
                              "Defaults to 32 = the RSSM categorical class count "
                              "(z_state.argmax over the class axis). Only used when "
                              "--log-ce2-every > 0.")
+    parser.add_argument("--gate-binning", type=str, default="tertile",
+                        choices=["tertile", "quantile"],
+                        help="Discretization of the 5 gate nodes for EI and CE 2.0. "
+                             "'tertile' (default) = fixed [1/3, 2/3] boundaries, "
+                             "baseline bit-identical. 'quantile' = per-dimension "
+                             "terciles from each window's own distribution, so the "
+                             "gate signal (which varies in a ~0.01 band around 0.49 and "
+                             "collapses to one joint state under fixed tertiles) is "
+                             "resolved; near-constant dims are pinned to one bin. "
+                             "Single-seed diagnosis only, needs >= 3 seeds before any "
+                             "default change. See docs/results/ce2_pilot_calibration_2026_07.md.")
     parser.add_argument("--save-tectum", type=str, default=None,
                         help="If set, save the trained tectum state_dict to this "
                              "path at the end of training. Used by "
@@ -2559,6 +2570,7 @@ def main():
     )
     if getattr(args, "log_ce2_every", 0) > 0:
         metrics_logger.enable_ce2(num_classes=getattr(args, "ce2_num_classes", 32))
+    metrics_logger.set_gate_binning(getattr(args, "gate_binning", "tertile"))
 
     logger.info(f"Starting training: {args.episodes} episodes, {args.max_steps} max steps each")
     logger.info(f"Metrics logging to: {args.log_dir}")
