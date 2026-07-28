@@ -35,6 +35,8 @@ This roadmap outlines the planned development phases for The Consciousness AI.
   - **Self-model:** Body schema, interoceptive state, capability model.
   - **PAD homeostatic reward:** `Rtotal = Rext + lambda1*DeltaValence - lambda2*(Arousal - target)^2 + lambda3*Dominance`.
   - **Effective Information:** Hoel's PNAS 2013 framework for causal emergence detection.
+    DEPRECATED 2026-07 (its gate-level estimate sat at a constant floor); superseded by
+    Causal Emergence 2.0. See the 2026-07-28 status entry below.
 
 ## Phase 3: Compositional Deepening & Validation (Complete)
 
@@ -209,6 +211,45 @@ B stages the last perception lever (continuous / higher-capacity latent, gated b
 reused ceiling-test harness), Track C reaches competence and the pre-registered section-13
 test only after B succeeds and the separate RL learning wall is confronted. Pre-registered
 EI/Phi and section-13 thresholds are not revised.
+
+### Status 2026-07-28: Track B PASSED, the instruments moved three times, and this page had gone 23 days stale
+
+This entry closes a documentation gap. The five chapters below all landed between
+2026-07-14 and 2026-07-28 while this page still ended at 2026-07-05. Verdict docs are the
+authority; this is the index.
+
+- **Track B PASSED and the perception chain is intact end to end.** A continuous Gaussian
+  RSSM latent carries stimulus identity (the discrete gumbel latent was the wall),
+  replicated at seeds 42/43/44, and `--capsule-workspace-source all_levels` carries it
+  through the final capsule routing layer to the broadcast.
+  [`results/b1_continuous_latent_2026_07.md`](results/b1_continuous_latent_2026_07.md).
+- **The first replicated, ablation-causal signature response.** Completing the integration
+  pathway moves broadcast content variation (~2x), phi max (~2.2x) and corrected macro EI
+  (~3x) across 3 seeds. Honest non-responders kept: ignition did not survive replication,
+  sync_R stayed flat.
+  [`results/signature_ablation_2026_07.md`](results/signature_ablation_2026_07.md).
+- **A shipped objective was found non-functional.** A 2026-07-19 audit found the
+  contrastive InfoNCE objective inert in every code path despite a green unit suite, and
+  retracted an unsupported RPT-2 status move.
+  [`results/contrastive_integration_defect_2026_07.md`](results/contrastive_integration_defect_2026_07.md).
+- **EI was deprecated for Causal Emergence 2.0, whose first pilot then FAILED.** CE 2.0
+  values at the gate and workspace were reproduced exactly by a frozen trajectory. CE 2.0
+  rises as the input degenerates, so a high value can mean "more frozen".
+  [`results/ce2_pilot_calibration_2026_07.md`](results/ce2_pilot_calibration_2026_07.md).
+- **The gate micro level is ALIVE; fixed tertile binning was blind to it.** Four of five
+  gate nodes vary inside a ~0.01 band that tertile boundaries at 0.333/0.667 could never
+  resolve. `--gate-binning quantile` sees it. Single seed.
+  [`results/gate_binning_2026_07.md`](results/gate_binning_2026_07.md).
+- **A perturbational instrument was added, plus the first matched-stimulus contrast.**
+  Every instrument tried so far reads the spontaneous trajectory, which is the failure mode
+  the 2016 NRN review names; PCI is the marker that survived in that review. PCI_LZ,
+  coupling measures, and `--sample-contrast` on DMTS now exist, smoke-tested only.
+  [`thalamic_gating_evidence.md`](thalamic_gating_evidence.md),
+  [`results/thalamic_instruments_2026_07.md`](results/thalamic_instruments_2026_07.md).
+
+Next steps and their gates are in
+[`roadmap_next_2026_07.md`](roadmap_next_2026_07.md) under the 2026-07-28 status block.
+No Butlin indicator has been promoted and no pre-registered threshold was revised.
 
 ## Phase 5: Dynamic Self-Representation & Meta-Cognition
 

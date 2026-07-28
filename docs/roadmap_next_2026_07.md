@@ -49,6 +49,54 @@ secondary task-competence path, C1 localized the DMTS wall to the policy-head + 
 assignment (`rl_wall_diagnosis_2026_07.md`), needed only for section-13 SI-1. Per reading #2
 the signature front is primary; competence is the bigger, secondary bet.
 
+**Superseded 2026-07-28: item (a) has been done, and its premise was wrong.** The gate
+micro level is not frozen. See the status block at the end of this document.
+
+## Status 2026-07-28: the signature front advanced three times; the gate was never frozen
+
+Track A continued past A1/A2 without this document being updated, so the entries below are
+recorded together. Verdicts are in `docs/results/`; this is the index.
+
+- **EI deprecated, CE 2.0 adopted, first pilot FAILED.** Causal Emergence 2.0 (Hoel 2025,
+  arXiv:2503.13395v3) replaced Effective Information as the causal-emergence instrument.
+  Its first calibration pilot FAILED: over 500 dark_room episodes the gate and workspace
+  values were constant in all 50 windows and reproduced exactly by a frozen single-state
+  trajectory (0.877884 at 243 states, 0.662874 at 8 states). CE 2.0 RISES as the input
+  degenerates, so a high value can mean "more frozen" rather than "more emergent". Any
+  future use must be read beside a degeneracy check.
+  `docs/results/ce2_pilot_calibration_2026_07.md`.
+- **The gate micro level is ALIVE; the instrument was blind.** This supersedes the framing
+  used throughout this document, including A1's "if the gates genuinely never transition".
+  Four of five gate nodes carry std ~1e-3 with 700-860 distinct values, but all inside a
+  ~0.01 band around 0.49, while fixed tertile boundaries sit at 0.333/0.667, so every node
+  landed in the middle tertile forever. `--gate-binning quantile` derives boundaries from
+  the window's own distribution: distinct joint states 1 -> 28 offline and 1 -> 12 live,
+  `ce2_gates` 0.923095 -> 0.649174, `ei_gates_corr` 0.0 -> 0.063247. Only `adaptation` is
+  genuinely dead (std 6.08e-06). Single seed, default-off; a default flip needs 3 seeds.
+  `docs/results/gate_binning_2026_07.md`.
+- **A perturbational instrument was added.** A review of three papers on thalamic gating
+  (`docs/thalamic_gating_evidence.md`) surfaced that every instrument this project has
+  tried reads the SPONTANEOUS trajectory, which is the exact failure mode the 2016 NRN
+  review names, and that the one marker surviving in that review is PCI. PCI_LZ and a
+  coupling-measures module now exist, along with the project's first matched-stimulus
+  contrast (`--sample-contrast` / `--sample-noise` on DMTS). All smoke-tested only, never
+  run on a trained tectum. `docs/results/thalamic_instruments_2026_07.md`.
+
+### Revised next steps (owner decisions, none auto-started)
+
+1. **PCI on a trained checkpoint, 3 seeds.** The cheapest decisive test of the new
+   instrument. Needs a `--save-tectum` run, then `probe_pci.py --load-tectum`. Gate is
+   pre-stated in the verdict doc.
+2. **Near-threshold calibration pilot.** Sweep `--sample-contrast` for an intermediate
+   per-trial decodable band. This is the KILL gate for the content-specific NCC programme:
+   no intermediate band means the paradigm does not transfer to this agent.
+3. **Replicate gate binning at 3 seeds** before any default flip.
+4. **Then** `probe_divergence_onset.py`, only if step 2 passes.
+
+Track B's exit criterion is met. Track C is unchanged and still gated on the RL wall.
+New owner forks on the table: the `--gate-binning` default flip, what becomes of CE 2.0
+given its degeneracy confound, and a thalamic hub mechanism (deliberately not built).
+
 ## Where we are (all verified on disk, 2026-07-05)
 
 Two blockers are now characterized to the point of being actionable:
