@@ -88,6 +88,12 @@ structure only, kept current from the actual tree.
 - `effective_information.py` -- Hoel's EI for causal emergence (DEPRECATED 2026-07; see `causal_emergence_svd.py`).
 - `causal_emergence_svd.py` -- Causal Emergence 2.0 SVD heuristic (Hoel 2025, arXiv:2503.13395v3); successor to EI, logged via `--log-ce2-every`.
 - `causal_emergence.py` -- causal-emergence helpers.
+- `perturbational_complexity.py` -- PCI_LZ (Casali et al. 2013), the perturbational
+  integration-and-differentiation measure; unlike EI/CE 2.0 it supplies its own variation
+  instead of reading a frozen spontaneous trajectory. Driven by `scripts/analysis/probe_pci.py`.
+- `coupling_measures.py` -- PLV, phase transfer entropy and phase-amplitude coupling on
+  step-indexed signals. Units are CYCLES PER STEP with no Hz reading; see the module
+  docstring. Driven by `scripts/analysis/probe_workspace_ordering.py`.
 - `levin_consciousness_metrics.py` -- Levin-framework consciousness metrics.
 - `consciousness_monitor.py` -- metric-only consciousness evaluation.
 - `gnw_metrics.py`, `subjective_testing_suite.py` -- workspace metrics and subjective-test scaffolding.

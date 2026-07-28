@@ -350,6 +350,62 @@ Inside-Out Approach," *Front. Syst. Neurosci.* 13:25. "What is neurorepresentati
 
 ---
 
+## 8. Thalamic gating and perturbational measurement (added 2026-07-28)
+
+*Three papers on thalamic contributions to human consciousness, reviewed and audited
+against this architecture in [thalamic_gating_evidence.md](thalamic_gating_evidence.md).
+Read that doc first: it carries the alignment verdict, the seven file-level gaps, and a
+binding constraint on translating any frequency band into this system.*
+
+### 8.1 Fang, Dang, Ping, Wang, Zhao, Zhao, Li & Zhang (2024), "Human intralaminar and medial thalamic nuclei transiently gate conscious perception through the thalamocortical loop" (Tier 1)
+bioRxiv 2024.04.02.587714. **Preprint, not peer reviewed.**
+
+- **Why aligned (strongest external support for the mission thesis):** Simultaneous depth
+  recordings from 197 thalamic and 213 prefrontal sites during a near threshold Gabor task
+  with the motor response matched across the awareness contrast. Intralaminar (CM, Pf) and
+  medial (MDm) nuclei show earlier and stronger consciousness related activity than the
+  ventral nuclei; low frequency phase locking rises within thalamus first, then thalamus to
+  cortex, then within cortex; directed phase flow runs thalamus to cortex. The authors
+  conclude the gate for conscious *contents* is subcortical and defend it on the same
+  evolutionary grounds as [feinberg_mallatt_approach.md](feinberg_mallatt_approach.md).
+  This is the first external, intracranial support the project's subcortical bet has.
+- **Plugs in:** `models/core/global_workspace.py` (the gate's ownership question), the
+  near threshold protocol for `simulations/environments/dmts_env.py`, the divergence onset
+  probe.
+- **Honest caveat:** five patients, preprint, and its frequency band results do not
+  translate to this system (no millisecond clock). It licenses a measurement programme, not
+  a thalamus module.
+
+### 8.2 Koch, Massimini, Boly & Tononi (2016), "Neural correlates of consciousness: progress and problems" (Tier 1 for measurement)
+*Nature Reviews Neuroscience* 17:307-321, doi:10.1038/nrn.2016.22. Peer reviewed.
+
+- **Why aligned:** Reports gamma synchrony and the P3b as failed markers and PCI as the one
+  measure that separates conscious from unconscious states at the single participant level
+  across sleep, three anaesthetics and disorders of consciousness. Its stated reason PCI
+  works where spontaneous measures fail (it evaluates deterministic responses to
+  perturbation, so it is insensitive to random or locally generated patterns) names this
+  project's own documented failure mode for EI, CE 2.0 and phi. It also independently
+  corroborates the closed Phi-1 chapter and the invariant `sync_R`.
+- **Plugs in:** `models/evaluation/perturbational_complexity.py`,
+  `models/evaluation/consciousness_metrics.py` (which currently holds a PCI placeholder
+  returning random numbers), [consciousness_indicators_butlin.md](consciousness_indicators_butlin.md).
+- **Primary source for the measure:** Casali et al. (2013), *Sci. Transl. Med.* 5:198ra105.
+
+### 8.3 Chowdhury, Kaufmann, Schreiner, Koeglsperger, Mehrkens, Remi, Vollmar & Staudigl (2025), "Thalamic oscillations distinguish natural states of consciousness in humans" (Tier 3)
+bioRxiv 2025.01.28.635248. **Preprint, not peer reviewed.**
+
+- **Why aligned:** A fast thalamic oscillation present in wakefulness and REM and absent in
+  NREM, whose bursts track rapid eye movements and whose detection probability rises with
+  proximity to the Central Thalamus. Evidence that one thalamic circuit switches oscillatory
+  regime with neuromodulatory tone, and that the regime discriminates states of
+  consciousness.
+- **Plugs in:** nothing on the current build path, deliberately. This system has no brain
+  states, no neuromodulatory tone that changes global dynamics, and no cheap experiment that
+  could kill a sleep state machine before it was built. Tier 3 and recorded as evidence
+  only; see section 4 of [thalamic_gating_evidence.md](thalamic_gating_evidence.md).
+
+---
+
 ## Deliberately excluded (related but off-core)
 
 To keep the map aligned with the project's biological-emergentist thesis, these were left

@@ -120,63 +120,38 @@ class GlobalWorkspaceTracker:
 
 class PerturbationTester:
     """
-    Approximates system complexity using Perturbational Complexity Index (PCI).
-    Requires the ability to briefly perturb the system and measure the response.
+    RETIRED 2026-07-28. This class used to return `np.random.rand() * 10.0` from a
+    method named `calculate_pci_approximation`, behind three TODOs. A named metric
+    method that returns noise is an honesty hazard, so the body is gone rather than
+    left to be mistaken for a measurement.
+
+    The real Perturbational Complexity Index now lives in
+    models/evaluation/perturbational_complexity.py (compute_pci), implemented after
+    Casali et al. 2013 with the normalization deviation documented in that module.
+    It is driven by scripts/analysis/probe_pci.py, which supplies the perturbed and
+    unperturbed replays that PCI requires.
+
+    This shell is kept only so existing imports fail loudly instead of silently.
     """
+
     def __init__(self, config: dict, core_module: CoreModule | None):
-         self.config = config
-         self.core = core_module # Needs access to apply perturbations
-         self.perturbation_interval = config.get('perturbation_interval', 10.0) # seconds
-         self.perturbation_magnitude = config.get('perturbation_magnitude', 0.1)
-         self.response_window = config.get('response_window', 1.0) # seconds to observe response
-         self.last_perturbation_time = -float('inf')
-         self.last_pci_value = 0.0
-         if self.core is None:
-              logging.warning("PerturbationTester: Core module not provided. PCI calculation will be disabled/placeholder.")
-         logging.info("PerturbationTester initialized (using placeholder logic).")
+        self.config = config
+        self.core = core_module
+        logging.warning(
+            "PerturbationTester is retired. Use "
+            "models.evaluation.perturbational_complexity.compute_pci via "
+            "scripts/analysis/probe_pci.py."
+        )
 
     def calculate_pci_approximation(self, current_state: State) -> float:
-        """
-        Calculates PCI by perturbing the system (if interval met) and analyzing response complexity.
-
-        Args:
-            current_state: The current integrated state before perturbation.
-
-        Returns:
-            The approximated PCI value (placeholder or last calculated value).
-        """
-        current_time = time.time()
-        if self.core is None:
-             # logging.warning("PCI calculation skipped: Core module not available.") # Logged at init
-             return 0.0 # Cannot perturb
-
-        if current_time - self.last_perturbation_time >= self.perturbation_interval:
-            logging.warning("Metric Calculation: PCI calculation applying placeholder perturbation.")
-            # TODO: Implement actual perturbation application via self.core
-            # Example: self.core.apply_perturbation(magnitude=self.perturbation_magnitude)
-            # TODO: Record state trajectory during self.response_window post-perturbation.
-            # Example: state_sequence = self.core.record_state_sequence(duration=self.response_window)
-            # TODO: Calculate complexity of the state_sequence (e.g., Lempel-Ziv).
-            # Example: pci_value = calculate_lempel_ziv_complexity(state_sequence)
-
-            # Placeholder logic: Simulate perturbation and generate random complexity
-            if hasattr(self.core, 'apply_perturbation'):
-                 logging.debug("Simulating perturbation application.")
-                 # self.core.apply_perturbation(...) # Actual call commented out
-            else:
-                 logging.warning("Core module does not have 'apply_perturbation' method for PCI.")
-
-            # Simulate complexity calculation
-            pci_value = np.random.rand() * 10.0 # Placeholder complexity value
-            logging.debug(f"Placeholder PCI calculated: {pci_value}")
-
-            self.last_perturbation_time = current_time
-            self.last_pci_value = pci_value
-            return pci_value
-        else:
-            # Return the last calculated value if interval not met
-            logging.debug(f"PCI interval not met. Returning last value: {self.last_pci_value}")
-            return self.last_pci_value
+        raise NotImplementedError(
+            "PerturbationTester.calculate_pci_approximation was a placeholder that "
+            "returned a random number and has been removed. Use "
+            "models.evaluation.perturbational_complexity.compute_pci(response, "
+            "baseline), which needs a causal response (a perturbed replay minus an "
+            "unperturbed replay from the identical state). See "
+            "scripts/analysis/probe_pci.py for the harness that produces one."
+        )
 
 class SelfAwarenessMonitor:
     """

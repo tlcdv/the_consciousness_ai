@@ -175,7 +175,15 @@ class ConsciousnessMonitor:
 
         phi_approx = self.phi_calculator.calculate_phi_approximation(current_core_state, recent_core_activity)
         ignition_detected, ignition_details = self.gwt_tracker.detect_ignition(current_core_state, recent_core_activity)
-        pci_approx = self.pci_tester.calculate_pci_approximation(current_core_state)
+        # PerturbationTester was retired 2026-07-28 (it returned a random number).
+        # Real PCI needs a perturbed and an unperturbed replay from the same state,
+        # which this monitor does not have; it lives in
+        # models/evaluation/perturbational_complexity.py, driven by
+        # scripts/analysis/probe_pci.py. Record unavailability, never a number.
+        try:
+            pci_approx = self.pci_tester.calculate_pci_approximation(current_core_state)
+        except NotImplementedError as e:
+            pci_approx = {"error": str(e)}
         self_awareness_scores = self.self_awareness_monitor.evaluate_self_awareness(current_core_state)
         levin_metrics = self.levin_evaluator.evaluate(current_core_state) # Assuming evaluate method
 

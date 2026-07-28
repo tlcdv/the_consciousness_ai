@@ -199,6 +199,46 @@ the integration content defect that blocked every measured signature is repaired
 replicated signature response, while binding, ignition selectivity, and gate-level emergence
 remain open. Pre-registered thresholds (EI, Phi-1, section 13) are unchanged.
 
+## Status update 2026-07-28: an external methodological standard this rubric has not been tested against (NO status changes)
+
+A review of three papers on thalamic gating of human consciousness
+([thalamic_gating_evidence.md](thalamic_gating_evidence.md)) surfaced a methodological gap
+that affects how several rows below should be read. Nothing was measured on this agent, so
+**no indicator moves, in either direction.** What follows is a note on evidentiary standing,
+not a result.
+
+- **No content specific contrast has ever been run here.** All three reviewed papers rest on
+  holding the stimulus constant while the percept varies (near threshold detection with the
+  motor response matched). Every verdict in `docs/results/` is state based: a contrast across
+  configs, ablations, objectives or runs. The GWT-2 (limited capacity workspace and selective
+  attention) and GWT-3 (global broadcast) rows are therefore supported by structural presence
+  plus state based measurement only. Neither has faced the within state, matched stimulus
+  test that the consciousness literature treats as the discriminating one.
+- **Latency has never been measured.** The discriminating variable in Fang et al. (2024,
+  preprint) is *when* aware and unaware trajectories diverge, per site. The A2 result that
+  ignition is task phase invariant was measured in amplitude only. GWT-2's saturation may be
+  a content problem, a threshold problem or a timing problem, and the third has not been
+  tested.
+- **The one measure that survived in Koch et al. (2016) is unimplemented here.** That review
+  reports gamma synchrony and the P3b as failed markers and PCI as the measure that
+  separates conscious from unconscious states at the single participant level. This
+  repository's `PerturbationTester.calculate_pci_approximation` returns a random number. The
+  three measures that are implemented (phi, EI, CE 2.0) have each been characterised as
+  degenerate on this agent, and the review names the reason a perturbational measure escapes
+  that failure mode.
+- **Two existing negative results are externally corroborated.** Koch et al. report gamma
+  synchrony as a failed marker of consciousness, and Fang et al. found no consciousness
+  related activity in any gamma band in any thalamic nucleus. The closed Phi-1 chapter and
+  the invariant `sync_R` (0.251 to 0.257 across the perception ablation) are consistent with
+  the published record rather than anomalous. This does not promote or demote any row; it
+  raises confidence that the RPT-2 binding non-response is a real property and not an
+  instrument fault.
+
+Net: no promotions, no demotions, no consciousness claim. The rubric gains a named external
+standard (matched stimulus contrast, divergence latency, perturbational complexity) that the
+GWT rows have not yet been held to. Pre-registered thresholds (EI, Phi-1, section 13) are
+unchanged.
+
 ## Caveat
 
 Indicator coverage is necessary-evidence framing, not proof. A system can satisfy

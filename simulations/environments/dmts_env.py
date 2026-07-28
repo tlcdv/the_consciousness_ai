@@ -55,6 +55,8 @@ class DMTSEnv(gym.Env):
         fixation_steps: int = 10,
         sample_steps: int = 20,
         choice_timeout: int = 30,
+        sample_contrast: float = 1.0,
+        sample_noise: float = 0.0,
     ):
         self.width = width
         self.height = height
@@ -70,12 +72,27 @@ class DMTSEnv(gym.Env):
         self.sample_steps = sample_steps
         self.choice_timeout = choice_timeout
 
+        # Near-threshold manipulation (added 2026-07-28). Degrades the SAMPLE only,
+        # leaving the choice array fully visible, so the agent's difficulty comes
+        # from what it encoded rather than from what it can currently see. This is
+        # the matched-stimulus / varying-percept design that every content-specific
+        # NCC result rests on (see docs/thalamic_gating_evidence.md section 3, gap 3).
+        # The defaults are an exact identity transform, asserted by
+        # tests/test_dmts_near_threshold.py, so every prior DMTS result stays
+        # comparable.
+        self.sample_contrast = float(np.clip(sample_contrast, 0.0, 1.0))
+        self.sample_noise = max(0.0, float(sample_noise))
+
         self.action_space = spaces.Discrete(5)
         self.observation_space = spaces.Box(
             low=0, high=255, shape=(height, width, 3), dtype=np.uint8
         )
 
         self._rng = np.random.default_rng()
+        # Pixel noise draws from its own stream so that raising sample_noise does
+        # NOT change which trials are generated. Identical trial sequence, different
+        # visibility, is the whole point of the manipulation.
+        self._noise_rng = np.random.default_rng()
         self._reset_trial_state()
 
     # ── Gym interface ────────────────────────────────────────────────────
@@ -84,6 +101,9 @@ class DMTSEnv(gym.Env):
         super().reset(seed=seed)
         if seed is not None:
             self._rng = np.random.default_rng(seed)
+            # Offset so the noise stream is reproducible but never mirrors the
+            # trial-generation stream.
+            self._noise_rng = np.random.default_rng(seed + 1_000_003)
         self._trial = 0
         self._trials_correct = 0
         self._total_steps = 0
@@ -256,6 +276,7 @@ class DMTSEnv(gym.Env):
             radius = self.SIZES[self._sample_size]
             rgb = COLORS[self._sample_color]
             draw_shape(canvas, self._sample_shape, rgb, cx, cy, radius)
+            canvas = self._apply_sample_visibility(canvas)
 
         elif self._phase == "delay":
             # Blank screen by default
@@ -272,6 +293,29 @@ class DMTSEnv(gym.Env):
             self._render_choices(canvas)
 
         return canvas
+
+    def _apply_sample_visibility(self, canvas: np.ndarray) -> np.ndarray:
+        """
+        Degrade the rendered sample toward the background, then add pixel noise.
+
+        Contrast blends the drawn frame toward BACKGROUND_GRAY: 1.0 leaves it
+        untouched, 0.0 erases the sample entirely. Noise is Gaussian in uint8 units
+        and is drawn from a separate stream, so the trial sequence is unaffected.
+
+        The early return is load-bearing, not an optimisation: it guarantees the
+        default path is byte-for-byte the pre-2026-07 rendering, with no float
+        round-trip that could shift a uint8 by one.
+        """
+        if self.sample_contrast >= 1.0 and self.sample_noise <= 0.0:
+            return canvas
+
+        background = float(BACKGROUND_GRAY)
+        faded = background + self.sample_contrast * (canvas.astype(np.float32) - background)
+        if self.sample_noise > 0.0:
+            faded = faded + self._noise_rng.normal(
+                0.0, self.sample_noise, size=faded.shape
+            )
+        return np.clip(faded, 0, 255).astype(np.uint8)
 
     def _render_choices(self, canvas: np.ndarray):
         """Draw choice stimuli at cardinal positions."""
@@ -305,6 +349,8 @@ class DMTSEnv(gym.Env):
             "sample_size": self._sample_size,
             "target_position": self._target_position,
             "distractor_overlap": self.distractor_overlap,
+            "sample_contrast": self.sample_contrast,
+            "sample_noise": self.sample_noise,
             "delay_length": self._current_delay,
             "correct": self._correct,
             "trials_correct": self._trials_correct,

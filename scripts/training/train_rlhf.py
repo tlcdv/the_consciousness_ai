@@ -2066,6 +2066,16 @@ def main():
                         help="Environment to train in")
     parser.add_argument("--difficulty", type=int, default=0,
                         help="Distractor overlap level for DMTS (0-3)")
+    parser.add_argument("--sample-contrast", type=float, default=1.0,
+                        help="DMTS near-threshold knob: blends the SAMPLE toward "
+                             "the background (1.0 = untouched, 0.0 = erased). The "
+                             "choice array stays fully visible. Default 1.0 renders "
+                             "bit-identically to the pre-2026-07 environment.")
+    parser.add_argument("--sample-noise", type=float, default=0.0,
+                        help="DMTS near-threshold knob: Gaussian pixel noise (uint8 "
+                             "units) on the SAMPLE frame, drawn from a separate RNG "
+                             "stream so the trial sequence is unchanged. Default 0.0 "
+                             "renders bit-identically to the pre-2026-07 environment.")
     parser.add_argument("--log-dir", type=str, default="runs", help="Directory for metrics logs")
     parser.add_argument("--log-ei-every", type=int, default=50,
                         help="Compute EI every N episodes (0 to disable)")
@@ -2558,7 +2568,9 @@ def main():
     elif args.env == "dmts":
         from simulations.environments.dmts_env import DMTSEnv
         env = DMTSEnv(render_mode=render_mode, width=224, height=224,
-                      distractor_overlap=args.difficulty)
+                      distractor_overlap=args.difficulty,
+                      sample_contrast=getattr(args, "sample_contrast", 1.0),
+                      sample_noise=getattr(args, "sample_noise", 0.0))
     elif args.env == "wcst":
         from simulations.environments.wcst_env import WCSTEnv
         env = WCSTEnv(render_mode=render_mode, width=224, height=224)
