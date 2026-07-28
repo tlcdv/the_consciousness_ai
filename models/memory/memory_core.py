@@ -89,12 +89,19 @@ class MemoryConfig:
 
 @dataclass
 class MemoryMetrics:
-    """Tracks memory system performance metrics."""
+    """
+    Tracks memory system performance metrics.
+
+    Three fields are Optional and default to None because nothing computes them
+    (2026-07-29). They previously defaulted to 0.0 and were filled by methods that
+    returned a constant 0.0, so `get_metrics()` published three unimplemented metrics
+    that were indistinguishable from measured zeros. None says "not measured".
+    """
     coherence_score: float = 0.0
-    retrieval_accuracy: float = 0.0
     emotional_context_strength: float = 0.0
-    temporal_consistency: float = 0.0
-    narrative_alignment: float = 0.0
+    retrieval_accuracy: float | None = None
+    temporal_consistency: float | None = None
+    narrative_alignment: float | None = None
 
 
 class MemoryCore:
@@ -272,10 +279,10 @@ class MemoryCore:
             return
 
         self.metrics.coherence_score = self._calculate_coherence()
-        self.metrics.retrieval_accuracy = self._calculate_retrieval_accuracy()
         self.metrics.emotional_context_strength = self._calculate_emotional_strength()
-        self.metrics.temporal_consistency = self._calculate_temporal_consistency()
-        self.metrics.narrative_alignment = self._calculate_narrative_alignment()
+        # retrieval_accuracy, temporal_consistency and narrative_alignment are
+        # deliberately NOT set: no implementation exists, so they stay None rather
+        # than publishing a constant. See the retired methods below.
 
     def _create_memory_vector(
         self,
@@ -379,25 +386,28 @@ class MemoryCore:
 
         return float(np.mean(strengths))
 
+    # RETIRED 2026-07-29. The three methods below returned a constant 0.0 while their
+    # names claimed a measurement, and get_metrics() published those zeros alongside
+    # real ones. A caller could not tell an unimplemented metric from a measured zero.
+
     def _calculate_retrieval_accuracy(self) -> float:
-        """
-        Placeholder for a retrieval accuracy measure.
-        Could compare stored items with queries in a test set.
-        """
-        return 0.0
+        """RETIRED. Returned a constant 0.0; never compared stored items to queries."""
+        raise NotImplementedError(
+            "_calculate_retrieval_accuracy was never implemented. It would need a "
+            "held-out query set to score against; there is none."
+        )
 
     def _calculate_temporal_consistency(self) -> float:
-        """
-        Placeholder for temporal consistency.
-        Could measure how consecutive experiences align in time.
-        """
-        return 0.0
+        """RETIRED. Returned a constant 0.0; never examined experience ordering."""
+        raise NotImplementedError(
+            "_calculate_temporal_consistency was never implemented."
+        )
 
     def _calculate_narrative_alignment(self) -> float:
-        """
-        Placeholder for a measure of how well experiences align in narrative context.
-        """
-        return 0.0
+        """RETIRED. Returned a constant 0.0; never examined narrative context."""
+        raise NotImplementedError(
+            "_calculate_narrative_alignment was never implemented."
+        )
 
     def get_metrics(self) -> dict[str, float]:
         """

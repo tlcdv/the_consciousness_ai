@@ -514,10 +514,22 @@ class ConsciousnessCore:
                 self.ethics_filter.set_world_model(self.world_model)
         except Exception as e:
             logging.error(f"Failed to initialize AsimovComplianceFilter: {e}", exc_info=True)
-            class DummyFilter:
-                def is_compliant(self, action, state): return True
-            self.ethics_filter = DummyFilter()
-            logging.critical("AsimovComplianceFilter failed to initialize! Using dummy filter.")
+
+            # Changed 2026-07-29 to fail CLOSED. The previous fallback returned True
+            # unconditionally, so a compliance filter that had failed to initialize
+            # approved every action while logging that it was a dummy. A safety check
+            # that cannot run must deny, not approve.
+            class FailClosedEthicsFilter:
+                def is_compliant(self, action, state):
+                    logging.critical(
+                        "Ethics filter unavailable; denying action by fail-closed "
+                        "policy. Fix AsimovComplianceFilter initialization."
+                    )
+                    return False
+
+            self.ethics_filter = FailClosedEthicsFilter()
+            logging.critical("AsimovComplianceFilter failed to initialize! "
+                             "Falling back to deny-all.")
 
 
         logging.info("ConsciousnessCore initialization complete.")

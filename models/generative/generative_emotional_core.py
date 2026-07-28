@@ -181,9 +181,12 @@ class GenerativeEmotionalCore:
         return self.tokenizer.decode(emotional_tokens[0], skip_special_tokens=True)
         
     def _evaluate_coherence(self, response: str, emotional_features: torch.Tensor) -> float:
-        """Evaluate emotional coherence of the response"""
-        # Placeholder for actual coherence evaluation logic
-        return 1.0
+        """RETIRED 2026-07-29. Returned 1.0, i.e. perfect coherence, unconditionally."""
+        raise NotImplementedError(
+            "_evaluate_coherence returned a hardcoded 1.0 without inspecting the "
+            "response or the emotional features, so every generated response scored "
+            "perfectly coherent."
+        )
         
     def _store_interaction_memory(
         self,

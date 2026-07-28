@@ -199,6 +199,10 @@ class EmotionalMemoryFusion(nn.Module):
         self,
         encoded_features: list[torch.Tensor]
     ) -> float:
-        """Calculate alignment score between encoded features"""
-        # Placeholder implementation
-        return 1.0
+        """RETIRED 2026-07-29. Returned 1.0, i.e. perfect alignment, unconditionally."""
+        raise NotImplementedError(
+            "_calculate_alignment returned a hardcoded 1.0 without inspecting "
+            "encoded_features, so cross-modal alignment always reported perfect. "
+            "A real implementation would compare the encoded features, for example "
+            "by pairwise cosine similarity across modalities."
+        )

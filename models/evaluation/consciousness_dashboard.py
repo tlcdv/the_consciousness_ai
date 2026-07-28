@@ -8,23 +8,16 @@ app = Flask(__name__)
 consciousness_history = []
 
 def fetch_metrics():
-    """
-    Demo background function that simulates updating
-    consciousness metrics periodically.
-    Replace this with real calls to your ConsciousnessMonitor.
-    """
-    while True:
-        # Example random metrics
-        consciousness_score = random.uniform(0.0, 1.0)
-        memory_coherence = random.uniform(0.0, 1.0)
-        global_workspace = random.uniform(0.0, 1.0)
-        consciousness_history.append({
-            "score": consciousness_score,
-            "memory_coherence": memory_coherence,
-            "global_workspace": global_workspace,
-            "timestamp": time.time()
-        })
-        time.sleep(2)
+    """RETIRED 2026-07-29. Served three `random.uniform(0, 1)` values as metrics."""
+    raise NotImplementedError(
+        "fetch_metrics served `consciousness_score`, `memory_coherence` and "
+        "`global_workspace` as `random.uniform(0.0, 1.0)`. A dashboard that renders "
+        "random numbers under those labels is the most screenshot-ready way to "
+        "misrepresent this project. Real per-step metrics are written to "
+        "runs/<name>/metrics.csv by scripts/training/metrics_logger.py; a dashboard "
+        "should read that file. Note most columns there are legitimately frozen "
+        "(default-off modules), so read the audit-project degeneracy check first."
+    )
 
 @app.route("/")
 def index():

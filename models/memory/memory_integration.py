@@ -83,11 +83,18 @@ class TemporalCoherenceProcessor(nn.Module):
 
 @dataclass
 class MemoryMetrics:
-    """Tracks memory system performance and coherence"""
+    """
+    Tracks memory system performance and coherence.
+
+    The two Optional fields are None because nothing computes them (2026-07-29).
+    They previously defaulted to 0.0 and were filled by methods that returned a
+    hardcoded 0.5, so a consumer could not tell an unimplemented metric from a
+    measured middling one. None says "not measured" and cannot be mistaken for data.
+    """
     temporal_coherence: float = 0.0
     emotional_stability: float = 0.0
-    semantic_abstraction: float = 0.0
-    retrieval_quality: float = 0.0
+    semantic_abstraction: float | None = None
+    retrieval_quality: float | None = None
 
 class MemoryIntegrationCore(nn.Module):
     def __init__(self, config: dict):
@@ -231,8 +238,9 @@ class MemoryIntegrationCore(nn.Module):
         self.metrics.emotional_stability = self._calculate_emotional_stability(
             emotional_context
         )
-        self.metrics.semantic_abstraction = self._evaluate_semantic_quality()
-        self.metrics.retrieval_quality = self._evaluate_retrieval_quality()
+        # semantic_abstraction and retrieval_quality are deliberately NOT set: no
+        # implementation exists, so they stay None rather than publishing a constant.
+        # See _evaluate_semantic_quality / _evaluate_retrieval_quality below.
 
     def _calculate_temporal_coherence(self) -> float:
         """Estimate temporal coherence from episodic memory count."""
@@ -245,9 +253,14 @@ class MemoryIntegrationCore(nn.Module):
         return 1.0 - (sum(values) / max(len(values), 1)) if values else 0.5
 
     def _evaluate_semantic_quality(self) -> float:
-        """Evaluate quality of semantic memory abstractions."""
-        return 0.5
+        """RETIRED 2026-07-29. Returned a constant 0.5, a mid-range plausible score."""
+        raise NotImplementedError(
+            "_evaluate_semantic_quality returned a hardcoded 0.5, which reads as a "
+            "measured middling quality rather than as 'not implemented'."
+        )
 
     def _evaluate_retrieval_quality(self) -> float:
-        """Evaluate memory retrieval quality."""
-        return 0.5
+        """RETIRED 2026-07-29. Returned a constant 0.5, a mid-range plausible score."""
+        raise NotImplementedError(
+            "_evaluate_retrieval_quality returned a hardcoded 0.5."
+        )

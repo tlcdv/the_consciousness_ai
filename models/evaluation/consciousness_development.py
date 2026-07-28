@@ -160,9 +160,13 @@ class ConsciousnessDevelopment:
                   logging.error(f"Error calling dreamer.update: {e}", exc_info=True)
                   learning_info = {"error": str(e)}
         else:
-             logging.warning("Dreamer component or its 'update' method not available.")
-             # Provide mock loss if dreamer isn't working, for metric calculation
-             learning_info = {"loss": np.random.rand() * 2.0 + 0.1} # Mock loss
+             # RETIRED 2026-07-29: this used to substitute
+             # `{"loss": np.random.rand() * 2.0 + 0.1}` when the dreamer was missing,
+             # so update_metrics consumed a fabricated loss indistinguishable from a
+             # real one. Report the absence instead of inventing a number.
+             logging.warning("Dreamer component or its 'update' method not available; "
+                             "no learning loss is available for this step.")
+             learning_info = {"error": "dreamer unavailable, no loss computed"}
 
 
         # 4. Update internal development metrics based on this step

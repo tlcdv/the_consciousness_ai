@@ -31,15 +31,29 @@ except ImportError as e:
             def log_scalar_data(self, *args, **kwargs): pass
             def log_tensor_data(self, *args, **kwargs): pass
             def close(self): pass
+    # Import-failure fallbacks: these keep the module IMPORTABLE when an optional
+    # dependency is missing, but they must never hand back a number. A dummy that
+    # returns 0.0 is indistinguishable downstream from a real measurement of zero.
+    # Retired to raises 2026-07-29; see the write-code skill, rule 0.
     if 'IITMetrics' not in globals():
         class IITMetrics:
             def __init__(self, *args, **kwargs): print("Dummy IITMetrics used.")
-            def calculate_phi_star_mismatched_decoding(self, *args, **kwargs): return 0.0
-            def calculate_ces_graph_metrics(self, *args, **kwargs): return {}
+            def calculate_phi_star_mismatched_decoding(self, *args, **kwargs):
+                raise NotImplementedError(
+                    "IITMetrics failed to import and this fallback cannot compute phi. "
+                    "Install the real dependency (pyphi) rather than reading a zero."
+                )
+            def calculate_ces_graph_metrics(self, *args, **kwargs):
+                raise NotImplementedError(
+                    "IITMetrics failed to import; no CES graph metrics are available."
+                )
     if 'GNWMetrics' not in globals():
         class GNWMetrics:
             def __init__(self, *args, **kwargs): print("Dummy GNWMetrics used.")
-            def update_activations(self, *args, **kwargs): return 0
+            def update_activations(self, *args, **kwargs):
+                raise NotImplementedError(
+                    "GNWMetrics failed to import; this fallback cannot count activations."
+                )
             def log_sensory_event_start(self, *args, **kwargs): pass
             def log_event_reuse(self, *args, **kwargs): pass
 
@@ -60,22 +74,40 @@ try:
 except ImportError as e:
     print(f"Error importing project-specific metric calculators (IntegratedInformationCalculator, etc.): {e}")
     # Define dummy classes for these as well if they are critical for instantiation
+    # Same rule as the fallbacks above: importable, but never a fabricated value.
     if 'IntegratedInformationCalculator' not in globals():
         class IntegratedInformationCalculator:
             def __init__(self, *args, **kwargs): print("Dummy IntegratedInformationCalculator used.")
-            def calculate_phi_approximation(self, *args, **kwargs): return 0.0
+            def calculate_phi_approximation(self, *args, **kwargs):
+                raise NotImplementedError(
+                    "consciousness_metrics failed to import. Real phi lives in "
+                    "models/evaluation/iit_phi.py."
+                )
     if 'GlobalWorkspaceTracker' not in globals():
         class GlobalWorkspaceTracker:
             def __init__(self, *args, **kwargs): print("Dummy GlobalWorkspaceTracker used.")
-            def detect_ignition(self, *args, **kwargs): return False, {}
+            def detect_ignition(self, *args, **kwargs):
+                raise NotImplementedError(
+                    "consciousness_metrics failed to import. Real ignition is set by "
+                    "GlobalWorkspace.run_competition and logged as `is_conscious`."
+                )
     if 'PerturbationTester' not in globals():
         class PerturbationTester:
             def __init__(self, *args, **kwargs): print("Dummy PerturbationTester used.")
-            def calculate_pci_approximation(self, *args, **kwargs): return 0.0
+            def calculate_pci_approximation(self, *args, **kwargs):
+                raise NotImplementedError(
+                    "Retired. Real PCI lives in "
+                    "models/evaluation/perturbational_complexity.py, driven by "
+                    "scripts/analysis/probe_pci.py."
+                )
     if 'SelfAwarenessMonitor' not in globals():
         class SelfAwarenessMonitor:
             def __init__(self, *args, **kwargs): print("Dummy SelfAwarenessMonitor used.")
-            def evaluate_self_awareness(self, *args, **kwargs): return {}
+            def evaluate_self_awareness(self, *args, **kwargs):
+                raise NotImplementedError(
+                    "consciousness_metrics failed to import; no self-awareness scores "
+                    "are available. There is no placeholder substitute."
+                )
     if 'LevinConsciousnessEvaluator' not in globals():
         class LevinConsciousnessEvaluator:
             def __init__(self, *args, **kwargs): print("Dummy LevinConsciousnessEvaluator used.")

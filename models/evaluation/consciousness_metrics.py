@@ -36,31 +36,15 @@ class IntegratedInformationCalculator:
          logging.info("IntegratedInformationCalculator initialized (using placeholder logic).")
 
     def calculate_phi_approximation(self, system_state: State, activity_log: list) -> float:
-        """
-        Approximates Phi based on system state and recent activity.
-
-        Args:
-            system_state: The current integrated state of the ConsciousnessCore.
-            activity_log: A log of recent component interactions or activations.
-
-        Returns:
-            A float representing the approximated Phi value (placeholder).
-        """
-        logging.warning("Metric Calculation: Phi calculation (calculate_phi_approximation) is a placeholder.")
-        # TODO: Implement a concrete Phi approximation algorithm.
-        # Possible approaches:
-        # 1. Analyze effective connectivity between specified subsystems based on activity_log correlations.
-        # 2. Use causal graph analysis derived from the world model's understanding of internal dynamics.
-        # 3. Apply simplified measures based on state space complexity or entropy changes.
-
-        # Placeholder logic: Generate value based on number of active subsystems mentioned in state
-        active_count = 0
-        if system_state:
-             active_count = sum(1 for subsystem in self.subsystems if system_state.get(subsystem) is not None)
-        # Add randomness to simulate fluctuation
-        phi_approx = float(active_count) + np.random.rand() * 0.5
-        logging.debug(f"Placeholder Phi calculated: {phi_approx} based on {active_count} active subsystems.")
-        return phi_approx
+        """RETIRED 2026-07-29. Returned a subsystem count plus a random float."""
+        raise NotImplementedError(
+            "IntegratedInformationCalculator.calculate_phi_approximation was a "
+            "placeholder that returned `float(active_count) + np.random.rand() * 0.5`, "
+            "which is a module count plus noise and not an approximation of phi. "
+            "Use models/evaluation/iit_phi.py (IITMetrics.compute_phi_from_gate_state, "
+            "real Big Phi via pyphi over the 5-node gate subsystem) or "
+            "models/evaluation/phi_riiu.py for the sliding-window SVD-residual variant."
+        )
 
 class GlobalWorkspaceTracker:
     """
@@ -76,47 +60,17 @@ class GlobalWorkspaceTracker:
          logging.info("GlobalWorkspaceTracker initialized (using placeholder logic).")
 
     def detect_ignition(self, system_state: State, activity_log: list) -> tuple[bool, dict]:
-        """
-        Detects potential GWT ignition events based on state and activity.
-
-        Args:
-            system_state: The current integrated state.
-            activity_log: Recent component interactions/activations.
-
-        Returns:
-            A tuple: (bool indicating ignition detected, dict with details).
-        """
-        logging.warning("Metric Calculation: GWT ignition detection (detect_ignition) is a placeholder.")
-        # TODO: Implement concrete ignition detection logic.
-        # Possible approaches:
-        # 1. Analyze the 'activity_log' for widespread, correlated activation across modules.
-        # 2. Check if specific 'broadcast' signals are present in the system_state.
-        # 3. Monitor attention mechanisms for sustained focus involving multiple components.
-
-        # Placeholder logic: Simulate occasional ignition based on random chance and basic state check
-        ignition_detected = False
-        details = {}
-        # Example check: High attention level and multiple modules active in state
-        attention = system_state.get('attention_level', 0.0) if system_state else 0.0
-        active_modules = [k for k, v in system_state.items() if v is not None and k != 'timestamp'] if system_state else []
-
-        # Simulate ignition if attention is high and enough modules seem active
-        if attention > self.ignition_threshold and len(active_modules) >= self.min_modules and np.random.rand() > 0.8:
-             ignition_detected = True
-             details = {
-                 "activation_level": attention,
-                 "involved_modules": active_modules,
-                 "duration_estimate": np.random.uniform(self.min_duration, self.min_duration + 0.3) # Placeholder duration
-             }
-             logging.debug(f"Placeholder GWT ignition detected: {details}")
-        else:
-             logging.debug("No placeholder GWT ignition detected.")
-
-        # Store current state info for potential duration checks later (if needed)
-        # self.recent_activity.append({"timestamp": system_state.get('timestamp'), ...})
-        # self.recent_activity = [a for a in self.recent_activity if time.time() - a['timestamp'] < some_window]
-
-        return ignition_detected, details
+        """RETIRED 2026-07-29. Fired on a 20% coin flip and invented a duration."""
+        raise NotImplementedError(
+            "GlobalWorkspaceTracker.detect_ignition was a placeholder that gated on "
+            "`np.random.rand() > 0.8` and reported a `np.random.uniform` duration, so "
+            "it detected nothing and timed nothing. Real ignition is computed in "
+            "models/core/global_workspace.py (GlobalWorkspace.run_competition sets "
+            "state.is_conscious from salience above an EMA baseline) and logged per "
+            "step as the `is_conscious` column. Note that signal is measured SATURATED "
+            "at 99.79-100% of steps; read the ignition entry in the verify-results "
+            "protocol before treating it as a discriminating measurement."
+        )
 
 class PerturbationTester:
     """
@@ -166,56 +120,16 @@ class SelfAwarenessMonitor:
          logging.info("SelfAwarenessMonitor initialized (using placeholder logic).")
 
     def evaluate_self_awareness(self, current_state: State) -> dict:
-        """
-        Evaluates self-awareness based on the current state.
-
-        Args:
-            current_state: The integrated state from ConsciousnessCore.
-
-        Returns:
-            A dictionary containing different self-awareness scores (placeholders).
-        """
-        logging.warning("Metric Calculation: Self-awareness evaluation (evaluate_self_awareness) is a placeholder.")
-        scores = {
-            'body_schema_accuracy': 0.0, # How well internal state matches physical state
-            'goal_awareness': 0.0, # How well current actions align with active goals
-            'episodic_memory_access': 0.0, # Ability to recall relevant past experiences
-            'self_recognition_proxy': 0.0 # Proxy based on self-model consistency
-        }
-
-        if not current_state:
-             logging.warning("Cannot evaluate self-awareness: current_state is empty.")
-             return scores
-
-        # TODO: Implement specific evaluation logic using current_state and potentially core/memory methods.
-        # Example checks:
-        # 1. Body Schema: Compare self_model state (e.g., position, status) with ground truth if available.
-        # 2. Goal Awareness: Check if 'last_action' in state aligns with 'active_goals'.
-        # 3. Episodic Memory: Trigger a memory query based on current context and check relevance of results.
-        # 4. Self Recognition: Analyze consistency/confidence scores from the self_model component.
-
-        # Placeholder logic: Generate random scores based on available state components
-        try:
-            if current_state.get('self_model') and current_state.get('agent_status'):
-                 scores['body_schema_accuracy'] = np.random.rand() * 0.5 + 0.2 # Simulate some accuracy
-            if current_state.get('active_goals'):
-                 scores['goal_awareness'] = np.random.rand() * 0.6 + 0.1
-            if self.memory and current_state.get('relevant_memories') is not None:
-                 # Check if memories were retrieved
-                 scores['episodic_memory_access'] = np.clip(len(current_state['relevant_memories']) / 5.0, 0.0, 1.0) # Score based on number retrieved (max 5)
-            if current_state.get('self_model'):
-                 scores['self_recognition_proxy'] = np.random.rand() * 0.7
-
-            # Ensure scores are floats
-            scores = {k: float(v) for k, v in scores.items()}
-            logging.debug(f"Placeholder self-awareness scores calculated: {scores}")
-
-        except Exception as e:
-             logging.error(f"Error during placeholder self-awareness calculation: {e}", exc_info=True)
-             # Return scores calculated so far or default zeros
-             scores = {k: scores.get(k, 0.0) for k in scores} # Ensure all keys exist
-
-        return scores
+        """RETIRED 2026-07-29. Three of its four scores were scaled random floats."""
+        raise NotImplementedError(
+            "SelfAwarenessMonitor.evaluate_self_awareness was a placeholder. "
+            "body_schema_accuracy, goal_awareness and self_recognition_proxy were "
+            "`np.random.rand()` scaled into plausible-looking ranges; only "
+            "episodic_memory_access counted anything real. There is no replacement: "
+            "self-model measurement in this project is the self_pred_skill column "
+            "(models/self_model/) and the HOT-2/HOT-3 rows of the Butlin rubric, "
+            "neither of which this class computes."
+        )
 
 # Define the ConsciousnessMetrics class to group the calculators
 class ConsciousnessMetrics:
