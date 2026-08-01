@@ -95,7 +95,14 @@ structure only, kept current from the actual tree.
   step-indexed signals. Units are CYCLES PER STEP with no Hz reading; see the module
   docstring. Driven by `scripts/analysis/probe_workspace_ordering.py`.
 - `levin_consciousness_metrics.py` -- Levin-framework consciousness metrics.
-- `consciousness_monitor.py` -- metric-only consciousness evaluation.
+- `consciousness_monitor.py` -- metric-only consciousness evaluation. Its import-failure
+  fallbacks raise when called rather than returning 0.0, so a missing dependency cannot
+  be mistaken for a measured zero.
+- `consciousness_metrics.py`, `consciousness_dashboard.py` -- RETIRED placeholders
+  (2026-07-29). Their metric methods returned random or constant values and now raise,
+  naming the real implementation. Pinned by `tests/test_retired_placeholders.py`, which
+  also carries a tripwire against new fabricated numbers under `models/evaluation/`.
+  Do not restore a return value here without a real computation behind it.
 - `gnw_metrics.py`, `subjective_testing_suite.py` -- workspace metrics and subjective-test scaffolding.
 - Additional evaluation modules exist for development tracking, emotional and memory metrics, and dashboards.
 
