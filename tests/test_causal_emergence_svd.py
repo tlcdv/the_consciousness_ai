@@ -231,3 +231,58 @@ class TestDegeneracyConfound:
         assert d["distinct_states"] > 100
         assert d["degenerate"] is False
         assert 0.0 < d["coverage"] <= 1.0
+
+
+class TestStateSpaceSizeConfound:
+    """CE 2.0 is NOT comparable across state-space sizes, so `ce2_ratio` (an
+    8-state workspace level divided by a 243-state gate level) cannot be read as
+    macro structure. These tests pin the cardinality dependence analytically.
+    See docs/results/ce2_state_space_scaling_2026_08.md."""
+
+    @staticmethod
+    def _closed_form(n_states: int, n_blocks: int) -> float:
+        # k uniform blocks give k singular values of 1 and n-k of 0, so after
+        # discarding the trivial sigma_1: gamma_star = (k-1)/(n-1), CE = 1 - that.
+        return 1.0 - (n_blocks - 1) / (n_states - 1)
+
+    @pytest.mark.parametrize("n_states,n_blocks", [
+        (8, 2), (16, 2), (243, 2), (8, 3), (243, 3), (8, 4), (243, 4),
+    ])
+    def test_block_ce2_matches_the_closed_form(self, n_states, n_blocks):
+        # Block sizes need not be equal: each uniform block contributes exactly
+        # one singular value of 1 whatever its size, so 243 splits into 2 fine.
+        tpm = np.zeros((n_states, n_states))
+        for block in np.array_split(np.arange(n_states), n_blocks):
+            tpm[np.ix_(block, block)] = 1.0 / len(block)
+        res = compute_ce2_from_tpm(tpm)
+        assert res.causal_emergence == pytest.approx(
+            self._closed_form(n_states, n_blocks), abs=1e-9)
+
+    def test_ce2_rises_with_cardinality_at_fixed_macro_structure(self):
+        # The confound: identical macro structure (2 equivalency classes) scores
+        # far higher on a larger microstate space, purely from the cardinality.
+        small = self._closed_form(8, 2)      # workspace cardinality
+        large = self._closed_form(243, 2)    # gate cardinality
+        assert small == pytest.approx(6.0 / 7.0, abs=1e-9)
+        assert large == pytest.approx(1.0 - 1.0 / 242.0, abs=1e-9)
+        assert large - small > 0.05          # the pre-stated gate this failed
+
+    def test_identical_structure_yields_a_ce2_ratio_away_from_one(self):
+        # An 8-state level over a 243-state level with the SAME macro structure
+        # gives ~0.861, not 1.0. The 2026-07 pilot logged ce2_ratio = 0.7551, so
+        # the artifact alone is the same size as the effect CE2-1 must detect.
+        ratio = self._closed_form(8, 2) / self._closed_form(243, 2)
+        assert ratio == pytest.approx(0.860699, abs=1e-6)
+        assert ratio < 1.0
+
+    def test_emergent_complexity_is_cardinality_invariant(self):
+        # The one channel that survives: complexity counts sigma above gamma_star,
+        # which stays k-1 at every n. Comparable across levels where CE 2.0 is not.
+        for n_blocks in (2, 3, 4):
+            counts = []
+            for n_states in (8, 32, 243):
+                tpm = np.zeros((n_states, n_states))
+                for block in np.array_split(np.arange(n_states), n_blocks):
+                    tpm[np.ix_(block, block)] = 1.0 / len(block)
+                counts.append(compute_ce2_from_tpm(tpm).emergent_complexity)
+            assert counts == [n_blocks - 1] * 3, (n_blocks, counts)
