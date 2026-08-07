@@ -2147,10 +2147,14 @@ def main():
     parser.add_argument("--ablate-gate-diversity", action="store_true",
                         help="Skip ALL gate diversity losses (binarization + variance)")
     parser.add_argument("--ablate-gate-entropy", action="store_true",
-                        help="Skip only the temporal variance term, keep the "
-                             "per-neuron binarization push. Use to isolate "
-                             "the contribution of the new variance loss "
-                             "from the existing -log(|g-0.5|) term.")
+                        help="NO-OP. The temporal variance term this flag was "
+                             "written to ablate was reverted (it reduced gate "
+                             "diversity by ~15 percent by fighting the "
+                             "binarization push), so nothing reads this flag and "
+                             "a run with it is bit-identical to a run without it. "
+                             "Kept only so archived ablation command lines still "
+                             "parse. Use --ablate-gate-diversity for a real gate "
+                             "loss ablation.")
     parser.add_argument("--ablate-gate-feedback", action="store_true",
                         help="Zero the gate_feedback projection in ConsciousnessGate.forward (alias: see --gate-feedback)")
     # Phase C of 2026-05-17 Phi-1 retest plan: canonical flag names with
