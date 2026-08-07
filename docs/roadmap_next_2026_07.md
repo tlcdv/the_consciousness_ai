@@ -322,3 +322,84 @@ This is a suggestion; the gates decide the actual path.
 - **B1:** committing to the continuous-latent architecture change (after seeing B0).
 - **C1:** which RL/credit-assignment mechanism to build, after the diagnosis.
 - **Any default-on change:** requires >= 3 seeds first (hard rule).
+
+---
+
+## Status 2026-08-07: the causal-emergence ratio is dead, and the estimator is suspect
+
+Three changes landed after the 2026-07-28 entry above and were not recorded here. As
+before, the verdicts are in `docs/results/` and this is the index. Nothing below moves an
+indicator.
+
+- **14 placeholder metric functions were RETIRED (2026-07-29).** They returned numbers
+  they never computed: phi as a module count plus a random draw, ignition gated on a coin
+  flip, three of four self-awareness scores as scaled random floats, a dashboard serving a
+  uniform random value as a consciousness score, and several constant returns. None was
+  reachable from the training loop, so no verdict ever rested on one. Each is now a
+  `raise`, pinned by `tests/test_retired_placeholders.py`, which includes a tokenizing
+  scan over `models/evaluation/` so a fifteenth cannot be added quietly. Two related
+  repairs are values rather than raises, because they sit on a live path: the
+  `consciousness_core` ethics fallback now fails CLOSED, and `MemoryMetrics` fields that
+  nothing computes are `Optional` defaulting to None.
+
+- **`ce2_ratio` FAILED and is dead as written (2026-08-01).** Holding the macro structure
+  fixed and varying only the microstate count moves CE 2.0 from 0.857143 at 8 states to
+  0.995868 at 243. Two structurally identical systems measured at the workspace and gate
+  cardinalities therefore give a ratio of 0.860699 rather than 1.0, and the earlier pilot
+  recorded that ratio at 0.7551, so the artifact alone is the size of the effect the onset
+  prediction had to detect. The uniform-block family has a closed form,
+  CE(n, k) = 1 - (k-1)/(n-1), matched exactly by every measured value. This is
+  deterministic linear algebra on constructed matrices, so no seeds are reported and
+  claiming replication would be false precision. The source supports this independently:
+  the supplementary section defining the SVD heuristic states no comparability condition
+  for state count, while the parent method it adapts says the singular value aggregate is
+  size dependent and must be divided by the state count first. A usage defect on our side,
+  not an implementation defect. `docs/results/ce2_state_space_scaling_2026_08.md`.
+  **Consequence: `ce2_ratio` and `ce2_emergent` must not be cited** until a normalization
+  is derived and validated, and any such normalization is a local extension rather than
+  the published method. One channel survives the scan: emergent complexity held at the
+  same value across every cardinality tested, because it reads macro structure and ignores
+  the microstate count. Whether that survives on matrices estimated from sampled data
+  rather than constructed ones is open.
+
+- **Every EI and CE 2.0 number from a run used an observational transition matrix.** The
+  theory specifies an interventional matrix under a maximum-entropy `do()` distribution,
+  which is a specification of full state coverage.
+  `models/evaluation/effective_information.py` implements the `do()` faithfully, averaging
+  uniformly over all rows, but builds the matrix with `_build_tpm`, documented as working
+  "from observed state trajectories". With the gate visiting one state, 242 of 243 rows
+  are pure Laplace smoothing, so the uniform average returns the prior's entropy rather
+  than the system's. `causal_emergence_svd.py` imports the same builder. This is a single
+  candidate cause for several separate degeneracy findings, and it is the cheapest
+  outstanding test because it needs one existing checkpoint offline and no training run.
+  Tracked separately. Note that the cardinality result above is NOT affected: its matrices
+  are constructed analytically and never pass through the estimator.
+
+### Revised ordering, cheapest-decisive first
+
+This supersedes the ordering suggested above for the instrument work.
+
+1. **Rebuild the transition matrix by intervention** and score EI and CE 2.0 on both the
+   interventional and observational matrices from the same checkpoint, side by side.
+   Offline, no training run. Either outcome is decisive: if the interventional matrix is
+   non-degenerate the defect lived in the estimator, and if it degenerates under full
+   forced coverage that is the first honest evidence that the root is architectural.
+2. **Check whether emergent complexity stays cardinality-invariant on sampled matrices**,
+   built through the same path the logger uses so Laplace smoothing is included. Also
+   offline. Decides whether CE 2.0 has any channel worth keeping.
+3. **PCI on a trained checkpoint at 3 seeds.** Heavy, serial, completion verified by csv
+   row counts. Persist the per-trial response matrices so a second, independently
+   normalized perturbational reading can be computed offline on the same trials.
+4. **The workspace alive-or-dead measurement**, using the method that worked for the gate
+   level: log the raw pre-discretization values and report distinct values, mean, std and
+   range per dimension, with the pass condition stated in the script before the data is
+   read.
+
+### Standing caution
+
+No instrument on this project currently clears the full acceptance bar. phi is the only
+one that has ever moved under an intervention (it responded to the perception ablation
+across 3 seeds). EI is deprecated, `ce2_ratio` is dead, `is_conscious` is pinned at 1 by
+a saturated ignition gate, sync_R is measured inert, and PCI and the coupling measures are
+smoke-tested only and have never run on a trained tectum. Do not let a verdict rest on any
+of them without saying which of these applies.

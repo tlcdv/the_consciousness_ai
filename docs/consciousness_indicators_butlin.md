@@ -7,8 +7,23 @@ adopt reading #2, the agent is judged by **consciousness signatures**, not by co
 reward against a task-specialized baseline. This document operationalizes that: it maps
 the project's architecture and metrics onto the **indicator properties** of Butlin,
 Long et al. (2023), "Consciousness in Artificial Intelligence: Insights from the
-Science of Consciousness" ([arXiv:2308.08708](https://arxiv.org/abs/2308.08708);
-peer-reviewed in [Trends in Cognitive Sciences 2025](https://www.cell.com/trends/cognitive-sciences/fulltext/S1364-6613(25)00286-4)).
+Science of Consciousness" ([arXiv:2308.08708](https://arxiv.org/abs/2308.08708)).
+
+The peer-reviewed successor is Butlin, Long et al. (2025), "Identifying indicators of
+consciousness in AI systems", *Trends in Cognitive Sciences*,
+[doi:10.1016/j.tics.2025.10.011](https://doi.org/10.1016/j.tics.2025.10.011), Open
+Access. **The fourteen indicators are unchanged between the two.** Checked against the
+published version on 2026-08-07: the same fourteen codes under the same six theory
+groupings, and its Table 1 is a citation to the earlier report rather than a revision.
+The 2025 paper sets out a method for deriving indicators and reproduces the list as an
+illustration, so this rubric's frame is unaffected by it. Cite the DOI rather than the
+publisher PII link, which refuses automated access.
+
+Two things the 2025 version adds that this rubric does not yet model, recorded so they
+are not mistaken for oversights: **negative indicators**, defined there as properties
+that should decrease our credence that a system is conscious, and the observation that
+the method informs **credences** rather than binary states. Whether to adopt either is
+tracked separately.
 
 Butlin et al. derive these indicators in computational terms from the leading
 neuroscientific theories: Recurrent Processing Theory (RPT), Global Workspace Theory
@@ -64,7 +79,7 @@ empirically demonstrated above baseline.
 
 | Indicator | Project component | Status |
 |-----------|-------------------|--------|
-| AE-1: agency, flexible responsiveness to competing goals | action selection, reward shaping, competing interoceptive drives | PARTIAL: WCST cognitive flexibility weak (agent rarely enters the rule-shift regime) |
+| AE-1: minimal agency, learning from feedback and selecting outputs so as to pursue goals, especially with flexible responsiveness to competing goals | action selection, reward shaping, competing interoceptive drives | PARTIAL: two separate weaknesses. The learning-from-feedback clause is the harder failure, DMTS task reward is flat across 100 episodes on all 3 seeds (first10 to last10 delta +1.21, +1.49, +0.01, `results/rl_wall_diagnosis_2026_07.md`). WCST cognitive flexibility is also weak (agent rarely enters the rule-shift regime) |
 | AE-2: embodiment, modeling output-input contingencies and using it in control | RSSM models action-conditioned dynamics; body schema + interoceptive PAD loop | PARTIAL and a known weak point: the 2026-06-02 control-representation fix (predicting next observation from content + action) did NOT improve control, so the action-conditioning of perception is empirically weak |
 
 ## How the project's own metrics complement the indicators

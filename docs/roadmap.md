@@ -251,6 +251,45 @@ Next steps and their gates are in
 [`roadmap_next_2026_07.md`](roadmap_next_2026_07.md) under the 2026-07-28 status block.
 No Butlin indicator has been promoted and no pre-registered threshold was revised.
 
+### Status 2026-08-07: the causal-emergence ratio FAILED, and 14 fake metrics were retired
+
+Three chapters landed between 2026-07-29 and 2026-08-01. Verdict docs are the authority;
+this is the index.
+
+- **14 metric functions were RETIRED for returning numbers they never computed
+  (2026-07-29).** phi as a module count plus a random draw, ignition on a coin flip, three
+  of four self-awareness scores as scaled random floats, a dashboard serving a uniform
+  random value as a consciousness score, and several constant returns. None was reachable
+  from the training loop, so no verdict ever rested on one. Each is now a `raise`, pinned
+  by `tests/test_retired_placeholders.py` including a tokenizing scan over
+  `models/evaluation/`. Two related repairs are values rather than raises because they sit
+  on a live path: the `consciousness_core` ethics fallback now fails CLOSED, where it
+  previously approved every action if the compliance filter failed to initialize, and
+  `MemoryMetrics` fields that nothing computes are now `Optional` defaulting to None.
+- **The CE 2.0 cross-level ratio FAILED: it is confounded by state-space size
+  (2026-08-01).** Holding the macro structure fixed and varying only the microstate count
+  moves CE 2.0 from 0.857143 at 8 states to 0.995868 at 243, so two structurally identical
+  systems measured at the workspace and gate cardinalities give a ratio of 0.860699 rather
+  than 1.0. The pilot recorded that ratio at 0.7551, so the artifact alone is the size of
+  the effect the onset prediction had to detect. Closed form CE(n, k) = 1 - (k-1)/(n-1),
+  matched exactly. Deterministic linear algebra, so no seeds are reported. The source
+  agrees by a separate route: it states no comparability condition for state count, and
+  the parent method it adapts requires dividing by the state count before comparing chains
+  of different sizes. `ce2_ratio` and `ce2_emergent` must not be cited.
+  [`results/ce2_state_space_scaling_2026_08.md`](results/ce2_state_space_scaling_2026_08.md).
+- **A candidate common cause was identified for several degeneracy findings.** Every EI
+  and CE 2.0 number produced from a run was computed on a transition matrix estimated by
+  counting observed transitions, while the theory specifies an interventional matrix under
+  a maximum-entropy `do()` distribution. The `do()` is implemented faithfully; the matrix
+  it averages over is not the one the theory names. Testing this needs one existing
+  checkpoint offline and no training run, which makes it the cheapest outstanding
+  instrument question. The cardinality result above is unaffected, because its matrices
+  are constructed analytically rather than estimated.
+
+Revised ordering is in [`roadmap_next_2026_07.md`](roadmap_next_2026_07.md) under the
+2026-08-07 status block. No Butlin indicator has been promoted, no pre-registered
+threshold was revised, and no instrument currently clears the full acceptance bar.
+
 ## Phase 5: Dynamic Self-Representation & Meta-Cognition
 
 - **Goal:** Implement a dynamic, learned self-model and explore meta-cognitive capabilities.
