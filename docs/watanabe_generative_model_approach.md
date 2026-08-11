@@ -21,7 +21,12 @@ This approach complements existing GNW and IIT-inspired metrics by focusing on t
   * **Explicit Prediction Error Signals:** Make prediction errors for each modality accessible as distinct signals for analysis and potential feedback into other subsystems (e.g., attention, emotion).
   * **Internal Simulation Loop:** Develop functionality for the world model to run "offline" – generating sequences of predicted states and sensory experiences without direct external input, driven by internal goals or cues. This forms the basis of the "Imagination Buffer."
 
-### 3.2. Subjective Testing Module (`models/evaluation/subjective_testing_suite.py`)
+### 3.2. Subjective Testing Module (NOT IMPLEMENTED)
+
+> A `models/evaluation/subjective_testing_suite.py` scaffold once existed for this
+> section. It was deleted 2026-08-11: nothing imported it, it computed nothing, and its
+> only executable numbers were random values inside a demonstration block. The design
+> below stands as a proposal. No code implements it.
 
 * **Stimulus Presentation Interface:**
   * Coordinates with `SimulationManager` to present specific visual/auditory stimuli in the Unreal Engine environment designed to elicit illusions (e.g., Kanizsa figures, Necker cubes, binocular rivalry setups, backward masking paradigms).

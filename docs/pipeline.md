@@ -26,7 +26,7 @@ This document outlines the typical flow of information and processing within The
 
 5.  **Learning & Memory Update:**
     *   **Outcome Observation:** The results of the action (new state, rewards, social feedback) are observed from the simulation.
-    *   **Emotional Reward Shaping:** The [`EmotionalRewardShaper`](models/evaluation/consciousness_development.py) calculates a reward based on task success, ethical compliance, and crucially, the change in the agent's internal emotional state resulting from the action's outcome. *This step is vital for learning empathetic behaviors, as actions leading to positive internal states (potentially from positive social outcomes) are reinforced.*
+    *   **Emotional Reward Shaping:** The [`EmotionalRewardShaper`](models/emotion/reward_shaping.py) calculates a reward based on task success, ethical compliance, and crucially, the change in the agent's internal emotional state resulting from the action's outcome. *This step is vital for learning empathetic behaviors, as actions leading to positive internal states (potentially from positive social outcomes) are reinforced.*
     *   **Experience Storage:** The complete transition (state, action, reward, next_state, emotional_state) is stored in the [`EmotionalMemoryCore`](models/memory/emotional_memory_core.py) / experience replay buffer.
     *   **Model Training:** The RL agent (DreamerV3) and potentially other adaptable components (e.g., via PEFT) are updated using the stored experiences and rewards.
     *   **Memory Consolidation:** Background processes ([`MemoryConsolidationManager`](models/memory/consolidation.py)) may consolidate important experiences into long-term memory.

@@ -87,7 +87,6 @@ structure only, kept current from the actual tree.
 - `phi_riiu.py` -- RIIU sliding-window SVD-residual phi (diagnostic, opt-in).
 - `effective_information.py` -- Hoel's EI for causal emergence (DEPRECATED 2026-07; see `causal_emergence_svd.py`).
 - `causal_emergence_svd.py` -- Causal Emergence 2.0 SVD heuristic (Hoel 2025, arXiv:2503.13395v3); successor to EI, logged via `--log-ce2-every`.
-- `causal_emergence.py` -- causal-emergence helpers.
 - `perturbational_complexity.py` -- PCI_LZ (Casali et al. 2013), the perturbational
   integration-and-differentiation measure; unlike EI/CE 2.0 it supplies its own variation
   instead of reading a frozen spontaneous trajectory. Driven by `scripts/analysis/probe_pci.py`.
@@ -103,8 +102,17 @@ structure only, kept current from the actual tree.
   naming the real implementation. Pinned by `tests/test_retired_placeholders.py`, which
   also carries a tripwire against new fabricated numbers under `models/evaluation/`.
   Do not restore a return value here without a real computation behind it.
-- `gnw_metrics.py`, `subjective_testing_suite.py` -- workspace metrics and subjective-test scaffolding.
-- Additional evaluation modules exist for development tracking, emotional and memory metrics, and dashboards.
+- `gnw_metrics.py` -- workspace metrics, reached from `consciousness_monitor.py`.
+- Nine modules were DELETED 2026-08-11 after a reachability pass showed none of them was
+  imported from the training loop, the analysis probes, the simulations, or the tests:
+  `causal_emergence.py` (superseded by the SVD version), `consciousness_development.py`,
+  `consciousness_evaluation.py`, `development_tracking.py`,
+  `enhanced_consciousness_metrics.py`, `memory_evaluation.py`, `memory_metrics.py`,
+  `self_awareness_evaluation.py`, `subjective_testing_suite.py`. No verdict in
+  `docs/results/` cited any of them, so no result depends on them. Note the name
+  collisions that made this look risky: the live `MemoryMetrics` class is in
+  `models/memory/memory_core.py`, and the live `consciousness_development` is
+  `configs/consciousness_development.py`. Both survive.
 
 ### Memory (models/memory)
 - `memory_core.py` -- experience storage and retrieval with emotional context.
