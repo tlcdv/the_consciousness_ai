@@ -36,6 +36,49 @@ Status is reported FAILED-first and honestly: IMPLEMENTED, PARTIAL, or ABSENT. "
 means the mechanism exists but is incompletely wired, untrained, heuristic, or not yet
 empirically demonstrated above baseline.
 
+### What IMPLEMENTED means (settled 2026-08-11)
+
+This file previously gave two different rules, one calling the rubric qualitative and one
+requiring a measured signature. They are not the same bar and the difference decides a
+published number, so the rule is stated once here and both earlier phrasings now point at
+it.
+
+**An indicator is IMPLEMENTED when there is empirical evidence that the system possesses
+the property. Code that implements the mechanism is not by itself that evidence.**
+
+The rule follows the source rather than local preference. Butlin et al. define the method
+as "identify the conditions implied by suitable theories, then investigate whether AI
+systems meet them", and state that "whether a system meets such conditions is a
+substantive empirical question". The unit is possession of the property, and establishing
+it is empirical.
+
+Two consequences worth being explicit about, because each rules out one of the earlier
+phrasings:
+
+- **Presence of a module is not sufficient.** The source names this failure directly: an
+  indicator is gamed when "its presence is better explained by the fact that it makes a
+  system seem to possess a property of interest than by the fact that the system actually
+  possesses the property". A rubric satisfied by writing a file is gameable by
+  construction, and this project builds specifically against this list, so it is the
+  paper's own example.
+- **A measured signature during training is not necessary.** It is one strong kind of
+  evidence, not the definition. The source requires no training-time measurement. Demanding
+  one is a stricter local standard, and a local standard must not be presented as the
+  source's.
+
+The source also frames indicators as adjusting **credences** rather than settling a
+binary, and defines **negative indicators** that lower credence. This rubric keeps a
+three-state column because the public coverage count needs one. That is a local
+simplification of the source, recorded here as such.
+
+**Re-scoring under this rule has NOT been done.** The four current IMPLEMENTED entries
+were awarded under the mechanism reading. At least GWT-2 needs review: its cited evidence
+is the GNW ignition threshold and AKOrN binding selecting a winner, and the ignition gate
+is measured saturated while sync_R is measured inert, which is evidence against the
+selective-attention half of that indicator. Any re-score changes the public coverage
+count and is a separate, owner-gated decision. No status was changed by writing this rule
+down.
+
 ## The rubric
 
 ### Recurrent Processing Theory
@@ -84,7 +127,9 @@ empirically demonstrated above baseline.
 
 ## How the project's own metrics complement the indicators
 
-The Butlin rubric is qualitative (which mechanisms are present). The project also has
+The Butlin rubric asks whether the system possesses each property (see "What
+IMPLEMENTED means" above; presence of a mechanism is not by itself evidence). The
+project also has
 quantitative signatures that test whether those mechanisms do measurable work:
 
 - **IIT phi** (`models/evaluation/iit_phi.py`) - integration (RPT-2, GWT). In-training
@@ -104,8 +149,9 @@ quantitative signatures that test whether those mechanisms do measurable work:
 2. Each Phase 5 deliverable is tied to the indicator it advances (the self-vector loop
    and metacognition target HOT-2/HOT-3; the substrate-independence test targets
    measurable agency/integration on the consciousness tasks).
-3. Progress is honest movement of an indicator from PARTIAL to IMPLEMENTED with a
-   measured signature, never a claim of consciousness. Butlin et al. themselves
+3. Progress is honest movement of an indicator from PARTIAL to IMPLEMENTED under the
+   rule in "What IMPLEMENTED means" above, never a claim of consciousness. A measured
+   signature is strong evidence toward that bar; it is not the bar itself. Butlin et al. themselves
    conclude no current system is conscious; this rubric tracks indicator coverage, not
    a verdict.
 
