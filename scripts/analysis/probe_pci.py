@@ -76,6 +76,8 @@ from __future__ import annotations
 
 import argparse
 import csv
+import os
+import warnings
 from pathlib import Path
 
 import numpy as np
@@ -163,8 +165,11 @@ def _rollout(
         latent_mode=latent_mode,
         capsule_workspace_source=capsule_source,
     )
-    gate = _build_gate(config)
+    gate, gate_loaded = _build_gate(config, load_tectum)
     gate.eval()
+    if load_tectum and not gate_loaded:
+        print("  WARNING: gate is randomly initialised (no sibling gate checkpoint); "
+              "gate-level readings below are not from the trained system")
 
     env = _make_env(env_name, seed)
     obs, _ = env.reset(seed=seed)
@@ -264,14 +269,24 @@ def _rssm_vector(tectum) -> np.ndarray:
     return pooled.cpu().numpy().astype(np.float64)
 
 
-def _build_gate(config):
+def _build_gate(config, load_tectum: str | None = None):
     """
     Construct the ConsciousnessGate with the same arguments init_components uses
-    (train_rlhf.py), so the probe reads the substrate the training loop reads.
-    """
-    from models.core.consciousness_gating import ConsciousnessGate
+    (train_rlhf.py), and load its trained weights when a checkpoint is available.
 
-    return ConsciousnessGate(
+    Weight loading was added 2026-08-11. Before that this function returned a
+    randomly initialised gate while its docstring claimed it read the substrate the
+    training loop reads. It did not: the gate trains inside tectum_optimizer but was
+    never written to disk, so every offline gate reading scored a random
+    `gate_feedback`. Checkpoints written before that date have no sibling gate file,
+    and for those the gate is still random. That is reported, not hidden: callers get
+    `loaded=False` and must say so in any result.
+    """
+    from models.core.consciousness_gating import (
+        ConsciousnessGate, gate_checkpoint_path,
+    )
+
+    gate = ConsciousnessGate(
         {
             "hidden_size": config["workspace_dim"],
             "ablate_feedback": config.get("ablate_gate_feedback", False),
@@ -279,6 +294,23 @@ def _build_gate(config):
             "self_vector_dim": config.get("self_vector_dim", 64),
         }
     )
+
+    loaded = False
+    if load_tectum:
+        gate_path = gate_checkpoint_path(load_tectum)
+        if os.path.exists(gate_path):
+            gate.load_state_dict(torch.load(gate_path, map_location="cpu"))
+            loaded = True
+        else:
+            warnings.warn(
+                f"No gate checkpoint at {gate_path}, so the gate is RANDOMLY "
+                f"INITIALISED while the tectum is trained. Gate-level readings from "
+                f"this run measure an untrained gate_feedback and must not be "
+                f"compared against training-time gate metrics. Re-run training to "
+                f"write one.",
+                RuntimeWarning,
+            )
+    return gate, loaded
 
 
 def _unit_noise(shape, rng: np.random.Generator) -> np.ndarray:

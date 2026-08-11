@@ -29,7 +29,7 @@ from simulations.environments.simple_visual_env import SimpleVisualEnv
 from models.core.sensory_tectum import SensoryTectum
 from models.core.global_workspace import GlobalWorkspace
 from models.core.reentrant_processor import ReentrantProcessor
-from models.core.consciousness_gating import ConsciousnessGate
+from models.core.consciousness_gating import ConsciousnessGate, gate_checkpoint_path
 from models.emotion.affective_modulator import AffectiveModulator
 from models.emotion.reward_shaping import EmotionalRewardShaper
 from models.self_model.action_selection_core import ActionSelectionCore
@@ -2740,6 +2740,19 @@ def main():
             os.makedirs(save_dir, exist_ok=True)
         torch.save(tectum.state_dict(), args.save_tectum)
         logger.info(f"Saved trained tectum state_dict to {args.save_tectum}")
+
+        # The gate trains alongside the tectum (both are in tectum_optimizer) but was
+        # never written to disk, so every offline probe rebuilt it from random init and
+        # measured an untrained `gate_feedback`. Any offline reading of gate dynamics,
+        # including an interventional TPM over the 243 joint states, was therefore
+        # scoring a random linear layer rather than the trained system.
+        #
+        # Written as a SIBLING file rather than merged into the tectum checkpoint, so the
+        # existing tectum.pt files stay loadable byte for byte and nothing that reads them
+        # has to change.
+        gate_path = gate_checkpoint_path(args.save_tectum)
+        torch.save(gate.state_dict(), gate_path)
+        logger.info(f"Saved trained gate state_dict to {gate_path}")
 
     if config.get("capture_choice_records") and config.get("_cap_X"):
         cap_path = config["capture_choice_records"]

@@ -27,9 +27,26 @@ backpropagation through the phi computation chain.
 """
 from __future__ import annotations
 
+import os
+
 import torch
 import torch.nn as nn
 from dataclasses import dataclass
+
+
+def gate_checkpoint_path(tectum_path: str) -> str:
+    """Sibling path for the gate checkpoint that goes with a tectum checkpoint.
+
+    The gate trains in the same optimizer as the tectum but was written nowhere until
+    2026-08-11, so offline probes rebuilt it from random init and read an untrained
+    `gate_feedback`. Both the writer (train_rlhf) and the readers (analysis probes) call
+    this, so the convention cannot drift between them.
+
+    `runs/x/tectum.pt` -> `runs/x/tectum.gate.pt`. Kept as a separate file rather than a
+    key inside the tectum checkpoint so existing tectum.pt files stay loadable unchanged.
+    """
+    root, ext = os.path.splitext(tectum_path)
+    return f"{root}.gate{ext or '.pt'}"
 
 
 @dataclass
