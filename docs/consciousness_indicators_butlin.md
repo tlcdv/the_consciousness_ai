@@ -79,6 +79,17 @@ selective-attention half of that indicator. Any re-score changes the public cove
 count and is a separate, owner-gated decision. No status was changed by writing this rule
 down.
 
+**GWT-1 now needs review on the same footing, added 2026-08-12.** Its cited evidence is
+five specialists "competing" in the workspace. A read-only probe at 3 seeds on a trained
+checkpoint measured that competition and found vision winning 100.0 percent of steps in
+every DMTS phase, delay included, with the raw vision bid reading exactly `1.000000000`
+at all 1200 steps. Three of the five specialists bid a constant and two of those bid
+exactly 0.0. The standard deviation of every bid except vision is exactly 0, and vision's
+own variance is a fixed decay factor rather than a response to the stimulus. Parallel
+presence is not in question. Competition is. See
+`docs/results/workspace_competition_2026_08.md`. Status unchanged here for the same
+reason as GWT-2: re-scoring is owner-gated and moves the public count.
+
 ## The rubric
 
 ### Recurrent Processing Theory
