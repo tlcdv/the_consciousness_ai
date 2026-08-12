@@ -59,10 +59,43 @@ The gate's raw response does not scale with the impulse the way the rssm's does:
 At magnitude 1, the gate response of 5.96e-08 is float noise. Even at magnitude 1000,
 an impulse roughly 5,700 times the rssm's own baseline sd, the gate moves by 8e-06.
 
-**The gate does not receive the perturbation.** This is consistent with the same day's
-interventional result, where forcing the gate's own previous state across all 243 joint
-states moved its output by at most 4.6e-02 and never out of one tertile bin. The gate is
-close to a constant function of everything upstream of it.
+### Correction: the pathway EXISTS, the signal dies along it
+
+An earlier draft of this document said "the gate does not receive the perturbation".
+That was too strong, and a direct test corrects it.
+
+Perturbing `tectum.h_state` by magnitude 1000 and re-running the SAME frame changes
+`tectum_content` by **5.406e-04**, against a clean content scale of 6.162e-02. So the
+recurrent state does influence the content pathway. The wiring is intact.
+
+What the pathway does is attenuate. The cascade, from one magnitude-1000 impulse:
+
+| stage | response |
+|---|---|
+| h_state (injection site) | 1.120e+00 |
+| tectum_content | 5.406e-04 |
+| gate | 8.128e-06 |
+
+Roughly three orders of magnitude lost from the recurrent state to the content, and two
+more from the content to the gate. The correct statement is that the perturbation reaches
+the gate attenuated by about 137,000x, far below any threshold, not that it fails to
+arrive.
+
+That is a different and more useful finding than a disconnection: the architecture
+connects these stages, and the connection transmits almost nothing.
+
+This is consistent with the same day's interventional result, where forcing the gate's
+own previous state across all 243 joint states moved its output by at most 4.6e-02 and
+never out of one tertile bin. The gate is close to a constant function of everything
+upstream of it.
+
+### One observation recorded, not yet chased
+
+In the same test, `vision_bid` read **exactly 1.000000** both before and after a
+magnitude-1000 impulse. The ignition signal is `input_energy = max(bound_bids)`, which
+the 2026-07 diagnosis found pinned near 1.499. A vision bid saturated at exactly 1.0
+would be a direct contributor to that. Single observation on one frame, not a
+measurement, and it is not pursued here.
 
 ## What this settles, and what it does not
 
