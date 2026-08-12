@@ -1170,6 +1170,9 @@ def run_episode(episode_idx, config, tectum, workspace, reentrant,
         broadcast_content = settle_result.broadcast_content
         is_conscious = settle_result.is_conscious
         sync_r = getattr(workspace, 'last_sync_R', 0.0)
+        # Raw value behind is_conscious, read for logging only. getattr keeps this
+        # working against a workspace stub that predates the field.
+        ignition_salience = float(getattr(workspace.state, "ignition_salience", 0.0))
 
         # GlobalWorkspace.run_competition returns broadcast_content as a dict
         # built from each winning module's payload (see global_workspace.py
@@ -1954,6 +1957,7 @@ def run_episode(episode_idx, config, tectum, workspace, reentrant,
                 phi=phi,
                 sync_r=sync_r,
                 is_conscious=bool(is_conscious),
+                ignition_salience=ignition_salience,
                 reward=reward_val,
                 broadcast_mag=broadcast_mag,
                 valence=emotion["valence"],

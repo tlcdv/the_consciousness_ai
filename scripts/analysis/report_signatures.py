@@ -126,11 +126,23 @@ def analyze_run(run_dir: Path) -> dict:
             "quiet_in_first_1000": int(np.sum(quiet < 1000)) if quiet.size else 0,
         }
 
-    # episodes.csv: consciousness_ratio and EI windows
+    # episodes.csv: consciousness_ratio and EI windows.
+    #
+    # From 2026-08-12 `consciousness_ratio` is EMPTY whenever it saturates, because a
+    # binary summary pinned at an extreme measures nothing and must not be written as a
+    # plausible number (clause 1 of the instrument acceptance bar). floats() drops the
+    # empties, so an all-degenerate run reports n=0 rather than a confident 1.0000.
+    # The unfiltered value is kept in `consciousness_ratio_raw` and reported separately
+    # below, so the diagnostic survives without being usable as a measurement.
     if "consciousness_ratio" in episodes:
         cr = floats(episodes["consciousness_ratio"])
         out["consciousness_ratio"] = stats(cr)
         out["eps_below_1"] = int(np.sum(cr < 1.0))
+    if "consciousness_ratio_raw" in episodes:
+        raw = floats(episodes["consciousness_ratio_raw"])
+        out["consciousness_ratio_raw"] = stats(raw)
+        n_written = out.get("consciousness_ratio", {}).get("n", 0)
+        out["consciousness_ratio_degenerate_eps"] = int(raw.size) - int(n_written)
     ei_rows = []
     if "ei_gates" in episodes:
         for ep, g, w, r in zip(episodes["episode"], episodes["ei_gates"],
@@ -188,6 +200,12 @@ def main() -> None:
         if "consciousness_ratio" in r:
             print(f"  {'consciousness_ratio (per ep)':32s} {fmt(r['consciousness_ratio'])} "
                   f"episodes<1.0: {r['eps_below_1']}")
+        if "consciousness_ratio_raw" in r:
+            degenerate = r.get("consciousness_ratio_degenerate_eps", 0)
+            note = (f"  [{degenerate} episodes SATURATED, withheld from the column above]"
+                    if degenerate else "")
+            print(f"  {'consciousness_ratio (raw)':32s} "
+                  f"{fmt(r['consciousness_ratio_raw'])}{note}")
         for ep, g, w, ratio in r["ei_windows"]:
             print(f"  EI window @ep{ep:<3d} ei_gates={g:.6f} ei_workspace={w:.6f} "
                   f"ratio={ratio:.4f}")

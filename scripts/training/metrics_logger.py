@@ -46,6 +46,12 @@ class StepMetrics:
     valence: float = 0.0
     arousal: float = 0.0
     dominance: float = 0.0
+    # Raw ignition salience (input_energy minus its EMA baseline), the quantity
+    # `is_conscious` thresholds. Logged from 2026-08-12 so the boolean's degeneracy is
+    # visible as a number: a constant input gives salience 0, which the sigmoid maps to
+    # exactly 0.5, which `>= 0.5` reports as True. Diagnostic only, nothing branches
+    # on it.
+    ignition_salience: float = 0.0
     gate_state: tuple[float, ...] | None = None
     workspace_state: tuple[float, ...] | None = None
     # Which phi computation produced the value: "pyphi" (exact),
@@ -107,6 +113,34 @@ def _gate_cells(gate_state, n: int = 5) -> list[str]:
     """
     vals = list(gate_state) if gate_state is not None else []
     return [f"{float(vals[i]):.6f}" if i < len(vals) else "" for i in range(n)]
+
+
+# A binary summary pinned at either extreme reports the same value whatever the system
+# does, so it measures nothing. Set at 1 percent from each end: the 2026-07 ignition
+# diagnosis measured 0.998 to 1.000 flagged conscious in every task phase, on both a
+# trained and an untrained arm, so anything inside this band is the known-degenerate
+# regime rather than a borderline reading.
+CONSCIOUSNESS_RATIO_DEGENERATE_BAND = 0.01
+
+
+def _consciousness_ratio_cell(ratio: float) -> str:
+    """Clause-1 sentinel for `consciousness_ratio`: empty when it is saturated.
+
+    Returns the formatted number only when the ratio is discriminating, and the empty
+    sentinel otherwise. Empty rather than a magic number so no downstream mean can
+    absorb it as data, and empty rather than a raise because this sits on a live
+    training path where one bad episode must not abort a run.
+
+    The point is structural. If a degenerate value cannot be written, then any value
+    present in the column is non-degenerate by construction, and no reader has to know
+    the caveat to avoid the trap.
+    """
+    if not np.isfinite(ratio):
+        return ""
+    low = CONSCIOUSNESS_RATIO_DEGENERATE_BAND
+    if ratio <= low or ratio >= 1.0 - low:
+        return ""
+    return f"{ratio:.4f}"
 
 
 class ConsciousnessMetricsLogger:
@@ -187,7 +221,8 @@ class ConsciousnessMetricsLogger:
         self._csv_file = open(self._csv_path, "w", newline="")
         self._csv_writer = csv.writer(self._csv_file)
         self._csv_writer.writerow([
-            "global_step", "phi", "sync_r", "is_conscious", "reward",
+            "global_step", "phi", "sync_r", "is_conscious", "ignition_salience",
+            "reward",
             "broadcast_mag", "valence", "arousal", "dominance",
             "phi_method", "phi_riiu",
             "phi_riiu_broadcast", "phi_riiu_tectum", "phi_riiu_audio",
@@ -210,7 +245,16 @@ class ConsciousnessMetricsLogger:
         self._ep_csv_writer = csv.writer(self._ep_csv_file)
         self._ep_csv_writer.writerow([
             "episode", "total_reward", "steps", "avg_phi",
-            "consciousness_ratio", "ei_gates", "ei_workspace", "ei_ratio",
+            # `consciousness_ratio` is the fraction of steps flagged conscious. It is
+            # SATURATED on this agent (0.998 to 1.000 in every phase measured by the
+            # 2026-07 ignition diagnosis), so a value at either extreme carries no
+            # information about the system. Under clause 1 of the instrument acceptance
+            # bar it must not be written as a plausible number when it is degenerate, so
+            # the column is EMPTY in that case and the unfiltered value moves to
+            # `consciousness_ratio_raw` for diagnosis. Any number present in this column
+            # is therefore non-degenerate by construction.
+            "consciousness_ratio", "consciousness_ratio_raw",
+            "ei_gates", "ei_workspace", "ei_ratio",
             # Floor-corrected EI (constant-trajectory Laplace baseline subtracted;
             # see models/evaluation/effective_information.py). The raw columns are
             # kept unchanged for continuity with pre-2026-07 runs.
@@ -240,7 +284,8 @@ class ConsciousnessMetricsLogger:
         # got rounded away.
         self._csv_writer.writerow([
             step, f"{metrics.phi:.6e}", f"{metrics.sync_r:.6f}",
-            int(metrics.is_conscious), f"{metrics.reward:.6f}",
+            int(metrics.is_conscious), f"{metrics.ignition_salience:.6e}",
+            f"{metrics.reward:.6f}",
             f"{metrics.broadcast_mag:.6f}",
             f"{metrics.valence:.4f}", f"{metrics.arousal:.4f}",
             f"{metrics.dominance:.4f}",
@@ -347,6 +392,7 @@ class ConsciousnessMetricsLogger:
         # CSV
         self._ep_csv_writer.writerow([
             episode, f"{total_reward:.4f}", steps, f"{avg_phi:.6e}",
+            _consciousness_ratio_cell(consciousness_ratio),
             f"{consciousness_ratio:.4f}",
             f"{ei_gates:.6f}", f"{ei_workspace:.6f}", f"{ei_ratio:.4f}",
             f"{ei_gates_corr:.6f}", f"{ei_workspace_corr:.6f}",

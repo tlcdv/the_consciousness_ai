@@ -31,6 +31,14 @@ class WorkspaceState:
     phi_value: float = 0.0
     is_conscious: bool = False
     focus_topic: str = "idle"
+
+    # Raw ignition salience: input_energy minus its EMA baseline, the quantity the
+    # sigmoid squashes and `is_conscious` then thresholds. Exposed 2026-08-12 because
+    # the boolean hides its own degeneracy: a perfectly constant input gives salience
+    # exactly 0, hence sigmoid exactly 0.5, hence `>= 0.5` True. A dead signal reads as
+    # the most confident possible answer. The raw value shows that as a number near
+    # zero instead. Diagnostic only; nothing branches on it.
+    ignition_salience: float = 0.0
     
     # Phenomenological State (Qualia)
     qualia_vector: np.ndarray = np.zeros(3) # [Intensity, Valence, Complexity]
@@ -275,6 +283,7 @@ class GlobalWorkspace:
         # consciousness signal discriminates instead of saturating to always-on.
         salience = input_energy - self._energy_baseline
         ignition_val = 1.0 / (1.0 + np.exp(-self.ignition_gain * salience))
+        self.state.ignition_salience = float(salience)
 
         # 5. Reverberation (Recurrence): working-memory persistence of ignition.
         current_strength = (self.reverberation_alpha * self.state.broadcast_strength) + \
