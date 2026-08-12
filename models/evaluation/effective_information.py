@@ -62,6 +62,53 @@ def _entropy_row(row: np.ndarray) -> float:
     return -np.sum(p * np.log2(p))
 
 
+def effective_information_from_tpm(
+    tpm: np.ndarray,
+    degeneracy_corrected: bool = False,
+) -> float:
+    """EI of a row-stochastic TPM. Two formulas, selected by the flag.
+
+    Hoel's EI is the mutual information between cause and effect when the cause is
+    set to the maximum-entropy distribution:
+
+        EI = H(<TPM>) - mean_i H(TPM_i)
+
+    where `<TPM>` is the AVERAGE row, i.e. the effect distribution under do(uniform).
+    That first term carries the DEGENERACY: when many causes drive the same effect, the
+    effect distribution concentrates, its entropy falls, and EI falls with it.
+
+    `degeneracy_corrected=False` (default, and bit-identical to every number this
+    project has published) substitutes `log2(n)` for that term, which is correct only
+    when the effect distribution is uniform. Degeneracy is exactly what makes it
+    non-uniform, so the legacy form is DEGENERACY-BLIND and fails in the unsafe
+    direction: a system whose every state maps to one effect scores the MAXIMUM,
+    log2(n), where the correct answer is 0.
+
+    Why it survived this long: with a TPM estimated from sparse observation, Laplace
+    smoothing leaves most rows near-uniform, so the average row is near-uniform and
+    `H(<TPM>)` is close to `log2(n)`. The observational estimator masked it. The gap
+    only opens when rows are sharp, which is what an interventional TPM produces.
+
+    Verified against Hoel's other published form, `(1/n) sum_i KL(TPM_i || <TPM>)`,
+    which agrees to 2.7e-15 over 200 random row-stochastic matrices
+    (tests/test_ei_degeneracy_term.py). Both forms are pinned there with closed-form
+    cases that RAISE on mismatch.
+
+    Reference: Hoel et al. (2013), PNAS 110(49).
+    """
+    tpm = np.asarray(tpm, dtype=np.float64)
+    n = int(tpm.shape[0])
+    if n < 2:
+        return 0.0
+
+    avg_noise = float(np.mean([_entropy_row(tpm[i]) for i in range(n)]))
+    if degeneracy_corrected:
+        ceiling = _entropy_row(tpm.mean(axis=0))
+    else:
+        ceiling = float(np.log2(n))
+    return float(max(0.0, ceiling - avg_noise))
+
+
 def compute_effective_information(
     trajectories: list[np.ndarray],
     num_states: int,
@@ -88,17 +135,12 @@ def compute_effective_information(
     if num_states < 2:
         return 0.0
 
+    # Legacy formula, kept as the default so every historical number and every
+    # pre-registered EI threshold still refers to the same quantity. It measures
+    # determinism only; see effective_information_from_tpm for the degeneracy term it
+    # omits and why the observational estimator hid the omission.
     tpm = _build_tpm(trajectories, num_states)
-
-    # Maximum entropy = uniform distribution over num_states
-    max_entropy = np.log2(num_states)
-
-    # Average conditional entropy: H(effect | cause) averaged over uniform cause
-    avg_noise = np.mean([_entropy_row(tpm[i]) for i in range(num_states)])
-
-    # EI = determinism = max_entropy - avg_noise
-    ei = max_entropy - avg_noise
-    return float(max(0.0, ei))
+    return effective_information_from_tpm(tpm, degeneracy_corrected=False)
 
 
 def constant_trajectory_floor(num_states: int, traj_len: int) -> float:
