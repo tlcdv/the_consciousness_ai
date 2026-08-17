@@ -36,6 +36,12 @@ class ConsciousnessMetrics:
         pass
 
 
+# Lower bound on how many recent experiences a retrieval scan considers. Mirrors the
+# search-pool bound in emotional_memory_core.py so a long run does not turn per-step
+# retrieval into an O(n^2) scan over the whole history.
+SEARCH_POOL_MIN = 100
+
+
 class PineconeIndexStub:
     """
     Placeholder Pinecone-like index stub. 
@@ -85,6 +91,17 @@ class MemoryConfig:
     pinecone_environment: str = ""
     index_name: str = "consciousness_memory_index"
     attention_threshold: float = 0.7
+
+    # When False (default), `get_similar_experiences` queries PineconeIndexStub, which
+    # returns a single match with score hardcoded to 0.0. The workspace memory bid at
+    # train_rlhf.py:1061 guards on `score > 0.0`, so it can never fire, and the bid was
+    # measured at exactly 0.100000000 for 24,000 of 24,000 steps across 3 seeds
+    # (docs/results/workspace_bids_live_2026_08.md).
+    #
+    # When True, retrieval searches `recent_experiences`, the in-process list that
+    # store_experience already appends to on every step. Default off so the baseline
+    # stays bit-identical.
+    enable_retrieval: bool = False
 
 
 @dataclass
@@ -252,6 +269,9 @@ class MemoryCore:
         Returns:
             A list of dicts containing match info with keys: 'id', 'score', 'metadata'.
         """
+        if self.config.enable_retrieval:
+            return self._search_recent_experiences(query_vector, k)
+
         if emotion_context is not None:
             emotional_embedding = self.emotion_network.get_embedding(emotion_context)
             query_vector = torch.cat([query_vector, emotional_embedding])
@@ -269,6 +289,59 @@ class MemoryCore:
                 "metadata": match.metadata
             }
             for match in results.matches
+        ]
+
+    def _search_recent_experiences(self, query_vector: torch.Tensor, k: int) -> list[dict]:
+        """Cosine search over `recent_experiences`, the list that actually holds them.
+
+        Compares against each experience's `state` field, NOT its `vector` field.
+        `_create_memory_vector` builds `cat([state, action, emotional_embedding])`, while
+        every caller's query is a bare state (`previous_broadcast.view(-1)` in the
+        training loop). Those are different spaces, so scoring a query against `vector`
+        would compare quantities that are not comparable. `state` is stored separately
+        and is the same space the query comes from.
+
+        `emotion_context` is deliberately NOT part of the score. The in-repo precedent
+        (emotional_memory_core.py:200-240) adds recency, emotional and goal terms with
+        hand-chosen weights. Every one of those is a design choice with no evidence
+        behind it here, so this is the semantic term alone.
+
+        Scoring the whole list would be O(n) per step and O(n^2) over a run. The search
+        is bounded to the most recent entries, the same approach the precedent takes.
+        """
+        if not self.recent_experiences:
+            return []
+
+        pool_size = max(k * 10, SEARCH_POOL_MIN)
+        pool = self.recent_experiences[-pool_size:]
+        query = query_vector.detach().reshape(-1).float().cpu()
+
+        scored: list[tuple[float, dict]] = []
+        for exp in pool:
+            state = exp.get("state")
+            if not isinstance(state, torch.Tensor):
+                continue
+            stored = state.detach().reshape(-1).float().cpu()
+            # Different dimensions mean different spaces. Score 0.0 rather than
+            # padding or truncating, which would invent a comparison.
+            if stored.shape[0] != query.shape[0]:
+                scored.append((0.0, exp))
+                continue
+            scored.append((float(torch.cosine_similarity(query, stored, dim=0)), exp))
+
+        scored.sort(key=lambda pair: pair[0], reverse=True)
+        return [
+            {
+                "id": exp["id"],
+                "score": score,
+                "metadata": {
+                    "emotion": exp.get("emotion"),
+                    "attention": exp.get("attention"),
+                    "reward": exp.get("reward"),
+                    "narrative": exp.get("narrative"),
+                },
+            }
+            for score, exp in scored[:k]
         ]
 
     def update_metrics(self) -> None:

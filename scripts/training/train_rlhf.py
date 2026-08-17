@@ -161,7 +161,9 @@ def build_config(args):
             "use_self_vector": getattr(args, "enable_self_vector_action", False),
             "self_vector_dim": getattr(args, "self_vector_dim", 64),
         },
-        "memory": {},
+        "memory": {
+            "enable_retrieval": getattr(args, "enable_memory_retrieval", False),
+        },
         "episodes": args.episodes,
         "max_steps": args.max_steps,
         # P5 diagnosis: which policy consumes the broadcast. 'gonogo' (default) is
@@ -2296,6 +2298,13 @@ def main():
     # mock semantic module so the semantic channel produces non-zero bids
     # without requiring Qwen2-VL to be loaded. Necessary for AKOrN binding
     # to have more than one active modality on dark_room.
+    parser.add_argument("--enable-memory-retrieval", action="store_true",
+                        help="Search recent_experiences for the workspace memory bid. "
+                             "Off by default, in which case retrieval queries "
+                             "PineconeIndexStub, whose score is hardcoded to 0.0, so the "
+                             "bid never leaves its 0.1 floor (measured at 24,000 of "
+                             "24,000 steps, 3 seeds). Does NOT change the winner: vision "
+                             "bids 1.0 and the memory bid caps at 0.6.")
     parser.add_argument("--enable-mock-semantic", action="store_true",
                         help="Use a deterministic MockSemanticModule so the "
                              "semantic channel produces non-zero bids and "
