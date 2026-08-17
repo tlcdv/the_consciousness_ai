@@ -1958,6 +1958,16 @@ def run_episode(episode_idx, config, tectum, workspace, reentrant,
                 sync_r=sync_r,
                 is_conscious=bool(is_conscious),
                 ignition_salience=ignition_salience,
+                # Raw bids as built above, before modulation, plus the module that
+                # actually won. Logged so GWT-1 can be scored on a measurement rather
+                # than on the architecture's intent.
+                bid_vision=float(raw_bids.get("vision", 0.0)),
+                bid_audio=float(raw_bids.get("audio", 0.0)),
+                bid_memory=float(raw_bids.get("memory", 0.0)),
+                bid_body=float(raw_bids.get("body", 0.0)),
+                bid_semantic=float(raw_bids.get("semantic", 0.0)),
+                bid_winner=(workspace.state.winners[0]
+                            if getattr(workspace.state, "winners", None) else ""),
                 reward=reward_val,
                 broadcast_mag=broadcast_mag,
                 valence=emotion["valence"],

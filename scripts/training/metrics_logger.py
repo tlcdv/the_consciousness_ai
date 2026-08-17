@@ -52,6 +52,18 @@ class StepMetrics:
     # exactly 0.5, which `>= 0.5` reports as True. Diagnostic only, nothing branches
     # on it.
     ignition_salience: float = 0.0
+    # Raw per-module workspace bids, exactly as `raw_bids` is built in
+    # train_rlhf.py before any modulation, plus the module that won the competition.
+    # Logged from 2026-08-17 because GWT-1 ("multiple specialized systems operating in
+    # parallel") is scored on these competing, and until now no run had ever recorded
+    # them. Offline probes substituted literal constants for `memory` and `body`, so the
+    # live values have never been observed. Diagnostic only, nothing branches on them.
+    bid_vision: float = 0.0
+    bid_audio: float = 0.0
+    bid_memory: float = 0.0
+    bid_body: float = 0.0
+    bid_semantic: float = 0.0
+    bid_winner: str = ""
     gate_state: tuple[float, ...] | None = None
     workspace_state: tuple[float, ...] | None = None
     # Which phi computation produced the value: "pyphi" (exact),
@@ -238,6 +250,11 @@ class ConsciousnessMetricsLogger:
             # per-dimension variation was never measured. Empty when no gate is active.
             "gate_attention", "gate_stability", "gate_adaptation",
             "gate_coherence", "gate_confidence",
+            # Raw per-module bids entering the workspace competition, and the winner.
+            # Read these together: a winner column with one value and bid columns with
+            # zero variance means the competition is not competing.
+            "bid_vision", "bid_audio", "bid_memory", "bid_body", "bid_semantic",
+            "bid_winner",
         ])
 
     def _init_episode_csv(self):
@@ -301,6 +318,9 @@ class ConsciousnessMetricsLogger:
             f"{metrics.recon_loss:.6e}",
             f"{metrics.match_head_loss:.6e}", f"{metrics.match_head_acc:.6f}",
             *_gate_cells(metrics.gate_state),
+            f"{metrics.bid_vision:.9f}", f"{metrics.bid_audio:.9f}",
+            f"{metrics.bid_memory:.9f}", f"{metrics.bid_body:.9f}",
+            f"{metrics.bid_semantic:.9f}", metrics.bid_winner,
         ])
         self._csv_file.flush()
 

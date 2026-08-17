@@ -79,16 +79,31 @@ selective-attention half of that indicator. Any re-score changes the public cove
 count and is a separate, owner-gated decision. No status was changed by writing this rule
 down.
 
-**GWT-1 now needs review on the same footing, added 2026-08-12.** Its cited evidence is
-five specialists "competing" in the workspace. A read-only probe at 3 seeds on a trained
-checkpoint measured that competition and found vision winning 100.0 percent of steps in
-every DMTS phase, delay included, with the raw vision bid reading exactly `1.000000000`
-at all 1200 steps. Three of the five specialists bid a constant and two of those bid
-exactly 0.0. The standard deviation of every bid except vision is exactly 0, and vision's
-own variance is a fixed decay factor rather than a response to the stimulus. Parallel
-presence is not in question. Competition is. See
-`docs/results/workspace_competition_2026_08.md`. Status unchanged here for the same
-reason as GWT-2: re-scoring is owner-gated and moves the public count.
+**GWT-1 now needs review on the same footing, added 2026-08-12, strengthened 2026-08-17.**
+Its cited evidence is five specialists "competing" in the workspace. That competition has
+now been recorded during a LIVE TRAINING RUN at 3 seeds, 8000 steps each, with audio and
+semantic explicitly enabled so every module had a real chance:
+
+| module | distinct bid values over 8000 steps |
+|---|---|
+| vision | 1, `1.000000000` at every step |
+| audio | 1, `0.000000000` at every step |
+| memory | 1, `0.100000000` at every step |
+| body | 2, at `0.15` on 98.3 to 98.6 percent of steps |
+| semantic | 5, all inside a span of 2.4e-07 at the top of its range |
+
+Vision wins 99.0 to 99.8 percent of steps, and 2000 of 2000 in the final 2000 steps of
+every seed. Parallel presence is not in question. Competition is. See
+`docs/results/workspace_bids_live_2026_08.md`.
+
+The first version of this note, written 2026-08-12, said three of five specialists bid a
+constant, citing an offline probe. That probe SUBSTITUTED literal constants for the memory
+and body bids, so for memory it reported a harness value rather than a measurement. The
+conclusion happened to be right and the evidence did not support it. The table above is
+from the live run and replaces it.
+
+Status unchanged here for the same reason as GWT-2: re-scoring is owner-gated and moves
+the public count.
 
 ## The rubric
 

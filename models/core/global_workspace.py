@@ -4,7 +4,7 @@ import torch
 import numpy as np
 import time
 from typing import Any
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 import torch.nn.functional as F
 
 from models.evaluation.iit_phi import IITMetrics
@@ -39,7 +39,14 @@ class WorkspaceState:
     # the most confident possible answer. The raw value shows that as a number near
     # zero instead. Diagnostic only; nothing branches on it.
     ignition_salience: float = 0.0
-    
+
+    # Modules that won the competition this step, in the order `_resolve_competition`
+    # returned them. Exposed 2026-08-17 so a training run can record whether the winner
+    # ever changes. GWT-1 is scored on modules competing in parallel, and no run had ever
+    # logged the outcome of that competition. Empty when ignition did not fire.
+    # Diagnostic only; nothing branches on it.
+    winners: list[str] = field(default_factory=list)
+
     # Phenomenological State (Qualia)
     qualia_vector: np.ndarray = np.zeros(3) # [Intensity, Valence, Complexity]
 
@@ -302,6 +309,7 @@ class GlobalWorkspace:
         winners = []
         if self.state.is_conscious:
             winners = self._resolve_competition(bound_bids)
+        self.state.winners = list(winners)
             
         # 8. IIT & Qualia Calculation (Only if Conscious)
         if self.state.is_conscious:
