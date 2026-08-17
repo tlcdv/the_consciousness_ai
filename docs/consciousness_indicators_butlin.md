@@ -71,13 +71,27 @@ binary, and defines **negative indicators** that lower credence. This rubric kee
 three-state column because the public coverage count needs one. That is a local
 simplification of the source, recorded here as such.
 
-**Re-scoring under this rule has NOT been done.** The four current IMPLEMENTED entries
-were awarded under the mechanism reading. At least GWT-2 needs review: its cited evidence
-is the GNW ignition threshold and AKOrN binding selecting a winner, and the ignition gate
-is measured saturated while sync_R is measured inert, which is evidence against the
-selective-attention half of that indicator. Any re-score changes the public coverage
-count and is a separate, owner-gated decision. No status was changed by writing this rule
-down.
+**GWT-2 was re-scored to PARTIAL on 2026-08-17, and the count moved 4 to 3.** This is the
+first indicator re-score on the project and it moves the public coverage figure DOWN, from
+28.57 to 21.43 percent. It was made on a measurement, not on a reading of the rule.
+
+The deciding evidence is a live training run at 3 seeds, 8000 steps each, with audio and
+semantic explicitly enabled so every module had a real chance
+(`results/workspace_bids_live_2026_08.md`). Four of five modules emit a literal constant
+bid, and the winner is vision at 99.0 to 99.8 percent of steps and at 2000 of 2000 steps
+in the final 2000 of every seed. The indicator names selective attention and its cited
+evidence is "selecting the winner". The winner does not change.
+
+**GWT-1 was NOT re-scored, deliberately.** Its indicator text asks whether specialized
+systems operate in parallel, and all five compute every step: vision's internal KL varies
+by a factor of 167, memory returns real cosine scores once retrieval is connected, and
+semantic produces embeddings. What is degenerate is the BIDS, which is the workspace
+interface rather than the modules. Demoting GWT-1 as well would charge two indicators for
+one defect. The false word "competing" was struck from its evidence column instead, which
+does not change the count.
+
+The three remaining IMPLEMENTED entries were awarded under the mechanism reading and have
+not been re-examined under this rule.
 
 **GWT-1 now needs review on the same footing, added 2026-08-12, strengthened 2026-08-17.**
 Its cited evidence is five specialists "competing" in the workspace. That competition has
@@ -118,8 +132,8 @@ the public count.
 
 | Indicator | Project component | Status |
 |-----------|-------------------|--------|
-| GWT-1: multiple specialized systems operating in parallel | vision, audio, memory, body, semantic specialists competing in `GlobalWorkspace` | IMPLEMENTED |
-| GWT-2: limited-capacity workspace with a bottleneck + selective attention | GNW ignition threshold + AKOrN binding selecting the winner; the 256-D broadcast is the low-dimensional bottleneck | IMPLEMENTED (and note: the 2026-06-02 localization shows this bottleneck is by design, the source of the control-vs-integration trade reading #2 accepts) |
+| GWT-1: multiple specialized systems operating in parallel | vision, audio, memory, body and semantic specialists each compute and submit a bid to `GlobalWorkspace` every step | IMPLEMENTED (the word "competing" was removed from this row on 2026-08-17: the bids are measured degenerate, so the modules run in parallel and do not compete. The parallel operation itself is unaffected, and the competition failure is scored against GWT-2 where selective attention is the indicator) |
+| GWT-2: limited-capacity workspace with a bottleneck + selective attention | GNW ignition threshold + AKOrN binding selecting the winner; the 256-D broadcast is the low-dimensional bottleneck | PARTIAL: the bottleneck half holds and is by design (the 2026-06-02 localization, the source of the control-vs-integration trade reading #2 accepts). The SELECTIVE ATTENTION half is measured false. In a live run at 3 seeds the winner never changes: vision takes 99.0 to 99.8 percent of steps and 2000 of 2000 in the final 2000 steps of every seed, with four of five bids emitting a literal constant (`results/workspace_bids_live_2026_08.md`). Two earlier lines of evidence agree: the ignition gate is saturated at 99.79 to 100 percent of steps, and sync_R is perception-invariant |
 | GWT-3: global broadcast available to all modules | `broadcast_payload` + `receive_broadcast` on each specialist | IMPLEMENTED |
 | GWT-4: state-dependent attention to query modules in succession | reentrant cycles re-query modules with top-down feedback | PARTIAL: no explicit successive-query controller; querying is the settle loop, not a learned attention policy |
 
