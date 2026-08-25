@@ -9,12 +9,15 @@
 [![Architecture](https://img.shields.io/badge/Architecture-Technical-0052CC?logo=read-the-docs&logoColor=white)](https://theconsciousness.ai/architecture/)
 [![Philosophy](https://img.shields.io/badge/Philosophy-Functionalist_Emergentism-8A2BE2?logo=gitbook&logoColor=white)](https://theconsciousness.ai/functionalist-emergentism/)
 [![Store](https://img.shields.io/badge/Store-Merch-E34F26?logo=shopify&logoColor=white)](https://theconsciousness.ai/merch/)
+[![Newsletter](https://img.shields.io/badge/Newsletter-Subscribe-D97757?logo=maildotru&logoColor=white)](https://theconsciousness.ai/subscribe/?utm_source=github&utm_medium=readme)
 
 <img width="1000" height="238" alt="theconsciousness-ai-badge-logo-2" src="https://github.com/user-attachments/assets/97c42d29-4560-4867-a31f-cc79d6c4f4e6" />
 
 **The Consciousness AI** is a research framework investigating the emergence of synthetic awareness. Unlike traditional AI that mimics intelligent output, this system generates behavior through an internal struggle for **Emotional Homeostasis** and **Integrated Information**.
 
 We hypothesize that consciousness is not a programmable feature, but an emergent solution to the problem of surviving and maintaining stability in a complex, unpredictable environment.
+
+> **Follow the research.** New findings are written up at [theconsciousness.ai](https://theconsciousness.ai/), including the results that failed. [Get an email when a new article is published](https://theconsciousness.ai/subscribe/?utm_source=github&utm_medium=readme).
 
 ## Core Principle: Functionalist Emergentism
 
