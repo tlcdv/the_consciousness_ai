@@ -185,6 +185,9 @@ def scan_syn_partners(path, cell_voxels, body_ids, batch_rows=12_000_000):
     key_parts, reg_parts = [], []
     pos_sum = np.zeros((n, 3), dtype=np.float64)
     pos_cnt = np.zeros(n, dtype=np.int64)
+    # dominant presynaptic neuropil per body: counts per (body, region)
+    REG_MAX = 256
+    reg_counts = np.zeros((n, REG_MAX), dtype=np.int32)
 
     t = feather.read_table(path, columns=["x_pre", "y_pre", "z_pre", "body_pre",
                                           "primary_post"],
@@ -204,6 +207,15 @@ def scan_syn_partners(path, cell_voxels, body_ids, batch_rows=12_000_000):
             pos_sum[:, axis] += np.bincount(bi[bvalid], weights=arr[bvalid],
                                             minlength=n)
         np.add.at(pos_cnt, bi[bvalid], 1)
+        # dominant region per body: presynaptic-site counts per neuropil;
+        # region ids above the 256 cap collapse into the top bucket.
+        # accumulate per-batch UNIQUE (body, region) pairs: the record
+        # batches are small, so a full-width bincount per batch is slow
+        reg_c = np.minimum(reg[bvalid], REG_MAX - 1)
+        combo = bi[bvalid].astype(np.int64) * REG_MAX + reg_c
+        uq, cnt = np.unique(combo, return_counts=True)
+        reg_flat = reg_counts.reshape(-1)
+        reg_flat[uq] += cnt
 
         gx = (x // cell_voxels).astype(np.int64)
         gy = (y // cell_voxels).astype(np.int64)
@@ -245,6 +257,7 @@ def scan_syn_partners(path, cell_voxels, body_ids, batch_rows=12_000_000):
         "region_vocab": REGION_VOCAB_HOLDER["vocab"],
         "pos_sum": pos_sum,
         "pos_cnt": pos_cnt,
+        "reg_counts": reg_counts,
     }
     log(f"  contacts={total_rows:,} unique TBars={len(nz):,}")
     return result
@@ -388,7 +401,7 @@ def main():
     ap.add_argument("--gain", type=float, default=1.0)
     ap.add_argument("--noise", type=float, default=0.005)
     ap.add_argument("--norm", choices=["in", "out"], default="in")
-    ap.add_argument("--wiring-edges", type=int, default=150000)
+    ap.add_argument("--wiring-edges", type=int, default=400000)
     ap.add_argument("--skip-cloud", action="store_true")
     args = ap.parse_args()
 
@@ -462,6 +475,36 @@ def main():
         log(f"soma fallback from mean synapse position: {int(has_pos.sum()):,} neurons")
         stats["soma_fallback_synapse_mean"] = int(has_pos.sum())
 
+        # dominant presynaptic neuropil per neuron (u8; 255 = none)
+        reg_counts = cloud["reg_counts"]
+        neuron_region = np.argmax(reg_counts, axis=1).astype(np.uint8)
+        neuron_region[np.max(reg_counts, axis=1) == 0] = 255
+        n_with_region = int((neuron_region < 255).sum())
+        log(f"neurons with a dominant region: {n_with_region:,}")
+        stats["neurons_with_region"] = n_with_region
+    else:
+        neuron_region = np.full(n, 255, dtype=np.uint8)
+
+    # per-region neuron counts and cloud bounding boxes for the region chips
+    vocab_items = sorted(cloud.get("region_vocab", {}).items(), key=lambda kv: kv[1])
+    region_stats = []
+    region_bounds = {}
+    for name, ridx_v in vocab_items:
+        cnt = int((neuron_region == ridx_v).sum())
+        if cnt:
+            region_stats.append({"name": name, "neurons": cnt})
+    if not args.skip_cloud:
+        cx_, cy_, cz_, creg = cloud["x"], cloud["y"], cloud["z"], cloud["region"]
+        for name, ridx_v in vocab_items:
+            sel = creg == ridx_v
+            if not sel.any():
+                continue
+            region_bounds[name] = [
+                int(cx_[sel].min()), int(cy_[sel].min()), int(cz_[sel].min()),
+                int(cx_[sel].max()), int(cy_[sel].max()), int(cz_[sel].max())]
+    stats["region_stats"] = region_stats
+    stats["region_bounds"] = region_bounds
+
     sc = neurons["superclass"]
     stage_defs = [
         ("photoreceptor", eye_mask),
@@ -503,8 +546,20 @@ def main():
                   [raster[:, 0].astype(np.uint16), raster[:, 1].astype(np.uint32)])
         stats.setdefault("simulation", {})[tag] = sims[tag]
 
-    write_bin(outdir / "neurons.bin", [body_ids.astype(np.uint32), super_idx,
-                                       class_idx, has_soma, soma])
+    # neurons.bin v2, 24 bytes per neuron:
+    # bodyId u32, inDeg u32, outDeg u32, superIdx u8, classIdx u8,
+    # signCode u8 (1 exc, 2 inh), regionIdx u8 (255 none), stageIdx u8
+    # (1 retina, 2 optic, 3 central, 4 descending, 5 VNC, 0 other),
+    # hasPos u8, pos u16 x3
+    sign_code = np.where(sign < 0, 2, 1).astype(np.uint8)
+    stage_idx = np.zeros(n, dtype=np.uint8)
+    for k, (name, smask) in enumerate(stage_defs):
+        stage_idx[smask] = k + 1
+    write_bin(outdir / "neurons.bin",
+              [body_ids.astype(np.uint32), super_idx, class_idx, sign_code,
+               neuron_region, stage_idx, has_soma, soma,
+               np.minimum(wres["in_degree"], 4294967295).astype(np.uint32),
+               np.minimum(wres["out_degree"], 4294967295).astype(np.uint32)])
     with open(outdir / "names.bin", "wb") as f:
         for s in neurons["instance"].fillna("").astype(str).tolist():
             b = s.encode("utf-8")
@@ -540,6 +595,8 @@ def main():
     meta = {
         "dataset": stats["source"],
         "release": "v1.0",
+        "neuronFormat": 2,
+        "regionBounds": stats["region_bounds"],
         "em_volume_voxels": EM_VOLUME_VOXELS,
         "em_voxel_nm": EM_VOXEL_NM,
         "cell_nm": args.cell_nm,
