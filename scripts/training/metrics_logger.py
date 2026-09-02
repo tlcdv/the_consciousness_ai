@@ -66,6 +66,20 @@ class StepMetrics:
     bid_winner: str = ""
     gate_state: tuple[float, ...] | None = None
     workspace_state: tuple[float, ...] | None = None
+    # The full 256-D broadcast for this step. `workspace_state` above is the 3-tuple
+    # (broadcast_mag, phi, sync_r) that the EI / CE 2.0 discretization consumes, which is
+    # a different object: it keeps only the broadcast's LENGTH. Logged from 2026-08-17 to
+    # a `broadcast.npy` sidecar because the direction has never been measured, and an
+    # indirect estimate put the cosine between successive broadcasts at 0.99999976 to 1.0
+    # (docs/results/memory_retrieval_repair_2026_08.md). Diagnostic only.
+    broadcast_vector: "np.ndarray | None" = None
+    # Environment labels for the broadcast, captured BEFORE env.step() reassigns `info`
+    # (see the off-by-one note at train_rlhf.py:1453). Without these the broadcast
+    # sidecar cannot be decoded against anything. `env_sample_shape` is the clock-free
+    # label: it is drawn per trial and is independent of step index, unlike phase.
+    env_phase: str = ""
+    env_trial: int = -1
+    env_sample_shape: str = ""
     # Which phi computation produced the value: "pyphi" (exact),
     # "proxy" (unvalidated geometric heuristic), "insufficient_data"
     # (early TPM, returns 0.0), or "" when not produced via the gate
@@ -208,6 +222,7 @@ class ConsciousnessMetricsLogger:
         # Trajectory buffers for EI computation
         self._gate_trajectory: list[tuple[float, ...]] = []
         self._workspace_trajectory: list[tuple[float, ...]] = []
+        self._broadcast_trajectory: list = []
 
         # Gate discretization mode, shared by EI and CE 2.0 so both score the same
         # TPM. "tertile" (default) = fixed [1/3, 2/3] boundaries, baseline
@@ -255,6 +270,7 @@ class ConsciousnessMetricsLogger:
             # zero variance means the competition is not competing.
             "bid_vision", "bid_audio", "bid_memory", "bid_body", "bid_semantic",
             "bid_winner",
+            "env_phase", "env_trial", "env_sample_shape",
         ])
 
     def _init_episode_csv(self):
@@ -321,6 +337,7 @@ class ConsciousnessMetricsLogger:
             f"{metrics.bid_vision:.9f}", f"{metrics.bid_audio:.9f}",
             f"{metrics.bid_memory:.9f}", f"{metrics.bid_body:.9f}",
             f"{metrics.bid_semantic:.9f}", metrics.bid_winner,
+            metrics.env_phase, metrics.env_trial, metrics.env_sample_shape,
         ])
         self._csv_file.flush()
 
@@ -376,6 +393,9 @@ class ConsciousnessMetricsLogger:
             self._gate_trajectory.append(metrics.gate_state)
         if metrics.workspace_state is not None:
             self._workspace_trajectory.append(metrics.workspace_state)
+        if metrics.broadcast_vector is not None:
+            self._broadcast_trajectory.append(
+                np.asarray(metrics.broadcast_vector, dtype=np.float32).reshape(-1))
 
         # Buffer for CE 2.0 (separate lists so the CE 2.0 window is independent of
         # the EI window). No-op unless enable_ce2() has been called.
@@ -790,7 +810,18 @@ class ConsciousnessMetricsLogger:
         self._seen_state_actions.clear()
 
     def close(self):
-        """Flush and close all writers."""
+        """Flush and close all writers, and write the broadcast sidecar.
+
+        The broadcast is a [steps, workspace_dim] float32 matrix, about 8 MB for a
+        40-episode run. It goes to a .npy rather than the step CSV because 256 columns
+        would make that file unreadable, and `runs/` is gitignored.
+        """
+        if self._broadcast_trajectory:
+            path = os.path.join(self.log_dir, "broadcast.npy")
+            np.save(path, np.stack(self._broadcast_trajectory))
+            logger.info(
+                f"Broadcast trajectory saved to {path} "
+                f"({len(self._broadcast_trajectory)} steps)")
         if self.writer is not None:
             self.writer.close()
         if self._csv_file is not None:

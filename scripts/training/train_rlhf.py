@@ -1459,6 +1459,13 @@ def run_episode(episode_idx, config, tectum, workspace, reentrant,
         # breaks the premise that the anchor shows the stimulus.
         _c_step_phase = info.get("phase") if isinstance(info, dict) else None
         _c_step_trial = info.get("trial", 0) if isinstance(info, dict) else 0
+        # Broadcast labels, captured HERE for the same off-by-one reason documented
+        # above: `broadcast` was computed from the observation paired with the CURRENT
+        # `info`, and env.step() below reassigns it. Reading them at the log site would
+        # label every broadcast with the NEXT step's phase and shape.
+        _bcast_phase = _c_step_phase or ""
+        _bcast_trial = int(_c_step_trial)
+        _bcast_shape = (info.get("sample_shape") or "") if isinstance(info, dict) else ""
         if latent_contrastive_head is not None and isinstance(info, dict):
             _c_phase = _c_step_phase
             _c_state = getattr(tectum, "_last_state_tensor", None)
@@ -1977,6 +1984,12 @@ def run_episode(episode_idx, config, tectum, workspace, reentrant,
                 dominance=emotion["dominance"],
                 gate_state=gate_state,
                 workspace_state=ws_state,
+                # Full broadcast vector. ws_state keeps only its LENGTH, so the
+                # direction has never been recorded during a run.
+                broadcast_vector=broadcast.detach().cpu().numpy(),
+                env_phase=_bcast_phase,
+                env_trial=_bcast_trial,
+                env_sample_shape=_bcast_shape,
                 phi_method=phi_method,
                 phi_riiu=phi_riiu_val,
                 phi_riiu_broadcast=phi_riiu_vals.get("broadcast", 0.0),
