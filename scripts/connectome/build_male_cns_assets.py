@@ -388,6 +388,7 @@ def main():
     ap.add_argument("--gain", type=float, default=1.0)
     ap.add_argument("--noise", type=float, default=0.005)
     ap.add_argument("--norm", choices=["in", "out"], default="in")
+    ap.add_argument("--wiring-edges", type=int, default=150000)
     ap.add_argument("--skip-cloud", action="store_true")
     args = ap.parse_args()
 
@@ -514,6 +515,19 @@ def main():
     dpre, dpost, dw = wres["display"]
     stats["connectome"]["display_edges_shipped"] = int(len(dpre))
     write_bin(outdir / "matrix.bin", [dpre, dpost, dw])
+
+    # wiring.bin: the strongest edges of the SIMULATION graph (weight >= 3,
+    # traced neurons, signed sources), for the neuron-to-neuron wiring view
+    # and for lighting up signal travel during the spike replay.
+    spre, spost, sw = wres["sim"]
+    k = min(args.wiring_edges, len(spre))
+    top = np.argpartition(sw, len(sw) - k)[len(sw) - k:]
+    top = top[np.argsort(sw[top])[::-1]]
+    write_bin(outdir / "wiring.bin",
+              [spre[top].astype(np.uint32), spost[top].astype(np.uint32),
+               np.minimum(sw[top], 65535).astype(np.uint16)])
+    stats["wiring_edges_shipped"] = int(k)
+
     if not args.skip_cloud:
         write_bin(outdir / "cloud.bin", [cloud["x"], cloud["y"], cloud["z"],
                                          cloud["count"].astype(np.uint8),
