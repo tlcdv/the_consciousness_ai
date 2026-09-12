@@ -1,7 +1,8 @@
 # Instrument inventory
 
 **Nothing is TRUSTED. Of 16 instrument entries, 0 are trusted, 4 are unproven, 6 are
-retired, and 6 are not running.**
+retired, and 6 are not running.** PCI met half its falsifier on 2026-09-12 and stays
+UNPROVEN on the other half.
 
 This is the inventory the instrument effort has been working toward. Each entry states a
 status, the evidence, and what would change it. Every number here was loaded from disk or
@@ -16,7 +17,7 @@ Status meanings, from the seven-clause acceptance bar:
 - **NOT RUNNING**: logs a constant because its module is disabled. No verdict is possible
   either way, and this is not the same as broken.
 
-Last updated 2026-09-02. Run evidence is `runs/bcast_s4{2,3,4}`: 3 seeds, 40 episodes,
+Last updated 2026-09-12 (PCI row; everything else 2026-09-02). Run evidence is `runs/bcast_s4{2,3,4}`: 3 seeds, 40 episodes,
 8000 steps each, dmts, `--enable-audio --enable-mock-semantic`.
 
 ## The finding that organizes this inventory
@@ -69,7 +70,7 @@ demonstration can fix.
 
 | Instrument | Why unproven | What would change it |
 |---|---|---|
-| **PCI** `perturbational_complexity.py` | The strongest entry here. It discriminates with a working control: 0.0649 (sd 0.0036) at the control site against exactly 0.0000 at the primary site, 3 probe seeds (`pci_trained_2026_08.md`). Run on ONE trained checkpoint only. Deviates from the published normalization for a documented reason, and the human ~0.31 cutoff does not transfer. | Run on more than one checkpoint, and state the reading rules that replace the human scale. |
+| **PCI** `perturbational_complexity.py` | Still the strongest entry, and half its falsifier is now met. Discriminates with a working control on FOUR trained checkpoints, three of them independently trained: control 0.0552 to 0.0657 against exactly 0.0000 at the primary site every time, pre-impulse divergence 0.0e+00 throughout (`pci_multi_checkpoint_2026_09.md`, which also reproduced the published 0.0657 before reading anything new). The gate is therefore causally inert across seeds, not just on one checkpoint. What blocks it now is the reading rules, and they got harder: `pci` and `pci_casali` disagree by 5.5x at the control on `capfix_seed44` (0.0552 against 0.3065) and by 1000x at its broadcast (0.0007 against 0.7248), while agreeing within 1.3x on the other three. The published human ~0.31 cutoff still does not transfer, and one checkpoint in four already lands on it under Casali. Cite `pci`, never `pci_casali`, and neither against the human scale. | State the reading rules, including which normalization is authoritative and why. Then run a checkpoint from a DIFFERENT training configuration: all four so far read the same configuration. |
 | **phi** `iit_phi.py` (pyphi) | **Downgraded 2026-09-02.** Contentless at 3 seeds: eta2 0.027118 / 0.008728 / 0.025970 against null p95 0.055994 / 0.062348 / 0.065874, below the null mean at 2 of 3 seeds (`scalar_content_2026_09.md`). Not degenerate: 1128 to 1267 distinct values, modal share 0.25 to 0.44 percent. Computed at only 1599 of 8000 steps; the rest carry the last value forward. Gated by `is_conscious`, which is pinned. | Show that whatever `phi` is computed over carries content, or restate what `phi` is a measure of on this architecture. |
 | **Coupling measures** `coupling_measures.py` (PLV, phase transfer entropy, PAC) | Smoke-tested only, never run on a trained checkpoint. Values are in cycles per step and carry no Hz grounding, so no published frequency band may be cited against them (clause 6, usage). | Run on a trained checkpoint, and settle whether a cycles-per-step value can be cited at all. |
 | **Ignition salience** | Alive but very small: 471 distinct values, std 2.385e-04 around a mean of 2.181e-06 (seed 42, measured 2026-09-02). Its saturation is what pins `is_conscious`. Never content-tested. | Content-test it, and decide whether the saturating transform is the defect. |
