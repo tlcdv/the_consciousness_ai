@@ -352,6 +352,26 @@ def run_trial(args, trial_index: int) -> list[dict]:
     rssm_clean, gate_clean, bc_clean = _rollout(perturb_step=None, **common)
     rssm_pert, gate_pert, bc_pert = _rollout(perturb_step=args.perturb_step, **common)
 
+    # Per-site weight provenance, recorded in every row.
+    #
+    # The probe prints a warning when the gate falls back to random init, but that
+    # warning lives only in the console. On 2026-09-12 a four-checkpoint study read
+    # the CSVs, missed the warning, and reported random-gate readings as a finding
+    # about the trained system. The CSV had 15 columns and none of them could have
+    # caught it. These two can.
+    #
+    # The mapping follows the data flow in _rollout: the broadcast is computed from
+    # the tectum and workspace and is then fed INTO the gate, so gate weights cannot
+    # reach the rssm or broadcast traces.
+    from models.core.consciousness_gating import gate_checkpoint_path as _gate_ckpt
+    tectum_trained = bool(args.load_tectum)
+    gate_trained = tectum_trained and os.path.isfile(_gate_ckpt(args.load_tectum))
+    provenance = {
+        "rssm": tectum_trained,
+        "broadcast": tectum_trained,
+        "gate": gate_trained,
+    }
+
     rows = []
     for site, clean, pert in (
         ("rssm", rssm_clean, rssm_pert),
@@ -376,6 +396,9 @@ def run_trial(args, trial_index: int) -> list[dict]:
                 "trial": trial_index,
                 "seed": seed,
                 "read_site": site,
+                # "trained" or "RANDOM". A RANDOM row says nothing about the
+                # trained system and must not be reported as if it did.
+                "weights": "trained" if provenance[site] else "RANDOM",
                 "perturb_site": args.perturb_site,
                 "magnitude": args.magnitude,
                 "pci": round(result.pci, 6),
@@ -461,7 +484,9 @@ def main():
             continue
         casali = [r["pci_casali"] for r in all_rows if r["read_site"] == site]
         summary[site] = float(np.mean(vals))
-        print(f"{site:<10} ({labels[site]:<11}) pci mean={np.mean(vals):.4f} "
+        prov = {r["weights"] for r in all_rows if r["read_site"] == site}
+        tag = "trained" if prov == {"trained"} else "RANDOM WEIGHTS, NOT A RESULT"
+        print(f"{site:<10} ({labels[site]:<11}) [{tag}] pci mean={np.mean(vals):.4f} "
               f"sd={np.std(vals):.4f} min={min(vals):.4f} max={max(vals):.4f} "
               f"| casali mean={np.mean(casali):.4f} "
               f"| active_fraction mean={np.mean(active):.4f}")
@@ -476,6 +501,17 @@ def main():
               f"the responses above are not causal effects and must not be reported.")
         return
     print(f"Determinism check passed: pre-impulse divergence {max_pre:.3e}.")
+
+    # Refuse to let an untrained site be read as a finding. This is the check that
+    # the 2026-09-12 four-checkpoint study needed and did not have.
+    random_sites = sorted({r["read_site"] for r in all_rows if r["weights"] == "RANDOM"})
+    if random_sites:
+        print("")
+        print(f"DISQUALIFIED: {', '.join(random_sites)} ran on RANDOMLY INITIALISED "
+              f"weights, so those readings are not about the trained system and must "
+              f"not be reported as results. Only sites marked [trained] above may be "
+              f"cited. To fix, use a checkpoint whose sibling gate file exists; gate "
+              f"weights were not saved before 2026-08-11.")
 
     # The module docstring says `pci_casali` diverges for sparse responses and that
     # conditions must not be ranked by it. It was reported only in the CSV, so the
