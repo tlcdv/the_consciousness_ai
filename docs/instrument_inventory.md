@@ -7,7 +7,7 @@ This is the inventory the instrument effort has been working toward. Each entry 
 status, the evidence, and what would change it. Every number here was loaded from disk or
 from a named verdict document.
 
-Status meanings, from the six-clause acceptance bar:
+Status meanings, from the seven-clause acceptance bar:
 
 - **TRUSTED**: meets all six clauses.
 - **UNPROVEN**: could be sound; a required demonstration is missing. Not retired. No
@@ -42,22 +42,26 @@ to a single number discards it, and every instrument in this inventory reads a s
 number. This is an empirical pattern at seven cases. It is not a theorem, and it does not
 prove that no scalar could carry the content.
 
-## A gap in the acceptance bar, proposed for the owner
+## Clause 7, content sensitivity, adopted 2026-09-12
 
-The six clauses do not test whether an instrument's INPUT carries the thing the instrument
-claims to measure.
+The first six clauses do not test whether an instrument's INPUT carries the thing the
+instrument claims to measure. Clause 7 does, and it was added because of `phi`.
 
 `phi` shows why that matters. It passes clause 1 (it writes a `phi_method` sentinel), it
 passes the strict non-degeneracy bar with 1128 to 1267 distinct values, and it was the one
 instrument to satisfy clause 3 by moving under an intervention. The bar as written does
 not reject it. It is nonetheless measured contentless at 3 seeds.
 
-**Proposed seventh clause, CONTENT SENSITIVITY:** an instrument's input must be shown to
-carry the quantity the instrument claims to track, or the instrument is UNPROVEN. The
+**Clause 7, CONTENT SENSITIVITY:** an instrument's input must be shown to carry the
+quantity the instrument claims to track, or the instrument is UNPROVEN. The
 control already exists and is cheap: eta-squared or decode accuracy against a permutation
 null that shuffles labels across trials.
 
-This is a proposal. The bar is owner-set and is not changed here.
+Adopted by the owner 2026-09-12 and written into the acceptance bar. It does NOT require
+an instrument to track the stimulus: `phi` does not claim to. It requires the input to be
+shown to carry whatever the instrument does claim. A contentless reading alone gives
+UNPROVEN; RETIRED needs a contentless reading plus an identified structural cause that no
+demonstration can fix.
 
 ## Inventory
 
@@ -77,8 +81,8 @@ This is a proposal. The bar is owner-set and is not changed here.
 | **EI** `effective_information.py` | Deprecated in favour of CE 2.0. Gate-level EI was bit-identical (0.031178) in every window of every run, reproduced exactly by a single-state trajectory. Separately, every EI number was computed on a TPM estimated from OBSERVED transitions where the theory specifies an INTERVENTIONAL one. | 1, 6 |
 | **`ce2_ratio`** `causal_emergence_svd.py` | The cross-level ratio is confounded by state-space cardinality, and the source proposes no such comparison. The instrument's within-level readings stay individually available; the ratio does not. | 4, 6 |
 | **`emergent_complexity`** | Reports 112 where the constructed answer is 1, at full coverage (`ce2_complexity_estimation_2026_08.md`). | 2 |
-| **sync_R** | Once the Kuramoto oscillators converge, sync_R equals the arithmetic mean of the bid vector, verified against a closed form that raises on mismatch. `reset_state()` is never called from the training loop, so they do converge. The modal value 0.450108000 is identical to 9 decimals at all 3 seeds and holds 48.5 / 83.8 / 85.5 percent of steps. Contentless at 3 seeds (`sync_r_content_2026_09.md`). | 1, and the proposed content clause |
-| **`broadcast_mag`** | `broadcast.norm()`. Contentless at 3 seeds, and 39.7 / 43.4 / 41.7 percent pinned at its modal value. The 256-D broadcast it summarizes decodes shape at 0.69 to 0.77, so the norm demonstrably discards content that is present. This was PREDICTED in `broadcast_geometry_2026_08.md` before it was measured. | 1, and the proposed content clause |
+| **sync_R** | Once the Kuramoto oscillators converge, sync_R equals the arithmetic mean of the bid vector, verified against a closed form that raises on mismatch. `reset_state()` is never called from the training loop, so they do converge. The modal value 0.450108000 is identical to 9 decimals at all 3 seeds and holds 48.5 / 83.8 / 85.5 percent of steps. Contentless at 3 seeds (`sync_r_content_2026_09.md`). | 1, and clause 7 |
+| **`broadcast_mag`** | `broadcast.norm()`. Contentless at 3 seeds, and 39.7 / 43.4 / 41.7 percent pinned at its modal value. The 256-D broadcast it summarizes decodes shape at 0.69 to 0.77, so the norm demonstrably discards content that is present. This was PREDICTED in `broadcast_geometry_2026_08.md` before it was measured. | 1, and clause 7 |
 | **`is_conscious`** | Pinned at 1 at 7979 of 8000 steps (99.7 percent, seed 42, measured 2026-09-02), by a saturated ignition gate, and it still gates `phi`. A field whose name makes a claim, reporting 1 on nearly every step. Owner decision open at planning #13. | 1 |
 
 Separately and already done: **14 placeholder metrics were RETIRED 2026-07-29** for
