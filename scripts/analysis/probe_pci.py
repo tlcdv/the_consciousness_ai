@@ -453,15 +453,20 @@ def main():
     print()
     labels = {"rssm": "CONTROL", "gate": "PRIMARY", "broadcast": "exploratory"}
     summary = {}
+    divergences = {}
     for site in READ_SITES:
         vals = [r["pci"] for r in all_rows if r["read_site"] == site]
         active = [r["active_fraction"] for r in all_rows if r["read_site"] == site]
         if not vals:
             continue
+        casali = [r["pci_casali"] for r in all_rows if r["read_site"] == site]
         summary[site] = float(np.mean(vals))
         print(f"{site:<10} ({labels[site]:<11}) pci mean={np.mean(vals):.4f} "
               f"sd={np.std(vals):.4f} min={min(vals):.4f} max={max(vals):.4f} "
+              f"| casali mean={np.mean(casali):.4f} "
               f"| active_fraction mean={np.mean(active):.4f}")
+        divergences[site] = (float(np.mean(vals)), float(np.mean(casali)),
+                             float(np.mean(active)))
 
     max_pre = max(float(r["pre_impulse_divergence"]) for r in all_rows)
     print()
@@ -471,6 +476,25 @@ def main():
               f"the responses above are not causal effects and must not be reported.")
         return
     print(f"Determinism check passed: pre-impulse divergence {max_pre:.3e}.")
+
+    # The module docstring says `pci_casali` diverges for sparse responses and that
+    # conditions must not be ranked by it. It was reported only in the CSV, so the
+    # sparse regime was visible only to whoever opened the file. On 2026-09-12 a
+    # multi-checkpoint study came close to reporting that documented effect as a new
+    # finding for exactly that reason. The warning below states it at the point of
+    # reading instead.
+    for site, (pci_mean, casali_mean, active_mean) in divergences.items():
+        if pci_mean <= 0.0:
+            continue
+        ratio = casali_mean / pci_mean
+        if ratio >= 2.0:
+            print("")
+            print(f"WARNING: at {site}, pci_casali ({casali_mean:.4f}) is "
+                  f"{ratio:.1f}x pci ({pci_mean:.4f}), with active_fraction "
+                  f"{active_mean:.4f}. The Casali normalization divides by the "
+                  f"observed activity level, so it inflates on a sparse response. "
+                  f"Cite pci. Do not rank conditions by pci_casali, and do not "
+                  f"quote either against the published human 0.31 cutoff.")
 
     # Attribute any zero before anyone reads the table.
     control = summary.get("rssm", 0.0)

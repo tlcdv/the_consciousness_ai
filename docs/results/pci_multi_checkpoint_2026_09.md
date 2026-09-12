@@ -1,139 +1,112 @@
-# PCI across trained checkpoints: the gate is inert on all four, and the two normalizations disagree
+# PCI across trained checkpoints: the study FAILED its own design, and the falsifier cannot be met from disk
 
-**KILL. The gate shows ZERO causal response on four independently trained
-checkpoints, with a working control on every one.** PCI reads exactly 0.0000 at the
-primary site at every checkpoint, while the control reads 0.0552 to 0.0657. The
-earlier single-checkpoint result generalises.
+**FAILED. Three of the four checkpoints ran with a RANDOMLY INITIALISED gate, so
+their gate readings say nothing about a trained system.** The probe printed
+`WARNING: gate is randomly initialised (no sibling gate checkpoint); gate-level
+readings below are not from the trained system` on every trial of those three runs,
+ten times in total. The first version of this document reported them as a result
+anyway, because the console output was filtered with a grep that did not include
+that warning.
 
-**Second result, not anticipated: `pci` and `pci_casali` disagree by up to 5.5x on
-the same data.** On `capfix_seed44` the control reads 0.0552 under the local
-normalization and 0.3065 under Casali, and the broadcast reads 0.0007 against
-0.7248. The published human cutoff is near 0.31. Reading the Casali column against
-the human scale on that checkpoint would produce a consciousness-level claim from a
-signal the local normalization calls noise.
+**Consequence: the inventory falsifier for PCI is NOT met, and cannot be met from
+the checkpoints on disk.** Exactly one checkpoint in `runs/` has a trained gate:
+`runs/gate_ckpt_s42`. Gate weights were not saved before 2026-08-11, so every
+earlier checkpoint is a trained tectum with an untrained gate. Meeting the
+falsifier needs NEW training runs, not another read-only probe.
 
-Read from the CSVs in `runs/_pci_multi/`, 16 rows each, not from exit codes.
-Pre-registered before the runs; the gate stated below is the one that was written
-first. No indicator moves and the clock does not move.
+Superseded claim, retracted: an earlier version of this file said "the gate shows
+ZERO causal response on four independently trained checkpoints". That is false.
+One checkpoint, not four.
 
-## What gap this closes
+## What is still valid
 
-`docs/instrument_inventory.md` listed PCI as UNPROVEN with a two-part falsifier:
+The tectum IS loaded from `tectum.pt` on all four checkpoints, so readings at the
+`rssm` site are from trained weights in every run. Those stand.
 
-> Run on more than one checkpoint, and state the reading rules that replace the
-> human scale.
-
-Part one is now done. Part two is still open, and the second result above makes it
-sharper rather than easier.
-
-The earlier work (`pci_trained_2026_08.md`) used 3 PROBE seeds on ONE trained
-checkpoint. Probe seeds vary the rollout, not the learned weights.
-
-## Design
-
-Identical flags on every run. Only `--load-tectum` varied. Serial, one at a time.
-
-```
-python -m scripts.analysis.probe_pci --env dmts --seed 42 --trials 5 \
-  --magnitude 1000 --load-tectum runs/<CKPT>/tectum.pt \
-  --latent-mode continuous --capsule-workspace-source all_levels
-```
-
-`capfix_alllevels`, `capfix_seed43` and `capfix_seed44` share a training
-configuration and differ only in training seed, so the comparison among them is
-clean. `gate_ckpt_s42` is the published checkpoint, re-run as a harness check.
-
-The perception fix was already ON in the earlier work: its recorded command carries
-`--latent-mode continuous --capsule-workspace-source all_levels`. So "does the
-perception fix wake the gate" was already answered NO, and was not re-asked.
-
-## The harness check passed first
-
-Run 0 recovered the published numbers before anything new was read.
-
-| Quantity | Published 2026-08 | This run |
-|---|---|---|
-| rssm control, seed 42 | 0.0657 | 0.0657 |
-| gate | 0.0000 | 0.0000 |
-
-Pre-impulse divergence 0.0e+00 on every trial of every run, so the two rollouts are
-bit-identical up to the impulse and everything after it is the impulse and nothing
-else.
-
-## Result
-
-| Checkpoint | rssm (CONTROL) | **gate (PRIMARY)** | broadcast |
+| Checkpoint | rssm (CONTROL) | trained gate? | gate reading usable? |
 |---|---|---|---|
-| `gate_ckpt_s42` | 0.0657 sd 0.0053 | **0.0000** | 0.0000 |
-| `capfix_alllevels` | 0.0645 sd 0.0012 | **0.0000** | 0.0000 |
-| `capfix_seed43` | 0.0558 sd 0.0034 | **0.0000** | 0.0000 |
-| `capfix_seed44` | 0.0552 sd 0.0030 | **0.0000** | 0.0007 sd 0.0014 |
+| `gate_ckpt_s42` | 0.0657 sd 0.0053 | YES | yes |
+| `capfix_alllevels` | 0.0645 sd 0.0012 | no | NO |
+| `capfix_seed43` | 0.0558 sd 0.0034 | no | NO |
+| `capfix_seed44` | 0.0552 sd 0.0030 | no | NO |
 
-Every control is non-zero, so no run is void and the zero at the gate is a fact
-about the architecture rather than a broken probe. Control range across four
-checkpoints is 0.0552 to 0.0657, a spread of 0.0105.
+Three things survive.
 
-The gate's LZ complexity is exactly 2.0 at every checkpoint, the floor for a flat
-signal. Its largest absolute response anywhere is 1.32e-05 against a control
-response of 1.29e+00, five orders of magnitude apart.
+**1. The harness reproduces.** Run 0 recovered the published control of 0.0657
+against a published 0.0657, and its gate reading of 0.0000 on the one checkpoint
+that has a trained gate. Pre-impulse divergence was 0.0e+00 on every trial of every
+run, so the rollouts are bit-identical up to the impulse.
 
-## The normalization disagreement
+**2. The control is stable across four trained tecta**: 0.0552 to 0.0657, a spread
+of 0.0105. This is a genuine multi-checkpoint reading, because the tectum is loaded
+in all four. It says the perturbation propagates comparably in independently trained
+recurrent states.
 
-Both columns are computed from the same response, in the same run.
+**3. The Casali divergence is confirmed with numbers.** This was PREDICTED, not
+discovered. The module docstring of `perturbational_complexity.py` already states
+that `pci_casali` diverges for sparse responses, gives a worked example returning
+1.32, says "Do not rank conditions by it", and says the 0.31 cutoff "must never be
+quoted against these values". What is new is the size on real trained tecta:
 
-| Checkpoint | site | `pci` | `pci_casali` | ratio |
-|---|---|---|---|---|
-| `capfix_alllevels` | rssm | 0.0645 | 0.0815 | 1.3x |
-| `capfix_seed43` | rssm | 0.0558 | 0.0566 | 1.0x |
-| **`capfix_seed44`** | **rssm** | **0.0552** | **0.3065** | **5.5x** |
-| `gate_ckpt_s42` | rssm | 0.0657 | 0.0779 | 1.2x |
-| **`capfix_seed44`** | **broadcast** | **0.0007** | **0.7248** | **1000x** |
+| Checkpoint | site | `pci` | `pci_casali` | ratio | active_fraction |
+|---|---|---|---|---|---|
+| `capfix_alllevels` | rssm | 0.0645 | 0.0815 | 1.3x | 0.2381 |
+| `capfix_seed43` | rssm | 0.0558 | 0.0566 | 1.0x | 0.5668 |
+| **`capfix_seed44`** | **rssm** | **0.0552** | **0.3065** | **5.6x** | **0.0274** |
+| `gate_ckpt_s42` | rssm | 0.0657 | 0.0779 | 1.2x | 0.2739 |
 
-Three checkpoints agree within 1.3x. The fourth does not, in both of its live sites.
-`capfix_seed44` is also the checkpoint with by far the lowest `active_fraction`,
-0.0274 against 0.2381 to 0.5668 elsewhere. The Casali normalization divides by a
-source-entropy term, so a response concentrated in very few active channels inflates
-it. That is a plausible mechanism and it is NOT demonstrated here; it is the next
-thing to test.
+The checkpoint that diverges is the one with by far the lowest `active_fraction`,
+which is exactly the sparse regime the docstring names. One checkpoint in four lands
+at 0.3065, numerically on the published human cutoff of 0.31, at a site whose local
+reading is 0.0552.
 
-**Operational rule until that is settled: cite `pci`, never `pci_casali`, and never
-either against the human 0.31 scale.** One checkpoint in four already lands at 0.3065
-under Casali at a site whose local reading is 0.0552.
+**Operational rule: cite `pci`, never `pci_casali`, and neither against the human
+0.31 scale.**
 
-## A spread the single-checkpoint study could not show
+## What was fixed as a result
 
-`active_fraction` at the control varies by a factor of 20 across checkpoints, while
-`pci` varies by a factor of 1.2.
+The module docstring says `source_entropy` and `active_fraction` are reported "so
+the sparse regime is visible rather than hidden". The probe's console summary
+printed neither `pci_casali` nor any divergence warning, so the sparse regime was
+visible only to someone who opened the CSV. `probe_pci.py` now prints `pci_casali`
+in the summary line and warns when it exceeds `pci` by 2x or more, naming the
+mechanism and the citation rule. Verified firing at 5.6x and 1000.6x on
+`capfix_seed44`.
 
-| Checkpoint | active_fraction | pci |
-|---|---|---|
-| `capfix_seed44` | 0.0274 | 0.0552 |
-| `capfix_alllevels` | 0.2381 | 0.0645 |
-| `gate_ckpt_s42` | 0.2739 | 0.0657 |
-| `capfix_seed43` | 0.5668 | 0.0558 |
+## The lesson, recorded because it is the point
 
-Independently trained networks spread the causal response very differently and score
-almost the same. Any reading rule that treats `pci` as a summary of response
-structure has to account for this, because the summary is stable while the structure
-underneath it is not.
+The probe was not wrong and the guard was not missing. The probe printed the
+disqualifying warning ten times. It was filtered out of the console by a grep
+written to extract the result lines, and the CSV columns that would have shown it
+do not include gate provenance.
 
-## What this establishes
+Two things follow, and the second is the useful one:
 
-- The gate is causally inert to perturbation across four trained checkpoints, three
-  of them independently trained from one configuration.
-- PCI discriminates: control separates from primary at every checkpoint.
-- The two normalizations are not interchangeable, and the published human scale is
-  unsafe against either.
+1. Never filter a probe's output down to the lines that carry the answer. The lines
+   that disqualify the answer do not look like the answer.
+2. A run's output CSV should carry whether each read site came from trained weights.
+   `runs/_pci_multi/*.csv` has 15 columns and none of them records that the gate was
+   random, so the CSVs alone cannot distinguish a valid gate reading from an invalid
+   one. That is a gap worth closing before the next attempt.
+
+## What it would take to meet the falsifier
+
+Train at least two more checkpoints with the current code, which saves
+`tectum.gate.pt`, then re-run this study. That is a training job, roughly 32 s per
+episode on dmts, and it is heavy and serial. It is no longer a free read-only probe,
+and the inventory should say so.
 
 ## What this does NOT establish
 
-- **Not a survey of architectures.** Three of the four checkpoints share one training
-  configuration. This says the gate is inert across SEEDS of that configuration.
-- **It does not answer planning #15.** That issue is blocked on the PCI evidence and
-  on an alternatives survey. This supplies the first. The survey is still missing.
-- **It does not supply the reading rules.** PCI stays UNPROVEN. Part one of its
-  falsifier is met; part two is open and is now harder than it looked.
-- **It says nothing about the C1 competence wall.**
+- **Nothing new about the gate.** The only valid gate reading here reproduces
+  `pci_trained_2026_08.md` on the same checkpoint.
+- **It does not answer planning #15**, which is blocked on this evidence and on an
+  alternatives survey. It supplies neither.
+- **It does not supply the reading rules.** PCI stays UNPROVEN on both halves of its
+  falsifier.
+
+No indicator moves. The rubric stays 3 IMPLEMENTED, 11 PARTIAL of 14. The clock does
+not move.
 
 ## Reproduce
 
@@ -146,11 +119,5 @@ for CKPT in gate_ckpt_s42 capfix_alllevels capfix_seed43 capfix_seed44 ; do
 done
 ```
 
-## Next
-
-1. Test the source-entropy mechanism for the Casali divergence. Cheap: the columns
-   are already logged, so it is an analysis of the existing CSVs plus one targeted
-   probe, not a new run.
-2. Write the reading rules, or record that PCI cannot be read without them.
-3. Run PCI on a checkpoint from a DIFFERENT training configuration, which is the
-   part this study deliberately did not cover.
+Read the FULL output. Three of these four print a gate-provenance warning that
+disqualifies their gate readings.
