@@ -1,0 +1,63 @@
+name: Notify site of architecture changes
+
+# The project website renders an interactive architecture map from this repository.
+# Every component in that map carries file and line evidence, validated against this
+# repo at render time, and the render FAILS CLOSED when a referenced line moves.
+#
+# Without this workflow the site only polls monthly, so a moved class can leave the
+# published map stale, or break its next render, for up to four weeks. This fires on
+# every push to main so the check runs within minutes.
+#
+# It sends a signal and nothing else. No repository content is transmitted, and the
+# receiving workflow gates on whether the pinned commit actually changed, so a burst
+# of pushes costs one cheap gate check each rather than a render each.
+#
+# The destination repository and the token both live in secrets, so neither the
+# target nor the credential appears anywhere in this public file.
+#
+# Setup, one time, by a human:
+#   1. Create a fine-grained personal access token scoped to the site repository
+#      only, with Actions: read and write. Nothing else is needed.
+#   2. In THIS repository, add two secrets:
+#        SITE_REPO           owner/name of the site repository
+#        SITE_DISPATCH_TOKEN the token from step 1
+#
+# Until both secrets exist this workflow skips cleanly and reports why. It never
+# fails a push.
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: notify-site-architecture
+  cancel-in-progress: true
+
+jobs:
+  notify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Send the signal
+        env:
+          SITE_REPO: ${{ secrets.SITE_REPO }}
+          GH_TOKEN: ${{ secrets.SITE_DISPATCH_TOKEN }}
+        run: |
+          set -uo pipefail
+          if [ -z "${SITE_REPO}" ] || [ -z "${GH_TOKEN}" ]; then
+            echo "::notice::SITE_REPO or SITE_DISPATCH_TOKEN is not set. Skipping."
+            echo "The site falls back to its own monthly poll, so nothing is lost."
+            exit 0
+          fi
+          # A failure here must not fail the push that triggered it. The site's
+          # monthly cron is the backstop, so a warning is the right severity.
+          if gh api -X POST "repos/${SITE_REPO}/dispatches" \
+               -f event_type=research-updated \
+               -F "client_payload[sha]=${GITHUB_SHA}" ; then
+            echo "Signalled the site for ${GITHUB_SHA}."
+          else
+            echo "::warning::Could not signal the site. The monthly poll still covers this."
+          fi
