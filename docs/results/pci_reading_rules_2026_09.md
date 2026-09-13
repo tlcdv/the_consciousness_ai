@@ -204,10 +204,12 @@ only on the quiet group, and report how many seeds were admitted and rejected.
 PROBE SEEDS on the BASELINE, and it separates cleanly. The 0.0439 five-trial mean
 reported earlier in this document averages the two regimes and describes neither.
 
-**A limit that no floor changes.** Gate PCI is coarsely quantized: the LZ complexity
-of a 5-channel by 60-step matrix took only the values 2, 4, 5 and 6 across 60
-readings, so gate PCI has four possible values (0.0000, 0.109718, 0.137147,
-0.164576). It can say "registers or not". It cannot be ranked finely.
+**A limit that no floor changes.** Gate PCI is coarsely quantized. Over 360 readings
+the LZ complexity of a 5-channel by 60-step matrix takes 2, 4, 5, 6, 7 and 8, giving
+six PCI values in steps of 0.027429 (`pci_content_2026_09.md`; an earlier count of
+four came from a 60-reading sample). The rssm takes 14 values and the broadcast 43,
+so the coarseness comes from having 5 channels. Gate PCI can say "registers or not".
+It cannot be ranked finely.
 
 ## Next
 

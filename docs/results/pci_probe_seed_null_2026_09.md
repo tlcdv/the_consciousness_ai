@@ -104,8 +104,12 @@ average.
 ## A limit on what gate PCI can ever say
 
 **Gate PCI is coarsely quantized.** The LZ complexity of a 5-channel by 60-step
-binary matrix took only the values 2, 4, 5 and 6 across all 60 readings, giving four
-possible PCI values: 0.0000, 0.109718, 0.137147, 0.164576.
+binary matrix took only the values 2, 4, 5 and 6 across the 60 readings here.
+
+> **CORRECTED by `pci_content_2026_09.md`.** Over 360 readings the gate LZ takes 2,
+> 4, 5, 6, 7 and 8, giving SIX PCI values: 0.0, 0.109718, 0.137147, 0.164576,
+> 0.192006 and 0.219435. "Four possible values" was true of this sample and wrong as
+> a general statement. The coarseness itself stands: the step is 0.027429.
 
 So a gate PCI can report "registers" or "does not register". **It cannot be ranked
 finely, and differences below about 0.027 are not resolvable.** This is a property of
@@ -127,7 +131,10 @@ having 5 channels, not of the floor, and no floor setting changes it.
   two are inert at 20 seeds each, and why they differ is not measured.
 - **It does not make PCI TRUSTED.** Nothing here shows a gate PCI carries information
   about the STIMULUS, which is the content-sensitivity clause. A response that
-  replicates is not yet a response that means anything.
+  replicates is not yet a response that means anything. **ANSWERED the same day and
+  it FAILED: `pci_content_2026_09.md`.** eta-squared 0.060960 at the gate's raw
+  response against a null mean of 0.061989, so the measured value is below what
+  random labels give on average. The control fails too.
 - **It does not explain the two regimes.** What makes probe seeds 43, 44, 45 and 53
   produce a noisier baseline on every checkpoint is not known.
 - **It does not lift rule 3.** The controls here are 0.1640, 0.0487 and 0.0623, a
