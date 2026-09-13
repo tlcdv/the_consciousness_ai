@@ -1,4 +1,19 @@
-# The oscillatory binding layer is FROZEN: it emits one value forever
+# The oscillatory binding layer is FROZEN on DMTS: it emits one value forever
+
+> **SCOPE CORRECTED THE SAME DAY by `modality_starvation_2026_09.md`.** The freeze is
+> real and every measurement below stands, but it is a property of DMTS, NOT of the
+> architecture. The Kuramoto amplitudes ARE the bids
+> (`oscillatory_binding.py:165-167`), and on DMTS every bid is a constant because only
+> ONE of the five modules receives sensory data. Give a second module real input and
+> the layer never freezes: on `dark_room` with `--enable-audio`, `sync_R` takes **553
+> distinct values** against 1 here, because `bid_audio` takes 587 against 1.
+>
+> The missing `reset_state` is therefore not the cause. It is why the layer cannot
+> recover once converged. The cause is a constant input.
+>
+> The content result below is unaffected: the reset transient on DMTS decodes the
+> stimulus at 0.1721 against a null p95 of 0.2221, and that remains a failure.
+
 
 **Over 13,600 settled steps the Kuramoto binding layer produces exactly ONE value.**
 `sync_R` is 0.450000 at every step, standard deviation 0.000e+00, one distinct value.
