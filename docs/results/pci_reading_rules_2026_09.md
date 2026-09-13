@@ -191,6 +191,24 @@ mean across probe seeds, which is what `--trials` produces, averages a detectabl
 regime and an undetectable one and reports a number that describes neither. The
 0.0439 reported earlier in this document is such a mean and must not be cited.
 
+## Rule 8, measured on 20 probe seeds
+
+**Rule 8. Select probe seeds by measured gate baseline sd before reading the gate.**
+Measured 2026-09-13 in `pci_probe_seed_null_2026_09.md`: the gate's baseline is
+BIMODAL across probe seeds, with an empty multiplicative gap of 42.5x to 60.3x, and
+the four noisy seeds are the same four (43, 44, 45, 53) on independently trained
+checkpoints. Run the clean rollout, take the gate's median baseline sd, read the gate
+only on the quiet group, and report how many seeds were admitted and rejected.
+
+**This answers the question rule 6 asked.** The null that was needed is a null over
+PROBE SEEDS on the BASELINE, and it separates cleanly. The 0.0439 five-trial mean
+reported earlier in this document averages the two regimes and describes neither.
+
+**A limit that no floor changes.** Gate PCI is coarsely quantized: the LZ complexity
+of a 5-channel by 60-step matrix took only the values 2, 4, 5 and 6 across 60
+readings, so gate PCI has four possible values (0.0000, 0.109718, 0.137147,
+0.164576). It can say "registers or not". It cannot be ranked finely.
+
 ## Next
 
 0. **Build the null over PROBE SEEDS, on the BASELINE.** Run the probe with no
