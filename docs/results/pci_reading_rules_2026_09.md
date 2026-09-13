@@ -145,6 +145,24 @@ Until that null exists, no gate-level PCI may be cited under any floor setting. 
 existing zeros at the absolute floor are not evidence of inertness, and any non-zero
 at a lower floor is not evidence of a response.
 
+## Rule 7, and the question this whole document was the wrong approach to
+
+**Rule 7. Report `active_fraction` at the control with every PCI.** Above roughly
+0.9 the impulse is too large: at magnitude 100,000 the rssm reaches 0.993 and its
+PCI collapses from 0.165 to 0.023, because when every entry crosses threshold the
+source entropy goes to zero. The control is valid only inside a magnitude window,
+and both ends are now measured.
+
+**And the correction that matters.** Rules 1, 2 and 6 treat the gate's unreadability
+as a thresholding problem. It is not. Measured in
+`pci_gate_saturation_2026_09.md`, the gate's causal response is 0.26 times its own
+spontaneous fluctuation and SATURATES at 0.55 under a hundredfold magnitude
+increase. A quantity smaller than the noise it must be distinguished from cannot be
+recovered by any floor, any null, or any normalization.
+
+The floor work in this document is still correct and rules 1 to 5 and 7 still apply
+to the rssm and the broadcast. It was simply not the obstruction at the gate.
+
 ## Next
 
 0. **Build the null.** Run the probe with `--perturb-step` beyond the rollout, or
