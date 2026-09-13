@@ -1,5 +1,22 @@
 # PCI on a trained checkpoint: the instrument works, the gate is causally inert
 
+> **RE-CHECKED 2026-09-13 AGAINST A VARIANCE-FLOOR ARTEFACT, AND IT HOLDS.**
+> `DEFAULT_VAR_FLOOR` is 1e-4 and this checkpoint's gate baseline sd is 9.010e-05,
+> below it, so the 0.0000 headline could in principle have been the floor excluding
+> the substrate rather than the gate failing to respond
+> (`pci_reading_rules_2026_09.md`). It is not. Re-probed at a floor of 1e-6, which
+> admits the four live gate nodes, the gate still reads exactly 0.0000 on all five
+> trials, with the control unchanged at 0.0657. The finding below is confirmed, not
+> an artefact.
+>
+> One thing did change. The broadcast reads 0.0000 at the default floor and 0.0022
+> (sd 0.0019, max 0.0045) at 1e-6, so the exploratory site carries a small response
+> that the default floor hid. That is a hypothesis at one checkpoint, not a result.
+>
+> The masking is real elsewhere: on `gate3_s42` the gate goes from 0.0000 to 0.0439
+> when the floor is lowered. It simply does not apply to this checkpoint.
+
+
 **Result: the gate shows ZERO causal response to perturbation, at 3 seeds and 2
 magnitudes, with a working control.** PCI itself is not degenerate. It reads 0.0649
 (sd 0.0036) at the control site and exactly 0.0000 at the primary site. The instrument

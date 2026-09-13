@@ -24,12 +24,14 @@ import pytest
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 from models.evaluation.perturbational_complexity import (  # noqa: E402
+    DEFAULT_NOISE_EPS,
     DEFAULT_VAR_FLOOR,
     PCIResult,
     binarize_response,
     binary_entropy,
     compute_pci,
     lempel_ziv_complexity,
+    resolve_var_floor,
 )
 
 
@@ -279,3 +281,111 @@ class TestPCIProperties:
         lenient = compute_pci(response, baseline, threshold_sigma=2.0)
         strict = compute_pci(response, baseline, threshold_sigma=5.0)
         assert strict.active_fraction <= lenient.active_fraction
+
+
+class TestVarianceFloorMode:
+    """
+    The dead-channel floor must fit the site it is applied to.
+
+    `DEFAULT_VAR_FLOOR` is 1e-4, chosen for the rssm whose PCI-window baseline sd is
+    2.4e-02 to 1.8e-01. The gate's is 1.2e-05 to 1.2e-04, entirely below it, so at
+    the default the gate cannot register a response AT ANY SIZE. Measured
+    2026-09-13: lowering the floor turns `gate3_s42` from 0.0000 into 0.0439 while
+    `gate3_s43` and `gate3_s44` stay at exactly 0.0000, raw response 1.192e-07.
+
+    These tests pin both halves. A floor mode that wakes a real response is only
+    useful if it does NOT wake noise, so the noise case is pinned too.
+    """
+
+    # Four live gate nodes plus gate_adaptation, roughly 100x quieter.
+    GATE_SIGMAS = np.array([5e-5, 6e-5, 4e-5, 6.9e-5, 1.04e-7])
+
+    def _gate_site(self, seed=7, response_sigmas=8.0):
+        rng = np.random.default_rng(seed)
+        base = np.stack([rng.normal(0, s, 40) for s in self.GATE_SIGMAS])
+        resp = np.stack(
+            [rng.normal(0, s * response_sigmas, 60) for s in self.GATE_SIGMAS])
+        return base, resp
+
+    def test_absolute_floor_disqualifies_the_whole_gate_substrate(self):
+        """Every channel responds at 8 sigma and the default floor reports nothing.
+
+        This is the defect, pinned. It is not a statement about the agent.
+        """
+        base, resp = self._gate_site()
+        floor = resolve_var_floor(base, var_floor_mode="absolute")
+        assert floor == DEFAULT_VAR_FLOOR
+        binary = binarize_response(resp, base, var_floor=floor)
+        assert not binary.any(), "the absolute floor should silence the whole site"
+
+    def test_relative_floor_admits_the_live_nodes_and_excludes_the_quiet_one(self):
+        """The behaviour the floor was written for: dead means quiet RELATIVE to peers."""
+        base, resp = self._gate_site()
+        floor = resolve_var_floor(base, var_floor_mode="relative")
+        binary = binarize_response(resp, base, var_floor=floor)
+        registering = [i for i in range(len(self.GATE_SIGMAS)) if binary[i].any()]
+        assert registering == [0, 1, 2, 3], (
+            "expected the four live nodes and not gate_adaptation, got %r" % registering)
+
+    def test_relative_mode_DOES_manufacture_signal_from_noise(self):
+        """The failure mode of `relative`, pinned so it is never forgotten.
+
+        This test asserts a DEFECT, not a property. A site whose response is the
+        same size as its own fluctuation should score zero. Under `relative` it does
+        not: measured over 40 seeds, 29 of 40 score non-zero with a mean of 0.083 and
+        a maximum of 0.192.
+
+        That range matters. The real gate reading this mode produced on
+        `gate3_s42` was 0.0603, which sits INSIDE it. So `relative` cannot currently
+        separate a gate response from gate noise, and no gate PCI obtained under it
+        may be cited as a finding.
+
+        `noise_eps` does not help: it guards float noise near 1e-9, while the gate
+        channels sit at 1e-5 to 1e-7, far above it.
+
+        The honest reading is that neither floor works at the gate. `absolute`
+        silences a real substrate, `relative` admits its noise, and the gap between
+        the gate's fluctuation and numerical noise is too small for a fixed
+        threshold of either kind. Separating them needs a NULL: score the probe with
+        no impulse and use that distribution as the floor, which is the control this
+        project already uses for content.
+        """
+        noisy = 0
+        for seed in range(40):
+            base, resp = self._gate_site(seed=seed, response_sigmas=1.0)
+            floor = resolve_var_floor(base, var_floor_mode="relative")
+            if compute_pci(resp, base, var_floor=floor).pci > 0.0:
+                noisy += 1
+        assert noisy > 20, (
+            "relative mode no longer admits noise at this rate (%d/40). If this is a "
+            "deliberate fix, replace this test with the property it now has." % noisy)
+
+        # absolute does not have this defect; it has the opposite one.
+        base, resp = self._gate_site(seed=11, response_sigmas=1.0)
+        floor = resolve_var_floor(base, var_floor_mode="absolute")
+        assert compute_pci(resp, base, var_floor=floor).pci == 0.0
+
+    def test_noise_eps_stops_a_dead_site_scaling_its_own_floor_down(self):
+        """A site that is entirely float noise must not admit that noise."""
+        rng = np.random.default_rng(3)
+        base = rng.normal(0, 1e-12, size=(5, 40))
+        floor = resolve_var_floor(base, var_floor_mode="relative")
+        assert floor == DEFAULT_NOISE_EPS
+
+    def test_default_mode_is_absolute_so_published_numbers_are_unchanged(self):
+        """Backward compatibility, pinned rather than assumed."""
+        base, resp = self._gate_site()
+        assert compute_pci(resp, base).resolved_var_floor == DEFAULT_VAR_FLOOR
+
+    def test_compute_pci_reports_the_floor_it_actually_used(self):
+        """A zero PCI is unreadable without the floor, so the result must carry it."""
+        base, resp = self._gate_site()
+        result = compute_pci(resp, base, var_floor_mode="relative")
+        assert result.resolved_var_floor < DEFAULT_VAR_FLOOR
+        assert result.resolved_var_floor == resolve_var_floor(
+            base, var_floor_mode="relative")
+
+    def test_an_unknown_mode_raises_rather_than_defaulting(self):
+        base, _ = self._gate_site()
+        with pytest.raises(ValueError, match="var_floor_mode"):
+            resolve_var_floor(base, var_floor_mode="whatever")

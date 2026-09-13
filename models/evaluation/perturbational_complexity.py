@@ -87,6 +87,11 @@ __all__ = [
 # as significantly responding to any perturbation at all.
 DEFAULT_VAR_FLOOR = 1e-4
 
+# Relative-floor settings, used only when var_floor_mode="relative". See
+# resolve_var_floor for why an absolute floor cannot serve every site.
+DEFAULT_RELATIVE_FRAC = 0.01
+DEFAULT_NOISE_EPS = 1e-9
+
 
 @dataclass
 class PCIResult:
@@ -107,6 +112,10 @@ class PCIResult:
 
     pci: float
     pci_casali: float
+    # The dead-channel floor ACTUALLY used, after resolve_var_floor. Under
+    # var_floor_mode="relative" this is derived per site and differs from the
+    # requested value, so a zero PCI is unreadable without it.
+    resolved_var_floor: float
     lz_complexity: int
     normalizer: float
     source_entropy: float
@@ -180,6 +189,52 @@ def binary_entropy(p: float) -> float:
     return float(-p * np.log2(p) - (1.0 - p) * np.log2(1.0 - p))
 
 
+
+def resolve_var_floor(
+    baseline: np.ndarray,
+    var_floor: float = DEFAULT_VAR_FLOOR,
+    var_floor_mode: str = "absolute",
+    relative_frac: float = DEFAULT_RELATIVE_FRAC,
+    noise_eps: float = DEFAULT_NOISE_EPS,
+) -> float:
+    """
+    The dead-channel floor actually used for one site, as a single number.
+
+    `absolute` returns `var_floor` unchanged. This is the default and the historical
+    behaviour, so every published number stays bit-identical.
+
+    `relative` derives the floor from the site's OWN channels:
+
+        max(noise_eps, relative_frac * median(per-channel baseline std))
+
+    A fixed absolute floor cannot serve sites whose scales differ by orders of
+    magnitude. Measured 2026-09-13: in a PCI pre-impulse window the rssm baseline sd
+    is 2.4e-02 to 1.8e-01 while the gate is 1.2e-05 to 1.2e-04. The default 1e-4 was
+    chosen for the former and DISQUALIFIES the latter, so at the default the gate
+    cannot register a response at any size. Under `relative` a channel is dead when
+    it is far quieter than its own peers, which is what "dead" was always meant to
+    mean.
+
+    `noise_eps` keeps the guarantee the absolute floor provided: when a whole site is
+    float noise, a relative floor would otherwise scale down with it and let that
+    noise through.
+
+    Returns:
+        The floor to compare each channel's baseline std against.
+    """
+    if var_floor_mode == "absolute":
+        return float(var_floor)
+    if var_floor_mode != "relative":
+        raise ValueError(
+            f"var_floor_mode must be 'absolute' or 'relative', got {var_floor_mode!r}"
+        )
+    baseline = np.atleast_2d(np.asarray(baseline, dtype=np.float64))
+    if baseline.shape[1] < 2:
+        raise ValueError("baseline needs at least 2 timesteps to estimate variability")
+    sigma = baseline.std(axis=1, ddof=1)
+    return float(max(noise_eps, relative_frac * float(np.median(sigma))))
+
+
 def binarize_response(
     response: np.ndarray,
     baseline: np.ndarray,
@@ -234,6 +289,9 @@ def compute_pci(
     baseline: np.ndarray,
     threshold_sigma: float = 3.0,
     var_floor: float = DEFAULT_VAR_FLOOR,
+    var_floor_mode: str = "absolute",
+    relative_frac: float = DEFAULT_RELATIVE_FRAC,
+    noise_eps: float = DEFAULT_NOISE_EPS,
 ) -> PCIResult:
     """
     Compute PCI_LZ for one perturbation trial.
@@ -259,8 +317,13 @@ def compute_pci(
         threshold or when every entry does, since either case carries zero source
         entropy and therefore no differentiation.
     """
+    resolved_floor = resolve_var_floor(
+        baseline, var_floor=var_floor, var_floor_mode=var_floor_mode,
+        relative_frac=relative_frac, noise_eps=noise_eps,
+    )
     binary = binarize_response(
-        response, baseline, threshold_sigma=threshold_sigma, var_floor=var_floor
+        response, baseline, threshold_sigma=threshold_sigma,
+        var_floor=resolved_floor,
     )
     n_channels, n_timesteps = binary.shape
     length = int(binary.size)
@@ -280,6 +343,7 @@ def compute_pci(
             active_fraction=active_fraction,
             n_channels=n_channels,
             n_timesteps=n_timesteps,
+            resolved_var_floor=resolved_floor,
         )
 
     # Time-major flatten: binary is [channels, time], so transpose first.
@@ -297,4 +361,5 @@ def compute_pci(
         active_fraction=active_fraction,
         n_channels=n_channels,
         n_timesteps=n_timesteps,
+        resolved_var_floor=resolved_floor,
     )

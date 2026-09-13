@@ -8,8 +8,12 @@ never mark significant". The gate nodes sit at 4.1e-05 to 6.9e-05
 
 **This partly supersedes `pci_three_trained_gates_2026_09.md`**, published earlier
 today, which reported the gate as inert at three trained checkpoints. That reading
-is correct at the default floor and incomplete as a statement about the
-architecture.
+is correct at the default floor and uninformative as a statement about the
+architecture, because the floor sits above the substrate.
+
+**It does NOT mean the gate responds.** An attempt to fix the floor, later the same
+day, produced readings that cannot be separated from noise. The conclusion is that
+PCI cannot currently measure the gate AT ALL, in either direction. See rule 6.
 
 ## The test
 
@@ -30,17 +34,23 @@ dead one, `gate_adaptation`, at std 1.043e-07.
 
 ## What this changes and what it does not
 
-**The gate is not uniformly inert.** On one checkpoint of three it responds,
-intermittently, and the default floor hid that. The masking is real.
+**CORRECTED LATER THE SAME DAY. Read the section "A per-site floor was tried and it
+FAILED" below before using anything here.** The 0.0439 at `gate3_s42` was first
+written up as a real response that the default floor had hidden. It is not. Measured
+over 40 synthetic seeds, a lowered floor returns a non-zero from PURE NOISE in 29 of
+40 cases, mean 0.083, max 0.192. 0.0439 and 0.0603 both sit inside that range.
 
-**On two checkpoints of three it genuinely does not respond.** Their raw gate
-response is 1.192e-07, which is float noise. No floor setting recovers a signal that
-is not there, and lowering the floor did not manufacture one, which is itself a
-useful negative control on this test.
+What survives:
 
-**One checkpoint of three, in two trials of five, is a HYPOTHESIS.** It is not
-evidence that the gate responds. It is evidence that the previous measurement could
-not have detected it either way.
+**The default floor cannot measure the gate.** It sits above the gate's own
+fluctuation, so a zero there carries no information either way. That part stands.
+
+**On two checkpoints of three the gate response is 1.192e-07**, roughly 100x BELOW
+its own baseline fluctuation. That is not a borderline reading; nothing could detect
+it, and no floor recovers it.
+
+**Nothing here says the gate responds.** The lowered-floor readings are
+indistinguishable from the noise the lowered floor admits. See rule 6.
 
 ## The reading rules
 
@@ -84,7 +94,63 @@ TRUSTED on the strength of this document. The falsifier asked for reading rules 
 these are they; whether they are sufficient for TRUSTED is an owner decision, and
 rule 3 in particular constrains the instrument severely.
 
+## A per-site floor was tried and it FAILED
+
+Implemented and tested the same day, `--var-floor-mode relative`, which derives the
+floor from each site's own channels instead of one absolute value. It does not work,
+and the reason is worth more than the fix would have been.
+
+It behaves correctly on the three things it was designed for:
+
+| Check | Result |
+|---|---|
+| Default unchanged | `gate3_s43` reproduces control 0.0471, gate 0.0000, exactly |
+| Admits the live gate nodes | 4 of 5 register; `gate_adaptation` stays excluded |
+| Per-site floors | rssm ~1e-3, gate ~1e-6, broadcast ~1e-5, recorded per row |
+
+And it fails the one that decides whether it is usable. Over 40 synthetic seeds with
+the response drawn at exactly the baseline scale, that is pure noise:
+
+| Response | `absolute` non-zero | `relative` non-zero |
+|---|---|---|
+| 1.0 sigma (noise) | 0 of 40 | **29 of 40, mean 0.083, max 0.192** |
+| 8.0 sigma (signal) | 0 of 40 | 40 of 40, mean 0.997 |
+
+**The real gate reading this mode produced, `gate3_s42` at 0.0603, sits inside that
+noise range.** So it cannot be cited. The `noise_eps` guard does not help: it sits
+near 1e-9 while the gate channels are at 1e-5 to 1e-7.
+
+The mode is kept, default off, with the defect pinned by a test that asserts the
+failure rather than hiding it (`TestVarianceFloorMode` in
+`tests/test_perturbational_complexity.py`).
+
+## What this actually establishes, which is more useful than the fix
+
+**Neither floor works at the gate.** `absolute` silences a real substrate;
+`relative` admits its noise. The gate's fluctuation is too close to numerical noise
+for any fixed threshold to separate signal from it.
+
+That is a statement about the SUBSTRATE, not the instrument. PCI is not
+misconfigured at the gate. It is being asked to resolve a difference smaller than
+the noise it sits in.
+
+**Rule 6, added.** A gate-level PCI is not readable from a threshold at all. It
+needs a NULL: score the probe with no impulse, or with the impulse applied at a
+shuffled step, and use that distribution as the floor. Anything inside the null is
+not a response. This is the control this project already uses for content
+(eta-squared against a permutation null shuffling labels across trials), and it is
+the same discipline applied to a different measure.
+
+Until that null exists, no gate-level PCI may be cited under any floor setting. The
+existing zeros at the absolute floor are not evidence of inertness, and any non-zero
+at a lower floor is not evidence of a response.
+
 ## Next
+
+0. **Build the null.** Run the probe with `--perturb-step` beyond the rollout, or
+   with a zero-magnitude impulse, and record the PCI distribution per site. That
+   distribution is the floor. This supersedes items 1 and 2 below in priority and is
+   cheap, because it is the same probe with one argument changed.
 
 1. Re-run the three checkpoints at 1e-6 with more trials and more probe seeds, to
    settle whether `gate3_s42`'s two-in-five response replicates.

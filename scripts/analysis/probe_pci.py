@@ -84,6 +84,8 @@ import numpy as np
 import torch
 
 from models.evaluation.perturbational_complexity import (
+    DEFAULT_NOISE_EPS,
+    DEFAULT_RELATIVE_FRAC,
     DEFAULT_VAR_FLOOR,
     compute_pci,
 )
@@ -394,6 +396,9 @@ def run_trial(args, trial_index: int) -> list[dict]:
         result = compute_pci(
             response, pre, threshold_sigma=args.threshold_sigma,
             var_floor=args.var_floor,
+            var_floor_mode=args.var_floor_mode,
+            relative_frac=args.relative_frac,
+            noise_eps=args.noise_eps,
         )
         rows.append(
             {
@@ -406,8 +411,10 @@ def run_trial(args, trial_index: int) -> list[dict]:
                 "perturb_site": args.perturb_site,
                 "magnitude": args.magnitude,
                 # The floor that decided which channels could register at all.
-                # A zero PCI is unreadable without it.
-                "var_floor": args.var_floor,
+                # A zero PCI is unreadable without it. Under relative mode this is
+                # derived per site, so record what was USED, not what was asked for.
+                "var_floor": f"{result.resolved_var_floor:.6e}",
+                "var_floor_mode": args.var_floor_mode,
                 "pci": round(result.pci, 6),
                 "pci_casali": round(result.pci_casali, 6),
                 "lz_complexity": result.lz_complexity,
@@ -449,6 +456,20 @@ def main():
                              "4.1e-05 to 6.9e-05), so at the default the gate "
                              "cannot register a response no matter how large it is. "
                              "Lower it to measure the gate; state the value used.")
+    parser.add_argument("--var-floor-mode", default="absolute",
+                        choices=["absolute", "relative"],
+                        help="absolute (default) uses --var-floor as given, which is "
+                             "the historical behaviour and keeps every published "
+                             "number bit-identical. relative derives the floor from "
+                             "each site's OWN channels, so one setting can serve "
+                             "sites whose scales differ by orders of magnitude.")
+    parser.add_argument("--relative-frac", type=float, default=DEFAULT_RELATIVE_FRAC,
+                        help="relative mode: a channel is dead below this fraction "
+                             "of its site's median baseline std.")
+    parser.add_argument("--noise-eps", type=float, default=DEFAULT_NOISE_EPS,
+                        help="relative mode: absolute guard so a site that is "
+                             "entirely float noise does not scale its own floor down "
+                             "and admit that noise.")
     parser.add_argument("--threshold-sigma", type=float, default=3.0,
                         help="Significance threshold in baseline standard deviations")
     parser.add_argument("--action-rate", type=float, default=0.0,
