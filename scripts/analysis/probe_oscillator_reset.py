@@ -26,6 +26,31 @@ ARMS
     A   current behaviour, no reset
     B   `binding_system.reset_state()` at the start of every episode
 
+## CONTENT TEST (--content), and its PRE-STATED GATE
+
+Unfreezing the layer is not the same as making it bind. The claim under test is
+`architecture.md:23`, "modules that process related information phase-lock". The
+testable version on DMTS, where only vision carries real content, is whether the
+5-module ALIGNMENT VECTOR carries the stimulus.
+
+    (a) BINDING CARRIES CONTENT
+        the alignment vector decodes 6-class `sample_shape` above its own permutation
+        null p95, in arm B.
+    (b) FROZEN
+        fewer than 3 distinct alignment vectors. Expected in arm A, which is the
+        control: a frozen layer cannot decode anything and must read at chance.
+    (c) RELAXATION NOISE
+        arm B varies and does NOT clear its null. The reset produces a settling
+        transient and nothing more.
+
+The effective sample is TRIALS, not steps, because `sample_shape` is constant within a
+trial. Alignment is averaged per trial and one trial is one reading, so there is no
+pseudo-replication. Permutation shuffles the shape label across trials.
+
+A time confound cannot manufacture a result here: alignment after a reset is a
+function of steps-since-reset, but `DMTSEnv._start_new_trial` draws `sample_shape`
+at random per trial, so shape is independent of position in the episode.
+
 MEASURED, per step, after a 400-step warm-up
 
     sync_R          the Kuramoto order parameter
@@ -94,6 +119,7 @@ def run(args, reset_each_episode: bool):
     zero = torch.zeros(1, config["workspace_dim"], device=device)
     env = DMTSEnv(num_trials=20)
     syncs, spreads, winners = [], [], []
+    aligns, shapes, trials = [], [], []
     with torch.no_grad():
         for ep in range(args.episodes):
             obs, info = env.reset(seed=args.seed + ep)
@@ -120,13 +146,66 @@ def run(args, reset_each_episode: bool):
                 syncs.append(float(getattr(ws, "last_sync_R", 0.0)))
                 al = alignment_of(ws.binding_system)
                 spreads.append(float(max(al) - min(al)) if al else float("nan"))
+                aligns.append(list(al) if al else [float("nan")] * 5)
+                shapes.append(info.get("sample_shape"))
+                trials.append("%d:%s" % (ep, info.get("trial")))
                 w = getattr(ws.state, "winners", []) or []
                 winners.append(w[0] if w else "")
                 obs, _, t, tr, info = env.step(0)
                 done = t or tr
                 steps += 1
     w0 = args.warmup
-    return (np.array(syncs)[w0:], np.array(spreads)[w0:], np.array(winners)[w0:])
+    return {
+        "sync": np.array(syncs)[w0:], "spread": np.array(spreads)[w0:],
+        "winner": np.array(winners)[w0:], "align": np.array(aligns)[w0:],
+        "shape": np.array(shapes)[w0:], "trial": np.array(trials)[w0:],
+    }
+
+
+def content_test(d, n_perm: int, seed: int):
+    """Does the 5-module alignment vector decode 6-class sample_shape?
+
+    One reading per TRIAL, because sample_shape is constant within a trial.
+    """
+    from sklearn.linear_model import LogisticRegression
+    from sklearn.model_selection import StratifiedKFold, cross_val_score
+    from sklearn.pipeline import make_pipeline
+    from sklearn.preprocessing import StandardScaler
+
+    al, sh, tr = d["align"], d["shape"], d["trial"]
+    X, y = [], []
+    for t in dict.fromkeys(tr.tolist()):
+        m = tr == t
+        if m.sum() < 5:
+            continue
+        X.append(al[m].mean(axis=0))
+        y.append(sh[m][0])
+    X = np.asarray(X, dtype=np.float64)
+    cls = sorted(set(y))
+    y = np.asarray([cls.index(v) for v in y])
+    counts = np.bincount(y)
+    if len(X) < 20 or counts.min() < 2:
+        print("     too few trials (%d) or classes for a content test" % len(X))
+        return
+    keep = X.std(axis=0) > 0
+    if int(keep.sum()) == 0:
+        print("     alignment is CONSTANT across trials: nothing to decode  (gate b)")
+        return
+    X = X[:, keep]
+    n_splits = max(2, min(5, int(counts.min())))
+    cv = StratifiedKFold(n_splits=n_splits, shuffle=True, random_state=seed)
+    clf = make_pipeline(StandardScaler(), LogisticRegression(max_iter=3000))
+    acc = float(cross_val_score(clf, X, y, cv=cv).mean())
+    rng = np.random.default_rng(seed)
+    null = np.array([float(cross_val_score(clf, X, rng.permutation(y), cv=cv).mean())
+                     for _ in range(n_perm)])
+    p95 = float(np.percentile(null, 95))
+    print("     trials=%d  live dims=%d of 5  %d-fold CV" % (len(y), int(keep.sum()), n_splits))
+    print("     acc=%.4f   null p95=%.4f   null mean=%.4f   uniform=%.4f  majority=%.4f"
+          % (acc, p95, float(null.mean()), 1.0 / len(cls), float(counts.max() / len(y))))
+    print("     VERDICT: %s" % ("CARRIES CONTENT (a)" if acc > p95
+                                else "RELAXATION NOISE (c)"))
+
 
 
 def main():
@@ -138,6 +217,9 @@ def main():
     p.add_argument("--warmup", type=int, default=400)
     p.add_argument("--seed", type=int, default=42)
     p.add_argument("--replay-seed", type=int, default=20260913)
+    p.add_argument("--content", action="store_true",
+                   help="Run the content test. See the pre-stated gate.")
+    p.add_argument("--permutations", type=int, default=500)
     p.add_argument("--latent-mode", default="continuous",
                    choices=["discrete", "continuous"])
     p.add_argument("--capsule-workspace-source", default="all_levels",
@@ -148,7 +230,8 @@ def main():
           % (args.checkpoint, args.episodes, args.warmup))
     for label, reset in (("A  no reset (current behaviour)", False),
                          ("B  reset_state() per episode", True)):
-        sy, sp, w = run(args, reset)
+        d = run(args, reset)
+        sy, sp, w = d["sync"], d["spread"], d["winner"]
         live = w[w != ""]
         print("%s   n=%d" % (label, sy.size))
         print("   sync_R        distinct=%-6d min=%.6f max=%.6f  sd=%.3e"
@@ -161,8 +244,12 @@ def main():
             shares = ", ".join("%s=%.3f" % (v, c / live.size) for v, c in top)
         else:
             shares = "(none)"
-        print("   winner        %s   silent=%.3f\n"
+        print("   winner        %s   silent=%.3f"
               % (shares, float((w == "").mean())))
+        if args.content:
+            print("   CONTENT TEST, 6-class sample_shape, one reading per trial")
+            content_test(d, args.permutations, args.replay_seed)
+        print()
     print("A constant `align spread` means the binding boost is the same multiplier for")
     print("every module, so the binding cannot change which module wins.")
 
