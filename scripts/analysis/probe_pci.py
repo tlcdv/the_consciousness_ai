@@ -83,7 +83,10 @@ from pathlib import Path
 import numpy as np
 import torch
 
-from models.evaluation.perturbational_complexity import compute_pci
+from models.evaluation.perturbational_complexity import (
+    DEFAULT_VAR_FLOOR,
+    compute_pci,
+)
 from scripts.analysis.probe_perception_decodability import (
     _build_components,
     _compute_broadcast,
@@ -389,7 +392,8 @@ def run_trial(args, trial_index: int) -> list[dict]:
         pre_divergence = float(np.abs(pert[:, : args.perturb_step] - pre).max())
 
         result = compute_pci(
-            response, pre, threshold_sigma=args.threshold_sigma
+            response, pre, threshold_sigma=args.threshold_sigma,
+            var_floor=args.var_floor,
         )
         rows.append(
             {
@@ -401,6 +405,9 @@ def run_trial(args, trial_index: int) -> list[dict]:
                 "weights": "trained" if provenance[site] else "RANDOM",
                 "perturb_site": args.perturb_site,
                 "magnitude": args.magnitude,
+                # The floor that decided which channels could register at all.
+                # A zero PCI is unreadable without it.
+                "var_floor": args.var_floor,
                 "pci": round(result.pci, 6),
                 "pci_casali": round(result.pci_casali, 6),
                 "lz_complexity": result.lz_complexity,
@@ -434,6 +441,14 @@ def main():
     parser.add_argument("--perturb-site", default="rssm", choices=PERTURB_SITES)
     parser.add_argument("--magnitude", type=float, default=1.0,
                         help="L2 norm of the injected impulse")
+    parser.add_argument("--var-floor", type=float, default=DEFAULT_VAR_FLOOR,
+                        help="Channels whose baseline std is at or below this are "
+                             "treated as dead and can never mark significant. The "
+                             "default 1e-4 is ABOVE the gate substrate's own "
+                             "fluctuation on most checkpoints (gate nodes sit at "
+                             "4.1e-05 to 6.9e-05), so at the default the gate "
+                             "cannot register a response no matter how large it is. "
+                             "Lower it to measure the gate; state the value used.")
     parser.add_argument("--threshold-sigma", type=float, default=3.0,
                         help="Significance threshold in baseline standard deviations")
     parser.add_argument("--action-rate", type=float, default=0.0,

@@ -1,5 +1,15 @@
 # PCI at three trained gates: the gate is inert, and the control is checkpoint-sensitive
 
+> **PARTLY SUPERSEDED the same day by `pci_reading_rules_2026_09.md`.** The gate
+> readings below were taken at the DEFAULT variance floor of 1e-4, which is above the
+> gate substrate's own fluctuation of 1e-05 to 1e-04, so the gate could not register
+> a response at any size. At a floor of 1e-6 the gate reads 0.0439 on `gate3_s42`,
+> two trials of five, while `gate3_s43` and `gate3_s44` stay at exactly 0.0000 with a
+> raw response of 1.192e-07. "Inert at three trained gates" holds at the default
+> floor; as a statement about the architecture it holds at two of three. Everything
+> else in this document stands, including the control spread and the Casali table.
+
+
 **The gate shows ZERO causal response at three independently trained checkpoints,
 each with a TRAINED gate, with a working control on every one.** PCI reads exactly
 0.0000 at the primary site at all three seeds. The control reads 0.0471 to 0.1631.
