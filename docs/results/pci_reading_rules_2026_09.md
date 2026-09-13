@@ -11,9 +11,15 @@ today, which reported the gate as inert at three trained checkpoints. That readi
 is correct at the default floor and uninformative as a statement about the
 architecture, because the floor sits above the substrate.
 
-**It does NOT mean the gate responds.** An attempt to fix the floor, later the same
-day, produced readings that cannot be separated from noise. The conclusion is that
-PCI cannot currently measure the gate AT ALL, in either direction. See rule 6.
+**UPDATED LATER THE SAME DAY. The gate DOES respond, on some probe seeds.** An
+attempt to fix the floor produced readings that cannot be separated from noise, and
+that part stands. What changed is the reason. Measured in
+`pci_gate_attenuation_2026_09.md`: on `gate3_s42` at probe seed 42 the gate response
+is 11.53 times the gate's own baseline fluctuation, which is a detection by any
+threshold, and the default floor silences it. On probe seeds 43, 44 and 45 the same
+checkpoint gives 0.14, 0.26 and 0.16, which is no detection at all. The gate has two
+regimes selected by the probe seed, and averaging across them reports neither. See
+rule 6 and the section that follows it.
 
 ## The test
 
@@ -145,36 +151,59 @@ Until that null exists, no gate-level PCI may be cited under any floor setting. 
 existing zeros at the absolute floor are not evidence of inertness, and any non-zero
 at a lower floor is not evidence of a response.
 
-## Rule 7, and the question this whole document was the wrong approach to
+## Rule 7, and a correction that was itself retracted
 
 **Rule 7. Report `active_fraction` at the control with every PCI.** Above roughly
 0.9 the impulse is too large: at magnitude 100,000 the rssm reaches 0.993 and its
 PCI collapses from 0.165 to 0.023, because when every entry crosses threshold the
 source entropy goes to zero. The control is valid only inside a magnitude window,
-and both ends are now measured.
+and both ends are now measured. This rule stands.
 
-**And the correction that matters.** Rules 1, 2 and 6 treat the gate's unreadability
-as a thresholding problem. It is not. Measured in
-`pci_gate_saturation_2026_09.md`, the gate's causal response is 0.26 times its own
-spontaneous fluctuation and SATURATES at 0.55 under a hundredfold magnitude
-increase. A quantity smaller than the noise it must be distinguished from cannot be
-recovered by any floor, any null, or any normalization.
+**An earlier version of this section said rules 1, 2 and 6 treated a thresholding
+problem that did not exist, on the strength of
+`pci_gate_saturation_2026_09.md`. THAT DOCUMENT IS RETRACTED and this section with
+it.** Measured in `pci_gate_attenuation_2026_09.md`: on `gate3_s42` at probe seed 42
+the gate's causal response is 11.53 times its own baseline fluctuation, a clear
+detection, and the default floor of 1e-4 silences it because that floor sits 40x
+above the gate's baseline sd of 2.520e-06. **Rules 1 and 2 were right. The floor is
+exactly the obstruction they said it was.**
 
-The floor work in this document is still correct and rules 1 to 5 and 7 still apply
-to the rssm and the broadcast. It was simply not the obstruction at the gate.
+## What the attenuation study adds to rule 6
+
+Rule 6 asked for a null. The new evidence says precisely which quantity needs one.
+
+The gate's RESPONSE is stable: 2.906e-05, 2.933e-05, 4.023e-05, 3.469e-05,
+1.961e-05 across five probe seeds on one checkpoint, a spread of 2.1x. The gate's
+BASELINE moves by 84x over the same five seeds: 2.520e-06, 2.120e-04, 1.519e-04,
+2.120e-04, 2.518e-06. The two trials that register at a 1e-6 floor are exactly the
+two with a quiet baseline.
+
+The extra variance is located. `tectum_content` has the same baseline sd on every
+probe seed (1.0843e-04, 1.0837e-04), while the `broadcast` it feeds reads 1.0843e-04
+at probe seed 42 and 5.0012e-03 at probe seed 43, which is 46x larger. Something
+between the tectum and the broadcast injects seed-dependent variance while passing
+the causal response through unchanged. Candidates are the persistent oscillatory
+phases in `reentrant.settle`, the affective modulation of the bids, and the
+interoceptive state. None is tested.
+
+**So rule 6's null must be taken over PROBE SEEDS, not over trials of one seed.** A
+mean across probe seeds, which is what `--trials` produces, averages a detectable
+regime and an undetectable one and reports a number that describes neither. The
+0.0439 reported earlier in this document is such a mean and must not be cited.
 
 ## Next
 
-0. **Build the null.** Run the probe with `--perturb-step` beyond the rollout, or
-   with a zero-magnitude impulse, and record the PCI distribution per site. That
-   distribution is the floor. This supersedes items 1 and 2 below in priority and is
-   cheap, because it is the same probe with one argument changed.
+0. **Build the null over PROBE SEEDS, on the BASELINE.** Run the probe with no
+   impulse across about 20 probe seeds and record the distribution of the gate's
+   baseline sd, not of its PCI. That distribution decides which seeds can carry a
+   gate reading at all. This supersedes items 1 and 2 and is cheap, because it is
+   the same probe with one argument changed.
 
-1. Re-run the three checkpoints at 1e-6 with more trials and more probe seeds, to
-   settle whether `gate3_s42`'s two-in-five response replicates.
-2. Decide whether the probe should set the floor PER SITE from each site's own
-   baseline sd, rather than one global value. That would make rule 2 automatic
-   instead of a thing a reader must remember.
+1. Re-run the three checkpoints at 1e-6 across more probe seeds, to settle whether
+   the two-regime split holds at the same 2-in-5 rate.
+2. Find what injects seed-dependent variance into the broadcast while the tectum
+   content it carries stays at a constant 1.084e-04. Three candidates are named in
+   `pci_gate_attenuation_2026_09.md` and none is tested.
 3. Re-examine any earlier verdict that read a gate-level zero at the default floor.
    The masking applies to all of them.
 

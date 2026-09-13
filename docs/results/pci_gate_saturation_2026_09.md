@@ -1,4 +1,33 @@
-# The gate cannot be woken by perturbation at any magnitude, and the floor debate was the wrong question
+# RETRACTED: the gate CAN be woken, and the floor debate was not the wrong question
+
+> **RETRACTED THE SAME DAY by `pci_gate_attenuation_2026_09.md`. Do not cite the
+> headline, the ratio table or the conclusion below.** Three specific errors:
+>
+> 1. **The ratio table is a MEDIAN across probe seeds and does not say so.** On
+>    `gate3_s42` the three per-seed gate ratios at magnitude 1000 are 11.53, 0.14 and
+>    0.26. The published 0.26 is the middle of three numbers that disagree by 84x.
+>    The spread is in the DENOMINATOR: the gate's baseline sd is 2.520e-06, 2.120e-04
+>    and 1.519e-04 on those seeds, while the responses differ by only 1.4x.
+> 2. **"3.0 is unreachable at any magnitude" is false.** 5 of 15 measured cells
+>    exceed 3, including 11.53 at `gate3_s42` probe seed 42 and magnitude 1000.
+> 3. **"The floor question was secondary" is false, and it is the opposite of the
+>    truth.** At probe seed 42 the gate response is 11.53 times its own baseline, a
+>    clear detection, and the default floor of 1e-4 silences it because that floor is
+>    40x above the gate's baseline sd of 2.5e-06. Reading rules 1 and 2 in
+>    `pci_reading_rules_2026_09.md` were correct and this document wrongly demoted
+>    them.
+>
+> **What survives, and only this:** rule 7 and the numbers it rests on, which are
+> reproduced from the CSVs and correct. And the magnitude sweep as a statement about
+> ONE checkpoint: on `gate3_s42` the gate response really is flat with magnitude. It
+> is not flat on `gate3_s43` (37.3x for a 10x impulse) or `gate3_s44` (2.0x), so it
+> is a property of that checkpoint and not of the architecture.
+>
+> **A defect worth naming.** This document stated rule 7, which disqualifies any
+> reading whose control `active_fraction` exceeds about 0.9, and then drew its
+> conclusion from magnitudes 10000 and 100000, where the control reads 0.94 and 0.99.
+> It contradicted its own rule in the same file.
+
 
 **The gate's causal response saturates at roughly 0.55 times its OWN spontaneous
 fluctuation.** A hundredfold increase in impulse magnitude buys a twofold increase
