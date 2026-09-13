@@ -14,8 +14,13 @@ This is outcome (c) of the pre-stated gate, VARYING BUT CONTENTLESS, at every si
 and on both quantities tested.
 
 **Consequence: PCI cannot become TRUSTED.** Content sensitivity is the clause this
-was run to settle, and PCI fails it explicitly. PCI is the eighth scalar on this
-architecture to vary convincingly and carry nothing.
+was run to settle, and PCI fails it explicitly.
+
+> **An early reading of this said PCI was "the eighth scalar to vary and carry
+> nothing", joining the project's scalar-reduction pattern. That is WITHDRAWN the
+> same day.** The response MATRIX does not decode the stimulus either
+> (`pci_matrix_content_2026_09.md`), so there is no content for a scalar to discard.
+> PCI fails differently from the other seven, and the count stays at 7.
 
 No indicator moves. The rubric stays 3 IMPLEMENTED, 11 PARTIAL of 14. The clock does
 not move.
@@ -100,17 +105,20 @@ values and the broadcast 43, so the coarseness is a property of having 5 channel
   the site. A perturbation that propagates is not a perturbation that carries.
 - **PCI fails the content clause**, which is the clause that stood between it and
   TRUSTED. It cannot be promoted on the present evidence.
-- **The pattern now holds at 8 cases.** Every scalar reduction tested on this
-  architecture varies and carries nothing, while the vectors carry the stimulus.
+- ~~**The pattern now holds at 8 cases.**~~ **WITHDRAWN THE SAME DAY.** The response
+  MATRIX does not decode the stimulus either (`pci_matrix_content_2026_09.md`), so
+  there is no content in the perturbational response for a scalar to discard. PCI is
+  NOT an eighth case of the scalar-reduction pattern. It fails differently, and the
+  count of scalar-reduction cases stays at 7.
 
 ## What this does NOT establish
 
 - **It does not say the gate response is an artefact.** It is real and replicated at
   16 of 20 and 81 of 120 seeds, with a live control and determinism at 0.000e+00. It
   signals that something happened. It does not signal what.
-- **It does not test a vector-valued PCI.** The test here is on the scalar the
-  instrument reports. Whether the 5-channel binary response MATRIX carries the shape
-  is a different question and is not answered.
+- ~~It does not test a vector-valued PCI.~~ **ANSWERED the same day**
+  (`pci_matrix_content_2026_09.md`): the 5-channel response matrix does not decode the
+  shape either, continuous or binarized, at 0.2096 against a majority rate of 0.2099.
 - **One checkpoint.** `gate3_s42` is the only one with a response to test.
 - **One label.** `sample_shape`, 6 classes, during delay. Colour, size and the
   choice phase are not tested.
@@ -119,10 +127,10 @@ values and the broadcast 43, so the coarseness is a property of having 5 channel
 
 ## Next
 
-1. **Test the response MATRIX, not the scalar.** The binary 5-by-60 response matrix
-   is what PCI compresses. If the matrix carries the shape and the scalar does not,
-   that is the same finding this project already has at 7 other sites, and it would
-   make 8 a pattern with a stated mechanism rather than a tally.
+1. ~~Test the response MATRIX, not the scalar.~~ **DONE the same day, and it FAILED
+   too: `pci_matrix_content_2026_09.md`.** The gate's continuous 5x60 response decodes
+   6-class shape at 0.2096 against a majority rate of 0.2099. The matrix carries no
+   more than the scalar.
 2. **Decide PCI's status.** It fails the content clause. The comparable measures that
    failed it were retired.
 3. Colour and size as labels, which cost one analysis pass each on the same CSV.
