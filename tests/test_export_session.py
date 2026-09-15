@@ -23,6 +23,11 @@ from scripts.sessions import export_session as exporter
 BUNDLE_FILES = ("frames.webm", "steps.json", "session.json",
                 "ethics_manifest.json", "poster.jpg", "clip.mp4")
 
+# Every test that runs the whole export writes media, so it needs ffmpeg, which
+# the continuous integration image does not carry.
+needs_ffmpeg = pytest.mark.skipif(
+    shutil.which("ffmpeg") is None, reason="ffmpeg is not on PATH")
+
 
 def _step_record(step: int) -> dict:
     """One steps.jsonl line, with the fields the slim table reads."""
@@ -210,6 +215,7 @@ def test_scan_passes_on_clean_public_text():
     exporter.scan_text("seed 49, silence 0.314, rho -0.128", "steps.json")
 
 
+@needs_ffmpeg
 def test_export_raises_when_a_public_field_carries_a_date(tmp_path):
     run = build_run(tmp_path / "run")
     episode = run / "episodes" / "ep_0000"
@@ -223,6 +229,7 @@ def test_export_raises_when_a_public_field_carries_a_date(tmp_path):
                                 tmp_path / "site")
 
 
+@needs_ffmpeg
 def test_export_raises_when_the_manifest_names_a_local_path(tmp_path):
     run = build_run(tmp_path / "run")
     manifest_path = run / "ethics_manifest.json"
@@ -270,6 +277,7 @@ def test_export_refuses_an_existing_session_id(tmp_path):
         exporter.export_session(run, 0, "dark-room-b2-seed49", site)
 
 
+@needs_ffmpeg
 def test_export_refuses_when_the_site_folder_would_overflow(tmp_path):
     run = build_run(tmp_path / "run")
     site = tmp_path / "site"
@@ -280,10 +288,6 @@ def test_export_refuses_when_the_site_folder_would_overflow(tmp_path):
 
 
 # ---- the exported bundle ----------------------------------------------------
-
-needs_ffmpeg = pytest.mark.skipif(
-    shutil.which("ffmpeg") is None, reason="ffmpeg is not on PATH")
-
 
 @needs_ffmpeg
 def test_export_writes_the_six_bundle_files(tmp_path):
