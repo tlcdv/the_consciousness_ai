@@ -75,6 +75,7 @@ from models.core.semantic_pathway import SemanticPathway
 from models.core.topographic_loss import topographic_spatial_loss
 from models.core.rnd_curiosity import RNDCuriosity
 from models.core.mock_semantic import MockSemanticModule
+from models.core.precision_weighting import audio_gain, vision_gain, weighted_sense_bids
 from models.evaluation.phi_riiu import RIIUPhi
 from models.evaluation.levin_consciousness_metrics import LevinConsciousnessEvaluator
 from models.memory.optimized_store import MemoryConsolidationManager
@@ -126,6 +127,7 @@ def build_config(args):
         "rssm_latent_mode": getattr(args, "rssm_latent_mode", "discrete"),
         "vision_bid_reduction": getattr(args, "vision_bid_reduction", "tanh_sum"),
         "audio_salience": getattr(args, "audio_salience", "untrained_mlp"),
+        "bid_precision": getattr(args, "bid_precision", "off"),
         "learned_valence": getattr(args, "learned_valence", False),
         # Capsule workspace source (Path B downstream fix). "final" (default) projects
         # workspace_content from the last routing level only; "all_levels" concatenates
@@ -1059,6 +1061,7 @@ def run_episode(episode_idx, config, tectum, workspace, reentrant,
 
         # Audio processing: cochlear pipeline when enabled, zero stub otherwise
         audio_affect = None
+        waveform_t = None
         if auditory_specialist is not None and isinstance(obs, np.ndarray):
             audio_waveform = info.get("audio_waveform") if isinstance(info, dict) else None
             if audio_waveform is not None:
@@ -1126,6 +1129,13 @@ def run_episode(episode_idx, config, tectum, workspace, reentrant,
         energy_low = (self_model is not None
                       and not config.get("ablate_existence_bias", False)
                       and self_model.state.interoceptive_state.get("energy", 1.0) < 0.4)
+        # Reliability weighting (ethics-neutral, default off): the two sense bids
+        # measure salience, which habituates. Weighting them by their share of the
+        # current sense gain is the reliability term the sources describe.
+        if config.get("bid_precision") == "gain":
+            vision_bid, audio_bid_raw = weighted_sense_bids(
+                vision_bid, audio_bid_raw,
+                vision_gain(frame_tensor), audio_gain(waveform_t))
         raw_bids = {
             "vision": max(0.0, min(1.0, vision_bid)),
             "audio": max(0.0, min(1.0, audio_bid_raw)),
@@ -2313,6 +2323,13 @@ def main():
                              "(default) was exactly 1.0 on every measured step. 'zscore': "
                              "sigmoid of a running z-score of the KL, 0.5 for a constant "
                              "surprise (docs/results/bid_counterfactual_2026_09.md, S5).")
+    parser.add_argument("--bid-precision", choices=["off", "gain"], default="off",
+                        help="How the vision and audio bids are weighted. 'off' "
+                             "(default) leaves both bids as their module produced "
+                             "them. 'gain': each bid is multiplied by twice its "
+                             "share of the total sense gain, so the sense that "
+                             "responds more strongly now keeps more of its bid "
+                             "(models/core/precision_weighting.py).")
     parser.add_argument("--ignition-rule", choices=["running_average", "tolerance"],
                         default="running_average",
                         help="Workspace ignition. 'running_average' (default): ignite when "

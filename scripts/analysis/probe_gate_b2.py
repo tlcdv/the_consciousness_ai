@@ -50,8 +50,17 @@ episodes each. Criteria 1 to 3 PASS at all 3 seeds:
     KILL                   not triggered (top share 0.608 / 0.501 / 0.880)
     reported only          rho of audio share against episode index 0.770 / -0.248 / 0.517
 
+REUSED AS GATE B3, 2026-09-16, criteria unchanged, on seeds 54 to 56 with
+--bid-precision gain (docs/decisions/2026_09_16_precision_weighted_bids.md).
+FAILED: seed 55 fired the KILL rule (vision 0.961) and failed (1) with a runner-up share of
+0.039. Seeds 54 and 56 passed criteria 1 to 3 (runner-up 0.225 / 0.315, silence 0.303 /
+0.335). Criterion (4) passed for the first time: pooled rho 0.446, one-sided p 0.005,
+per seed 0.554 / 0.386 / 0.550. Reported only: rho of audio share against episode index
+0.853 / 0.607 / 0.152, a confound this design does not separate.
+
 Run:
     python -m scripts.analysis.probe_gate_b2 --runs runs/gate_b2_s48 runs/gate_b2_s49 runs/gate_b2_s50
+    python -m scripts.analysis.probe_gate_b2 --runs runs/gate_b3_s54 runs/gate_b3_s55 runs/gate_b3_s56
 """
 from __future__ import annotations
 

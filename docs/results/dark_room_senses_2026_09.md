@@ -5,6 +5,12 @@
 > real competition (audio wins 0.120 to 0.501 of ignited steps) and selective ignition.
 > Gate B2 still FAILED on the task criterion: hearing does not win more when the light is
 > out of view (pooled rho -0.128, p 0.904).
+>
+> **Update 2026-09-16 (Gate B3 below). FAILED on the KILL rule at seed 55**, where vision
+> takes 0.961 of ignited steps and the runner-up 0.039. With reliability-weighted bids
+> (`--bid-precision gain`) the TASK criterion passed for the first time: pooled rho 0.446,
+> one-sided p 0.005, rho above 0 at all 3 seeds. A confound is measured and not excluded:
+> the audio share also rises with the episode index (rho 0.85 / 0.61 / 0.15).
 
 **Gate B FAILED at all 3 seeds** on silence and on the task variable. **Its competition
 criterion passed at all 3 seeds:** hearing wins 17 to 25 percent of ignited steps, the
@@ -191,6 +197,43 @@ limit of 0.70. Audio coherence alone was higher with the light in view (AUC for 
 view 0.101 / 0.673 / 0.300). Hypothesis, not a result: the running mean that removes the
 agent's own disc also removes a light that stays in view.
 
+## The gain check (FAILED) and Gate B3 (FAILED on the KILL rule), 2026-09-16
+
+A second read-only check (`scripts/analysis/probe_sense_gain.py`, gate written before the
+runs) replaced the change-based measure with the GAIN of the current response, which the
+sources say carries reliability and does not habituate (Ma et al. 2006; Fetsch et al. 2009
+and 2011; Feldman and Friston 2010; Stein and Stanford 2008). Vision gain is the strongest
+pooled cell of the frame outside the agent's own disc; audio gain is the waveform RMS over
+the tone RMS at the source.
+
+**FAILED at seed 51** on new seeds 51 to 53: criteria R1 (0.997 / 0.981 / 0.904) and R2
+(0.996 / 0.961 / 0.857) passed, and R3 (no habituation) could not be measured at seed 51,
+where the light stayed in view long enough only once (1 usable run, 3 required). R1 and R3
+can also pass by the construction of the room, as the probe states before its numbers. The
+owner recorded an override on 2026-09-16 and asked for a live test
+(`docs/decisions/2026_09_16_precision_weighted_bids.md`).
+
+Built: `models/core/precision_weighting.py` behind `--bid-precision gain` (default off,
+md5 `7c101c58eecc4eb91409c491a5ad0e26` unchanged). Each sense bid is multiplied by twice its
+share of the total gain, so equal gains change nothing.
+
+**Gate B3 FAILED.** The Gate B2 criteria, unchanged, on new seeds 54 to 56, 1990 steps each:
+
+| Criterion | Seed 54 | Seed 55 | Seed 56 |
+|---|---|---|---|
+| (1) runner-up share, at least 0.05 | 0.225 | **0.039** | 0.315 |
+| (2) silence, below 0.50 | 0.303 | 0.208 | 0.335 |
+| (3) selectivity, top-bid difference against null p95 | 0.134 / 0.054 | 0.084 / 0.045 | 0.095 / 0.015 |
+| KILL, a module at 0.95 or more | 0.775 | **0.961 vision** | 0.685 |
+
+**(4) TASK PASSED for the first time:** pooled Spearman rho 0.446 over 30 episodes,
+one-sided permutation p 0.005, and rho above 0 at all 3 seeds (0.554 / 0.386 / 0.550). The
+gate still FAILS, because the KILL rule fired at seed 55 and criterion (1) failed there.
+
+Confound, measured and not excluded: the audio share also rises with the episode index
+(rho 0.853 / 0.607 / 0.152), which the gate lists as reported only. The task link and
+learning over time are not separated by this design.
+
 ## What this establishes
 
 - The repaired dark room gives the agent direction and distance to the light by sound,
@@ -201,8 +244,11 @@ agent's own disc also removes a light that stays in view.
 
 ## What this does NOT establish
 
-- **No task variable.** Hearing does not measurably win more when the light is out of
-  view; criterion (3) failed and its null is too weak to show an effect.
+- **No task variable with change-based bids.** In Gate B2 hearing does not measurably win
+  more when the light is out of view. With reliability-weighted bids the task criterion
+  passed at seeds 54 to 56, but that gate FAILED on the KILL rule, and the confound with
+  the episode index is not excluded. A passed criterion inside a failed gate is not a
+  result.
 - **Nothing about content or learning.** 10 episodes, untrained start, one agent
   configuration. The untrained agent pushes against a wall for most steps.
 - **No affect.** Approaching a light is excluded as evidence of affect.
@@ -218,14 +264,20 @@ agent's own disc also removes a light that stays in view.
 ## Next
 
 1. Done the same day: the tolerance ignition rule (Gate B2 criteria 1 to 3).
-2. The task link is missing: a design decision on whether a sense's bid should carry how
-   reliable that sense is at the moment (for example, vision when the light is out of
-   view), as the multisensory rules describe for the tectum.
-3. An agent that moves: the untrained policy stays at walls in the agent-driven sessions.
+2. Done 2026-09-16: reliability-weighted bids (`--bid-precision gain`), judged by Gate B3,
+   which FAILED on the KILL rule at seed 55.
+3. Open: why vision takes 0.961 of ignited steps at seed 55 while the same flags give
+   0.775 and 0.685 at the other two seeds.
+4. Open: separate the task link from learning over time. The audio share rises with the
+   episode index in these runs.
+5. An agent that moves: the untrained policy stays at walls in the agent-driven sessions.
 
 ## Reproduce
 
 ```
+python -m scripts.analysis.probe_sense_gain --runs runs/gain_check_s51 runs/gain_check_s52 runs/gain_check_s53
+python -m scripts.analysis.probe_gate_b2 --runs runs/gate_b3_s54 runs/gate_b3_s55 runs/gate_b3_s56
+
 python -m scripts.analysis.probe_dark_room_senses --gate-a3 --seeds 45 46 47
 
 python -m scripts.training.train_rlhf --env dark_room --episodes 10 --max-steps 200 \
