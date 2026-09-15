@@ -89,6 +89,18 @@ class GlobalWorkspace:
         # is always True (consciousness_ratio == 1.0, a non-discriminating signal).
         self.baseline_alpha = config.get("ignition_baseline_alpha", 0.95)
         self._energy_baseline = None
+        # Ignition rule. "running_average" (default): the rule above, whose average
+        # moves on every settle cycle. "tolerance": the input energy's running mean and
+        # sd move once per environment step (end_step, read before update), and a step
+        # ignites when energy >= mean - ignition_tolerance_sd * sd. Chosen 2026-09-15 by
+        # an offline replay of Gate B (docs/results/dark_room_senses_2026_09.md).
+        self.ignition_rule = config.get("ignition_rule", "running_average")
+        if self.ignition_rule not in ("running_average", "tolerance"):
+            raise ValueError("ignition_rule must be running_average or tolerance, got %r"
+                             % self.ignition_rule)
+        self.ignition_tolerance_sd = float(config.get("ignition_tolerance_sd", 1.0))
+        self._tolerance_mean = None
+        self._tolerance_var = 0.0
         self.max_history = config.get("max_history", 100)
 
         # Broadcast assembly mode (Phase A of the 2026-05-17 Phi-1 retest plan).
@@ -169,6 +181,31 @@ class GlobalWorkspace:
         """Register a specialist cognitive module"""
         self.specialist_modules[name] = module
     
+    def end_step(self) -> None:
+        """Called once per environment step, after the settle loop. With the
+        "tolerance" rule it moves the running energy statistics; otherwise nothing."""
+        if self.ignition_rule != "tolerance" or not self.state.competition_results:
+            return
+        self._update_tolerance(max(self.state.competition_results.values()))
+
+    def _ignition_level(self, input_energy: float) -> float:
+        """The energy a step must reach to ignite. Before any step: the energy itself."""
+        if self._tolerance_mean is None:
+            return input_energy
+        return self._tolerance_mean - self.ignition_tolerance_sd * self._tolerance_var ** 0.5
+
+    def _ignites(self, input_energy: float) -> bool:
+        return input_energy >= self._ignition_level(input_energy)
+
+    def _update_tolerance(self, energy: float) -> None:
+        if self._tolerance_mean is None:
+            self._tolerance_mean, self._tolerance_var = float(energy), 0.0
+            return
+        delta = float(energy) - self._tolerance_mean
+        self._tolerance_mean += (1.0 - self.baseline_alpha) * delta
+        self._tolerance_var = self.baseline_alpha * (
+            self._tolerance_var + (1.0 - self.baseline_alpha) * delta * delta)
+
     def run_competition(self,
                         inputs: dict[str, Any],
                         goal_vector: torch.Tensor,
@@ -217,6 +254,9 @@ class GlobalWorkspace:
                 bids, pad_state, interoceptive_state=interoceptive_state,
             )
             self.ignition_threshold = adjusted_threshold
+        # Read by the session recorder: the bids after modulation and before
+        # binding, so a recorded winner can be traced from the raw bids.
+        self.last_modulated_bids = dict(bids)
         
         # 2. Oscillatory Binding (AKOrN - ICLR 2025)
         # Replaces the heuristic: If Vision and Audio > 0.5, multiply by 1.2
@@ -278,17 +318,21 @@ class GlobalWorkspace:
         input_energy = max(bound_bids.values()) if bound_bids else 0.0
 
         # 3b. Update the salience baseline (EMA of input energy).
-        if self._energy_baseline is None:
-            self._energy_baseline = input_energy
+        if self.ignition_rule == "tolerance":
+            level = self._ignition_level(input_energy)
         else:
-            self._energy_baseline = (self.baseline_alpha * self._energy_baseline
-                                     + (1.0 - self.baseline_alpha) * input_energy)
+            if self._energy_baseline is None:
+                self._energy_baseline = input_energy
+            else:
+                self._energy_baseline = (self.baseline_alpha * self._energy_baseline
+                                         + (1.0 - self.baseline_alpha) * input_energy)
+            level = self._energy_baseline
 
         # 4. Non-linear Ignition (Sigmoid on SALIENCE = energy above baseline).
         # Centering on the running baseline makes ignition SELECTIVE: only
         # above-baseline (more-salient-than-usual) moments ignite, so the
         # consciousness signal discriminates instead of saturating to always-on.
-        salience = input_energy - self._energy_baseline
+        salience = input_energy - level
         ignition_val = 1.0 / (1.0 + np.exp(-self.ignition_gain * salience))
         self.state.ignition_salience = float(salience)
 

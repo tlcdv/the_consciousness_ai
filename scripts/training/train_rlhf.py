@@ -31,7 +31,31 @@ from models.core.global_workspace import GlobalWorkspace
 from models.core.reentrant_processor import ReentrantProcessor
 from models.core.consciousness_gating import ConsciousnessGate, gate_checkpoint_path
 from models.emotion.affective_modulator import AffectiveModulator
+from scripts.training.session_capture import (
+    collect_full,
+    collect_maps,
+    collect_scalars,
+    collect_vectors,
+    modules_with_parameters,
+)
+from scripts.training.session_recorder import (
+    SessionRecorder,
+    audio_input_source,
+    body_input_source,
+    describe_modules,
+    memory_input_source,
+    parse_record_episodes,
+)
+from models.ethics.framework import (
+    FRAMEWORK_VERSION,
+    RunDeclaration,
+    enforce_preconditions,
+    noxious_channels_present,
+    resolve_drive_declaration,
+    write_ethics_manifest,
+)
 from models.emotion.reward_shaping import EmotionalRewardShaper
+from models.emotion.learned_valence import LearnedValence
 from models.self_model.action_selection_core import ActionSelectionCore
 from models.self_model.standard_actor_critic import StandardActorCritic
 from models.self_model.dqn_policy import DQNPolicy
@@ -100,6 +124,9 @@ def build_config(args):
         # gumbel-softmax categorical latent; "continuous" = a Gaussian latent of the
         # same shape, tested against the collapse-locus / ceiling probes.
         "rssm_latent_mode": getattr(args, "rssm_latent_mode", "discrete"),
+        "vision_bid_reduction": getattr(args, "vision_bid_reduction", "tanh_sum"),
+        "audio_salience": getattr(args, "audio_salience", "untrained_mlp"),
+        "learned_valence": getattr(args, "learned_valence", False),
         # Capsule workspace source (Path B downstream fix). "final" (default) projects
         # workspace_content from the last routing level only; "all_levels" concatenates
         # every routing level, carrying the identity that survives the lower levels into
@@ -123,6 +150,8 @@ def build_config(args):
             # eligible module payloads, making broadcast structurally
             # downstream of AKOrN sync_R.
             "broadcast_mode": getattr(args, "broadcast_mode", "winner_take_all"),
+            "ignition_rule": getattr(args, "ignition_rule", "running_average"),
+            "ignition_tolerance_sd": getattr(args, "ignition_tolerance_sd", 1.0),
             "attention_temperature": getattr(args, "attention_temperature", 0.5),
             "attention_floor": getattr(args, "attention_floor", 0.05),
             # Phase B of 2026-05-19 plan: AKOrN-modulated cross-attention on
@@ -208,7 +237,15 @@ def build_config(args):
         # experiment, not a claim about suffering; FAILED-first, >=3 seeds before
         # any conclusion. See docs/ethics_framework.md and
         # docs/metzinger_phenomenal_self_model.md.
-        "ablate_existence_bias": getattr(args, "ablate_existence_bias", False),
+        "ablate_existence_bias": resolve_drive_declaration(
+            getattr(args, "existence_drive", None),
+            getattr(args, "ablate_existence_bias", False)) == "off",
+        # Ethics framework rule E1: the declared existence drive ("on", "off", or
+        # None when undeclared). init_components refuses None. See
+        # docs/ethics_framework.md.
+        "existence_drive": resolve_drive_declaration(
+            getattr(args, "existence_drive", None),
+            getattr(args, "ablate_existence_bias", False)),
         # pyphi sampling cadence: compute phi every Nth step instead of
         # every step. State history still accumulates every step so the
         # TPM stays warm. Cuts pyphi MIP calls N-fold to avoid the ~91k
@@ -363,6 +400,10 @@ def build_config(args):
 
 
 def init_components(config):
+    # Ethics framework rule E1: no agent is built without a drive declaration, so
+    # no caller (training, diagnostics, probes, tests) can skip the check.
+    enforce_preconditions(RunDeclaration(
+        entry_point="init_components", existence_drive=config.get("existence_drive")))
     device = config["device"]
 
     tectum_config = {
@@ -371,6 +412,7 @@ def init_components(config):
         "workspace_dim": config["workspace_dim"],
         "rssm_latent_mode": config.get("rssm_latent_mode", "discrete"),
         "capsule_workspace_source": config.get("capsule_workspace_source", "final"),
+        "vision_bid_reduction": config.get("vision_bid_reduction", "tanh_sum"),
     }
     if config.get("ablate_bptt"):
         tectum_config["bptt_window"] = 1
@@ -387,6 +429,8 @@ def init_components(config):
     # reentrant cycle when pad_state is passed through. Without this attachment
     # the new explicit-arg modulation path is silently inert.
     workspace.affective_modulator = modulator
+    if config.get("learned_valence", False):
+        modulator.learned_valence = LearnedValence()
 
     emotion_cfg = dict(config["emotion"])
     emotion_cfg["ablate_existence_bias"] = config.get("ablate_existence_bias", False)
@@ -482,7 +526,10 @@ def init_components(config):
     # Self-model: tracks body schema, interoceptive state, capability model.
     # Provides internal drive signals (energy/fatigue/damage) that feed the
     # affective modulator, closing the embodiment-affect loop.
-    self_model = SelfRepresentationCore(config.get("self_model", {}))
+    self_model = SelfRepresentationCore({
+        **config.get("self_model", {}),
+        "ablate_existence_bias": config.get("ablate_existence_bias", False),
+    })
 
     # Optimizer for tectum + gate parameters (retinotopic encoder, RSSM, capsules,
     # attention/stability networks) so that phi and sync_R evolve during training
@@ -842,6 +889,13 @@ def init_components(config):
             latent_contrastive_head, latent_contrastive_optimizer)
 
 
+def audio_waveform_tensor(waveform: np.ndarray, device: str) -> torch.Tensor:
+    """[T] mono -> [1, 1, T]; [C, T] multichannel -> [1, C, T]."""
+    t = torch.from_numpy(waveform).float()
+    t = t.unsqueeze(0) if t.dim() == 1 else t
+    return t.unsqueeze(0).to(device)
+
+
 def frame_to_tensor(frame: np.ndarray, device: str) -> torch.Tensor:
     """Convert RGB uint8 frame [H, W, 3] to float tensor [1, 3, H, W]."""
     t = torch.from_numpy(frame).float() / 255.0
@@ -899,7 +953,8 @@ def run_episode(episode_idx, config, tectum, workspace, reentrant,
                 wm_recon_head=None, wm_recon_optimizer=None,
                 wm_predict_head=None, wm_predict_optimizer=None,
                 latent_id_head=None, latent_id_optimizer=None,
-                latent_contrastive_head=None, latent_contrastive_optimizer=None):
+                latent_contrastive_head=None, latent_contrastive_optimizer=None,
+                session_recorder=None):
     device = config["device"]
     max_steps = config["max_steps"]
 
@@ -931,6 +986,8 @@ def run_episode(episode_idx, config, tectum, workspace, reentrant,
         self_model.reset_performance()
 
     obs, info = env.reset()
+    if session_recorder is not None:
+        session_recorder.start_episode(episode_idx)
     total_reward = 0.0
     previous_broadcast = None
     # P5 localization probe: the policy can read either the post-GNW broadcast
@@ -1005,7 +1062,7 @@ def run_episode(episode_idx, config, tectum, workspace, reentrant,
         if auditory_specialist is not None and isinstance(obs, np.ndarray):
             audio_waveform = info.get("audio_waveform") if isinstance(info, dict) else None
             if audio_waveform is not None:
-                waveform_t = torch.from_numpy(audio_waveform).float().unsqueeze(0).unsqueeze(0).to(device)
+                waveform_t = audio_waveform_tensor(audio_waveform, device)
                 audio_content, audio_bid_raw = auditory_specialist(waveform_t)
                 audio_spatial = auditory_specialist.get_spatial_for_tectum()
                 audio_affect = auditory_specialist.get_affect_output()
@@ -1065,14 +1122,31 @@ def run_episode(episode_idx, config, tectum, workspace, reentrant,
             except Exception:
                 pass  # graceful fallback to default bid
 
+        # Existence drive off (ethics framework): the body bid does not read energy.
+        energy_low = (self_model is not None
+                      and not config.get("ablate_existence_bias", False)
+                      and self_model.state.interoceptive_state.get("energy", 1.0) < 0.4)
         raw_bids = {
             "vision": max(0.0, min(1.0, vision_bid)),
             "audio": max(0.0, min(1.0, audio_bid_raw)),
             "memory": memory_bid,
-            "body": 0.15 if (self_model is not None and
-                              self_model.state.interoceptive_state.get("energy", 1.0) < 0.4) else 0.05,
+            "body": 0.15 if energy_low else 0.05,
             "semantic": max(0.0, min(1.0, semantic_bid)),
         }
+        # Session record: the frame and which input each module received. A module
+        # with no input bids a constant (docs/results/modality_starvation_2026_09.md).
+        if session_recorder is not None:
+            session_recorder.record_inputs(obs, {
+                "vision": "frame",
+                "audio": audio_input_source(
+                    auditory_specialist is not None,
+                    info.get("audio_waveform") if isinstance(info, dict) else None),
+                "memory": memory_input_source(memory_bid),
+                "body": body_input_source(
+                    self_model is not None, config.get("ablate_existence_bias", False)),
+                "semantic": "mock" if mock_semantic is not None else "none",
+            }, raw_bids,
+                dict(self_model.state.interoceptive_state) if self_model is not None else {})
 
         # Phase D pre-flight: track which modules cross bid > 0.1 in the
         # first 20 steps of episode 0. If fewer than the required number do,
@@ -1120,8 +1194,10 @@ def run_episode(episode_idx, config, tectum, workspace, reentrant,
                 emotional_state=emotion,
             )
             interoceptive_state = dict(self_model.state.interoceptive_state)
-            # Sync env battery into self-model energy when available
-            if isinstance(info, dict) and "battery" in info:
+            # Sync env battery into self-model energy when available. Not with the
+            # existence drive off: the battery then only ends the episode (rule E6).
+            if (isinstance(info, dict) and "battery" in info
+                    and not config.get("ablate_existence_bias", False)):
                 interoceptive_state["energy"] = float(info["battery"])
                 self_model.state.interoceptive_state["energy"] = float(info["battery"])
         elif isinstance(info, dict):
@@ -1491,6 +1567,9 @@ def run_episode(episode_idx, config, tectum, workspace, reentrant,
 
         next_obs, env_reward, terminated, truncated, info = env.step(env_action)
         done = terminated or truncated
+        # Learned valence: the EXTERNAL task reward only (ethics rule E2).
+        if getattr(modulator, "learned_valence", None) is not None:
+            modulator.learned_valence.observe(raw_bids, reward=env_reward)
 
         # Stage 1 value-equivalent world model: buffer this step's grad-bearing RSSM
         # latent + KL logits + outcome. At the trial boundary (a choice was just made)
@@ -1884,6 +1963,22 @@ def run_episode(episode_idx, config, tectum, workspace, reentrant,
             conscious_steps += 1
         obs = next_obs
         steps_taken = step + 1
+        if session_recorder is not None:
+            session_recorder.record_outcome(
+                winner=(workspace.state.winners[0]
+                        if getattr(workspace.state, "winners", None) else ""),
+                ignited=bool(is_conscious), sync_r=sync_r,
+                bound_bids=dict(getattr(workspace.state, "competition_results", None) or {}),
+                reward=reward_val, action=env_action, env_phase=_bcast_phase)
+            # Every internal value of this step, read only (session_capture.py).
+            step_values = locals()
+            session_recorder.record_extra(
+                scalars=collect_scalars(step_values, workspace, tectum, gate,
+                                        session_recorder.modules),
+                vectors=collect_vectors(step_values, workspace, tectum, auditory_specialist),
+                maps=(collect_maps(step_values, tectum)
+                      if session_recorder.wants("maps") else {}),
+                full=collect_full(tectum) if session_recorder.wants("full") else {})
 
         # --- Metrics logging ---
         if metrics_logger is not None:
@@ -2080,6 +2175,10 @@ def run_episode(episode_idx, config, tectum, workspace, reentrant,
     # cross-episode reserved-memory creep that OOM'd a 100-episode run.
     if config.get("enable_wm_predict") and str(device).startswith("cuda"):
         torch.cuda.empty_cache()
+    if getattr(modulator, "learned_valence", None) is not None:
+        modulator.learned_valence.end_episode()
+    if session_recorder is not None:
+        session_recorder.end_episode()
     return total_reward, steps_taken, avg_phi, consciousness_ratio
 
 
@@ -2208,11 +2307,70 @@ def main():
                         help="Pass None for pad_state and interoceptive_state into reentrant.settle")
     parser.add_argument("--ablate-bptt", action="store_true",
                         help="Set tectum bptt_window=1 (one-step encoder, no truncated BPTT)")
+    parser.add_argument("--vision-bid-reduction", choices=["tanh_sum", "zscore"],
+                        default="tanh_sum",
+                        help="How the tectum turns its KL surprise into a bid. 'tanh_sum' "
+                             "(default) was exactly 1.0 on every measured step. 'zscore': "
+                             "sigmoid of a running z-score of the KL, 0.5 for a constant "
+                             "surprise (docs/results/bid_counterfactual_2026_09.md, S5).")
+    parser.add_argument("--ignition-rule", choices=["running_average", "tolerance"],
+                        default="running_average",
+                        help="Workspace ignition. 'running_average' (default): ignite when "
+                             "the input is at or above its own average, which moves on every "
+                             "settle cycle; with change-based bids it was silent on 0.62 to "
+                             "0.69 of steps. 'tolerance': the average and sd move once per "
+                             "step and a step ignites at mean - k * sd "
+                             "(docs/results/dark_room_senses_2026_09.md).")
+    parser.add_argument("--ignition-tolerance-sd", type=float, default=1.0,
+                        help="k for --ignition-rule tolerance.")
+    parser.add_argument("--learned-valence", action="store_true",
+                        help="Replace the fixed approach/threat module sets of the "
+                             "affective modulator with per-module values learned from the "
+                             "temporal difference error of the EXTERNAL task reward "
+                             "(models/emotion/learned_valence.py).")
+    parser.add_argument("--audio-salience", choices=["untrained_mlp", "surprise"],
+                        default="untrained_mlp",
+                        help="Audio bid. 'untrained_mlp' (default): an MLP no optimizer "
+                             "updates. 'surprise': z-scored error of predicting the next "
+                             "cochlear band profile; the predictor trains itself and "
+                             "habituates to constant sound.")
+    parser.add_argument("--dark-room-audio", choices=["legacy", "binaural"], default="legacy",
+                        help="dark_room sound. 'legacy' (default) is mono and, measured on "
+                             "3 seeds on 2026-09-15, carries only noise: the tone needs a "
+                             "distance below 10 in a room 224 wide. 'binaural': the light "
+                             "emits a tone heard across the room, with direction.")
+    parser.add_argument("--dark-room-audio-channels", type=int, choices=[2, 4], default=None,
+                        help="Required with --dark-room-audio binaural: 2 = left/right ears, "
+                             "4 = adds upper/lower ears (an approximation of outer-ear and "
+                             "head-movement cues).")
+    parser.add_argument("--dark-room-view", choices=["full", "agent_centered"], default="full",
+                        help="dark_room frame. 'full' (default): the whole room from above, "
+                             "so vision alone shows the light. 'agent_centered': a window "
+                             "around the agent (tectal maps are egocentric); a far light is "
+                             "out of view.")
+    parser.add_argument("--dark-room-view-radius", type=int, default=48,
+                        help="Half-width in room pixels of the agent_centered window "
+                             "(room is 224 wide).")
+    parser.add_argument("--dark-room-collision", action="store_true",
+                        help="dark_room reports info['collision'] when a wall stops a move, "
+                             "so the collision sound plays. Touch, not damage.")
+    parser.add_argument("--record-episodes", type=str, default="default",
+                        help="Episodes to record into <log-dir>/episodes/ for session "
+                             "replay: 'default' (first, last, and every 10th), "
+                             "'none', or a comma list of indices. Recording reads "
+                             "values the loop already computes and uses no random "
+                             "state, so metrics.csv is unchanged.")
+    parser.add_argument("--existence-drive", choices=["on", "off"], default=None,
+                        help="REQUIRED by the ethics framework (rule E1, "
+                             "docs/ethics_framework.md). 'on' keeps the existence drive "
+                             "and reproduces every earlier run. 'off' removes it: no "
+                             "interoceptive affect, no homeostatic arousal penalty or "
+                             "dominance reward term, no battery copied into energy, and "
+                             "a body bid that ignores energy. A run without it refuses "
+                             "to start.")
     parser.add_argument("--ablate-existence-bias", action="store_true",
-                        help="Ablate the survival/existence drive (Metzinger ethics): no "
-                             "interoceptive PAD affect, and drop the homeostatic arousal "
-                             "penalty and dominance reward terms. Runs a 'no existence-bias' "
-                             "configuration. Default off; baseline bit-identical.")
+                        help="Alias for --existence-drive off. Kept so earlier commands "
+                             "still parse. Contradicting --existence-drive on is an error.")
     parser.add_argument("--phi-sample-every", type=int, default=5,
                         help="Run pyphi only every Nth step. State history "
                              "still updated every step so the TPM stays warm. "
@@ -2558,6 +2716,13 @@ def main():
         logger.info(f"Global seed set to {args.seed}")
 
     config = build_config(args)
+    manifest_path = write_ethics_manifest(
+        args.log_dir,
+        RunDeclaration(entry_point="train_rlhf", existence_drive=config["existence_drive"]),
+        noxious_channels=noxious_channels_present(args.env, config["existence_drive"]),
+    )
+    logger.info(f"Ethics framework {FRAMEWORK_VERSION}: existence drive "
+                f"{config['existence_drive']}, manifest {manifest_path}")
     device = config["device"]
     logger.info(f"Device: {device}")
 
@@ -2615,7 +2780,15 @@ def main():
         from simulations.environments.wcst_env import WCSTEnv
         env = WCSTEnv(render_mode=render_mode, width=224, height=224)
     else:
-        env = SimpleVisualEnv(render_mode=render_mode, width=224, height=224)
+        env = SimpleVisualEnv(render_mode=render_mode, width=224, height=224,
+                              audio=args.dark_room_audio,
+                              audio_channels=args.dark_room_audio_channels,
+                              report_collision=args.dark_room_collision,
+                              view=args.dark_room_view, view_radius=args.dark_room_view_radius)
+    # Seed the environment audio noise from the run seed. Before 2026-09-15 it had
+    # no seed, so no run with --enable-audio could be repeated exactly.
+    if args.seed is not None and hasattr(env, "seed_audio"):
+        env.seed_audio(args.seed)
 
     metrics_logger = ConsciousnessMetricsLogger(
         log_dir=args.log_dir, use_tensorboard=True
@@ -2634,6 +2807,41 @@ def main():
     ) if config.get(k)]
     logger.info(f"Active ablations: {active_ablations if active_ablations else 'none'}")
 
+    session_recorder = None
+    record_episodes = parse_record_episodes(args.record_episodes, args.episodes)
+    if record_episodes:
+        optimizers = [o for o in (
+            tectum_optimizer, reward_optimizer, workspace_optimizer, rnd_optimizer,
+            self_vector_optimizer, control_repr_optimizer, recon_optimizer,
+            match_optimizer, wm_recon_optimizer, wm_predict_optimizer,
+            latent_id_optimizer, latent_contrastive_optimizer) if o is not None]
+        session_recorder = SessionRecorder(
+            args.log_dir, total_episodes=args.episodes, selected=record_episodes,
+            config=config, max_steps=args.max_steps,
+            run_facts={"argv": sys.argv[1:], "env": args.env,
+                       "episodes": args.episodes, "max_steps": args.max_steps,
+                       "seed": args.seed, "existence_drive": config["existence_drive"],
+                       "framework_version": FRAMEWORK_VERSION,
+                       "audio_seeded": args.seed is not None and hasattr(env, "seed_audio"),
+                       "dark_room_audio": args.dark_room_audio,
+                       "dark_room_audio_channels": args.dark_room_audio_channels,
+                       "dark_room_collision": args.dark_room_collision,
+                       "dark_room_view": args.dark_room_view,
+                       "dark_room_view_radius": args.dark_room_view_radius},
+            module_facts=describe_modules(
+                tectum, auditory_specialist, mock_semantic,
+                has_self_model=self_model is not None,
+                drive_off=config.get("ablate_existence_bias", False),
+                optimizers=optimizers))
+        session_recorder.attach_modules(modules_with_parameters({
+            "tectum": tectum, "gate": gate, "workspace_binding": workspace.binding_system,
+            "reward_predictor": reward_predictor, "rnd": rnd,
+            "auditory_specialist": auditory_specialist, "mock_semantic": mock_semantic,
+            "action_core": action_core, "self_vector_module": self_vector_module,
+            "control_repr_head": control_repr_head, "recon_head": recon_head,
+            "match_head": match_head, "wm_recon_head": wm_recon_head,
+            "wm_predict_head": wm_predict_head, "latent_id_head": latent_id_head,
+            "latent_contrastive_head": latent_contrastive_head}))
     rewards_history = []
     global_step = 0
     for ep in range(args.episodes):
@@ -2672,6 +2880,7 @@ def main():
             latent_id_optimizer=latent_id_optimizer,
             latent_contrastive_head=latent_contrastive_head,
             latent_contrastive_optimizer=latent_contrastive_optimizer,
+            session_recorder=session_recorder,
         )
         global_step += ep_steps
 

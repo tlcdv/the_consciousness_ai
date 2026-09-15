@@ -22,12 +22,17 @@ import pandas as pd
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
 from models.core.consciousness_gating import ConsciousnessGate
+from models.ethics.framework import RunDeclaration, enforce_preconditions
 from models.evaluation.iit_phi import IITMetrics, GATE_CM, GATE_NODE_LABELS
 
 import pyphi
 
 
 def main():
+    # Ethics framework rule E1. This diagnostic trains a ConsciousnessGate and
+    # builds no part of the existence drive.
+    enforce_preconditions(RunDeclaration(
+        entry_point="diagnose_phi_zero_v3", existence_drive="absent"))
     config = {"hidden_size": 256, "workspace_dim": 256,
               "gating": {"attention_threshold": 0.5,
                          "stability_threshold": 0.6,

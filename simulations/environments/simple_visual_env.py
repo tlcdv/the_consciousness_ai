@@ -9,6 +9,13 @@ from typing import Any
 
 from simulations.environments.audio_mixin import DarkRoomAudioMixin
 
+LIGHT_COLOUR = (255, 255, 200)
+AGENT_COLOUR = (0, 100, 255)
+WALL_COLOUR = (60, 60, 60)  # outside the room, visible in the agent-centered view
+# Half-width of the agent-centered window, in room pixels. Set 2026-09-15 before any run:
+# a 96-pixel window in a 224-pixel room, so a far light is out of view.
+DEFAULT_VIEW_RADIUS = 48
+
 
 class SimpleVisualEnv(DarkRoomAudioMixin, gym.Env):
     """
@@ -22,7 +29,28 @@ class SimpleVisualEnv(DarkRoomAudioMixin, gym.Env):
     """
     metadata = {"render_modes": ["human", "rgb_array"], "render_fps": 30}
 
-    def __init__(self, render_mode: str | None = None, width: int = 512, height: int = 512):
+    def __init__(self, render_mode: str | None = None, width: int = 512, height: int = 512,
+                 audio: str = "legacy", audio_channels: int | None = None,
+                 report_collision: bool = False, view: str = "full",
+                 view_radius: int = DEFAULT_VIEW_RADIUS):
+        """`audio`: "legacy" (mono events, the behaviour of every run before
+        2026-09-15) or "binaural" (the light emits a tone heard across the room,
+        with direction; `audio_channels` 2 = left/right, 4 = adds upper/lower).
+        `report_collision`: add info["collision"] when a move is stopped by a wall.
+        `view`: "full" (the whole room from above) or "agent_centered" (a window of
+        half-width `view_radius` around the agent, scaled to the frame size; tectal
+        maps are egocentric). The defaults reproduce the earlier environment exactly."""
+        if view not in ("full", "agent_centered"):
+            raise ValueError("view must be 'full' or 'agent_centered', got %r" % view)
+        self.view = view
+        self.view_radius = int(view_radius)
+        if audio not in ("legacy", "binaural"):
+            raise ValueError("audio must be 'legacy' or 'binaural', got %r" % audio)
+        if audio == "binaural" and audio_channels not in (2, 4):
+            raise ValueError("binaural audio needs audio_channels 2 or 4, got %r" % audio_channels)
+        self.audio_mode = audio
+        self.audio_channels = audio_channels
+        self.report_collision = report_collision
         self.width = width
         self.height = height
         self.render_mode = render_mode
@@ -47,6 +75,9 @@ class SimpleVisualEnv(DarkRoomAudioMixin, gym.Env):
         self.clock = None
         pygame.init()
         self._canvas = pygame.Surface((self.width, self.height))
+        if self.view == "agent_centered":
+            pad = 2 * self.view_radius
+            self._padded_canvas = pygame.Surface((self.width + pad, self.height + pad))
         
     def reset(self, seed: int | None = None, options: dict | None = None) -> tuple[np.ndarray, dict]:
         super().reset(seed=seed)
@@ -68,6 +99,7 @@ class SimpleVisualEnv(DarkRoomAudioMixin, gym.Env):
         # Update Physics
         move = np.clip(action, -1.0, 1.0) * 10.0 # Speed
         self.agent_pos += move
+        unclipped = self.agent_pos.copy()
         self.agent_pos = np.clip(self.agent_pos, 0, [self.width, self.height])
         
         # Decay Battery
@@ -88,8 +120,24 @@ class SimpleVisualEnv(DarkRoomAudioMixin, gym.Env):
         observation = self._get_obs()
         info = self._get_info()
 
+        if self.view == "agent_centered":
+            # Ground truth for analysis only; no agent code reads keys starting '_truth_'.
+            reach = self.view_radius + self.light_radius
+            gap = np.abs(self.light_pos - self.agent_pos)
+            info["_truth_light_in_view"] = bool(gap[0] <= reach and gap[1] <= reach)
+
+        if self.report_collision:
+            # Touch, not damage: no homeostatic variable changes (ethics rule E6).
+            info["collision"] = bool(np.any(unclipped != self.agent_pos))
+
         # Generate audio waveform from environment state (DarkRoomAudioMixin)
-        info["audio_waveform"] = self._generate_audio(info)
+        if self.audio_mode == "binaural":
+            # Ground truth for analysis only; no agent code reads keys starting '_truth_'.
+            offset = self.light_pos - self.agent_pos
+            info["_truth_light_offset"] = [float(offset[0]), float(offset[1])]
+            info["audio_waveform"] = self._generate_binaural_audio(info, self.audio_channels)
+        else:
+            info["audio_waveform"] = self._generate_audio(info)
 
         if self.render_mode == "human":
             self.render()
@@ -97,6 +145,8 @@ class SimpleVisualEnv(DarkRoomAudioMixin, gym.Env):
         return observation, reward, terminated, truncated, info
         
     def _get_obs(self) -> np.ndarray:
+        if self.view == "agent_centered":
+            return self._agent_centered_obs()
         # Render the current frame to an RGB array (reuse cached surface)
         self._canvas.fill((0, 0, 0))
 
@@ -114,6 +164,20 @@ class SimpleVisualEnv(DarkRoomAudioMixin, gym.Env):
         return np.transpose(
             np.array(pygame.surfarray.pixels3d(self._canvas)), axes=(1, 0, 2)
         )
+
+    def _agent_centered_obs(self) -> np.ndarray:
+        """A window around the agent, scaled to the frame. Nearest-pixel scaling keeps
+        exact colours. Outside the room is WALL_COLOUR."""
+        r = self.view_radius
+        canvas = self._padded_canvas
+        canvas.fill(WALL_COLOUR)
+        pygame.draw.rect(canvas, (0, 0, 0), (r, r, self.width, self.height))
+        pygame.draw.circle(canvas, LIGHT_COLOUR, (self.light_pos + r).astype(int), self.light_radius)
+        pygame.draw.circle(canvas, AGENT_COLOUR, (self.agent_pos + r).astype(int), self.agent_radius)
+        left, top = self.agent_pos.astype(int)
+        window = canvas.subsurface((left, top, 2 * r, 2 * r))
+        scaled = pygame.transform.scale(window, (self.width, self.height))
+        return np.transpose(np.array(pygame.surfarray.pixels3d(scaled)), axes=(1, 0, 2))
 
     def _get_info(self) -> dict:
         dist = float(np.linalg.norm(self.agent_pos - self.light_pos))

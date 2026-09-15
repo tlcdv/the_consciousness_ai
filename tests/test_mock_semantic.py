@@ -80,6 +80,7 @@ def test_mock_semantic_varies_with_input():
 def _default_args(**overrides):
     """Argparse Namespace mimicking train_rlhf.py defaults after Phase A+C+D."""
     base = argparse.Namespace(
+        existence_drive="on",  # ethics framework rule E1
         episodes=1, max_steps=10, action_dim=2, lr=1e-3, render=False,
         env="dark_room", difficulty=0, log_dir="runs/_test", log_ei_every=0,
         enable_audio=False,

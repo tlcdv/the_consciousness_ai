@@ -47,7 +47,8 @@ class SpatialAudioComputer(nn.Module):
         """Compute spatial coordinates.
 
         Args:
-            waveform: [B, C, T] where C=1 (mono) or C=2 (stereo)
+            waveform: [B, C, T] where C=1 (mono), C=2 (left, right) or
+                C=4 (left, right, upper, lower)
             metadata: optional dict with "audio_azimuth" and "audio_elevation"
                       keys (floats in [-1, 1]). Overrides computation.
 
@@ -71,44 +72,47 @@ class SpatialAudioComputer(nn.Module):
             return torch.zeros(B, 2, device=device)
 
         if channels >= 2:
-            # Stereo: estimate ITD via cross-correlation
-            left = waveform[:, 0, :]   # [B, T]
-            right = waveform[:, 1, :]  # [B, T]
-            return self._estimate_from_stereo(left, right, device)
+            # Channels are (left, right) and, with 4 channels, (upper, lower).
+            # Azimuth is positive toward the right; elevation positive toward the
+            # lower ear (image rows grow downward, so this matches the tectum grid).
+            coords = self._estimate_from_stereo(waveform[:, 0, :], waveform[:, 1, :], device)
+            if channels >= 4:
+                coords[:, 1] = self._estimate_from_stereo(
+                    waveform[:, 2, :], waveform[:, 3, :], device)[:, 0]
+            return coords
 
         return torch.zeros(B, 2, device=device)
 
     def _estimate_from_stereo(
-        self, left: torch.Tensor, right: torch.Tensor, device: torch.device
+        self, first: torch.Tensor, second: torch.Tensor, device: torch.device
     ) -> torch.Tensor:
-        """Estimate azimuth from ITD and ILD of stereo channels."""
-        B = left.shape[0]
+        """Direction along one ear pair from ITD and ILD, positive toward `second`.
+
+        Before 2026-09-15 the ILD term had the opposite sign to the ITD term, so a
+        louder right ear pulled the estimate toward the left. No training run used
+        this path then: every environment sent mono sound.
+        """
+        B = first.shape[0]
         coords = torch.zeros(B, 2, device=device)
-
         for b in range(B):
-            l = left[b].detach().cpu().numpy()
-            r = right[b].detach().cpu().numpy()
-
-            # ITD via cross-correlation peak offset
-            if np.any(l != 0) and np.any(r != 0):
-                corr = np.correlate(l, r, mode="full")
-                mid = len(corr) // 2
-                search = min(self.max_itd_samples, mid)
-                region = corr[mid - search : mid + search + 1]
-                peak_offset = np.argmax(region) - search
-                # Normalize to [-1, 1]
-                azimuth = float(np.clip(peak_offset / max(search, 1), -1.0, 1.0))
-
-                # ILD: energy ratio (rough indicator)
-                l_energy = float(np.sum(l ** 2) + 1e-8)
-                r_energy = float(np.sum(r ** 2) + 1e-8)
-                ild_ratio = (l_energy - r_energy) / (l_energy + r_energy)
-                # Blend ITD and ILD estimates
-                azimuth = 0.7 * azimuth + 0.3 * float(np.clip(ild_ratio, -1, 1))
-
-                coords[b, 0] = float(np.clip(azimuth, -1.0, 1.0))
-
+            coords[b, 0] = self._pair_direction(
+                first[b].detach().cpu().numpy(), second[b].detach().cpu().numpy())
         return coords
+
+    def _pair_direction(self, first: np.ndarray, second: np.ndarray) -> float:
+        if not (np.any(first != 0) and np.any(second != 0)):
+            return 0.0
+        # ITD: a peak at a positive lag means `first` is delayed, so `second` leads.
+        corr = np.correlate(first, second, mode="full")
+        mid = len(corr) // 2
+        search = min(self.max_itd_samples, mid)
+        peak_offset = np.argmax(corr[mid - search: mid + search + 1]) - search
+        itd = float(np.clip(peak_offset / max(search, 1), -1.0, 1.0))
+        # ILD: positive when `second` is louder.
+        first_energy = float(np.sum(first ** 2) + 1e-8)
+        second_energy = float(np.sum(second ** 2) + 1e-8)
+        ild = (second_energy - first_energy) / (first_energy + second_energy)
+        return float(np.clip(0.7 * itd + 0.3 * ild, -1.0, 1.0))
 
     @staticmethod
     def expand_for_tectum(

@@ -6,7 +6,10 @@ inferior colliculus (spatial analysis) and amygdala (affective evaluation).
 This module chains the cochlear front-end (gammatone filterbank, hair cell
 model) through the tonotopic encoder and produces:
 1. Workspace content tensor for GNW competition
-2. Salience bid based on acoustic novelty and loudness change
+2. Salience bid. Default ("untrained_mlp"): a small MLP on 6 acoustic features that
+   no optimizer updates, so it is NOT a learned novelty measure. With
+   audio_salience="surprise": the z-scored error of predicting the next cochlear band
+   profile (models/audio/auditory_surprise.py), which habituates to constant sound.
 3. Spatial audio features for tectum IE fusion
 4. Affective features (PAD deltas) for emotion integration
 
@@ -27,6 +30,7 @@ from models.audio.hair_cell_model import HairCellModel
 from models.audio.tonotopic_encoder import TonotopicEncoder
 from models.audio.spatial_audio import SpatialAudioComputer
 from models.audio.audio_affect_extractor import AudioAffectExtractor
+from models.audio.auditory_surprise import AuditorySurprise, band_profile
 
 
 class AuditorySpecialist(nn.Module):
@@ -68,6 +72,10 @@ class AuditorySpecialist(nn.Module):
         # Spatial audio computation
         self.spatial = SpatialAudioComputer(sample_rate=self.sample_rate)
 
+        salience_mode = config.get("audio_salience", "untrained_mlp")
+        if salience_mode not in ("untrained_mlp", "surprise"):
+            raise ValueError("audio_salience must be untrained_mlp or surprise, got %r" % salience_mode)
+
         # Affect extraction
         self.affect = AudioAffectExtractor(num_bands=self.num_bands)
 
@@ -85,6 +93,10 @@ class AuditorySpecialist(nn.Module):
             nn.Linear(16, 1),
             nn.Sigmoid(),
         )
+
+        # Built after every default submodule, so the default construction draws the
+        # same random numbers as before this option existed.
+        self.surprise = AuditorySurprise(self.num_bands) if salience_mode == "surprise" else None
 
         # Cache for external access (tectum, emotion system)
         self._last_spatial: torch.Tensor | None = None
@@ -156,9 +168,16 @@ class AuditorySpecialist(nn.Module):
 
         # 7. Salience bid from acoustic features
         acoustic_features = affect_out["acoustic_features"]  # [B, 6]
-        bid = self.salience_net(acoustic_features).mean().item()
+        if self.surprise is not None:
+            bid = self.surprise.bid(band_profile(cochleagram))
+        else:
+            bid = self.salience_net(acoustic_features).mean().item()
 
         return content, bid
+
+    def owned_optimizers(self) -> list:
+        """Optimizers this module steps itself (the surprise predictor), for run records."""
+        return [self.surprise.optimizer] if self.surprise is not None else []
 
     def _zero_output(
         self,

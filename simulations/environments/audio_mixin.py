@@ -200,6 +200,14 @@ class AudioMixin:
     _audio_frame_duration: float = 0.066  # ~15 fps
     _audio_rng: np.random.Generator | None = None
 
+    def seed_audio(self, seed: int) -> None:
+        """Seed the audio noise so a run with audio can be repeated exactly.
+
+        Without this call the generator has no seed and every run hears different
+        noise. It never touches the global numpy random state.
+        """
+        self._audio_rng = np.random.default_rng(seed)
+
     def _get_audio_rng(self) -> np.random.Generator:
         if self._audio_rng is None:
             self._audio_rng = np.random.default_rng()
@@ -277,8 +285,51 @@ class AudioMixin:
         return None
 
 
+# Binaural dark room sound, set 2026-09-15 before any run read it. The legacy tone
+# needed a distance below 10 in a room 224 wide and was never heard in 1800 steps.
+BINAURAL_TONE_HZ = 440.0
+BINAURAL_MAX_AMPLITUDE = 0.5
+BINAURAL_REFERENCE_DISTANCE = 56.0  # a quarter of the 224-wide room
+BINAURAL_MAX_LEVEL_DROP = 0.5  # far-ear level loss for a source straight to one side
+BINAURAL_MAX_DELAY_SAMPLES = 9  # SpatialAudioComputer head model at 16 kHz
+BINAURAL_NOISE_STD = 0.02  # the same noise floor as the legacy sound
+
+
+def binaural_amplitude(distance: float) -> float:
+    """Tone amplitude falling smoothly with distance, audible across the whole room."""
+    return BINAURAL_MAX_AMPLITUDE / (1.0 + distance / BINAURAL_REFERENCE_DISTANCE)
+
+
+def ear_pair(tone: np.ndarray, direction: float) -> tuple[np.ndarray, np.ndarray]:
+    """(first ear, second ear) for a source at `direction` in [-1, 1], positive
+    toward the second ear. The far ear hears the tone later and quieter."""
+    delay = int(round(abs(direction) * BINAURAL_MAX_DELAY_SAMPLES))
+    far = np.roll(tone, delay) * (1.0 - BINAURAL_MAX_LEVEL_DROP * abs(direction))
+    return (far, tone) if direction > 0 else (tone, far)
+
+
 class DarkRoomAudioMixin(AudioMixin):
     """Audio synthesis specialized for the Dark Room environment."""
+
+    def _generate_binaural_audio(self, info: dict, channels: int) -> np.ndarray:
+        """[channels, T]: left, right and, with 4 channels, upper, lower ears.
+
+        The light emits a continuous tone. Each ear pair hears it with a delay and a
+        level difference from the direction to the light, plus independent noise.
+        A collision adds a short noise burst to every ear.
+        """
+        sr, n = self._audio_sample_rate, int(self._audio_frame_duration * self._audio_sample_rate)
+        rng = self._get_audio_rng()
+        dx, dy = info["_truth_light_offset"]
+        distance = max(float(np.hypot(dx, dy)), 1e-6)
+        tone = binaural_amplitude(distance) * np.sin(2 * np.pi * BINAURAL_TONE_HZ * np.arange(n) / sr)
+        pairs = [dx / distance] if channels == 2 else [dx / distance, dy / distance]
+        ears = [ear for direction in pairs for ear in ear_pair(tone, direction)]
+        signal = np.stack(ears) + BINAURAL_NOISE_STD * rng.standard_normal((channels, n))
+        if info.get("collision", False):
+            burst = noise_burst(0.015, sr, 0.35, rng)
+            signal[:, :len(burst)] += burst
+        return np.tanh(signal).astype(np.float32)
 
     def _audio_event(self, info, duration, sample_rate, rng):
         # Light proximity: FM tone that gets richer and louder as agent approaches

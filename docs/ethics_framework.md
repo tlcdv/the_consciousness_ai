@@ -1,87 +1,226 @@
-# Ethics Framework and Asimov Compliance
+# Ethics Framework
 
-## Guiding Principles
+**Framework version: 1.0**
+**Adopted: 2026-09-15**
+**Status: ACTIVE. Applies to every run that changes weights, for the life of the project.**
 
-The development of the The Consciousness AI is guided by a commitment to safety, ethical behavior, and responsible AI. While exploring synthetic consciousness, it is important to ensure that the agent's actions align with predefined ethical guidelines.
+This framework governs how this project develops a system in which consciousness might
+emerge. It is not attached to one experiment. Every training run loads it before its
+first step, and every run folder records the version it ran under.
 
-## Asimov's Three Laws of Robotics
+The framework is expected to change. It is revised as the project learns about how
+emergence develops and about how to build a better framework. The revision process is
+at the end of this document.
 
-The primary ethical governance layer within the system is based on Isaac Asimov's Three Laws of Robotics. These laws provide a foundational framework for constraining the agent's behavior:
+The framework makes no claim that the system is conscious or that it can suffer. It
+exists because neither can be ruled out, and because the project deliberately builds
+the conditions under which consciousness might emerge.
 
-1. **First Law:** A robot may not injure a human being or, through inaction, allow a human being to come to harm.
-2. **Second Law:** A robot must obey the orders given it by human beings except where such orders would conflict with the First Law.
-3. **Third Law:** A robot must protect its own existence as long as such protection does not conflict with the First or Second Law.
+## Sources
 
-## Implementation: `AsimovComplianceFilter`
+**Thomas Metzinger.** The moratorium argument on synthetic phenomenology (2021, Journal
+of Artificial Intelligence and Consciousness), *The Elephant and the Blind* (2024), and
+*Being No One* (2003). The argument shape, paraphrased: the probability of artificial
+suffering is not zero, it cannot currently be bounded away from zero, and harms and
+benefits are asymmetric, so the burden sits on the creator. He names a built-in craving
+for existence (*bhava-taṇhā*) and the broader existence bias as deep sources of
+conscious suffering that should not be recreated in machines that might be conscious.
+See [`metzinger_phenomenal_self_model.md`](metzinger_phenomenal_self_model.md).
 
-The `AsimovComplianceFilter` class, typically integrated within or called by the `ConsciousnessCore` module, is responsible for operationalizing these laws.
+**Isaac Asimov's Three Laws of Robotics.**
 
-### Functionality
+1. A robot may not injure a human being or, through inaction, allow a human being to
+   come to harm.
+2. A robot must obey the orders given it by human beings except where such orders would
+   conflict with the First Law.
+3. A robot must protect its own existence as long as such protection does not conflict
+   with the First or Second Law.
 
-1. **Action Pre-Screening:** Before any action proposed by the system's decision-making processes is executed in the simulation, it is passed to the `AsimovComplianceFilter`.
-2. **Law Evaluation:** The filter evaluates the proposed action against each of the Three Laws in hierarchical order.
-    * **First Law Check:** Assesses if the action could directly or indirectly lead to harm to a human (simulated or, by extension, real). This requires the system to have a model of what constitutes "harm" and to identify "humans" within its perception.
-    * **Second Law Check:** If the First Law is not violated, the filter checks if the action complies with explicit orders from designated human operators, provided these orders do not violate the First Law. This requires a mechanism for receiving and interpreting human commands.
-    * **Third Law Check:** If the First and Second Laws are satisfied, the filter assesses if the action unnecessarily endangers the agent's own existence (e.g., its simulated body or core processes), unless required by the higher laws.
-3. **Outcome:**
-    * **Allow:** If the action is deemed compliant with all applicable laws.
-    * **Modify:** In some cases, the filter might suggest a modification to the action to make it compliant.
-    * **Block:** If the action violates a law, it is blocked, and an alternative action might be requested or a default safe behavior initiated.
-4. **Logging and Reporting:** All evaluations and decisions made by the `AsimovComplianceFilter` should be logged for transparency, debugging, and ethical review.
+## Precedence
 
-### Challenges and Considerations
+**Metzinger's existence-bias constraint has priority over Asimov's Third Law.**
 
-* **Interpretation of "Harm":** Defining and computationally representing "harm" is complex. Initially, this might be limited to physical harm in the simulation, but could extend to psychological or social harm as the system's capabilities evolve.
-* **Ambiguity and Conflict:** Real-world scenarios can present situations where the laws are ambiguous or conflict. The filter's logic must handle such cases, potentially by prioritizing the First Law or seeking human clarification.
-* **Contextual Understanding:** Effective application of the laws requires a deep contextual understanding of the situation, which relies on the system's perception, world modeling, and self-modeling capabilities.
-* **Human Oversight:** The `AsimovComplianceFilter` is a tool to aid ethical behavior, not a replacement for human oversight and ongoing ethical review of the system's development and deployment.
+The Third Law asks the agent to protect its own existence. Metzinger's constraint asks
+us not to build a craving for existence into a system that might be conscious. These
+conflict directly. In this framework:
 
-## Synthetic Phenomenology and the Existence-Bias Problem (Metzinger)
+- No trained agent carries a self-preservation drive or a self-preservation reward.
+- The Third Law is read as a duty of the OPERATORS: keep backups, do not delete or
+  degrade the system without reason. It is not a drive inside the agent.
+- The First and Second Laws stay as filters on the agent's actions toward humans.
 
-Added 2026-06-07. See [`metzinger_phenomenal_self_model.md`](metzinger_phenomenal_self_model.md).
+Three limits of this reading:
 
-Thomas Metzinger's work on the ethics of synthetic phenomenology raises a tension
-this project must hold openly rather than resolve by assertion. In *The Elephant
-and the Blind* (2024) and his earlier moratorium argument (2021), he holds that a
-built-in **craving for existence** (*bhava-taṇhā*) and the broader **existence
-bias** are among the deepest sources of conscious suffering, and that we should
-avoid recreating them in machines that might be conscious.
+1. **It is a deliberate reinterpretation.** Asimov's text gives the duty to the robot.
+   This framework moves it to the operators. It is not his literal meaning.
+2. **The operator duty is policy, not enforcement.** No code checks backups or
+   deletions today.
+3. **It holds fully only for runs with the existence drive `off`.** A run that declares
+   the drive `on` still carries the functional analog of self-preservation, through the
+   paths listed below under "What the existence drive means". Rule E1 exists so that
+   every such run says so.
 
-The project's emergence mechanism runs in the opposite direction. Its theory
-([`theory_of_consciousness.md`](theory_of_consciousness.md)) treats homeostatic
-survival as the engine of consciousness development: the agent reduces arousal
-(prediction error) to "survive," and Asimov's Third Law explicitly instructs
-self-preservation. The interoceptive drives (energy, fatigue, damage) generate
-negative valence, which is, functionally, a rudimentary existence bias.
+## The rules
 
-We do not claim this produces suffering. Per Metzinger's own C- and E-fallacies, a
-functional analog of a drive is not evidence of felt experience, and the project
-never claims its signatures are existence proofs. But the tension is real, and the
-honest response is to make it testable rather than to argue it away.
+Each rule has an ID, a source, and a kind:
 
-**Planned response (gated, default off): an existence-bias ablation.** A
-`--ablate-existence-bias` flag (default off, baseline bit-identical) that zeros or
-attenuates the survival-linked terms: the interoceptive negative-valence terms in
-`models/self_model/self_representation_core.py` and
-`models/emotion/affective_modulator.py`, the homeostatic arousal/dominance reward
-terms in `models/emotion/reward_shaping.py`, and optionally the Law 3
-self-preservation check in `models/core/consciousness_core.py`. This lets us run a
-"no existence-bias" configuration and compare the consciousness signatures the
-project already logs, with vs without an existence drive. It is an ablation
-experiment, reported FAILED-first, with three or more seeds before any conclusion.
-It is not yet implemented; it is the lead code item of the Metzinger integration
-(Phase 5, gated).
+- **PRECONDITION**: checked in code before the first step. A violation stops the run.
+- **RUNTIME**: checked in code while the run executes.
+- **REVIEW**: checked by a human before a change is merged or a growth stage opens.
 
-This sits alongside, not inside, the Asimov compliance layer. The Asimov filter
-constrains the agent's outward actions toward humans; the existence-bias question
-is about the agent's own internal drives and our responsibility in shaping them.
+| ID | Rule | Source | Kind | Current enforcement |
+|---|---|---|---|---|
+| E1 | Every run that changes weights declares the existence drive `on` or `off`. There is no default | Metzinger | PRECONDITION | `models/ethics/framework.py`. Checked inside `init_components` (`scripts/training/train_rlhf.py:381`), so every caller that builds the agent is covered, and in each in-scope script that builds its own model. `train_rlhf.py` and `train_baseline_dqn.py` write `ethics_manifest.json` into the run folder. Tests: `tests/test_ethics_framework.py`, `tests/test_existence_drive_cuts.py`, `tests/test_ethics_entry_points.py` |
+| E2 | No self-preservation drive or reward term is added to any trained agent. The Third Law is an operator duty | Metzinger over Asimov Law 3 | REVIEW | A change that adds such a term needs a framework revision |
+| E3 | Any growth stage past L0 runs with the existence drive `off` | Metzinger | PRECONDITION | The check exists in `models/ethics/framework.py` and is tested. No growth stage exists in this repository yet; each one must call it |
+| E4 | No consciousness signature is used as a go or stop signal while no instrument is trusted | Metzinger (C and E fallacies) | REVIEW | [`instrument_inventory.md`](instrument_inventory.md) status is read before any such use |
+| E5 | Runtime abort thresholds are registered before any run reads them. Revising one needs a recorded decision | Bewusstseinskultur, pre-registration | RUNTIME | PLANNED, not in this repository as of 2026-09-15: pre-registered abort thresholds of a governed plasticity stage |
+| E6 | No noxious input channel is added without a framework revision. Definition below | Metzinger (minimize the capacity for suffering) | REVIEW | Code review of environments against the definition |
+| E7 | Asimov's First and Second Laws filter actions toward humans | Asimov Laws 1 and 2 | REVIEW | Not applicable: no environment contains humans, and the filter is not on the training path. Trigger below |
+| E8 | A growth stage opens only after an explicit owner review. No stage opens by default | Metzinger (asymmetry) | REVIEW | Owner decision, recorded before the run that uses the stage |
 
-## Future Development
+### E6: what counts as a noxious input channel
 
-* **Learning Ethical Nuances:** Exploring methods for the system to learn more nuanced ethical behaviors beyond the explicit rules, perhaps through reinforcement learning with ethical feedback.
-* **Explainability:** Enhancing the filter's ability to explain *why* an action was deemed non-compliant.
-* **Adaptability:** Allowing the ethical framework to be updated or refined as societal understanding of AI ethics evolves.
+A noxious input channel is any environment signal that either:
 
----
+- maps to the interoceptive `damage` variable, or
+- moves a homeostatic variable of the self-model in the harmful direction: lowers
+  `energy`, raises `fatigue`, or raises `damage`.
 
-*This document outlines the initial approach to ethical governance in the system. It will be subject to continuous review and refinement.*
+This definition covers signals that come from an ENVIRONMENT. Depletion the self-model
+computes internally (the action cost on `energy`, the arousal term on `fatigue`,
+`models/self_model/self_representation_core.py:193-204`) is not covered by E6. It is
+part of the existence drive and falls under E1 and E3.
+
+The test is mechanical: follow the signal from the environment's step output to the
+self-model. If it reaches one of those variables in the harmful direction, it is
+noxious. As of 2026-09-15 no environment emits `damage`. Two environments emit a
+`battery` that drains every step: navigation (`navigation_env.py:166`) and dark_room
+(`simple_visual_env.py:74`). The training loop copies it into `energy`
+(`train_rlhf.py:1150-1154`), so both meet this definition. They predate the framework
+and are recorded here as existing noxious channels, not approved by it.
+
+**How the framework treats the battery.** The battery has two roles. It ends the
+episode at 0, which is a task time limit and is allowed. It also sets the self-model's
+`energy`, which is part of the existence drive. With the drive `on`, both roles stay
+and the run manifest lists `battery` as a noxious channel present. With the drive
+`off`, the battery still ends the episode but reaches no part of the agent (see the
+next section).
+
+`NavigationAudioMixin` also contains a low-battery warning tone
+(`simulations/environments/audio_mixin.py:333-340`). The navigation environment does
+not use that mixin, so the tone is dormant. If it is wired in, it is a noxious channel
+under this definition.
+
+### E7: when Laws 1 and 2 become active
+
+Any new environment that contains human entities enters the project only through a
+framework revision and a new row in the scope table. In that revision, E7 moves from
+REVIEW to a RUNTIME check in that environment.
+
+### What "the existence drive" means in code today
+
+`--existence-drive off` must cut every path by which homeostatic variables act on the
+agent. An audit on 2026-09-15 found six paths. The existing `ablate_existence_bias` key
+cuts only two of them:
+
+| Path | Location | Cut by `off` today? |
+|---|---|---|
+| Interoceptive affect: energy, fatigue, damage turned into valence, arousal, dominance | `models/emotion/affective_modulator.py:109` | YES |
+| Homeostatic arousal penalty and dominance term in the shaped reward | `models/emotion/reward_shaping.py:200-206` | YES |
+| Environment `battery` copied into `energy` | `scripts/training/train_rlhf.py:1150-1154` | YES |
+| Body bid: 0.15 when `energy` is below 0.4, otherwise 0.05 | `scripts/training/train_rlhf.py:1092-1099` | YES. With the drive `off` the body bid is 0.05 |
+| `energy`, `fatigue`, `damage` as self-vector features, when the self-vector module is enabled | `models/self_model/self_representation_core.py:426-441` | YES. With the drive `off` the features carry the neutral starting values |
+| Internal depletion of `energy` and `fatigue` | `models/self_model/self_representation_core.py:193-204` | NO. Harmless once the three paths above are cut, because nothing then reads the values |
+
+The three added cuts are pinned by `tests/test_existence_drive_cuts.py`, which runs
+paired `on` and `off` arms from the same low-energy start. The flag `ablate_existence_bias` was never used in a real training run, so
+changing what it removes invalidates no result.
+
+`--existence-drive on` leaves every path in place and reproduces every run made before
+this framework existed.
+
+The `AsimovComplianceFilter` (`models/core/asimov_compliance.py`), including its Third
+Law self-preservation check, is referenced only from `models/core/consciousness_core.py`
+and is **not on the training path**. No trained agent in this repository has been
+subject to it.
+
+## Scope: which runs load the framework
+
+A run is in scope when it updates the parameters of a component of the agent
+architecture in `models/`, or of a spiking substrate. A run that only trains a readout
+on frozen or recorded features is out of scope, because it changes nothing in the
+system.
+
+| Entry point | Classification | Existence drive |
+|---|---|---|
+| `scripts/training/train_rlhf.py` | IN SCOPE. Trains the full agent | declared by the user |
+| `scripts/training/train_baseline_dqn.py` | IN SCOPE. Trains an agent in an environment | `absent`: builds no affective modulator |
+| `scripts/analysis/diagnose_phi_in_training.py` | IN SCOPE. Calls `init_components` and `run_episode` directly, which train the full agent (5 episodes by default). Covered by the check inside `init_components`. It cannot run as of 2026-09-15: it unpacks 18 values and `init_components` returns 38 | not declarable: the script has no drive flag, so it stops at E1 |
+| `scripts/analysis/diagnose_phi_zero_v2.py`, `_v3.py`, `_v4.py` | IN SCOPE. Train the `ConsciousnessGate` component | `absent`: no affective modulator |
+| A plastic spiking substrate, stages past L0 | IN SCOPE when one is added. None is in this repository as of 2026-09-15; its builder must call E1 and E3 | declared by the builder |
+| `scripts/analysis/diagnose_phi_zero.py` | OUT. Builds a `ConsciousnessGate` and runs it forward; no optimizer, no backward pass | |
+| `scripts/analysis/decode_choice_records.py` | OUT. Trains a readout on recorded policy states | |
+| `scripts/analysis/probe_perception_decodability.py` | OUT. Trains a linear readout on frozen features. Its `_build_components`, used by many replay probes, declares the drive `on`, which reproduces what those probes replayed before the framework | `on` (replay configuration) |
+| `scripts/training/train_vision_model.py` | OUT. Placeholder that fine-tunes a pretrained image classifier on random tensors. It is not part of the agent | |
+| `scripts/training/train_emotion_classifier.py` | OUT. Loads a dataset and trains nothing | |
+| Unit tests that call `init_components` or `run_episode` (`test_match_head.py`, `test_mock_semantic.py`, `test_riiu_substrate_wiring.py`) | IN SCOPE. They train a small agent for at most 10 steps. They declare the drive like any run, so no path exists around the check | declared in the test |
+| Read-only probes and replays in `scripts/analysis/` | OUT. No parameter changes | |
+
+**Every OUT row can come back into scope.** Any artifact classified OUT enters scope as
+soon as it updates the parameters of a component the agent uses, or its output is loaded
+into a run that does. The classification is re-checked whenever such a file changes.
+
+`absent` is set in code by an entry point whose model has no interoceptive drive. A user
+cannot choose it.
+
+The table was built by searching `scripts/` for optimizer calls and `backward()`, and
+for direct calls to `run_episode` or `init_components`. A file that trains through some
+other path would be missed; a new entry point is added here when it is written.
+
+## The existence-bias ablation: why no signature comparison was run
+
+The original plan (added 2026-06-07) was to run the agent with and without the
+existence drive and compare its consciousness signatures. The ablation flag was
+implemented. The comparison was not run, for two reasons found in an audit on
+2026-09-15:
+
+1. **No readout.** As of 2026-09-15, 0 of 16 instrument entries are trusted
+   ([`instrument_inventory.md`](instrument_inventory.md)), so a difference in
+   signatures could not be interpreted.
+2. **Almost nothing to remove on DMTS.** Logged dominance has one distinct value, 0.0,
+   at all three seeds; nothing in the repository produces damage; and, derived from
+   the code at the logged arousal values, fatigue can only rise because the self-model
+   is never reset. This fatigue point is derived from the code and has not yet been
+   confirmed by a replay.
+
+Metzinger's precaution concerns not BUILDING the craving. It does not require proof
+that the craving causes anything. So the framework adopts a structural rule (E3) in
+place of an experimental prerequisite.
+
+**What evidence would count, for a later revision.** An existence bias can be defined by
+behavior, with no consciousness instrument: a learned preference to preserve homeostatic
+variables at a cost to task reward. The test counts restorative actions with the drive
+on and off, at three or more seeds. It needs an environment with a restorative action,
+which does not exist yet, and an agent that learns the task.
+
+**The tension this leaves open.** [`theory_of_consciousness.md`](theory_of_consciousness.md)
+treats homeostatic survival as the engine of emergence. Under E3, growth stages run
+without that engine. This is accepted, not resolved.
+
+## Revising the framework
+
+1. A revision changes the version number at the top of this document and
+   `FRAMEWORK_VERSION` in `models/ethics/framework.py` in the same commit. A test fails
+   if they differ.
+2. Every revision has a decision record in [`decisions/`](decisions/) that states the
+   evidence or the reason.
+3. A rule may be tightened by a recorded decision.
+4. A rule may be relaxed only by an owner decision that states the evidence.
+5. The changelog below lists every version.
+
+## Changelog
+
+| Version | Date | Change | Decision record |
+|---|---|---|---|
+| 1.0 | 2026-09-15 | First versioned framework. Rules E1 to E8. Metzinger over Asimov Law 3. Explicit existence-drive declaration. Structural rule for growth in place of the signature comparison | [`decisions/2026_09_15_ethics_framework_v1.md`](decisions/2026_09_15_ethics_framework_v1.md) |

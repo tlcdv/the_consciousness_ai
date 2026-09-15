@@ -3,6 +3,8 @@ from __future__ import annotations
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+
+from models.core.bid_normalization import RunningZScoreBid
 from typing import Any
 
 from models.core.retinotopic_encoder import RetinotopicEncoder
@@ -301,6 +303,13 @@ class SensoryTectum(nn.Module):
 
         self.topo_map = TopographicMap(self.grid_size, self.feature_dim)
         self.latent_mode = config.get("rssm_latent_mode", "discrete")
+        # Vision bid reduction. "tanh_sum" (default): tanh of the summed KL, which was
+        # exactly 1.0 on every measured step. "zscore": sigmoid of a running z-score of
+        # the same KL (models/core/bid_normalization.py).
+        reduction = config.get("vision_bid_reduction", "tanh_sum")
+        if reduction not in ("tanh_sum", "zscore"):
+            raise ValueError("vision_bid_reduction must be tanh_sum or zscore, got %r" % reduction)
+        self.bid_normalizer = RunningZScoreBid() if reduction == "zscore" else None
         self.rssm = RSSMCore(self.feature_dim, self.grid_size,
                              action_dim=config.get("wm_action_dim", 0),
                              latent_mode=self.latent_mode)
@@ -442,6 +451,8 @@ class SensoryTectum(nn.Module):
             var = torch.exp(self.rssm.cont_logvar)
             kl_map = 0.5 * (post_logits - prior_logits) ** 2 / (var + 1e-8)
             kl_div = kl_map.sum() / post_logits.shape[0]
+            # Read by the session recorder. Detached, so the graph is unchanged.
+            self._last_kl_map = kl_map.detach()
         else:
             # KL Divergence: KL(posterior || prior) = sum q * log(q/p)
             # This measures how much the observed reality (posterior) diverges from
@@ -451,9 +462,15 @@ class SensoryTectum(nn.Module):
             q = F.softmax(post_logits, dim=2)   # posterior (reality)
             log_p = F.log_softmax(prior_logits, dim=2)  # prior (prediction)
             kl_div = F.kl_div(log_p, q, reduction='batchmean')
+            self._last_kl_map = None
         
         # Scale bid to [0, 1] using tanh
         bid = torch.tanh(kl_div).item()
+        # The KL before tanh, for the session recorder: the bid saturates at 1.0
+        # past about 9, so the bid alone cannot show how far past the ceiling it is.
+        self._last_kl_div = float(kl_div.detach())
+        if self.bid_normalizer is not None:
+            bid = self.bid_normalizer.bid(self._last_kl_div)
         
         # 4. Extract content via capsule composition
         z_flat = z_t.view(B, -1, self.grid_size, self.grid_size)

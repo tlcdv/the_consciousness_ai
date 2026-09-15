@@ -129,6 +129,12 @@ class ReentrantProcessor:
             
             prev_broadcast = broadcast_content
         
+        # One environment step has ended: let the workspace move its per-step
+        # ignition statistics (a no-op for the default ignition rule).
+        end_step = getattr(workspace, "end_step", None)
+        if callable(end_step):
+            end_step()
+
         # Build result
         result = SettleResult(
             broadcast_content=broadcast_content,

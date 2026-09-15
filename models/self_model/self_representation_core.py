@@ -84,6 +84,11 @@ class SelfState:
         if self.capability_model is None:
             self.capability_model = {}
 
+# The interoceptive values a self-model starts with (see SelfState). Used in place
+# of the live state when the existence drive is off.
+NEUTRAL_INTEROCEPTIVE_STATE = {"energy": 1.0, "damage": 0.0, "fatigue": 0.0}
+
+
 class SelfRepresentationCore:
     """
     Core implementation of the system's representation of itself.
@@ -419,6 +424,10 @@ class SelfRepresentationCore:
         """
         emo = emotion or self.state.emotional_state or {}
         intero = self.state.interoceptive_state or {}
+        if self.config.get("ablate_existence_bias", False):
+            # Existence drive off (ethics framework): the self-vector sees the
+            # neutral starting values, not the homeostatic state.
+            intero = NEUTRAL_INTEROCEPTIVE_STATE
         caps = list(self.state.capability_model.values()) if self.state.capability_model else []
         cap_mean = float(np.mean(caps)) if caps else 0.0
         cap_count_norm = min(1.0, len(caps) / 10.0)

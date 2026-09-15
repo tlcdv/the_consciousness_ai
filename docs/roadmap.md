@@ -327,7 +327,10 @@ behind the usual default-off gate; no default behavior changes, and no new metri
 is built without clearing a "genuinely new falsifiable signature versus repackaging
 existing quantities" bar.
 
-  - **Existence-bias ablation (ethics checkpoint, concrete code lead):** A
+  - *Superseded 2026-09-15 by [`ethics_framework.md`](ethics_framework.md) version
+    1.0: the flag is implemented as `--existence-drive off`, and the signature
+    comparison was not run, because no instrument is trusted.*
+    **Existence-bias ablation (ethics checkpoint, concrete code lead):** A
     default-off `--ablate-existence-bias` flag that zeros or attenuates the
     survival-linked drives (interoceptive negative-valence terms, the homeostatic
     arousal/dominance reward terms, optionally Asimov Law 3 self-preservation), so a

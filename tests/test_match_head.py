@@ -145,6 +145,7 @@ def test_train_on_buffer_learns_separable_mapping():
 
 def _args(**overrides):
     base = argparse.Namespace(
+        existence_drive="on",  # ethics framework rule E1
         episodes=1, max_steps=10, action_dim=5, lr=1e-3, render=False,
         env="dmts", difficulty=0, log_dir="runs/_test", log_ei_every=0,
         enable_audio=False,

@@ -287,7 +287,10 @@ changes default behavior. None of it is built without separate approval, and any
 new measurement must clear a "genuinely new falsifiable signature versus
 repackaging existing quantities" bar before it earns an implementation.
 
-- **A. Existence-bias ablation flag (the concrete lead item).**
+- **A. Existence-bias ablation flag (the concrete lead item).** *Superseded
+  2026-09-15: the flag is implemented and extended, and the signature comparison below
+  was not run; see [`ethics_framework.md`](ethics_framework.md) version 1.0, which
+  makes the existence drive a declared setting of every training run.*
   `--ablate-existence-bias` (default off, baseline bit-identical). When on, it
   zeros or attenuates the interoceptive negative-valence terms
   ([`self_representation_core.py`](../models/self_model/self_representation_core.py)

@@ -153,6 +153,9 @@ def _build_components(env_name: str, action_dim: int, seed: int, mock_semantic: 
         env=env_name, enable_audio=False, enable_mock_semantic=mock_semantic,
         seed=seed, rssm_latent_mode=latent_mode,
         capsule_workspace_source=capsule_workspace_source,
+        # Ethics framework rule E1. "on" reproduces the configuration every probe
+        # replayed before the framework existed.
+        existence_drive="on",
     )
     config = build_config(args)
     config["device"] = "cpu"

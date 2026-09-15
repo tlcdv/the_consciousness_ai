@@ -22,6 +22,8 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
+from models.ethics.framework import RunDeclaration, write_ethics_manifest
+
 logging.basicConfig(level=logging.INFO, format='%(asctime)s %(levelname)s: %(message)s')
 logger = logging.getLogger(__name__)
 
@@ -111,6 +113,10 @@ def main():
     parser.add_argument("--difficulty", type=int, default=0)
     parser.add_argument("--render", action="store_true")
     args = parser.parse_args()
+    # Ethics framework rule E1. This baseline builds no self-model, affect or
+    # homeostatic reward, so the drive is absent; the battery only ends episodes.
+    write_ethics_manifest(args.log_dir, RunDeclaration(
+        entry_point="train_baseline_dqn", existence_drive="absent"))
 
     render_mode = "human" if args.render else "rgb_array"
     env, action_dim, is_continuous = make_env(args.env, render_mode, args.difficulty)

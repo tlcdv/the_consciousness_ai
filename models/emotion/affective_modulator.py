@@ -36,6 +36,10 @@ class AffectiveModulator:
     def __init__(self, config: dict = None):
         config = config or {}
 
+        # Learned valence (models/emotion/learned_valence.py). None by default; when
+        # set, it replaces the fixed approach/threat module sets below.
+        self.learned_valence = None
+
         # Valence field strength: how much valence influences bids
         self.valence_gain = config.get("valence_gain", 0.15)
 
@@ -168,7 +172,9 @@ class AffectiveModulator:
         for name, bid in bids.items():
             delta = 0.0
 
-            if valence > 0:
+            if self.learned_valence is not None:
+                delta = self.learned_valence.boost(name, self.valence_gain)
+            elif valence > 0:
                 # Positive valence: boost approach-relevant modules
                 if name in self.approach_modules:
                     delta = valence * self.valence_gain

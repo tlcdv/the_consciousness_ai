@@ -1,5 +1,40 @@
 # One of five modules receives sensory data, and that is why the workspace is degenerate
 
+> **CORRECTED 2026-09-15. The audio half of this document is wrong in its meaning.**
+>
+> **The varying audio bid came from noise, not from sound that carries information.**
+> Repeated at 3 seeds with seeded audio and full session records
+> (`runs/modality_dr_seeded_s4{2,3,4}`, 600 steps each, same flags):
+>
+> | | seed 42 | seed 43 | seed 44 |
+> |---|---|---|---|
+> | audio bid, distinct values | 590 | 588 | 582 |
+> | vision bid, distinct values | 1 | 1 | 1 |
+> | winner | vision 590, silent 10 | vision 596, silent 4 | vision 591, silent 9 |
+> | closest distance to the light | 86.7 | 84.9 | 43.5 |
+> | steps in the light | 0 | 0 | 23 |
+>
+> In those 1800 steps the dark_room sound carried almost nothing:
+>
+> - the proximity tone plays only below a distance of 10 in a room 224 wide; the distance
+>   was never below 10;
+> - the in-light chord peaks at 0.078 against 0.064 for noise alone, and on the 23
+>   in-light steps the recorded peaks (0.060 to 0.074) were inside the noise range;
+> - the collision sound never played, because the environment never reported a collision;
+> - the sound was mono, so no direction reached the agent;
+> - the auditory `salience_net` is in no optimizer, so the audio bid is an untrained network
+>   responding to random noise.
+>
+> **The numbers below cannot be reproduced exactly.** The environment audio noise had no
+> seed until 2026-09-15: the same command run twice gave different `bid_audio` from step 1
+> (0.476660013 against 0.476288438). The audio is now seeded from `--seed`.
+>
+> What still stands: only vision receives informative sensory data on dark_room as well as
+> on DMTS, the vision bid is fixed at 1.0, and vision wins every ignited step, now at 3
+> seeds. What does not stand: "a module's bid becomes live as soon as its modality is
+> present" as evidence that the audio module processes information, and the audio row of
+> "the oscillators follow it" as evidence of anything but noise driving the amplitudes.
+
 **On DMTS, the task every workspace, bid, binding and `sync_R` measurement in this
 project has used, exactly ONE of the five competing modules receives real sensory
 data.** The other four are fed zeros, literals, or a stub.

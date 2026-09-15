@@ -31,6 +31,7 @@ from scripts.analysis.compare_phi_pathways import load_metrics, SUBSTRATE_COLUMN
 def _default_args(**overrides):
     """Build an argparse.Namespace mimicking train_rlhf.py defaults."""
     base = argparse.Namespace(
+        existence_drive="on",  # ethics framework rule E1
         episodes=1,
         max_steps=10,
         action_dim=2,

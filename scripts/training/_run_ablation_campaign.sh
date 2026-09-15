@@ -52,6 +52,7 @@ for entry in "${RUNS[@]}"; do
   python -m scripts.training.train_rlhf \
     --episodes 200 --max-steps 200 \
     --env dark_room \
+    --existence-drive on \
     --log-dir "${log_dir}" \
     --log-ei-every 50 \
     ${flag:+${flag}} \
