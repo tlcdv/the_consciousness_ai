@@ -27,7 +27,8 @@ as a system font. Same layout intent, stated here rather than hidden.
 
 Run:
     python -m scripts.sessions.export_session --run runs/gate_b2_s49 \
-        --episode 9 --session-id dark-room-b2-seed49-episode9
+        --episode 9 --session-id dark-room-b2-seed49-episode9 \
+        --site-dir <the website's sessions data folder>
 """
 
 from __future__ import annotations
@@ -472,18 +473,13 @@ def export_session(run: Path, episode: int, session_id: str, site_dir: Path,
     return target
 
 
-def default_site_dir() -> Path:
-    repo_root = Path(__file__).resolve().parents[2]
-    return repo_root.parent / "the_consciousness_ai_page" / "public" / "data" / "training_sessions"
-
-
 def parse_args(argv=None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--run", required=True, type=Path, help="the run folder")
     parser.add_argument("--episode", required=True, type=int, help="episode index")
     parser.add_argument("--session-id", required=True,
                         help="public id, lowercase words and dashes, no dates")
-    parser.add_argument("--site-dir", type=Path, default=default_site_dir(),
+    parser.add_argument("--site-dir", required=True, type=Path,
                         help="the website's sessions data folder")
     parser.add_argument("--limit-mb", type=float, default=SESSIONS_LIMIT_MB,
                         help="sessions folder limit the export must respect")
