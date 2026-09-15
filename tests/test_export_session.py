@@ -84,13 +84,14 @@ def write_run_facts(folder: Path) -> None:
         "audio_seeded": True, "dark_room_audio": "binaural",
         "dark_room_audio_channels": 4, "dark_room_collision": True,
         "dark_room_view": "agent_centered", "dark_room_view_radius": 96}
+    # The shape models/ethics/framework.py writes.
     manifest = {
-        "framework_version": "1.0", "entry_point": "scripts.training.train_rlhf",
-        "existence_drive": "on", "growth_stage": "P0",
-        "rules_checked": {"E1": "pass"}, "violations": [],
-        "noxious_channels_present": False,
-        "git_commit": "abc123", "git_tracked_changes": 3,
-        "utc_time": "2026-09-15T20:00:00Z"}
+        "framework_version": "1.0", "entry_point": "train_rlhf",
+        "existence_drive": "on", "growth_stage": "L0",
+        "rules_checked": ["E1", "E3"], "violations": [],
+        "noxious_channels_present": ["battery"],
+        "git_commit": "abc123", "git_tracked_changes": True,
+        "utc_time": "2026-09-15T20:00:00+00:00"}
     folder.joinpath("session.json").write_text(
         json.dumps({"run": run_facts, "modules": {}, "recorded_episodes": [0],
                     "full_tensor_episodes": [0]}), encoding="utf-8")
@@ -200,7 +201,7 @@ def test_scan_raises_on_dates_times_and_epochs():
 
 def test_scan_raises_on_absolute_paths():
     for leak in ("crash in C:\\Users\\zae\\core.py", "log /Users/zae/x",
-                 "path \\\\Users\\\\zae"):
+                 "path \\\\Users\\\\zae", "log /home/zae/x"):
         with pytest.raises(exporter.PublicLeakError):
             exporter.scan_text(leak, "session.json")
 
@@ -249,6 +250,26 @@ def test_size_guard_refuses_a_bundle_over_the_limit(tmp_path):
         exporter.check_sessions_size(tmp_path / "bundle", folder, limit_mb=0.001)
 
 
+def test_size_total_does_not_count_the_copy_being_replaced(tmp_path):
+    site = tmp_path / "site"
+    (site / "dark-room-b2-seed49").mkdir(parents=True)
+    (site / "dark-room-b2-seed49" / "old.bin").write_bytes(b"0" * 4096)
+    bundle = tmp_path / "staging" / "dark-room-b2-seed49"
+    bundle.mkdir(parents=True)
+    (bundle / "new.bin").write_bytes(b"0" * 1000)
+    total = exporter.check_sessions_size(bundle, site, limit_mb=1.0,
+                                         replaced=site / "dark-room-b2-seed49")
+    assert total == pytest.approx(1000 / 1e6)
+
+
+def test_export_refuses_an_existing_session_id(tmp_path):
+    run = build_run(tmp_path / "run")
+    site = tmp_path / "site"
+    (site / "dark-room-b2-seed49").mkdir(parents=True)
+    with pytest.raises(FileExistsError):
+        exporter.export_session(run, 0, "dark-room-b2-seed49", site)
+
+
 def test_export_refuses_when_the_site_folder_would_overflow(tmp_path):
     run = build_run(tmp_path / "run")
     site = tmp_path / "site"
@@ -273,6 +294,16 @@ def test_export_writes_the_six_bundle_files(tmp_path):
     assert sorted(p.name for p in bundle.iterdir()) == sorted(BUNDLE_FILES)
     for name in BUNDLE_FILES:
         assert (bundle / name).stat().st_size > 0, name
+
+
+@needs_ffmpeg
+def test_replace_swaps_the_bundle_instead_of_nesting_it(tmp_path):
+    run = build_run(tmp_path / "run")
+    site = tmp_path / "site"
+    exporter.export_session(run, 0, "dark-room-b2-seed49", site)
+    exporter.export_session(run, 0, "dark-room-b2-seed49", site, replace=True)
+    bundle = site / "dark-room-b2-seed49"
+    assert sorted(p.name for p in bundle.iterdir()) == sorted(BUNDLE_FILES)
 
 
 @needs_ffmpeg

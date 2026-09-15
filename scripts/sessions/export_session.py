@@ -61,7 +61,7 @@ TIME_SCAN = re.compile(r"\d{2}:\d{2}:\d{2}")
 ISO_SCAN = re.compile(r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}")
 EPOCH_SCAN = re.compile(r"\b\d{10}\b")
 PATH_SCANS = (re.compile(r"[A-Za-z]:[\\/]"), re.compile(r"/Users/"),
-              re.compile(r"\\Users\\"))
+              re.compile(r"\\Users\\"), re.compile(r"/home/"))
 
 POSTER_WIDTH, POSTER_HEIGHT = 1200, 630
 CLIP_HEIGHT, CLIP_PANEL_WIDTH = 448, 520
@@ -123,7 +123,12 @@ def audio_directions(vectors: dict) -> dict:
 
 
 def slim_environment(previous: dict) -> dict:
-    """Environment state AFTER the previous step, which produced this step's frame."""
+    """Environment state AFTER the previous step, which produced this step's frame.
+
+    The reward of step t comes from the environment step taken at t, so it is one
+    step later than these fields: on the step the agent enters the light, reward is
+    1.0 while in_light (the state that produced the frame) is still false.
+    """
     if not previous:
         return {"in_light": None, "collision": None, "light_in_view": None}
     after = previous.get("internals", {}).get("info_after_step", {})
@@ -264,11 +269,14 @@ def folder_bytes(path: Path) -> int:
 
 
 def check_sessions_size(bundle_dir: Path, site_dir: Path,
-                        limit_mb: float = SESSIONS_LIMIT_MB) -> float:
+                        limit_mb: float = SESSIONS_LIMIT_MB,
+                        replaced: Path = None) -> float:
+    """Total after the export; a bundle being replaced is not counted twice."""
     bundle_mb = folder_bytes(bundle_dir) / 1e6 if bundle_dir.exists() else 0.0
     existing = []
     if site_dir.is_dir():
-        existing = [entry for entry in site_dir.iterdir() if entry != bundle_dir]
+        existing = [entry for entry in site_dir.iterdir()
+                    if entry not in (bundle_dir, replaced)]
     total_mb = bundle_mb + sum(folder_bytes(entry) for entry in existing) / 1e6
     print("bundle %.1f MB, sessions folder total %.1f MB of %.0f MB limit"
           % (bundle_mb, total_mb, limit_mb))
@@ -460,15 +468,25 @@ def write_bundle(bundle_dir: Path, run: Path, episode: int) -> None:
 
 
 def export_session(run: Path, episode: int, session_id: str, site_dir: Path,
-                   limit_mb: float = SESSIONS_LIMIT_MB) -> Path:
+                   limit_mb: float = SESSIONS_LIMIT_MB, replace: bool = False) -> Path:
+    """Stage, scan and size-check the bundle, then move it into the site folder.
+
+    An existing bundle with the same id is refused unless replace is true. Without
+    this check shutil.move would put the new bundle INSIDE the old folder.
+    """
     validate_session_id(session_id)
     target = site_dir / session_id
+    if target.exists() and not replace:
+        raise FileExistsError("session %r already exists in %s; pass replace=True "
+                              "(--replace) to overwrite it" % (session_id, site_dir))
     with tempfile.TemporaryDirectory() as staging:
         bundle_dir = Path(staging) / session_id
         write_bundle(bundle_dir, run, episode)
         scan_bundle(bundle_dir)
-        check_sessions_size(bundle_dir, site_dir, limit_mb)
+        check_sessions_size(bundle_dir, site_dir, limit_mb, replaced=target)
         site_dir.mkdir(parents=True, exist_ok=True)
+        if target.exists():
+            shutil.rmtree(target)
         shutil.move(str(bundle_dir), str(target))
     return target
 
@@ -483,12 +501,15 @@ def parse_args(argv=None) -> argparse.Namespace:
                         help="the website's sessions data folder")
     parser.add_argument("--limit-mb", type=float, default=SESSIONS_LIMIT_MB,
                         help="sessions folder limit the export must respect")
+    parser.add_argument("--replace", action="store_true",
+                        help="overwrite an existing bundle with the same session id")
     return parser.parse_args(argv)
 
 
 def main(argv=None) -> int:
     args = parse_args(argv)
-    bundle_dir = export_session(args.run, args.episode, args.session_id, args.site_dir)
+    bundle_dir = export_session(args.run, args.episode, args.session_id, args.site_dir,
+                                args.limit_mb, replace=args.replace)
     for path in sorted(bundle_dir.iterdir()):
         print("%-22s %8.1f KB" % (path.name, path.stat().st_size / 1024))
     return 0
