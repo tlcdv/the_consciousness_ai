@@ -8,9 +8,14 @@
 >
 > **Update 2026-09-16 (Gate B3 below). FAILED on the KILL rule at seed 55**, where vision
 > takes 0.961 of ignited steps and the runner-up 0.039. With reliability-weighted bids
-> (`--bid-precision gain`) the TASK criterion passed for the first time: pooled rho 0.446,
-> one-sided p 0.005, rho above 0 at all 3 seeds. A confound is measured and not excluded:
-> the audio share also rises with the episode index (rho 0.85 / 0.61 / 0.15).
+> (`--bid-precision gain`) the TASK criterion passed for the first time. Pooled rho 0.446,
+> one-sided p 0.005, rho above 0 at all 3 seeds. A confound is measured and not excluded.
+> The audio share also rises with the episode index (rho 0.85 / 0.61 / 0.15).
+>
+> **Update 2026-09-16 (Gate B4 below). PASSED every criterion at 3 more seeds**, with the
+> agent drawn as the project mark in the site colour (`--dark-room-agent-mark ring`). This is
+> the first full pass. It is NOT a repeat of Gate B3, because the seeds differ and the pixels
+> the agent receives differ. The episode-index confound is still there at 2 of 3 seeds.
 
 **Gate B FAILED at all 3 seeds** on silence and on the task variable. **Its competition
 criterion passed at all 3 seeds:** hearing wins 17 to 25 percent of ignited steps, the
@@ -230,9 +235,38 @@ share of the total gain, so equal gains change nothing.
 one-sided permutation p 0.005, and rho above 0 at all 3 seeds (0.554 / 0.386 / 0.550). The
 gate still FAILS, because the KILL rule fired at seed 55 and criterion (1) failed there.
 
-Confound, measured and not excluded: the audio share also rises with the episode index
+Confound, measured and not excluded. The audio share also rises with the episode index
 (rho 0.853 / 0.607 / 0.152), which the gate lists as reported only. The task link and
 learning over time are not separated by this design.
+
+## Gate B4, the same criteria with the agent drawn as the project mark. PASSED
+
+The agent's own body is drawn into the frames it receives, so its shape and colour are run
+configuration. `--dark-room-agent-mark ring --dark-room-agent-colour 217,119,87` draws two
+rings and a centre dot in the site colour, and the run facts record it
+(`docs/decisions/2026_09_16_precision_weighted_bids.md`). New seeds 57 to 59, same flags as
+Gate B3 otherwise, same criteria, 1990 steps each.
+
+| Criterion | Seed 57 | Seed 58 | Seed 59 |
+|---|---|---|---|
+| (1) runner-up share, at least 0.05 | 0.072 | 0.202 | 0.488 |
+| (2) silence, below 0.50 | 0.133 | 0.247 | 0.322 |
+| (3) selectivity, difference / null p95 | 0.083 / 0.011 | 0.249 / 0.159 | 0.095 / 0.017 |
+| KILL, a module at 0.95 or more | 0.928 | 0.798 | 0.512 |
+| (4) task, rho per seed | 0.562 | 0.275 | 0.736 |
+
+Criterion 4 pooled over 30 episodes gives rho 0.458 and a one-sided permutation p of 0.006.
+**Every criterion passed at every seed. This is the first full pass of this gate.**
+
+Four limits stated with the pass.
+
+1. It is not a repeat of Gate B3. The seeds differ and so do the pixels, so the two gates are
+   separate measurements.
+2. The episode-index confound stands. The audio share rises with the episode number at 2 of
+   the 3 seeds (rho -0.194 / 0.512 / 0.815).
+3. Seed 57 reaches 0.928, close to the 0.95 kill limit.
+4. A passed gate is not evidence of affect. Finding a light is automatic approach, which
+   Feinberg and Mallatt exclude as evidence.
 
 ## What this establishes
 

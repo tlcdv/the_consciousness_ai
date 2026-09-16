@@ -79,6 +79,55 @@ A comparison against the Gate B2 runs is not part of this gate: those runs used 
 A PASS is not evidence of affect. Finding a light is automatic approach, which Feinberg and
 Mallatt exclude as evidence of affect.
 
+## Gate B4, pre-stated 2026-09-16, before the runs it judges
+
+Same criteria again, on new seeds 57, 58 and 59, with the Gate B3 flags plus the agent drawn
+as the project mark in the site colour.
+
+```
+python -m scripts.training.train_rlhf --env dark_room --episodes 10 --max-steps 200 \
+    --seed <57|58|59> --enable-audio --rssm-latent-mode continuous \
+    --capsule-workspace-source all_levels --existence-drive on \
+    --dark-room-audio binaural --dark-room-audio-channels 4 --dark-room-collision \
+    --dark-room-view agent_centered --vision-bid-reduction zscore \
+    --audio-salience surprise --learned-valence \
+    --ignition-rule tolerance --ignition-tolerance-sd 1.0 --bid-precision gain \
+    --dark-room-agent-mark ring --dark-room-agent-colour 217,119,87 \
+    --log-dir runs/gate_b4_s<seed>
+```
+
+Why the run is made. The agent's own body is drawn into the frames it receives, so the mark
+and the colour change the input. The change cannot ride along with an older result, and the
+published replays must show what the agent actually saw. This gate measures whether the
+findings of Gate B3 survive the change of appearance.
+
+What a result means here. A PASS does not confirm Gate B3, because the seeds differ and the
+pixels differ. A FAIL does not refute it either. The two gates are separate measurements, and
+no number from one is carried into the other.
+
+## Result of Gate B4, 2026-09-16. PASSED
+
+Every criterion passed at all 3 seeds, the first full pass in this line of work.
+
+| Criterion | Seed 57 | Seed 58 | Seed 59 |
+|---|---|---|---|
+| (1) runner-up share, at least 0.05 | 0.072 | 0.202 | 0.488 |
+| (2) silence, below 0.50 | 0.133 | 0.247 | 0.322 |
+| (3) selectivity, difference / null p95 | 0.083 / 0.011 | 0.249 / 0.159 | 0.095 / 0.017 |
+| KILL, a module at 0.95 or more | 0.928 | 0.798 | 0.512 |
+| (4) task, rho per seed | 0.562 | 0.275 | 0.736 |
+
+Criterion 4 pooled over 30 episodes gives rho 0.458 with a one-sided permutation p of 0.006.
+
+What this does NOT show, stated with the result.
+
+- It is not a repeat of Gate B3. The seeds differ and the pixels differ, so the two gates are
+  separate measurements and no number carries from one to the other.
+- The confound is still measured and still not excluded. The audio share against the episode
+  index gives rho -0.194, 0.512 and 0.815, so 2 of 3 seeds rise with the episode number.
+- Seed 57 sits at 0.928, close to the 0.95 kill limit.
+- Nothing here is evidence of affect. Finding a light is automatic approach.
+
 ## Result, 2026-09-16: Gate B3 FAILED
 
 Seed 55 fired the KILL rule (vision 0.961 of ignited steps) and failed criterion (1) with a
