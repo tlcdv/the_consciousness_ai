@@ -88,7 +88,9 @@ def write_run_facts(folder: Path) -> None:
         "existence_drive": "on", "framework_version": "1.0",
         "audio_seeded": True, "dark_room_audio": "binaural",
         "dark_room_audio_channels": 4, "dark_room_collision": True,
-        "dark_room_view": "agent_centered", "dark_room_view_radius": 96}
+        "dark_room_view": "agent_centered", "dark_room_view_radius": 96,
+        "agent_mark": "ring", "agent_colour": [217, 119, 87],
+        "light_colour": [255, 255, 200], "wall_colour": [60, 60, 60]}
     # The shape models/ethics/framework.py writes.
     manifest = {
         "framework_version": "1.0", "entry_point": "train_rlhf",
@@ -185,6 +187,15 @@ def test_public_argv_drops_log_dir_and_path_bearers(tmp_path):
     assert "--log-dir" not in argv and "runs/gate_b2_s49" not in argv
     assert not any("C:" in token for token in argv)
     assert "--dark-room-view" in argv and "agent_centered" in argv
+
+
+def test_public_run_record_carries_how_the_frames_were_drawn(tmp_path):
+    run = build_run(tmp_path / "run")
+    public = exporter.public_run_record(exporter.read_json(run / "session.json"))
+    assert public["run"]["agent_mark"] == "ring"
+    assert public["run"]["agent_colour"] == [217, 119, 87]
+    assert public["run"]["light_colour"] == [255, 255, 200]
+    assert public["run"]["wall_colour"] == [60, 60, 60]
 
 
 def test_public_manifest_drops_private_fields(tmp_path):

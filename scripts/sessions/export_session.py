@@ -53,7 +53,11 @@ BUNDLE_FILES = ("frames.webm", "steps.json", "session.json",
 RUN_FACT_KEYS = ("argv", "env", "episodes", "max_steps", "seed",
                  "existence_drive", "framework_version", "audio_seeded",
                  "dark_room_audio", "dark_room_audio_channels",
-                 "dark_room_collision", "dark_room_view", "dark_room_view_radius")
+                 "dark_room_collision", "dark_room_view", "dark_room_view_radius",
+                 # How the frames were drawn. The website legend reads these, so a
+                 # session drawn in other colours shows its own colours and never
+                 # the ones typed into a page.
+                 "agent_mark", "agent_colour", "light_colour", "wall_colour")
 PRIVATE_MANIFEST_KEYS = ("utc_time", "git_commit", "git_tracked_changes")
 
 DATE_SCAN = re.compile(r"\d{4}-\d{2}-\d{2}")

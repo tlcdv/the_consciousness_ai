@@ -10,11 +10,37 @@ from typing import Any
 from simulations.environments.audio_mixin import DarkRoomAudioMixin
 
 LIGHT_COLOUR = (255, 255, 200)
-AGENT_COLOUR = (0, 100, 255)
+AGENT_COLOUR = (0, 100, 255)  # the default since the first run; no reason was ever recorded
 WALL_COLOUR = (60, 60, 60)  # outside the room, visible in the agent-centered view
+AGENT_MARKS = ("disc", "ring")
+# The ring mark, as fractions of the agent radius: outer ring, inner ring, centre
+# dot. It is the project's own sign, and it leaves the floor visible through the
+# gaps, so the agent hides less of what is behind it than a filled disc does.
+RING_RADII = (1.0, 0.72, 0.18)
+RING_WIDTH = 0.1  # stroke width, also as a fraction of the agent radius
 # Half-width of the agent-centered window, in room pixels. Set 2026-09-15 before any run:
 # a 96-pixel window in a 224-pixel room, so a far light is out of view.
 DEFAULT_VIEW_RADIUS = 48
+
+
+def _checked_colour(colour) -> tuple:
+    """An (R, G, B) triple of bytes, or a clear error naming what was given."""
+    channels = tuple(colour)
+    if len(channels) != 3 or any(not (0 <= int(c) <= 255) for c in channels):
+        raise ValueError("agent_colour must be three values 0 to 255, got %r" % (colour,))
+    return tuple(int(c) for c in channels)
+
+
+def draw_agent(canvas, centre, radius: int, colour: tuple, mark: str) -> None:
+    """The agent's own body, drawn into the picture the agent receives."""
+    if mark == "disc":
+        pygame.draw.circle(canvas, colour, centre, radius)
+        return
+    stroke = max(1, int(round(radius * RING_WIDTH)))
+    outer, inner, dot = RING_RADII
+    pygame.draw.circle(canvas, colour, centre, int(radius * outer), stroke)
+    pygame.draw.circle(canvas, colour, centre, int(radius * inner), stroke)
+    pygame.draw.circle(canvas, colour, centre, max(1, int(radius * dot)))
 
 
 class SimpleVisualEnv(DarkRoomAudioMixin, gym.Env):
@@ -32,16 +58,27 @@ class SimpleVisualEnv(DarkRoomAudioMixin, gym.Env):
     def __init__(self, render_mode: str | None = None, width: int = 512, height: int = 512,
                  audio: str = "legacy", audio_channels: int | None = None,
                  report_collision: bool = False, view: str = "full",
-                 view_radius: int = DEFAULT_VIEW_RADIUS):
+                 view_radius: int = DEFAULT_VIEW_RADIUS,
+                 agent_mark: str = "disc", agent_colour: tuple = AGENT_COLOUR):
         """`audio`: "legacy" (mono events, the behaviour of every run before
         2026-09-15) or "binaural" (the light emits a tone heard across the room,
         with direction; `audio_channels` 2 = left/right, 4 = adds upper/lower).
         `report_collision`: add info["collision"] when a move is stopped by a wall.
         `view`: "full" (the whole room from above) or "agent_centered" (a window of
         half-width `view_radius` around the agent, scaled to the frame size; tectal
-        maps are egocentric). The defaults reproduce the earlier environment exactly."""
+        maps are egocentric).
+        `agent_mark`: "disc" (a filled circle, every run before 2026-09-16) or "ring"
+        (the project's mark: two rings and a centre dot). `agent_colour`: the RGB the
+        agent's own body is drawn in. BOTH change the pixels the agent receives, so a
+        run drawn one way cannot be compared with a run drawn another way; they are
+        recorded in the run facts for that reason. The defaults reproduce the earlier
+        environment exactly."""
         if view not in ("full", "agent_centered"):
             raise ValueError("view must be 'full' or 'agent_centered', got %r" % view)
+        if agent_mark not in AGENT_MARKS:
+            raise ValueError("agent_mark must be one of %s, got %r" % (AGENT_MARKS, agent_mark))
+        self.agent_mark = agent_mark
+        self.agent_colour = _checked_colour(agent_colour)
         self.view = view
         self.view_radius = int(view_radius)
         if audio not in ("legacy", "binaural"):
@@ -156,9 +193,8 @@ class SimpleVisualEnv(DarkRoomAudioMixin, gym.Env):
         )
 
         # Draw Agent
-        pygame.draw.circle(
-            self._canvas, (0, 100, 255), self.agent_pos.astype(int), self.agent_radius
-        )
+        draw_agent(self._canvas, self.agent_pos.astype(int), self.agent_radius,
+                   self.agent_colour, self.agent_mark)
 
         # Convert to numpy
         return np.transpose(
@@ -173,7 +209,8 @@ class SimpleVisualEnv(DarkRoomAudioMixin, gym.Env):
         canvas.fill(WALL_COLOUR)
         pygame.draw.rect(canvas, (0, 0, 0), (r, r, self.width, self.height))
         pygame.draw.circle(canvas, LIGHT_COLOUR, (self.light_pos + r).astype(int), self.light_radius)
-        pygame.draw.circle(canvas, AGENT_COLOUR, (self.agent_pos + r).astype(int), self.agent_radius)
+        draw_agent(canvas, (self.agent_pos + r).astype(int), self.agent_radius,
+                   self.agent_colour, self.agent_mark)
         left, top = self.agent_pos.astype(int)
         window = canvas.subsurface((left, top, 2 * r, 2 * r))
         scaled = pygame.transform.scale(window, (self.width, self.height))
@@ -205,8 +242,10 @@ class SimpleVisualEnv(DarkRoomAudioMixin, gym.Env):
         # Draw Light (Gradient)
         pygame.draw.circle(canvas, (255, 255, 220), self.light_pos.astype(int), self.light_radius)
         
-        # Draw Agent
-        pygame.draw.circle(canvas, (50, 150, 255), self.agent_pos.astype(int), self.agent_radius)
+        # Draw Agent. The human window shows the same mark and colour as the frame
+        # the agent receives, so a watcher and the agent never see different bodies.
+        draw_agent(canvas, self.agent_pos.astype(int), self.agent_radius,
+                   self.agent_colour, self.agent_mark)
 
         # Blit to window
         self.window.blit(canvas, (0, 0))

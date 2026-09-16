@@ -25,7 +25,9 @@ import torch
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..')))
 
-from simulations.environments.simple_visual_env import SimpleVisualEnv
+from simulations.environments.simple_visual_env import (
+    LIGHT_COLOUR, WALL_COLOUR, SimpleVisualEnv,
+)
 from models.core.sensory_tectum import SensoryTectum
 from models.core.global_workspace import GlobalWorkspace
 from models.core.reentrant_processor import ReentrantProcessor
@@ -896,6 +898,14 @@ def audio_waveform_tensor(waveform: np.ndarray, device: str) -> torch.Tensor:
     t = torch.from_numpy(waveform).float()
     t = t.unsqueeze(0) if t.dim() == 1 else t
     return t.unsqueeze(0).to(device)
+
+
+def parse_colour(text: str) -> tuple:
+    """"R,G,B" from the command line to a triple the environment can draw with."""
+    parts = [piece.strip() for piece in str(text).split(",")]
+    if len(parts) != 3 or not all(piece.lstrip("-").isdigit() for piece in parts):
+        raise ValueError("a colour is three whole numbers, R,G,B, got %r" % (text,))
+    return tuple(int(piece) for piece in parts)
 
 
 def frame_to_tensor(frame: np.ndarray, device: str) -> torch.Tensor:
@@ -2323,6 +2333,17 @@ def main():
                              "(default) was exactly 1.0 on every measured step. 'zscore': "
                              "sigmoid of a running z-score of the KL, 0.5 for a constant "
                              "surprise (docs/results/bid_counterfactual_2026_09.md, S5).")
+    parser.add_argument("--dark-room-agent-mark", choices=["disc", "ring"], default="disc",
+                        help="How the agent's own body is drawn INTO the frames it "
+                             "receives. 'disc' (default) is a filled circle, what every "
+                             "run before 2026-09-16 used. 'ring' is the project mark: "
+                             "two rings and a centre dot, with the floor visible through "
+                             "the gaps. This changes the input pixels, so runs drawn "
+                             "differently are not comparable.")
+    parser.add_argument("--dark-room-agent-colour", default="0,100,255",
+                        help="R,G,B of the agent's own body in the frames it receives. "
+                             "The default is the colour of every earlier run. Recorded "
+                             "in the run facts, because it changes the input.")
     parser.add_argument("--bid-precision", choices=["off", "gain"], default="off",
                         help="How the vision and audio bids are weighted. 'off' "
                              "(default) leaves both bids as their module produced "
@@ -2801,7 +2822,9 @@ def main():
                               audio=args.dark_room_audio,
                               audio_channels=args.dark_room_audio_channels,
                               report_collision=args.dark_room_collision,
-                              view=args.dark_room_view, view_radius=args.dark_room_view_radius)
+                              view=args.dark_room_view, view_radius=args.dark_room_view_radius,
+                              agent_mark=args.dark_room_agent_mark,
+                              agent_colour=parse_colour(args.dark_room_agent_colour))
     # Seed the environment audio noise from the run seed. Before 2026-09-15 it had
     # no seed, so no run with --enable-audio could be repeated exactly.
     if args.seed is not None and hasattr(env, "seed_audio"):
@@ -2844,7 +2867,13 @@ def main():
                        "dark_room_audio_channels": args.dark_room_audio_channels,
                        "dark_room_collision": args.dark_room_collision,
                        "dark_room_view": args.dark_room_view,
-                       "dark_room_view_radius": args.dark_room_view_radius},
+                       "dark_room_view_radius": args.dark_room_view_radius,
+                       # How the agent's own body was drawn into the frames it
+                       # received. Runs drawn differently are not comparable.
+                       "agent_mark": getattr(env, "agent_mark", None),
+                       "agent_colour": list(getattr(env, "agent_colour", ())) or None,
+                       "light_colour": list(LIGHT_COLOUR),
+                       "wall_colour": list(WALL_COLOUR)},
             module_facts=describe_modules(
                 tectum, auditory_specialist, mock_semantic,
                 has_self_model=self_model is not None,
