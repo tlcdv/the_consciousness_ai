@@ -18,6 +18,16 @@ Two invariants hold over everything this script writes:
     (the frame and sound the agent received at step t were produced by the
     environment state after step t-1; step 0 has none).
 
+Recorded audio_waveform__steps indexes the SAME record and frame, without a
+second shift. Playback uses source sample rate / samples per step as frame rate.
+Each complete chunk plays at native pitch. Four source channels L, R, U, D become
+stereo (L+U+D)/3, (R+U+D)/3 without peak normalization or sample truncation.
+Explicit no-input gaps play zeros but are not measured silence. Legacy recordings
+without waveforms use 30 frames per second and replay.audio.available=false.
+The temporary float WAV preserves samples before Vorbis or AAC compression.
+Vorbis pre-roll keeps negative timestamps so video starts at zero. AAC containers
+can report one extra codec interval; stream duration remains the source duration.
+
 The bundle is staged in a temporary folder, scanned, and only then moved into
 the website's sessions data folder, whose running total must stay under
 SESSIONS_LIMIT_MB (200 MB).
@@ -39,11 +49,15 @@ import re
 import shutil
 import subprocess
 import tempfile
+from fractions import Fraction
 from pathlib import Path
 
 import numpy as np
 from PIL import Image, ImageDraw, ImageFont
 from matplotlib import font_manager
+from scipy.io import wavfile
+
+from simulations.environments.audio_mixin import AudioMixin
 
 FRAME_RATE = 30
 SLIM_DECIMALS = 4
@@ -117,6 +131,115 @@ def load_vectors(run: Path, episode: int) -> dict:
 
 # ---- the slim per-step table ------------------------------------------------
 
+AUDIO_SAMPLE_RATE_ENVS = {"dark_room": AudioMixin._audio_sample_rate}
+WAVEFORM_KEYS = ("audio_waveform", "audio_waveform__steps")
+
+
+def _waveform_rows(vectors: dict) -> tuple:
+    present = sorted(name for name in vectors if name.startswith("audio_waveform"))
+    if not present:
+        return None, None
+    if present != sorted(WAVEFORM_KEYS):
+        raise ValueError("audio_waveform storage is partial or per-step: %s" % present)
+    waves, steps = vectors["audio_waveform"], vectors["audio_waveform__steps"]
+    if not (isinstance(waves, np.ndarray) and isinstance(steps, np.ndarray)
+            and steps.ndim == 1 and np.issubdtype(steps.dtype, np.integer)
+            and waves.shape[:1] == steps.shape and waves.shape[0] > 0
+            and waves.ndim in (2, 3)
+            and (waves.ndim == 2 or waves.shape[1] in (1, 2, 4))
+            and waves.shape[-1] > 0):
+        raise ValueError("audio_waveform has an unsupported shape %r / indices %r"
+                         % (waves.shape, steps.shape))
+    rows = waves.reshape(waves.shape[0], -1, waves.shape[-1])
+    return rows, steps
+
+
+def _validate_record_steps(records: list) -> None:
+    steps = [record.get("step") for record in records]
+    if steps != list(range(len(records))) or any(
+            not isinstance(step, int) or isinstance(step, bool) for step in steps):
+        raise ValueError("record steps must be 0..N-1 ints, got %r" % (steps,))
+
+
+def _validate_chunks(waves: np.ndarray, steps: np.ndarray, frame_count: int) -> None:
+    if not (waves.dtype.kind in "fi" and np.all(np.isfinite(waves))
+            and np.max(np.abs(waves)) <= 1.0):
+        raise ValueError("audio_waveform samples must be finite within [-1, 1]")
+    if steps.size != len(set(steps.tolist())) or steps.min() < 0 \
+            or steps.max() >= frame_count:
+        raise ValueError("audio_waveform indices are duplicate or out of range: %r"
+                         % (steps.tolist(),))
+
+
+def _replay_sample_rate(run_facts: dict) -> int:
+    explicit = run_facts.get("audio_sample_rate")
+    if explicit is not None:
+        if not isinstance(explicit, int) or isinstance(explicit, bool) or explicit <= 0:
+            raise ValueError("run facts audio_sample_rate is not a validated sample rate: %r"
+                             % (explicit,))
+        return explicit
+    rate = AUDIO_SAMPLE_RATE_ENVS.get(run_facts.get("env"))
+    if rate is None:
+        raise ValueError("no proven sample rate for env %r; none in AUDIO_SAMPLE_RATE_ENVS"
+                         % run_facts.get("env"))
+    return rate
+
+
+def _mix_playback(chunks: np.ndarray) -> np.ndarray:
+    channels = chunks.shape[1]
+    if channels == 1:
+        return chunks[:, 0:1]
+    if channels == 2:
+        return np.stack((chunks[:, 0], chunks[:, 1]), axis=-1)
+    left = (chunks[:, 0] + chunks[:, 2] + chunks[:, 3]) / 3
+    right = (chunks[:, 1] + chunks[:, 2] + chunks[:, 3]) / 3
+    return np.stack((left, right), axis=-1)
+
+
+def _channel_mapping(channels: int) -> tuple:
+    if channels == 1:
+        return "mono as recorded", 1
+    if channels == 2:
+        return "left=left; right=right", 2
+    return "left=(L+U+D)/3; right=(R+U+D)/3", 2
+
+
+def _validate_audio_sources(records: list, steps: np.ndarray) -> None:
+    present = set(steps.tolist())
+    for step, record in enumerate(records):
+        source = record.get("input_source", {}).get("audio")
+        if step not in present:
+            if source != "none":
+                raise ValueError("missing waveform at step %d" % step)
+        elif source not in ("sound", "silent"):
+            raise ValueError("waveform input_source is not consumed at step %d" % step)
+
+
+def _replay_metadata(sample_rate: int, samples_per_step: int, channels: int) -> dict:
+    mapping, playback = _channel_mapping(channels)
+    return {"frame_rate": sample_rate / samples_per_step, "audio": {
+        "available": True, "sample_rate": sample_rate,
+        "samples_per_step": samples_per_step, "source_channels": channels,
+        "playback_channels": playback, "channel_mapping": mapping}}
+
+
+def prepare_replay(records: list, vectors: dict, run_facts: dict,
+                   frame_count: int) -> tuple:
+    _validate_record_steps(records)
+    if not records or len(records) != frame_count:
+        raise ValueError("records and frames must have the same nonzero frame count")
+    waves, steps = _waveform_rows(vectors)
+    if waves is None:
+        return None, {"frame_rate": FRAME_RATE, "audio": {"available": False}}
+    _validate_chunks(waves, steps, frame_count)
+    _validate_audio_sources(records, steps)
+    sample_rate = _replay_sample_rate(run_facts)
+    chunks = np.zeros((frame_count,) + waves.shape[1:], dtype=np.float32)
+    chunks[steps] = waves
+    replay = _replay_metadata(sample_rate, waves.shape[2], waves.shape[1])
+    return _mix_playback(chunks).reshape(-1, replay["audio"]["playback_channels"]), replay
+
+
 def audio_directions(vectors: dict) -> dict:
     """Step number to [azimuth, elevation], aligned by the __steps index."""
     if "audio_spatial" not in vectors:
@@ -142,6 +265,8 @@ def slim_environment(previous: dict) -> dict:
 
 def slim_step(record: dict, previous: dict, direction) -> dict:
     internals = record.get("internals", {})
+    if record.get("input_source", {}).get("audio") == "none":
+        direction = None
     step_entry = {
         "step": record["step"],
         "winner": record.get("winner", ""),
@@ -300,24 +425,39 @@ def dump_frames(frames: np.ndarray, folder: Path, stem: str) -> None:
         Image.fromarray(np.asarray(frame)).save(folder / (stem + "_%04d.png" % index))
 
 
+def write_wav(samples: np.ndarray, target: Path, sample_rate: int) -> None:
+    wavfile.write(str(target), sample_rate, samples.astype(np.float32))
+
+
 def encode_video(frames_dir: Path, target: Path, frame_stem: str,
-                 codec_args: list) -> None:
-    command = (["ffmpeg", "-y", "-framerate", str(FRAME_RATE),
-                "-i", str(frames_dir / (frame_stem + "_%04d.png")),
-                "-map_metadata", "-1"] + codec_args + [str(target)])
+                 codec_args: list, audio: tuple = None,
+                 frame_rate: float = FRAME_RATE) -> None:
+    command = ["ffmpeg", "-y", "-framerate",
+               str(Fraction(frame_rate).limit_denominator(1000000)),
+               "-i", str(frames_dir / (frame_stem + "_%04d.png"))]
+    if audio is not None:
+        samples, sample_rate = audio
+        wav = frames_dir / "replay.wav"
+        write_wav(samples, wav, sample_rate)
+        command += ["-i", str(wav)]
+    command += ["-map_metadata", "-1"] + codec_args + [str(target)]
     completed = subprocess.run(command, capture_output=True)
     if completed.returncode or not target.exists():
         tail = completed.stderr.decode("utf-8", "replace")[-400:]
         raise RuntimeError("ffmpeg failed for %s: %s" % (target.name, tail))
 
 
-def write_webm(frames: np.ndarray, target: Path) -> None:
+def write_webm(frames: np.ndarray, target: Path, audio: tuple = None,
+               frame_rate: float = FRAME_RATE) -> None:
     with tempfile.TemporaryDirectory() as staging:
         folder = Path(staging)
         dump_frames(frames, folder, "frame")
         codec = ["-c:v", "libvpx-vp9", "-crf", "34", "-b:v", "0",
                  "-pix_fmt", "yuv420p"]
-        encode_video(folder, target, "frame", codec)
+        if audio is not None:
+            codec = ["-map", "0:v", "-map", "1:a", "-c:a", "libvorbis",
+                     "-b:a", "64k", "-avoid_negative_ts", "disabled"] + codec
+        encode_video(folder, target, "frame", codec, audio, frame_rate)
 
 
 def poster_canvas(frames: np.ndarray) -> Image.Image:
@@ -394,8 +534,21 @@ def draw_trace(draw: ImageDraw.ImageDraw, series: list, index: int,
                       points[index][0] + 2, points[index][1] + 2], fill=TEXT_RGB)
 
 
+def draw_audio_notice(draw, left: int, replay: dict, font) -> None:
+    audio = replay.get("audio", {})
+    lines = ["Audio unavailable"]
+    if audio.get("available"):
+        layout = "Stereo mix" if audio["source_channels"] == 4 else "Recorded channels"
+        lines = [layout + "; lossy playback", audio["channel_mapping"],
+                 "%d samples/step at %d Hz" %
+                 (audio["samples_per_step"], audio["sample_rate"])]
+    lines.append("Replay %.4g fps; not wall time" % replay.get("frame_rate", FRAME_RATE))
+    for row, text in enumerate(lines):
+        draw.text((left, 190 + row * 20), text, fill=DIM_RGB, font=font)
+
+
 def clip_composite(index: int, frame: np.ndarray, records: list, max_bid: float,
-                   font) -> Image.Image:
+                   font, replay: dict = None) -> Image.Image:
     frame_side = frame.shape[0] * 2
     canvas = Image.new("RGB", (frame_side + CLIP_PANEL_WIDTH, CLIP_HEIGHT), INK_RGB)
     scaled = Image.fromarray(np.asarray(frame)).resize(
@@ -410,6 +563,7 @@ def clip_composite(index: int, frame: np.ndarray, records: list, max_bid: float,
                  "" if record.get("ignited") else "  SILENT"),
               fill=ACCENT_RGB if record.get("ignited") else DIM_RGB, font=font)
     draw_bid_bars(draw, record, (left, 34), max_bid, font)
+    draw_audio_notice(draw, left, replay or {}, font)
     strip_top = CLIP_HEIGHT - 92
     draw.text((left, strip_top - 16), "WINNER STRIP ACROSS THE EPISODE",
               fill=DIM_RGB, font=font)
@@ -423,7 +577,9 @@ def clip_composite(index: int, frame: np.ndarray, records: list, max_bid: float,
     return canvas
 
 
-def write_clip(records: list, frames: np.ndarray, target: Path) -> None:
+def write_clip(records: list, frames: np.ndarray, target: Path,
+               audio: tuple = None, frame_rate: float = FRAME_RATE,
+               replay: dict = None) -> None:
     font = panel_font()
     bids = [float(record.get("raw_bids", {}).get(module) or 0.0)
             for record in records for module in ("vision", "audio", "memory",
@@ -431,11 +587,13 @@ def write_clip(records: list, frames: np.ndarray, target: Path) -> None:
     max_bid = max(bids) or 1.0
     with tempfile.TemporaryDirectory() as staging:
         folder = Path(staging)
-        dump_frames([clip_composite(i, frame, records, max_bid, font)
+        dump_frames([clip_composite(i, frame, records, max_bid, font, replay)
                      for i, frame in enumerate(frames)], folder, "clip")
         codec = ["-c:v", "libx264", "-crf", "23", "-pix_fmt", "yuv420p",
                  "-movflags", "+faststart"]
-        encode_video(folder, target, "clip", codec)
+        if audio is not None:
+            codec = ["-map", "0:v", "-map", "1:a", "-c:a", "aac", "-b:a", "64k"] + codec
+        encode_video(folder, target, "clip", codec, audio, frame_rate)
 
 
 # ---- assembly -----------------------------------------------------------
@@ -460,15 +618,19 @@ def write_bundle(bundle_dir: Path, run: Path, episode: int) -> None:
     records = load_records(run, episode)
     frames = load_frames(run, episode)
     vectors = load_vectors(run, episode)
+    run_facts = read_json(run / "session.json").get("run", {})
+    samples, replay = prepare_replay(records, vectors, run_facts, len(frames))
+    sample_rate = replay.get("audio", {}).get("sample_rate")
+    audio = None if samples is None else (samples, sample_rate)
     write_json(bundle_dir / "steps.json",
                slim_records(records, vectors), compact=True)
     write_json(bundle_dir / "session.json",
-               public_run_record(read_json(run / "session.json")))
+               dict(public_run_record(read_json(run / "session.json")), replay=replay))
     write_json(bundle_dir / "ethics_manifest.json",
                public_manifest(read_json(run / "ethics_manifest.json")))
-    write_webm(frames, bundle_dir / "frames.webm")
+    write_webm(frames, bundle_dir / "frames.webm", audio, replay["frame_rate"])
     write_poster(frames, bundle_dir / "poster.jpg")
-    write_clip(records, frames, bundle_dir / "clip.mp4")
+    write_clip(records, frames, bundle_dir / "clip.mp4", audio, replay["frame_rate"], replay)
 
 
 def export_session(run: Path, episode: int, session_id: str, site_dir: Path,

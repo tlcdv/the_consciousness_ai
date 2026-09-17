@@ -13,6 +13,8 @@ The fixture run mirrors the layout session_recorder.py writes, scaled down:
 
 import json
 import shutil
+import wave
+import subprocess
 from pathlib import Path
 
 import numpy as np
@@ -334,3 +336,421 @@ def test_exported_json_carries_no_private_fields(tmp_path):
     assert "seconds_inputs_to_end" not in steps_text
     assert "utc_time" not in session_text and "git_commit" not in session_text
     assert "C:" not in session_text
+
+
+def test_replay_keeps_full_recorded_chunk_and_duration():
+    records = [_step_record(step) for step in range(3)]
+    waves = np.full((2, 4, 1056), 0.3, dtype=np.float32)
+    vectors = {"audio_waveform": waves, "audio_waveform__steps": np.array([2, 1])}
+    samples, replay = exporter.prepare_replay(records, vectors, {"env": "dark_room"}, 3)
+    assert samples.shape == (3168, 2)
+    np.testing.assert_array_equal(samples[:1056], 0)
+    np.testing.assert_allclose(samples[1056:], 0.3)
+    assert replay["frame_rate"] == pytest.approx(16000 / 1056)
+    assert 3 / replay["frame_rate"] == pytest.approx(0.198)
+    assert replay["audio"] == {
+        "available": True, "sample_rate": 16000, "samples_per_step": 1056,
+        "source_channels": 4, "playback_channels": 2,
+        "channel_mapping": "left=(L+U+D)/3; right=(R+U+D)/3"}
+
+
+def replay_fixture():
+    records = [_step_record(step) for step in range(3)]
+    vectors = {"audio_waveform": np.full((2, 4, 1056), 0.3, dtype=np.float32),
+               "audio_waveform__steps": np.array([1, 2], dtype=np.int32)}
+    return records, vectors
+
+
+@pytest.mark.parametrize("indices", [[1, 1], [-1, 2], [1, 3], [1.0, 2.0],
+                                      [True, False], [[1, 2]], [1]])
+def test_replay_rejects_invalid_audio_indices(indices):
+    records, vectors = replay_fixture()
+    vectors["audio_waveform__steps"] = np.asarray(indices)
+    with pytest.raises(ValueError, match="indices"):
+        exporter.prepare_replay(records, vectors, {"env": "dark_room"}, 3)
+
+
+@pytest.mark.parametrize("steps", [[0, 0, 2], [0, 2, 1], [0, 1, 3],
+                                   [0, 1.0, 2], [False, 1, 2]])
+def test_replay_rejects_invalid_record_indices(steps):
+    records, vectors = replay_fixture()
+    for record, step in zip(records, steps):
+        record["step"] = step
+    with pytest.raises(ValueError, match="record steps"):
+        exporter.prepare_replay(records, vectors, {"env": "dark_room"}, 3)
+
+
+def test_replay_rejects_frame_count_mismatch():
+    records, vectors = replay_fixture()
+    with pytest.raises(ValueError, match="frame count"):
+        exporter.prepare_replay(records, vectors, {"env": "dark_room"}, 4)
+
+
+@pytest.mark.parametrize("source", ["sound", "silent", None, "unknown"])
+def test_replay_rejects_missing_nonzero_step(source):
+    records, vectors = replay_fixture()
+    records[2]["input_source"]["audio"] = source
+    vectors = {name: array[:1] for name, array in vectors.items()}
+    with pytest.raises(ValueError, match="missing waveform.*2"):
+        exporter.prepare_replay(records, vectors, {"env": "dark_room"}, 3)
+
+
+@pytest.mark.parametrize("source", ["sound", "silent"])
+def test_replay_rejects_missing_step_zero_unless_none(source):
+    records, vectors = replay_fixture()
+    records[0]["input_source"]["audio"] = source
+    with pytest.raises(ValueError, match="missing waveform.*0"):
+        exporter.prepare_replay(records, vectors, {"env": "dark_room"}, 3)
+
+
+def test_replay_rejects_waveform_not_consumed():
+    records, vectors = replay_fixture()
+    records[1]["input_source"]["audio"] = "none"
+    with pytest.raises(ValueError, match="input_source"):
+        exporter.prepare_replay(records, vectors, {"env": "dark_room"}, 3)
+
+
+@pytest.mark.parametrize("bad_sample", [np.nan, np.inf, -np.inf, 1.001, -1.001])
+def test_replay_rejects_invalid_samples(bad_sample):
+    records, vectors = replay_fixture()
+    vectors["audio_waveform"][0, 0, 0] = bad_sample
+    with pytest.raises(ValueError, match="samples"):
+        exporter.prepare_replay(records, vectors, {"env": "dark_room"}, 3)
+
+
+@pytest.mark.parametrize("shape", [(2, 3, 1056), (2, 4, 0), (2, 1, 4, 1056), (0, 4, 1056)])
+def test_replay_rejects_unsupported_waveforms(shape):
+    records, vectors = replay_fixture()
+    vectors["audio_waveform"] = np.zeros(shape, dtype=np.float32)
+    with pytest.raises(ValueError):
+        exporter.prepare_replay(records, vectors, {"env": "dark_room"}, 3)
+
+
+@pytest.mark.parametrize("keys", [{"audio_waveform": np.zeros((2, 1056))},
+                                  {"audio_waveform__steps": np.array([1, 2])},
+                                  {"audio_waveform__step1": np.zeros(1056)}])
+def test_replay_rejects_partial_or_variable_shape_storage(keys):
+    records, _ = replay_fixture()
+    with pytest.raises(ValueError, match="waveform"):
+        exporter.prepare_replay(records, keys, {"env": "dark_room"}, 3)
+
+
+@pytest.mark.parametrize("channels", [1, 2, 4])
+def test_replay_preserves_channel_mapping_and_index_order(channels):
+    records, vectors = replay_fixture()
+    waves = np.zeros((2, channels, 1056), dtype=np.float32)
+    waves[0, 0] = 0.6
+    waves[1, -1] = -0.3
+    vectors.update(audio_waveform=waves, audio_waveform__steps=np.array([2, 1]))
+    samples, replay = exporter.prepare_replay(records, vectors, {"env": "dark_room"}, 3)
+    expected_first = {1: [-0.3], 2: [0, -0.3], 4: [-0.1, -0.1]}[channels]
+    expected_last = {1: [0.6], 2: [0.6, 0], 4: [0.2, 0]}[channels]
+    np.testing.assert_allclose(samples[1056], expected_first, atol=1e-7)
+    np.testing.assert_allclose(samples[-1], expected_last, atol=1e-7)
+    assert replay["audio"]["source_channels"] == channels
+    assert replay["audio"]["playback_channels"] == min(channels, 2)
+
+
+def build_audio_run(folder: Path) -> Path:
+    run = build_run(folder)
+    episode = exporter.episode_folder(run, 0)
+    vectors = exporter.load_vectors(run, 0)
+    phase = np.arange(1056) / 16000
+    waves = np.stack([np.tile(0.3 * np.sin(2 * np.pi * step * 250 * phase), (4, 1))
+                      for step in range(1, 6)]).astype(np.float32)
+    vectors.update(audio_waveform=waves, audio_waveform__steps=np.arange(1, 6))
+    np.savez_compressed(episode / "vectors.npz", **vectors)
+    return run
+
+
+def media_probe(path: Path, *options) -> dict:
+    probe = subprocess.run(
+        ["ffprobe", "-v", "error", *options, "-of", "json", str(path)],
+        capture_output=True, check=True)
+    return json.loads(probe.stdout)
+
+
+def mux_probe(path: Path) -> dict:
+    probe = subprocess.run(
+        ["ffprobe", "-v", "error", "-show_streams", "-of", "json", path.name],
+        capture_output=True, cwd=str(path.parent), check=True)
+    streams = json.loads(probe.stdout.decode("utf-8"))["streams"]
+    return {stream["codec_type"]: stream for stream in streams}
+
+
+@needs_ffmpeg
+def test_exported_session_json_carries_replay_metadata(tmp_path):
+    run = build_run(tmp_path / "run")
+    site = tmp_path / "site"
+    exporter.export_session(run, 0, "dark-room-b2-seed49", site)
+    replay = json.loads((site / "dark-room-b2-seed49" / "session.json").read_text(
+        encoding="utf-8"))["replay"]
+    assert replay == {
+        "frame_rate": 30, "audio": {"available": False}}
+
+
+@needs_ffmpeg
+def test_exported_audio_streams_carry_the_replay_duration(tmp_path):
+    run = build_audio_run(tmp_path / "run")
+    bundle = tmp_path / "staged"
+    exporter.write_bundle(bundle, run, 0)
+    session = json.loads((bundle / "session.json").read_text(encoding="utf-8"))
+    duration = 6 / session["replay"]["frame_rate"]
+    for media in ("frames.webm", "clip.mp4"):
+        streams = mux_probe(bundle / media)
+        assert set(streams) == {"video", "audio"}, media
+        probe = media_probe(bundle / media, "-show_format")
+        tolerance = 1024 / 16000 + 0.001 if media.endswith("mp4") else 0.001
+        assert float(probe["format"]["duration"]) == pytest.approx(duration, abs=tolerance)
+        for stream in streams.values():
+            clock = stream.get("duration", stream.get("tags", {}).get("DURATION"))
+            seconds = sum(float(part) * 60 ** index
+                          for index, part in enumerate(reversed(clock.split(":"))))
+            assert seconds == pytest.approx(duration, abs=0.001)
+        assert int(streams["audio"]["sample_rate"]) == 16000
+        assert streams["audio"]["channels"] == 2
+
+
+@pytest.mark.parametrize("available", [False, True])
+def test_clip_panel_states_audio_notice(monkeypatch, available):
+    records, vectors = replay_fixture()
+    _, replay = exporter.prepare_replay(
+        records, vectors if available else {}, {"env": "dark_room"}, 3)
+    drawn = []
+    monkeypatch.setattr(exporter.ImageDraw.ImageDraw, "text",
+                        lambda self, xy, text, **kwargs: drawn.append((xy, text)))
+    exporter.clip_composite(1, np.full((8, 8, 3), 7, np.uint8), records, 1.0,
+                            exporter.panel_font(), replay)
+    notice = " ".join(text for (x, y), text in drawn if 175 <= y <= 310)
+    assert "not wall time" in notice
+    if available:
+        assert "Stereo mix" in notice and "lossy" in notice
+        assert "(L+U+D)/3" in notice and "(R+U+D)/3" in notice
+        assert "1056 samples/step" in notice and "16000 Hz" in notice
+    else:
+        assert "Audio unavailable" in notice and "silence" not in notice
+
+
+@pytest.mark.parametrize("source", ["sound", "silent", "none"])
+def test_slim_masks_spatial_direction_when_audio_source_is_none(source):
+    records, vectors = replay_fixture()
+    records[0]["input_source"]["audio"] = source
+    vectors["audio_spatial"] = np.asarray([[0.9, -0.8], [0.5, 0.1]])
+    vectors["audio_spatial__steps"] = np.array([0, 1])
+    table = exporter.slim_records(records, vectors)
+    assert table[0]["audio_spatial"] == (None if source == "none" else [0.9, -0.8])
+    assert table[1]["audio_spatial"] == [0.5, 0.1]
+    assert "action" not in table[0]
+
+
+def test_legacy_bundle_without_waveform_reports_no_audio(tmp_path):
+    run = build_run(tmp_path / "run")
+    table = exporter.slim_table(run)
+    samples, replay = exporter.prepare_replay(
+        exporter.load_records(run, 0), exporter.load_vectors(run, 0),
+        exporter.read_json(run / "session.json")["run"], len(table))
+    assert samples is None
+    assert replay["audio"]["available"] is False
+    assert replay["frame_rate"] == 30
+
+
+@needs_ffmpeg
+def test_export_with_audio_streams_actual_recorded_waveform(tmp_path):
+    run = build_run(tmp_path / "run")
+    episode = run / "episodes" / "ep_0000"
+    waves = np.zeros((5, 2, 1056), dtype=np.float32)
+    waves[2, 0] = np.sin(np.linspace(0, 2 * np.pi * 40, 1056)).astype(np.float32)
+    steps = np.arange(1, 6, dtype=np.int32)
+    with np.load(episode / "vectors.npz") as packed:
+        vectors = {name: packed[name] for name in packed.files}
+    vectors["audio_waveform"] = waves
+    vectors["audio_waveform__steps"] = steps
+    np.savez_compressed(episode / "vectors.npz", **vectors)
+    site = tmp_path / "site"
+    exporter.export_session(run, 0, "dark-room-b2-seed49", site)
+    session = json.loads((site / "dark-room-b2-seed49" / "session.json").read_text(
+        encoding="utf-8"))
+    assert session["replay"]["audio"]["available"] is True
+    assert session["replay"]["audio"]["samples_per_step"] == 1056
+    left = mux_probe(site / "dark-room-b2-seed49" / "frames.webm")["audio"]
+    assert left["channels"] == 2 and int(left["sample_rate"]) == 16000
+
+
+def test_replay_accepts_flat_mono_and_recorded_silence():
+    records, vectors = replay_fixture()
+    records[1]["input_source"]["audio"] = "silent"
+    vectors["audio_waveform"] = np.zeros((2, 1056), dtype=np.float32)
+    vectors["audio_waveform"][1] = np.linspace(-1, 1, 1056, dtype=np.float32)
+    samples, replay = exporter.prepare_replay(records, vectors, {"env": "dark_room"}, 3)
+    np.testing.assert_array_equal(samples[2112:, 0], vectors["audio_waveform"][1])
+    np.testing.assert_array_equal(samples[:2112], 0)
+    assert replay["audio"]["available"] is True
+
+
+def test_replay_legacy_without_waveforms_has_explicit_no_audio():
+    records, _ = replay_fixture()
+    samples, replay = exporter.prepare_replay(records, {}, {"env": "unknown"}, 3)
+    assert samples is None
+    assert replay == {"frame_rate": 30, "audio": {"available": False}}
+
+
+@pytest.mark.parametrize("facts", [{"env": "unknown"}, {},
+                                    {"audio_sample_rate": "16000"},
+                                    {"audio_sample_rate": True},
+                                    {"audio_sample_rate": -1},
+                                    {"audio_sample_rate": 16000.5}])
+def test_replay_refuses_unproven_sample_rate(facts):
+    records, vectors = replay_fixture()
+    with pytest.raises(ValueError, match="sample rate"):
+        exporter.prepare_replay(records, vectors, facts, 3)
+
+
+def test_replay_accepts_explicit_source_sample_rate():
+    records, vectors = replay_fixture()
+    samples, replay = exporter.prepare_replay(
+        records, vectors, {"env": "custom", "audio_sample_rate": 24000}, 3)
+    assert replay["audio"]["sample_rate"] == 24000
+    assert len(samples) / 24000 == pytest.approx(3 / replay["frame_rate"])
+
+
+def test_replay_allows_explicit_none_gap_at_any_step():
+    records, vectors = replay_fixture()
+    records[1]["input_source"]["audio"] = "none"
+    vectors = {name: array[1:] for name, array in vectors.items()}
+    samples, replay = exporter.prepare_replay(records, vectors, {"env": "dark_room"}, 3)
+    np.testing.assert_array_equal(samples[:2112], 0)
+    np.testing.assert_allclose(samples[2112:], 0.3)
+    assert replay["audio"]["available"] is True
+    assert exporter.slim_records(records, vectors)[1]["input_source"]["audio"] == "none"
+
+
+@pytest.mark.parametrize("shift", [-1, 1])
+def test_replay_rejects_one_step_index_shift(shift):
+    records, vectors = replay_fixture()
+    vectors["audio_waveform__steps"] += shift
+    with pytest.raises(ValueError):
+        exporter.prepare_replay(records, vectors, {"env": "dark_room"}, 3)
+
+
+def test_wav_roundtrip_preserves_all_four_channels_and_step_order(tmp_path):
+    records = [_step_record(step) for step in range(5)]
+    waves = np.zeros((4, 4, 1056), dtype=np.float32)
+    for channel in range(4):
+        waves[channel, channel] = np.linspace(-0.6, 0.6, 1056, dtype=np.float32)
+    indices = np.array([4, 2, 1, 3])
+    samples, replay = exporter.prepare_replay(records, {
+        "audio_waveform": waves, "audio_waveform__steps": indices}, {"env": "dark_room"}, 5)
+    target = tmp_path / "roundtrip.wav"
+    exporter.write_wav(samples, target, replay["audio"]["sample_rate"])
+    rate, restored = exporter.wavfile.read(target)
+    assert rate == 16000 and restored.shape == (5280, 2)
+    expected = np.zeros((5, 1056, 2), dtype=np.float32)
+    for channel, step in enumerate(indices):
+        for ear in ([channel] if channel < 2 else [0, 1]):
+            expected[step, :, ear] = waves[channel, channel] / 3
+    np.testing.assert_array_equal(restored, expected.reshape(-1, 2))
+
+
+@needs_ffmpeg
+@pytest.mark.parametrize("media", ["frames.webm", "clip.mp4"])
+def test_video_frame_times_match_same_step_at_start_and_midpoint(tmp_path, media):
+    run = build_audio_run(tmp_path / "run")
+    bundle = tmp_path / "bundle"
+    exporter.write_bundle(bundle, run, 0)
+    probe = media_probe(bundle / media, "-select_streams", "v:0", "-show_frames")
+    times = np.array([float(frame["best_effort_timestamp_time"]) for frame in probe["frames"]])
+    assert len(times) == 6
+    fps = exporter.read_json(bundle / "session.json")["replay"]["frame_rate"]
+    np.testing.assert_allclose(times, np.arange(6) / fps, atol=0.001)
+    np.testing.assert_array_equal(np.floor(times * fps + 0.02), np.arange(6))
+    np.testing.assert_array_equal(np.floor((times + 0.5 / fps) * fps + 0.02), np.arange(6))
+    assert sorted(path.name for path in bundle.iterdir()) == sorted(BUNDLE_FILES)
+
+
+@needs_ffmpeg
+@pytest.mark.parametrize("media", ["frames.webm", "clip.mp4"])
+def test_mux_audio_preserves_chunk_pitch_and_alignment(tmp_path, media):
+    run = build_audio_run(tmp_path / "run")
+    bundle = tmp_path / "bundle"
+    exporter.write_bundle(bundle, run, 0)
+    target = tmp_path / "decoded.wav"
+    subprocess.run(["ffmpeg", "-v", "error", "-i", str(bundle / media),
+                    "-vn", "-c:a", "pcm_s16le", str(target)], capture_output=True, check=True)
+    with wave.open(str(target), "rb") as decoded:
+        assert decoded.getframerate() == 16000 and decoded.getnchannels() == 2
+        samples = np.frombuffer(decoded.readframes(decoded.getnframes()), dtype="<i2").reshape(-1, 2)
+    assert len(samples) >= 6 * 1056
+    assert len(samples) / 16000 == pytest.approx(6 * 1056 / 16000, abs=0.064)
+    for step in range(1, 6):
+        chunk = samples[step * 1056 + 128:(step + 1) * 1056 - 128, 0]
+        spectrum = np.abs(np.fft.rfft(chunk * np.hanning(len(chunk))))
+        frequency = np.fft.rfftfreq(len(chunk), 1 / 16000)[spectrum.argmax()]
+        assert frequency == pytest.approx(step * 250, abs=21)
+
+
+def build_marker_run(folder):
+    run = build_run(folder, side=32)
+    episode = exporter.episode_folder(run, 0)
+    frames = np.stack([np.full((32, 32, 3), 30 + step * 35, np.uint8)
+                       for step in range(6)])
+    np.savez_compressed(episode / "frames.npz", frames=frames)
+    indices = np.array([4, 1, 5, 2, 3])
+    phase = np.arange(1056) / 16000
+    waves = np.stack([np.tile(step * 0.08 * np.sin(2 * np.pi * step * 500 * phase),
+                             (4, 1)) for step in indices]).astype(np.float32)
+    vectors = exporter.load_vectors(run, 0)
+    vectors.update(audio_waveform=waves, audio_waveform__steps=indices)
+    np.savez_compressed(episode / "vectors.npz", **vectors)
+    return run
+
+
+def assert_encoded_markers(path):
+    streams = mux_probe(path)
+    width, height = streams["video"]["width"], streams["video"]["height"]
+    video = subprocess.check_output(["ffmpeg", "-v", "error", "-i", str(path),
+                                    "-an", "-f", "rawvideo", "-pix_fmt", "rgb24", "-"])
+    frames = np.frombuffer(video, np.uint8).reshape(-1, height, width, 3)
+    audio = subprocess.check_output(["ffmpeg", "-v", "error", "-i", str(path),
+                                    "-vn", "-f", "f32le", "-acodec", "pcm_f32le", "-"])
+    samples = np.frombuffer(audio, "<f4").reshape(-1, 2)
+    assert len(frames) == 6
+    for step, frame in enumerate(frames):
+        marker = frame[height // 2 - 8:height // 2 + 8, 8:24].mean()
+        assert marker == pytest.approx(30 + step * 35, abs=3)
+        chunk = samples[step * 1056 + 192:(step + 1) * 1056 - 192]
+        assert np.sqrt(np.mean(chunk ** 2)) == pytest.approx(step * 0.08 / np.sqrt(2), abs=0.015)
+        if step:
+            spectrum = np.abs(np.fft.rfft(chunk[:, 0] * np.hanning(len(chunk))))
+            frequency = np.fft.rfftfreq(len(chunk), 1 / 16000)[spectrum.argmax()]
+            assert frequency == pytest.approx(step * 500, abs=25)
+
+
+@needs_ffmpeg
+@pytest.mark.parametrize("media", ["frames.webm", "clip.mp4"])
+@pytest.mark.parametrize("corruption", [None, "waveform_shift", "frame_reorder"])
+def test_integrated_video_audio_markers_detect_alignment_errors(tmp_path, media, corruption):
+    run = build_marker_run(tmp_path / "run")
+    episode = exporter.episode_folder(run, 0)
+    if corruption == "waveform_shift":
+        vectors = exporter.load_vectors(run, 0)
+        vectors["audio_waveform"] = np.roll(vectors["audio_waveform"], 1, axis=0)
+        np.savez_compressed(episode / "vectors.npz", **vectors)
+    if corruption == "frame_reorder":
+        frames = exporter.load_frames(run, 0)
+        frames[[2, 3]] = frames[[3, 2]]
+        np.savez_compressed(episode / "frames.npz", frames=frames)
+    bundle = tmp_path / "bundle"
+    exporter.write_bundle(bundle, run, 0)
+    if corruption:
+        with pytest.raises(AssertionError):
+            assert_encoded_markers(bundle / media)
+    else:
+        assert_encoded_markers(bundle / media)
+
+
+@pytest.mark.parametrize("dtype", [complex, object, str])
+def test_replay_rejects_nonreal_waveform_types(dtype):
+    records, vectors = replay_fixture()
+    vectors["audio_waveform"] = vectors["audio_waveform"].astype(dtype)
+    with pytest.raises(ValueError, match="samples"):
+        exporter.prepare_replay(records, vectors, {"env": "dark_room"}, 3)
