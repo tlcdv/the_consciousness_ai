@@ -154,6 +154,7 @@ structure only, kept current from the actual tree.
 ## Documentation index (docs/)
 
 ### Theory and grounding
+- [Dreaming and consciousness](dreaming_consciousness_references.md). Exploratory literature review, separate from training and implementation.
 - `feinberg_mallatt_approach.md` -- tectum-first neuroevolutionary blueprint (primary theory).
 - `merker_subcortical_consciousness.md` -- independent tectum-first support.
 - `rouleau_levin_substrate_independence.md` -- substrate-independence, the 8 aneurocentric themes.
