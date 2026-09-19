@@ -85,6 +85,69 @@ shape.
   it does not score any signature. Per project discipline, no claim follows from
   alignment alone.
 
+## Supporting literature
+
+Verified 2026-09-19 against the live sources. These papers support specific
+Selection Triangle claims that Merker states at the level of argument rather
+than of measurement. They are candidates for grounding the follow-up work of
+the upper-brainstem map (target selection, zona incerta arbiter, PAG value
+pathway).
+
+### Superior colliculus as selection structure
+
+- Krauzlis, R.J., Lovejoy, L.P. & Zénon, A. (2013). Superior colliculus and
+  visual spatial attention. *Annual Review of Neuroscience* 36:165-182
+  (doi:10.1146/annurev-neuro-062012-170249). The standard review for the claim
+  that the SC implements priority selection, not only saccade generation.
+
+### Zona incerta as arbiter
+
+- Nature Communications (2026). An attention-demanding hunting paradigm engages
+  the superior colliculus-zona incerta circuit mediating analgesia in male mice
+  (doi:10.1038/s41467-026-73206-w). Direct recent evidence for an SC-ZI
+  orienting circuit.
+- Kim, J.-Y. et al. (2017). The rostromedial zona incerta is involved in
+  attentional processes while adjacent LHA responds to arousal: c-Fos and
+  anatomical evidence. *Brain Structure and Function* 222:1189-1205
+  (doi:10.1007/s00429-016-1353-3).
+- Babayan, L. et al. (2016). Effects of lesions of the subthalamic
+  nucleus/zona incerta area and dorsomedial striatum on attentional set-shifting
+  in the rat. *Neuroscience* 334:170-180 (doi:10.1016/j.neuroscience.2016.08.008).
+  Lesion evidence that ZI area damage impairs attentional flexibility.
+
+Note on sources: Merker 2007 names the zona incerta as arbiter; Merker 2013
+anchors the ego-center on the superior colliculus and the dorsal pulvinar.
+Any hub implementation must state which source it rests on.
+
+### PAG value signals
+
+The 2026 eLife reviewed preprint on PAG reversal-learning signals (Lichtman et
+al., doi:10.7554/eLife.110415.1) rates its evidence incomplete. The following
+independent PAG findings de-risk a PAG-column design:
+
+- Roy, M. et al. (2014). Representation of aversive prediction errors in the
+  human periaqueductal gray. *Nature Neuroscience* 17:1607-1612.
+- Sukikara, M.H. et al. (2006). A role for the periaqueductal gray in switching
+  adaptive behavioral responses. *Journal of Neuroscience* 26:1880-1885.
+  A reversal analogue: PAG inactivation impairs switching away from a
+  previously rewarded response.
+- Reis, F.M.C.V. et al. (2021). Dorsal periaqueductal gray ensembles represent
+  approach and avoidance states. *eLife* 10:e64934.
+- Walker, K.M. et al. (2020). The ventrolateral periaqueductal grey updates
+  fear via positive prediction error. *European Journal of Neuroscience* 51:1301-1315.
+
+All four appear in Lichtman et al.'s own reference list, so they are curated
+rather than cherry-picked.
+
+### Neuromodulatory anatomy
+
+- Zaldivar, A. & Krichmar, J.L. (2013). Interactions between the
+  neuromodulatory systems and the amygdala: exploratory survey using the Allen
+  Mouse Brain Atlas. *Brain Structure and Function* 218(6):1513-1530
+  (PMC3825589). The amygdala connectivity is inferred from receptor expression
+  energy, not from traced projections. The dopaminergic source covered is the
+  VTA only; the SNc is explicitly excluded by the authors.
+
 ## References
 
 - Merker, B. (2007). Consciousness without a cerebral cortex: A challenge for
