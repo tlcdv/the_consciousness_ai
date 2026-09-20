@@ -9,10 +9,11 @@ class KuramotoLayer(nn.Module):
     """
     Oscillatory binding via Kuramoto dynamics on the N-sphere.
 
-    Inspired by Löwe et al., "Artificial Kuramoto Oscillatory Neurons",
-    ICLR 2025. Coupling uses the tangent-plane projection from the
-    N-sphere Kuramoto model: for each oscillator i, the pull from j is
-    projected onto the tangent plane at i before accumulation.
+    Inspired by Miyato, Löwe, Geiger and Welling, "Artificial Kuramoto
+    Oscillatory Neurons", ICLR 2025 (arXiv:2410.13821). Coupling uses the
+    tangent-plane projection from the N-sphere Kuramoto model: for each
+    oscillator i, the pull from j is projected onto the tangent plane at i
+    before accumulation.
     """
     def __init__(self, 
                  num_oscillators: int, 

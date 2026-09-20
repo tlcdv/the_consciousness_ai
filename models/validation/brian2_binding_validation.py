@@ -11,7 +11,8 @@ Brian2 is an optional dependency. All public functions degrade gracefully
 when it is not installed.
 
 References:
-    - Löwe et al., "Artificial Kuramoto Oscillatory Neurons", ICLR 2025
+    - Miyato, Löwe, Geiger and Welling, "Artificial Kuramoto Oscillatory
+      Neurons", ICLR 2025 (arXiv:2410.13821)
     - Stimberg et al., "Brian 2, an intuitive and efficient neural simulator",
       eLife 2019
     - Kuramoto, "Chemical Oscillations, Waves, and Turbulence", Springer 1984
