@@ -2,7 +2,7 @@
 
 *Project: The Consciousness AI — An open-source implementation of artificial consciousness*
 *Companion document to [`feinberg_mallatt_approach.md`](feinberg_mallatt_approach.md)*
-*Source paper archived at `info how to measure consciousness/rouleau_levin_2026_brains_and_where_else.pdf`*
+*Source paper: Rouleau & Levin (2026), Phil. Trans. R. Soc. A 384: 20250082*
 *Date: May 2026*
 
 ---
@@ -152,7 +152,7 @@ To avoid overreach, the following are explicitly **not** claims of this document
 ## 8. References
 
 ### Primary source
-- Rouleau, N. & Levin, M. (2026). Brains and where else? Mapping theories of consciousness to unconventional embodiments. *Phil. Trans. R. Soc. A* 384: 20250082. doi: [10.1098/rsta.2025.0082](https://doi.org/10.1098/rsta.2025.0082). PDF archived at `info how to measure consciousness/rouleau_levin_2026_brains_and_where_else.pdf`.
+- Rouleau, N. & Levin, M. (2026). Brains and where else? Mapping theories of consciousness to unconventional embodiments. *Phil. Trans. R. Soc. A* 384: 20250082. doi: [10.1098/rsta.2025.0082](https://doi.org/10.1098/rsta.2025.0082).
 
 ### Companion theory
 - Feinberg, T.E. & Mallatt, J. (2016). *The Ancient Origins of Consciousness: How the Brain Created Experience*. MIT Press.
