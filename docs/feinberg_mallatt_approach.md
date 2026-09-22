@@ -195,6 +195,8 @@ If this never occurs across training, the system is not exhibiting the kind of e
 
 A clarification often raised: if the project replaces neurons with PyTorch modules, in what sense is it still "biologically grounded"? Feinberg-Mallatt is best read functionally — the six features describe an *architectural organization* that any sufficiently rich substrate can host. The complementary survey in [Rouleau & Levin (2026)](rouleau_levin_substrate_independence.md) ("Brains and where else? Mapping theories of consciousness to unconventional embodiments", *Phil. Trans. R. Soc. A* 384: 20250082) analyses 19 prominent ToCs and shows that almost all of them, including those Feinberg-Mallatt builds on, are aneurocentric in their core mechanics. Feinberg-Mallatt provides the *sufficient* blueprint that 520M years of evolution chose; Rouleau-Levin provides the *not-necessary* analysis that makes our computational re-instantiation legitimate.
 
+Feinberg and Mallatt themselves read their theory differently. In a 2026 commentary in *Behavioral and Brain Sciences*, "Sentience, emergence in neurobiological systems, and the prospects for artificial consciousness", they separate sentience from consciousness and argue that the physical substrate of a complex system is critical for sentience to emerge. On their own reading, the functional reading above is not enough. This project therefore does not claim Feinberg and Mallatt's support for substrate independence. It uses their six features as an architectural blueprint and treats substrate independence as an open, testable question. The substrate work in `models/thermodynamic/` tests one part of that question, whether the properties already verified here survive a change of computing substrate. A positive result would not settle whether a different substrate supports sentience in their sense.
+
 ---
 
 ## 7. Current Status and Test Results
@@ -221,9 +223,10 @@ The project is fully open-source and actively maintained at [github.com/tlcdv/th
 ### Core Theory
 - Feinberg, T.E. & Mallatt, J. (2016). *The Ancient Origins of Consciousness: How the Brain Created Experience*. MIT Press.
 - Feinberg, T.E. & Mallatt, J. (2020). Phenomenal Consciousness and Emergence: Eliminating the Explanatory Gap. *Frontiers in Psychology*, 11, 1041.
+- Feinberg, T.E. & Mallatt, J. (2026). Sentience, emergence in neurobiological systems, and the prospects for artificial consciousness. *Behavioral and Brain Sciences* (commentary). https://www.cambridge.org/core/journals/behavioral-and-brain-sciences/article/abs/sentience-emergence-in-neurobiological-systems-and-the-prospects-for-artificial-consciousness/FF840A77887956CF93F9069C4DF23959
 
 ### Computational Methods We Use
-- Löwe, S. et al. (2025). Artificial Kuramoto Oscillatory Neurons. *ICLR 2025* (Oral). — Oscillatory binding
+- Miyato, T., Löwe, S., Geiger, A., Welling, M. (2025). Artificial Kuramoto Oscillatory Neurons. *ICLR 2025* (Oral). — Oscillatory binding
 - Hafner, D. et al. (2024). Mastering Diverse Domains through World Models (DreamerV3). *JMLR*. — RSSM world model
 - Hoel, E.P. (2013). Quantifying causal emergence shows that macro can beat micro. *PNAS* 110(49). — Effective Information
 - Sabour, S., Frosst, N. & Hinton, G.E. (2017). Dynamic Routing Between Capsules. *NeurIPS*. — Compositional hierarchy
