@@ -1,7 +1,7 @@
 # The Consciousness AI research
 
 [![License](https://img.shields.io/badge/License-Non--Commercial-blue.svg)](LICENSE.md)
-[![Version](https://img.shields.io/badge/Version-v1.5.0-blue)]()
+[![Version](https://img.shields.io/badge/Version-v1.6.0-blue)]()
 [![Python](https://img.shields.io/badge/Python-3.10%2B-blue)](https://www.python.org/)
 [![Tests](https://img.shields.io/badge/Tests-1351%20passing-brightgreen)]()
 
@@ -178,7 +178,7 @@ This runs the full cognitive loop: DINOv2 retinotopic encoding -> cochlear audit
 pytest tests/ -v
 ```
 
-1232 tests pass, covering oscillatory binding, capsule routing, reentrant processing, inverse effectiveness fusion, topographic loss, affective modulation, ethics compliance, effective information, causal emergence (CE 2.0 SVD heuristic), perturbational complexity (PCI), phase coupling measures, near-threshold stimulus rendering, IIT Phi with causal gate states, Brian2 biological validation, cochlear auditory pipeline (gammatone, hair cell, tonotopic, spatial, affect extraction), environment audio synthesis, DMTS/WCST consciousness demanding environments, DQN baseline, memory consolidation, semantic pathway, the RSSM reconstruction and value-equivalent world-model objectives, and full pipeline integration.
+1351 tests pass, covering oscillatory binding, capsule routing, reentrant processing, inverse effectiveness fusion, topographic loss, affective modulation, ethics compliance, effective information, causal emergence (CE 2.0 SVD heuristic), perturbational complexity (PCI), phase coupling measures, near-threshold stimulus rendering, IIT Phi with causal gate states, Brian2 biological validation, the experimental substrate package (p-bit emulation against exact Boltzmann statistics, free energy relaxation against closed-form posteriors, and an import guard that keeps it out of production), cochlear auditory pipeline (gammatone, hair cell, tonotopic, spatial, affect extraction), environment audio synthesis, DMTS/WCST consciousness demanding environments, DQN baseline, memory consolidation, semantic pathway, the RSSM reconstruction and value-equivalent world-model objectives, and full pipeline integration.
 
 ### 4. AKOrN Binding Demo
 
@@ -212,6 +212,7 @@ the_consciousness_ai/
 │   ├── agent/              # ConsciousnessAgent (orchestrates the full cognitive loop)
 │   ├── narrative/          # NarrativeEngine (LLM-backed with template fallback)
 │   ├── validation/         # Brian2 biological validation stack
+│   ├── thermodynamic/      # Experimental substrate package: p-bit emulation, free energy relaxation (isolated)
 │   ├── vision_language/    # Qwen2-VL integration (optional semantic pathway)
 │   └── predictive/         # DreamerV3 wrapper, attention mechanisms
 ├── simulations/
@@ -223,7 +224,7 @@ the_consciousness_ai/
 │   ├── analysis/           # Analysis and comparison scripts
 │   └── demos/              # AKOrN binding visualization
 ├── configs/                # YAML and Python configuration files
-├── tests/                  # 1232 passing tests
+├── tests/                  # 1351 passing tests
 ├── unity_scripts/          # C# scripts for Unity ML-Agents integration
 ├── docs/                   # Research docs, theory review, architecture deep dives
 └── requirements.txt
