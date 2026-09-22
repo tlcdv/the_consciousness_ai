@@ -27,6 +27,21 @@ _LAZY_NAMES: Dict[str, str] = {
     "stable_step_bound": "energy_minimization",
     "BaseSubstrateDriver": "interfaces.abstract_substrate",
     "SubstrateConfig": "interfaces.abstract_substrate",
+    "StubSubstrateDriver": "interfaces.hardware_stub",
+    "LIFBridgeLayer": "interfaces.snn_bridge",
+    "atan_spike": "interfaces.snn_bridge",
+    "latency_decode": "interfaces.snn_bridge",
+    "latency_encode": "interfaces.snn_bridge",
+    "phase_readout": "interfaces.snn_bridge",
+    "phase_to_spike_time": "interfaces.snn_bridge",
+    "rate_decode": "interfaces.snn_bridge",
+    "rate_encode": "interfaces.snn_bridge",
+    "spike_time_to_phase": "interfaces.snn_bridge",
+    "export_lif_bridge_to_nir": "interfaces.nir_export",
+    "lif_bridge_from_nir": "interfaces.nir_export",
+    "nirtorch_node_map": "interfaces.nir_export",
+    "sample_with_thrml": "interfaces.thrml_adapter",
+    "thrml_available": "interfaces.thrml_adapter",
 }
 
 __all__ = sorted(_LAZY_NAMES)
