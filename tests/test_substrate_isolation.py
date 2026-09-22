@@ -25,7 +25,7 @@ import pytest
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 FORBIDDEN = "models.thermodynamic"
-OPTIONAL_LIBRARIES = ("snntorch", "spikingjelly", "brian2", "torchdiffeq", "thrml", "torx", "nir")
+OPTIONAL_LIBRARIES = ("snntorch", "spikingjelly", "brian2", "torchdiffeq", "thrml", "torx", "jax", "nir", "nirtorch")
 
 sys.path.insert(0, str(REPO_ROOT))
 
