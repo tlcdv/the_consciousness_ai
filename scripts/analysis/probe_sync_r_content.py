@@ -61,6 +61,7 @@ Run:
 """
 from __future__ import annotations
 
+import argparse
 import csv
 import sys
 from pathlib import Path
@@ -92,8 +93,8 @@ DEAD_MAX_STD = 1e-6
 CONTROL_TOLERANCE = 1e-6
 
 
-def load(seed: int) -> dict:
-    run_dir = Path("runs") / f"bcast_s{seed}"
+def load(seed: int, run_prefix: str = "bcast_s") -> dict:
+    run_dir = Path("runs") / f"{run_prefix}{seed}"
     rows = list(csv.DictReader(open(run_dir / "metrics.csv", newline="")))
     if "env_sample_shape" not in rows[0]:
         raise SystemExit(f"{run_dir}/metrics.csv has no labels. Stale run directory.")
@@ -275,7 +276,7 @@ def report_content(data: dict) -> dict:
     return passed
 
 
-def report_rubric_marker(data: dict) -> None:
+def report_rubric_marker(data: dict, run_prefix: str) -> None:
     print("")
     print("=" * 84)
     print("5. THE STANDING RUBRIC MARKER")
@@ -288,7 +289,7 @@ def report_rubric_marker(data: dict) -> None:
     print(f"                  {RUBRIC_SOURCE}")
     means = [float(d["sync_r"].mean()) for d in data.values()]
     print(f"  these runs    : {', '.join(f'{m:.6f}' for m in means)}")
-    print("                  bcast_s42/43/44, dmts, --enable-audio --enable-mock-semantic")
+    print(f"                  {run_prefix}42/43/44, dmts, --enable-audio --enable-mock-semantic")
     print("")
     print("  The only claim licensed here: the marker was measured under a configuration")
     print("  that is not the one in use, so it cannot be cited as current until it is")
@@ -296,13 +297,18 @@ def report_rubric_marker(data: dict) -> None:
 
 
 def main() -> None:
-    data = {s: load(s) for s in SEEDS}
+    parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
+    parser.add_argument("--run-prefix", default="bcast_s",
+                        help="Run folders are runs/<prefix><seed>. Default bcast_s, "
+                             "the runs behind sync_r_content_2026_09.md.")
+    run_prefix = parser.parse_args().run_prefix
+    data = {s: load(s, run_prefix) for s in SEEDS}
 
     alive = report_non_degeneracy(data)
     report_bid_determinism(data)
     report_episode_structure(data)
     passed = report_content(data)
-    report_rubric_marker(data)
+    report_rubric_marker(data, run_prefix)
 
     print("")
     print("=" * 84)

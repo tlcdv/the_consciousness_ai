@@ -163,7 +163,11 @@ class GlobalWorkspace:
             )
         elif self.binding_mechanism == "akorn":
             from models.core.oscillatory_binding import WorkspaceBindingSystem
-            self.binding_system = WorkspaceBindingSystem(num_modules=num_modules, iterations=5)
+            self.binding_system = WorkspaceBindingSystem(
+                num_modules=num_modules,
+                iterations=5,
+                natural_frequency=config.get("akorn_natural_frequency", False),
+            )
         else:
             raise ValueError(
                 f"Unknown binding_mechanism '{self.binding_mechanism}'. "
