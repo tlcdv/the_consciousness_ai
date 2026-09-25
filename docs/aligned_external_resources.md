@@ -406,6 +406,188 @@ bioRxiv 2025.01.28.635248. **Preprint, not peer reviewed.**
 
 ---
 
+## 9. Cortical traveling waves, co-ripples and spirals (added 2026-09-25)
+
+*The oscillation literature that bears on the binding layer, reviewed and audited against
+this architecture in [traveling_waves_evidence.md](traveling_waves_evidence.md). Read that
+doc first: it carries the alignment audit against the current code, the k-steps translation
+constraint, and the ephaptic dispute stated as open. Two entries here are preprints and one
+is theory, labelled at every use.*
+
+### 9.1 Muller, Busch, Davis & Reynolds (2026), "Neural traveling waves in cortex: Network mechanisms and potential roles in neural computation" (Tier 1)
+*Neuron* 114, doi:10.1016/j.neuron.2026.06.019. Peer reviewed.
+
+- **Why aligned (the synthesis the wave decision runs on):** Recurrent horizontal
+  connections carry about 80 percent of synaptic input to a visual cortical neuron, conduct
+  at 0.1 to 0.6 m/s over millimetres, and the resulting distance-dependent delays generate
+  traveling waves in large spiking models at measured speeds while local activity stays
+  asynchronous-irregular. Awake waves are sparse. Wave phase gates detection (10 to 20
+  percent gain). The generative-prediction framework is labelled speculative by the authors,
+  and Box 1 states the case against ephaptic wave generation.
+- **Plugs in:** the wave decision recorded on the internal plan; the tectum ConvGRU state as
+  the one spatial substrate; `models/core/oscillatory_binding.py` (no map, no delays, no
+  wave possible by construction).
+- **Honest caveat:** the generative-prediction role has no recording behind it; Box 2's
+  detection cautions apply to any wave claim here.
+
+### 9.2 Davis et al. (2020; 2021; 2024), "Spontaneous travelling cortical waves gate perception in behaving primates"; "Spontaneous traveling waves naturally emerge from horizontal fiber time delays..."; "Horizontal cortical connections shape intrinsic traveling waves into feature-selective motifs..." (Tier 1)
+*Nature* 587, 432-436, doi:10.1038/s41586-020-2802-y; *Nature Communications* 12,
+doi:10.1038/s41467-021-26175-1; *Cell Reports* 43, 114707, doi:10.1016/j.celrep.2024.114707.
+Peer reviewed.
+
+- **Why aligned:** The measured core of the wave literature. Phase-gated detection in awake
+  marmoset MT (the behavioral result), sparse waves from horizontal-fiber delays in large
+  spiking models (the circuit mechanism), and feature-selective wave motifs shaped by patchy
+  long-range connections (the structure argument). Together with 9.1 this is the strongest
+  external case that organized dynamics at the mesoscale carry cognitive work.
+- **Plugs in:** `models/core/oscillatory_binding.py` (what a spatial map and delays would
+  add), `models/core/sensory_tectum.py` (the substrate a wave detector would read), the
+  cycles-per-step instruments in `models/evaluation/coupling_measures.py`.
+- **Honest caveat:** all three are animal-cortex or model results at millisecond scales;
+  the translation constraint applies whole.
+
+### 9.3 Benigno, Budzinski, Davis, Reynolds & Muller (2023), "Waves traveling over a map of visual space can ignite short-term predictions of sensory input" (Tier 1)
+*Nature Communications* 14, doi:10.1038/s41467-023-39076-2. Peer reviewed.
+
+- **Why aligned:** Networks with distance-dependent connectivity and delays learn closed-loop
+  short-term prediction of natural movies; random-connectivity networks with the same delays
+  do not. This is the load-bearing evidence that a map with delays is computationally
+  special, and it speaks to the prediction objective the RSSM frontiers sit near.
+- **Plugs in:** `models/predictive/` and the RSSM (as a candidate objective, not an
+  implemented one), the wave decision.
+- **Honest caveat:** a network-model result. No recording has shown waves carrying stimulus
+  history across a map in a behaving animal. Any translation into this system is k-steps
+  and carries no Hz reading.
+
+### 9.4 Liboni et al. (2025), "Image segmentation with traveling waves in an exactly solvable recurrent neural network" (Tier 2)
+*PNAS* 122, e2321319121. Peer reviewed. Exactly solvable complex-valued RNN with
+distance-dependent coupling; inputs set each node's natural frequency; object-specific
+waves segment images. Code: github.com/mullerlab/liboniEA2025image.
+
+- **Why aligned:** It is the one model where the input-set natural frequency is the central
+  mechanism, which is precisely the term this project's binding layer zeroed out until the
+  default-off fix. The object-specific wave result is a working demonstration that
+  frequency structure does segmenting work.
+- **Plugs in:** `models/core/oscillatory_binding.py` (the natural-frequency flag), the
+  measurement of whether the fix changes sync_R behaviour.
+- **Honest caveat:** its input setting and its exact solvability have no analogue in this
+  agent; nothing here is translated.
+
+### 9.5 Keller & Welling (2023), "Neural Wave Machines" (Tier 2)
+ICML 2023. Peer reviewed. Locally coupled oscillatory RNNs whose hidden state runs
+traveling waves that encode sequence structure.
+
+- **Why aligned:** The machine-learning proof that waves can carry sequence structure in an
+  inspectable network, cited by the 2026 review beside AKOrN.
+- **Plugs in:** `models/core/oscillatory_binding.py` as the mechanism family; the wave
+  decision's build side.
+- **Honest caveat:** no measurement links this architecture's waves to any workspace
+  quantity here.
+
+### 9.6 Jacobs, Budzinski, Muller, Ba & Keller (2025), "Traveling Waves Integrate Spatial Information Through Time" (Tier 3)
+arXiv:2502.06034. **Preprint, not peer reviewed.** Convolutional recurrent networks whose
+hidden-layer waves widen the effective receptive field and help global segmentation.
+
+- **Why aligned:** Places wave dynamics among mechanisms that change what a network can
+  compute, with a receptive-field account that touches this project's perception frontier.
+- **Plugs in:** the tectum ConvGRU (a convolutional recurrent state), prospective
+  receptive-field analysis.
+- **Honest caveat:** preprint; result is on convolutional image networks, not on any
+  substrate here.
+
+### 9.7 Karuvally, Sejnowski & Siegelmann (2024), "Hidden Traveling Waves bind Working Memory Variables in Recurrent Neural Networks" (Tier 3)
+arXiv:2402.10163, published at ICML 2024 (PMLR 235:23266-23290). The source list for this
+review recorded it as a preprint; the arXiv record carries the ICML journal reference, so it
+is labelled peer reviewed here with that note kept visible.
+
+- **Why aligned:** Directly names the binding of working-memory variables as a wave
+  mechanism, which is the function the co-ripple literature measures and this project's
+  workspace performs poorly (frozen sync_R).
+- **Plugs in:** `models/core/global_workspace.py`, the DMTS wall.
+- **Honest caveat:** preprint, RNN simulations, no biological calibration.
+
+### 9.8 Shervani-Tabar, Brincat, Lundqvist & Miller (2026), "Emergent Traveling Waves in Neural Circuits" (Tier 3)
+bioRxiv 10.64898/2026.01.08.698281. **Preprint, not peer reviewed.** Waves emerge under
+biological constraints and keep working memory stable against distractors.
+
+- **Why aligned:** Connects the wave regime to working-memory robustness under biological
+  constraints, the same function the co-ripple study measures at single-neuron resolution.
+- **Plugs in:** the DMTS wall and distractor-robustness questions.
+- **Honest caveat:** preprint; theory-plus-simulation; author overlap with the analog
+  cognition theory position (section 4) is worth tracking when reading it.
+
+### 9.9 Verzhbinsky, Daume, Cheng, Rutishauser & Halgren (2026), "Cross-region neuron co-firing mediated by ripple oscillations supports distributed working memory representations" (Tier 1)
+*Nature Neuroscience*, doi:10.1038/s41593-026-02403-z. Peer reviewed. 35 patients, five
+recorded regions, ~91 Hz ripples of about 70 ms. Co-ripples raise cross-region co-firing by
+about a third with no decrement to 220 mm, scaling with memory load and response speed, and
+reinstating stimulus-specific co-firing at retrieval.
+
+- **Why aligned:** The strongest single-neuron evidence that transient high-frequency
+  synchrony coordinates distributed representations under cognitive demand, which is a
+  candidate mechanism for the distributed-binding function this project's sync_R layer
+  gestures at without measuring.
+- **Plugs in:** `models/core/global_workspace.py` (the bid boost), the co-ripple transient
+  synchrony prototype decision, the Sternberg design as a measurement template.
+- **Honest caveat:** five recorded regions, not the whole brain; the mechanism behind
+  long-distance co-occurrence is unexplained; a 90 Hz band has no translation here.
+
+### 9.10 Xu, Long, Feng & Gong (2023), "Interacting spiral wave patterns underlie complex brain dynamics and are related to cognitive processing" (Tier 2)
+*Nature Human Behaviour* 7, 1196-1215, doi:10.1038/s41562-023-01626-5. Peer reviewed. fMRI
+BOLD of 100 Human Connectome Project subjects; spiral waves around phase singularities are
+widespread at rest and in tasks; rotation direction and location classify tasks; interacting
+spirals coordinate activations and de-activations.
+
+- **Why aligned:** Evidence that the largest-scale cortical dynamics are organized, not
+  noise, and that the organization tracks cognition. Grounds the claim that organized
+  dynamics at scale are a measurable property of cortex.
+- **Plugs in:** nothing on the current build path, deliberately; the agent has no
+  whole-cortex sheet. Recorded as grounding for the substrate-independence thesis.
+- **Honest caveat:** fMRI scale over seconds; no electrical measurement; the spirals are
+  out of scope for this agent by the audit.
+
+### 9.11 Miller, Brincat & Roy (2026), J. Neurosci. 46(33), and Pinotsis & Miller (2026), Cerebral Cortex 36(6) (Tier 3, THEORY)
+doi:10.1523/JNEUROSCI.0711-26.2026 and Cerebral Cortex 36(6). **Theory, presented as theory
+by its authors.** The analog cognition framework: continuous fields and ephaptic coupling
+perform part of cortical computation.
+
+- **Why aligned:** The strongest developed statement of the field-feedback position, and the
+  anchor of the live dispute with 9.1's Box 1. The project needs both sides recorded before
+  any field mechanism is judged.
+- **Plugs in:** nothing on the build path; context for the separate Neutral Core engine's
+  ephaptic block and for the website's open-debate framing.
+- **Honest caveat:** theory, disputed by the strongest measured counterargument in the
+  literature; treat as a position, not a result.
+
+### 9.12 Vishne, Gerber, Knight & Deouell (2023), "Distinct ventral stream and prefrontal cortex representational dynamics during sustained conscious visual perception" (Tier 2)
+*Cell Reports* 42, 112752, doi:10.1016/j.celrep.2023.112752. Peer reviewed. Ten patients,
+multiduration paradigm. Stable decodable content in sensory cortex across the full
+presentation, transient prefrontal onset ignition without report, no offset response; both
+the registered IIT and GNWT predictions fit.
+
+- **Why aligned:** The sustained-versus-ignition split is the measurement design the
+  workspace lacks. Its multiduration logic separates onset responses from sustained
+  presence without a report, which is the contrast this project's state-based measures have
+  never run.
+- **Plugs in:** `models/core/global_workspace.py`, the sustained-versus-ignition test on
+  the internal plan, the contentless-sync_R results.
+- **Honest caveat:** analyzed trials were task-relevant though report-free; the experience
+  subspace is an interpretation of stable geometry.
+
+### 9.13 Das & Menon (2024), "Electrophysiological dynamics of salience, default mode, and frontoparietal networks during episodic memory formation and recall revealed through multi-experiment iEEG replication" (Tier 2)
+*eLife* 13, doi:10.7554/eLife.99018. Peer reviewed. 177 iEEG participants; phase transfer
+entropy shows higher directed flow from the anterior insula to default mode and
+frontoparietal nodes, stronger during memory tasks than rest.
+
+- **Why aligned:** The large-scale coordination layer that the wave and ripple results sit
+  inside, measured with a directional instrument (phase transfer entropy) this repo already
+  implements on 1-D signals.
+- **Plugs in:** `models/evaluation/coupling_measures.py` (the instrument), the
+  coordination-layer grounding.
+- **Honest caveat:** the anterior insula has no analogue in this architecture, and the
+  result grounds a layer the project has not built.
+
+---
+
 ## Deliberately excluded (related but off-core)
 
 To keep the map aligned with the project's biological-emergentist thesis, these were left
@@ -435,3 +617,39 @@ a results doc, fetch the primary link and confirm the exact venue, year, and ide
 The one known issue to fix at that pass: the object-centric cluster had an
 arXiv-id-to-title mismatch in a search snippet, so confirm each paper's title against its
 id.
+
+2026-09-25 addition, section 9. Fetched and confirmed during compilation: Muller et al. 2026
+Neuron (full text read and reviewed; the review's numbers above come from it), Verzhbinsky
+et al. 2026 (nature.com abstract and main text), Xu et al. 2023 (nature.com abstract and
+reference list), Davis 2020/2021/2024 and Benigno 2023 and Muller 2018 and Muller 2016 and
+Huang 2010 (DOI records resolved), Das & Menon 2024 (Crossref abstract, 177 participants
+confirmed), Daume et al. 2024 (PubMed record, doi:10.1038/s41586-024-07309-z), Roelfsema
+2023 (Crossref, doi:10.1016/j.neuron.2023.03.016), Liboni et al. 2025 (Crossref title),
+Jacobs et al. 2025 and Karuvally et al. 2024 (arXiv pages; the Karuvally arXiv record
+carries the ICML 2024 journal reference, which changes its label, see 9.7), Shervani-Tabar
+et al. 2026 (Crossref record for the bioRxiv DOI), and the Pinotsis & Miller 2026 entry
+(PubMed id 42411828, cited without a fetched full text). The affiliation claims in the
+website's researcher profiles for Keller, Miyato and Welling were confirmed from their
+primary pages in the same pass. Not individually fetched: the Vishne et al. 2023 Cell
+Reports full text was reviewed from the owner's local copy (not committed), and its DOI was
+confirmed against the article header; Keller and Welling ICML 2023 was cited from the
+review's reference and the proceedings page URL, not fetched. The source list's preprint
+label for Karuvally et al. was corrected against the arXiv record in this pass.
+
+2026-09-25 addition, section 9. Fetched and confirmed during compilation: Muller et al. 2026
+Neuron (full text read and reviewed; the review's numbers above come from it), Verzhbinsky
+et al. 2026 (nature.com abstract and main text), Xu et al. 2023 (nature.com abstract and
+reference list), Davis 2020/2021/2024 and Benigno 2023 and Muller 2018 and Muller 2016 and
+Huang 2010 (DOI records resolved), Das & Menon 2024 (Crossref abstract, 177 participants
+confirmed), Daume et al. 2024 (PubMed record, doi:10.1038/s41586-024-07309-z), Roelfsema
+2023 (Crossref, doi:10.1016/j.neuron.2023.03.016), Liboni et al. 2025 (Crossref title),
+Jacobs et al. 2025 and Karuvally et al. 2024 (arXiv pages; the Karuvally arXiv record
+carries the ICML 2024 journal reference, which changes its label, see 9.7), Shervani-Tabar
+et al. 2026 (Crossref record for the bioRxiv DOI), and the Pinotsis & Miller 2026 entry
+(PubMed id 42411828, cited without a fetched full text). The affiliation claims in the
+website's researcher profiles for Keller, Miyato and Welling were confirmed from their
+primary pages in the same pass. Not individually fetched: the Vishne et al. 2023 Cell
+Reports full text was reviewed from the owner's local copy (not committed), and its DOI was
+confirmed against the article header; Keller and Welling ICML 2023 was cited from the
+review's reference and the proceedings page URL, not fetched. The source list's preprint
+label for Karuvally et al. was corrected against the arXiv record in this pass.

@@ -173,6 +173,7 @@ structure only, kept current from the actual tree.
 - `biological_neural_architecture_research.md` -- full biological grounding and gap analysis.
 - `theory_of_consciousness.md`, `theory_implementation_review.md` -- theory basis and alignment audit.
 - `consciousness_indicators_butlin.md` -- the indicator-property evaluation rubric.
+- `traveling_waves_evidence.md` -- cortical traveling waves, co-ripples and spirals. Evidence review and alignment audit against the binding layer, with the k-steps translation constraint and the ephaptic dispute stated as open. Companion to section 9 of `aligned_external_resources.md`.
 
 ### Design, roadmap, and reference
 - `architecture.md` -- system design overview (pillars, loops, validation).
