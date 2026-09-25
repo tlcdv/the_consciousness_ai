@@ -137,32 +137,27 @@ Runs `runs/omegaoff_s42`, `omegaoff_s43`, `omegaoff_s44`, the command above with
 The flag-off arm reproduces the modal value 0.450108000 at all 3 seeds, the value
 `sync_r_content_2026_09.md` recorded.
 
-## The baseline check, and why md5 cannot decide it here
+## The baseline check
 
-Smoke runs, DMTS, 1 episode, 30 steps, seed 42, flag off, the same flags as above, compared
-column by column on `metrics.csv`. Two runs of this branch and two runs of `main`.
+**The flag-off path is bit-identical.** With the environment seeding fix (PR #16) applied
+under both, a DMTS smoke run (`--seed 42`, 1 episode, 120 steps, the flags above) gives the
+same md5 for `metrics.csv` and `episodes.csv` with this fix and the flag off as without this
+fix. With the flag on, the md5 differs, which shows the check can detect a change.
 
-| pair | columns that differ |
-|---|---|
-| main run 1 vs main run 2 | env_sample_shape (30 rows) |
-| branch run 1 vs branch run 2 | env_sample_shape (30), ignition_salience (20), bid_semantic (20), gate_attention (1), broadcast_mag (1) |
-| branch run 1 vs main run 1 | ignition_salience (20), bid_semantic (20), broadcast_mag (4), gate_attention (1) |
-| branch run 2 vs main run 2 | env_sample_shape (30), broadcast_mag (5) |
+| code | flag | metrics.csv md5 |
+|---|---|---|
+| seeding fix only | none | 8429bc1031c95ff32332f083f1eddb58 |
+| seeding fix + this fix | off | 8429bc1031c95ff32332f083f1eddb58 |
+| seeding fix + this fix | on | ecd9cc26ebecd06c05f7d3c4c998111f |
 
-Two runs of identical code differ, so no md5 comparison can pass on this machine. Two sources
-vary between runs. The DMTS stimulus draw is not seeded by `--seed` (next section), and some
-float columns differ in the last digit between runs of the same code, next to the CuBLAS
-nondeterminism warning the runs print. **sync_r is identical in every pair**, and it is the
-only column the binding layer writes. With the unit pin tests, that is the evidence that the
-flag-off path is unchanged.
+**A correction to the first version of this section.** Without the seeding fix, two runs of
+identical code differed, and the first version blamed the last-digit float differences on
+CuBLAS nondeterminism. That was wrong. With the seeding fix, two runs are identical in every
+column, so the float differences also came from the unseeded environment. It changes colour,
+size and target position as well as shape, and only the shape is logged.
 
-## A separate defect found here, not fixed here
-
-`--seed` does not seed the DMTS environment. Its help text says it seeds "the env.reset call
-on episode 0", but `run_episode` calls `env.reset()` with no seed and `DMTSEnv` draws trials
-from an unseeded `np.random.default_rng()`. Two runs with the same `--seed` show different
-`env_sample_shape` sequences. Fixing it would change the stimulus sequence of every future run,
-so it is left for the owner.
+The unseeded environment is fixed separately, in PR #16. `--seed` had never seeded the DMTS or
+WCST trial generator, although its help text said it did.
 
 ## What this does and does not change
 
