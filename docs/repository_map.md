@@ -96,6 +96,9 @@ structure only, kept current from the actual tree.
 - `wave_detection.py` -- phase gradient directionality and phase singularities on a
   step-indexed spatial field against a spatial-shuffle null, in cells per step. Driven by
   `scripts/analysis/probe_tectum_waves.py`; read it with that probe's `--no-carry` control.
+- `temporal_generalization.py` -- train-at-t, test-at-t' decoding over trials, a
+  family-wise label-shuffle threshold, and a SUSTAINED / TRANSIENT / MIXED label. Driven by
+  `scripts/analysis/probe_sustained_vs_ignition.py`.
 - `levin_consciousness_metrics.py` -- Levin-framework consciousness metrics.
 - `consciousness_monitor.py` -- metric-only consciousness evaluation. Its import-failure
   fallbacks raise when called rather than returning 0.0, so a missing dependency cannot
