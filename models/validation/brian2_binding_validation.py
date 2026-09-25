@@ -30,9 +30,13 @@ try:
     import brian2
     from brian2 import (
         NeuronGroup, Synapses, StateMonitor,
-        ms, second, radian, Hz,
+        ms, second, Hz,
         defaultclock, seed as brian_seed,
     )
+    # Brian2 2.5 does not export radian at top level. Before this import
+    # fix, the ImportError marked Brian2 unavailable and every comparison
+    # in this module was skipped.
+    from brian2.units.allunits import radian
     BRIAN2_AVAILABLE = True
 except ImportError:
     BRIAN2_AVAILABLE = False
@@ -200,22 +204,22 @@ def build_brian2_network(
     dTheta/dt = omega + (K_val/N_val)*coupling : radian
     omega : radian/second (constant)
     coupling : radian/second
-    amp : 1 (constant)
-    K_val : 1/second (constant)
+    bid : 1 (constant)
+    K_val : 1 (constant)
     N_val : 1 (constant)
     '''
 
     oscillators = NeuronGroup(N, eqs, method='euler')
     oscillators.Theta = initial_phases * radian
     oscillators.omega = natural_frequencies * radian / second
-    oscillators.amp = amplitudes
-    oscillators.K_val = coupling_strength / second
+    oscillators.bid = amplitudes
+    oscillators.K_val = coupling_strength
     oscillators.N_val = N
 
     # Synapses with weighted Kuramoto coupling
     syn_eqs = 'w : 1 (constant)'
     syn_on_pre = ''
-    coupling_code = 'coupling_post = w * amp_pre * sin(Theta_pre - Theta_post) / second : radian/second (summed)'
+    coupling_code = 'coupling_post = w * bid_pre * sin(Theta_pre - Theta_post) / second : radian/second (summed)'
 
     connections = Synapses(
         oscillators, oscillators,
@@ -223,9 +227,10 @@ def build_brian2_network(
         on_pre=None,
     )
     # Replace with summed variable approach
+    # The weight must be declared in the same model as the summed coupling.
     connections = Synapses(
         oscillators, oscillators,
-        coupling_code,
+        'w : 1 (constant)\n' + coupling_code,
     )
     connections.connect()
 
@@ -343,8 +348,13 @@ def validate_binding(
     random_seed: int = 42,
 ) -> ValidationResult:
     """
-    Run both AKOrN and Brian2 simulations with equivalent parameters and
-    compare their synchronization dynamics.
+    Run AKOrN and a Brian2 Kuramoto network and compare their R curves.
+
+    Warning. The two systems are NOT equivalent. This function reads omega as
+    P[1,0] while forward() uses P - P^T, applies a rotation the legacy layer
+    omits, divides the coupling by N, uses sender-only amplitude and maps steps
+    and seconds onto unrelated time axes. A high correlation here does not
+    validate the layer. Use validate_binding_matched for a like-for-like check.
 
     The validation passes if the Pearson correlation between the two
     order parameter curves exceeds correlation_threshold.
@@ -476,3 +486,124 @@ def translate_akorn_params(kuramoto: KuramotoLayer) -> dict:
         "coupling_matrix": _extract_akorn_coupling_matrix(kuramoto),
         "dt": kuramoto.dt,
     }
+
+
+# ---------------------------------------------------------------------------
+# Matched comparison
+#
+# validate_binding above compares AKOrN against a different system. It reads
+# omega as P[1,0] while forward() uses P - P^T, it applies a rotation the
+# legacy layer does not apply, it uses a 1/N factor and sender-only amplitude,
+# and it maps AKOrN steps and Brian2 seconds onto unrelated time axes. The
+# matched comparison below integrates the continuous limit of the layer's own
+# 2-D update, with AKOrN step k placed at time k * dt seconds:
+#
+#     dTheta_i/dt = w_i + K * a_i * sum_j W_ij * a_j * sin(Theta_j - Theta_i)
+#
+# w_i is the rotation the layer actually applies (zero for the legacy update).
+# ---------------------------------------------------------------------------
+
+
+@dataclass
+class MatchedComparison:
+    """Phase trajectories of AKOrN and its continuous limit in Brian2."""
+    akorn_phases: np.ndarray    # [T, N] radians at AKOrN steps 0..T-1
+    brian2_phases: np.ndarray   # [T, N] radians sampled at the same times
+    max_phase_error: float      # max circular distance over time and oscillators
+    mean_phase_error: float
+
+
+def effective_natural_frequencies(kuramoto: KuramotoLayer) -> np.ndarray:
+    """Angular velocity per oscillator that forward() applies, for D = 2.
+
+    Raises ValueError for D > 2, where no single scalar frequency exists.
+    """
+    if kuramoto.dimensions != 2:
+        raise ValueError(
+            f"effective_natural_frequencies needs dimensions == 2, got "
+            f"{kuramoto.dimensions}; a D-sphere rotation has no scalar frequency"
+        )
+    if not kuramoto.natural_frequency:
+        return np.zeros(kuramoto.num_oscillators)
+    P = kuramoto.natural_frequencies.detach().cpu().numpy()
+    return P[:, 1, 0] - P[:, 0, 1]
+
+
+def _circular_distance(a: np.ndarray, b: np.ndarray) -> np.ndarray:
+    return np.abs(np.angle(np.exp(1j * (a - b))))
+
+
+def _akorn_phase_trajectory(kuramoto: KuramotoLayer, angles: np.ndarray,
+                            amplitudes: np.ndarray, total_steps: int) -> np.ndarray:
+    """[total_steps, N] phase angles from single AKOrN iterations."""
+    x = torch.tensor(np.stack([np.cos(angles), np.sin(angles)], -1),
+                     dtype=torch.float32).unsqueeze(0)
+    a = torch.tensor(amplitudes, dtype=torch.float32).unsqueeze(0)
+    trajectory = []
+    with torch.no_grad():
+        for _ in range(total_steps):
+            trajectory.append(torch.atan2(x[0, :, 1], x[0, :, 0]).numpy())
+            x, _ = kuramoto(x, amplitudes=a, iterations=1)
+    return np.array(trajectory)
+
+
+def _brian2_phase_trajectory(frequencies: np.ndarray, weights: np.ndarray,
+                             K: float, amplitudes: np.ndarray, angles: np.ndarray,
+                             sample_times: np.ndarray, dt_ms: float) -> np.ndarray:
+    """[len(sample_times), N] phases of the matched flow integrated in Brian2."""
+    N = len(angles)
+    defaultclock.dt = dt_ms * ms
+    eqs = '''
+    dTheta/dt = omega + K_val * bid * coupling : radian
+    omega : radian/second (constant)
+    coupling : radian/second
+    bid : 1 (constant)
+    K_val : 1 (constant)
+    '''
+    group = NeuronGroup(N, eqs, method='rk4')
+    group.Theta = angles * radian
+    group.omega = frequencies * radian / second
+    group.bid = amplitudes
+    group.K_val = K
+    # Summed pull on i ("post") from j ("pre"): W_ij * a_j * sin(Theta_j - Theta_i).
+    syn = Synapses(group, group, 'w : 1 (constant)\n'
+                   'coupling_post = w * bid_pre * sin(Theta_pre - Theta_post) / second'
+                   ' : radian/second (summed)')
+    syn.connect()
+    syn.w[:] = weights[syn.j[:], syn.i[:]]
+    monitor = StateMonitor(group, 'Theta', record=True)
+    net = brian2.Network(group, syn, monitor)
+    net.run(float(sample_times[-1]) * second + defaultclock.dt)
+    times = monitor.t[:] / second
+    theta = np.asarray(monitor.Theta[:])
+    return np.stack([np.interp(sample_times, times, theta[n]) for n in range(N)], -1)
+
+
+def validate_binding_matched(kuramoto: KuramotoLayer,
+                             amplitudes: np.ndarray | None = None,
+                             total_steps: int = 50,
+                             brian2_dt_ms: float = 1.0,
+                             random_seed: int = 42,
+                             brian2_frequencies: np.ndarray | None = None,
+                             ) -> MatchedComparison:
+    """Compare AKOrN phase trajectories with their continuous limit in Brian2.
+
+    brian2_frequencies overrides the Brian2 rotation, for negative controls.
+    Raises RuntimeError without Brian2 and ValueError for D > 2.
+    """
+    if not BRIAN2_AVAILABLE:
+        raise RuntimeError("Brian2 is not installed. Install with: pip install brian2")
+    N = kuramoto.num_oscillators
+    amplitudes = np.ones(N) if amplitudes is None else np.asarray(amplitudes, float)
+    frequencies = (effective_natural_frequencies(kuramoto)
+                   if brian2_frequencies is None else np.asarray(brian2_frequencies, float))
+    angles = np.random.RandomState(random_seed).uniform(0, 2 * math.pi, size=N)
+    brian_seed(random_seed)
+
+    akorn = _akorn_phase_trajectory(kuramoto, angles, amplitudes, total_steps)
+    times = np.arange(total_steps) * kuramoto.dt
+    weights = kuramoto.coupling_weights.detach().cpu().numpy()
+    brian = _brian2_phase_trajectory(frequencies, weights, float(kuramoto.K),
+                                     amplitudes, angles, times, brian2_dt_ms)
+    error = _circular_distance(akorn, brian)
+    return MatchedComparison(akorn, brian, float(error.max()), float(error.mean()))

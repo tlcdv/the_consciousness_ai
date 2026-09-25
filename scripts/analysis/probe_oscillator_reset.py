@@ -113,6 +113,7 @@ def run(args, reset_each_episode: bool):
         latent_mode=args.latent_mode,
         capsule_workspace_source=args.capsule_workspace_source)
     tectum.eval()
+    config["workspace"]["akorn_natural_frequency"] = args.akorn_natural_frequency
     ws, re = _make_chain(config, args.replay_seed)
     device = config["device"]
     goal = torch.tensor([1.0, -1.0, 1.0], device=device)
@@ -224,7 +225,11 @@ def main():
                    choices=["discrete", "continuous"])
     p.add_argument("--capsule-workspace-source", default="all_levels",
                    choices=["final", "all_levels"])
+    p.add_argument("--akorn-natural-frequency", action="store_true",
+                   help="Replay with the AKOrN rotation term applied. Off reproduces "
+                        "oscillator_frozen_2026_09.md.")
     args = p.parse_args()
+    print("AKOrN natural frequency: %s" % ("ON" if args.akorn_natural_frequency else "off"))
 
     print("Checkpoint: %s   %d episodes, %d warm-up steps discarded\n"
           % (args.checkpoint, args.episodes, args.warmup))

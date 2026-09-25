@@ -174,6 +174,7 @@ def build_config(args):
             "binding_mechanism": getattr(args, "binding_mechanism", "akorn"),
             "komplex_eta": getattr(args, "komplex_eta", 0.1),
             "komplex_desync_eps": getattr(args, "komplex_desync_eps", 0.01),
+            "akorn_natural_frequency": getattr(args, "akorn_natural_frequency", False),
         },
         "reentrant": {
             "max_cycles": 5,
@@ -2502,6 +2503,13 @@ def main():
                         help="KomplexNet global desync parameter epsilon. "
                              "Small positive pushes phases apart in the "
                              "absence of strong coupling. Default 0.01.")
+    parser.add_argument("--akorn-natural-frequency", action="store_true",
+                        help="Apply the AKOrN intrinsic rotation omega @ phase. "
+                             "Off by default: the legacy update read only the "
+                             "zero diagonal of the skew-symmetric omega, so the "
+                             "oscillators had no intrinsic frequency and relaxed "
+                             "to a fixed point. Off keeps that baseline "
+                             "bit-identical. Only affects --binding-mechanism akorn.")
 
     # Phase D of 2026-05-17 Phi-1 retest plan: enable a deterministic
     # mock semantic module so the semantic channel produces non-zero bids

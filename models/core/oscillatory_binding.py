@@ -20,7 +20,8 @@ class KuramotoLayer(nn.Module):
                  dimensions: int = 2,
                  coupling_strength: float = 1.0,
                  natural_frequency_std: float = 0.1,
-                 dt: float = 0.1):
+                 dt: float = 0.1,
+                 natural_frequency: bool = False):
         """
         Args:
             num_oscillators: Number of specialist modules/features to bind
@@ -28,12 +29,17 @@ class KuramotoLayer(nn.Module):
             coupling_strength: Global K parameter for how strongly oscillators pull each other
             natural_frequency_std: Variance of initial natural frequencies
             dt: Integration time step
+            natural_frequency: Apply the intrinsic rotation omega @ phase.
+                Default False keeps the legacy update, whose einsum read only
+                the zero diagonal of omega, so the legacy oscillators have no
+                intrinsic frequency and relax to a fixed point.
         """
         super().__init__()
         self.num_oscillators = num_oscillators
         self.dimensions = dimensions
         self.K = coupling_strength
         self.dt = dt
+        self.natural_frequency = natural_frequency
         
         # Natural frequencies (omega) for each oscillator
         # In multi-dimensional Kuramoto, this is a skew-symmetric matrix generator
@@ -99,8 +105,13 @@ class KuramotoLayer(nn.Module):
             # pull[b,i,d] = sum_j interaction[b,i,j] * projected[b,i,j,d]
             pull = torch.einsum('bij,bijd->bid', interaction_strength, projected)
 
-            # Natural rotation (omega * phase)
-            rotation = torch.einsum('ndd,bnd->bnd', omega, current_phases)
+            # Natural rotation (omega @ phase). The legacy einsum 'ndd,bnd->bnd'
+            # reads the diagonal of a skew-symmetric omega, which is zero.
+            # It stays the default so the legacy baseline is bit-identical.
+            if self.natural_frequency:
+                rotation = torch.einsum('nde,bne->bnd', omega, current_phases)
+            else:
+                rotation = torch.einsum('ndd,bnd->bnd', omega, current_phases)
 
             # Update: phase + dt * (rotation + K * pull)
             dp = self.dt * (rotation + self.K * pull)
@@ -132,11 +143,13 @@ class WorkspaceBindingSystem(nn.Module):
     Wrapper to apply AKOrN binding to the Global Workspace competition.
     Replaces the hardcoded scalar synchrony multiplier.
     """
-    def __init__(self, num_modules: int, iterations: int = 5):
+    def __init__(self, num_modules: int, iterations: int = 5,
+                 natural_frequency: bool = False):
         super().__init__()
         self.num_modules = num_modules
         self.iterations = iterations
-        self.kuramoto = KuramotoLayer(num_oscillators=num_modules, dimensions=2)
+        self.kuramoto = KuramotoLayer(num_oscillators=num_modules, dimensions=2,
+                                      natural_frequency=natural_frequency)
         
         # We need to maintain the phase state across workspace steps
         self.register_buffer('current_phases', None)
