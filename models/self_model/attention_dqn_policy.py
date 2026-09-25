@@ -3,8 +3,9 @@ Attention-based DQN policy for DMTS non-local comparison.
 
 STATUS (2026-07-19): UNVALIDATED. Committed so the `--policy attention-dqn` wiring in
 train_rlhf.py resolves its import, NOT because it has been shown to work. It runs end to
-end (verified: 60-step DMTS episode, no errors) and nothing more. There is no unit test
-coverage, no verdict doc, and no measured result.
+end (verified: 60-step DMTS episode, no errors) and nothing more. The only unit test
+(tests/test_attention_dqn_policy.py) covers the target network copy. There is no verdict
+doc and no measured result.
 
 Three runs exist on disk (`runs/c1_attention`, `_seed43`, `_seed44`, 4 episodes each).
 Their rewards are NOT a valid comparison against any other arm, because the arms differ in
@@ -38,11 +39,14 @@ class AttentionDQNPolicy:
     DQN with spatial attention front-end for DMTS match-to-sample.
     
     Input: [128, 16, 16] = [current(64), sample(64), H, W]
-    4 choice positions on 16x16 grid (image 224x224, stride 14):
-      action 0 (left):  grid (8, 2)  <- pixel (38, 112) / 14
-      action 1 (right): grid (8, 13) <- pixel (186, 112) / 14
-      action 2 (up):    grid (2, 8)  <- pixel (112, 38) / 14
-      action 3 (down):  grid (13, 8) <- pixel (112, 186) / 14
+    4 choice positions on 16x16 grid (image 224x224, stride 14). DMTS action 0 is
+    "wait"; actions 1 to 4 choose a position (dmts_env.py, _generate_choices):
+      action 1 (left):  grid (8, 2)  <- pixel (38, 112) / 14
+      action 2 (right): grid (8, 13) <- pixel (186, 112) / 14
+      action 3 (up):    grid (2, 8)  <- pixel (112, 38) / 14
+      action 4 (down):  grid (13, 8) <- pixel (112, 186) / 14
+    The Q-head maps the 4 position scores to all action_dim Q-values (5 for DMTS),
+    so the pairing of a position with its action is learned, not wired.
     
     Architecture:
     1. Project sample (64ch) -> query vector [d_model]
@@ -56,10 +60,10 @@ class AttentionDQNPolicy:
 
     # (row, col) on 16x16 grid for the 4 choice positions
     CHOICE_GRID_POS = [
-        (8, 2),   # action 0: left
-        (8, 13),  # action 1: right
-        (2, 8),   # action 2: up
-        (13, 8),  # action 3: down
+        (8, 2),   # DMTS action 1: left
+        (8, 13),  # DMTS action 2: right
+        (2, 8),   # DMTS action 3: up
+        (13, 8),  # DMTS action 4: down
     ]
 
     def __init__(self, config: dict, emotion_shaper: EmotionalRewardShaper, memory: MemoryCore):
@@ -177,11 +181,6 @@ class AttentionDQNPolicy:
             nn.GELU(),
             nn.Linear(d_ff, self.action_dim),
         ).to(self.device)
-
-    def _update_target(self) -> None:
-        self.target_sample_proj.load_state_dict(self.sample_proj.state_dict())
-        self.target_patch_proj.load_state_dict(self.patch_proj.state_dict())
-        self.target_q_head.load_state_dict(self.q_head.state_dict())
 
     def _update_target(self) -> None:
         self.target_sample_proj.load_state_dict(self.sample_proj.state_dict())

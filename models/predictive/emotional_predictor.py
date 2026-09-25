@@ -10,12 +10,16 @@ Predictive module that handles:
 - Stability monitoring
 """
 
+from typing import Any
+
 import numpy as np
 import torch
 import torch.nn as nn
 from dataclasses import dataclass
 
-from models.core.consciousness_core import ConsciousnessState
+# `consciousness_state` is duck typed: any object with `memory_stability`. The module
+# used to import a ConsciousnessState class that consciousness_core does not define,
+# so the module could not be imported at all.
 from models.emotion.tgnn.emotional_graph import EmotionalGraphNetwork
 from models.memory.emotional_memory_core import EmotionalMemoryCore
 
@@ -116,7 +120,7 @@ class EmotionalPredictor(nn.Module):
         attention_context: torch.Tensor | None = None,
         memory_context: torch.Tensor | None = None,
         meta_memory_context: dict | None = None,
-        consciousness_state: ConsciousnessState | None = None
+        consciousness_state: Any | None = None
     ) -> tuple[dict[str, torch.Tensor], dict[str, float]]:
         """Process input state for emotional predictions"""
         
@@ -258,7 +262,7 @@ class EmotionalPredictor(nn.Module):
         prediction: torch.Tensor,
         confidence: torch.Tensor,
         meta_memory_context: dict | None,
-        consciousness_state: ConsciousnessState | None
+        consciousness_state: Any | None
     ):
         """Update prediction metrics"""
         self.metrics.confidence = confidence.mean().item()
