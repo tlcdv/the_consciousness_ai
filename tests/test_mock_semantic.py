@@ -63,6 +63,12 @@ def test_mock_semantic_bid_floor_and_ceiling():
         )
 
 
+def test_zero_embedding_bids_the_floor():
+    """The floor holds at the edge, where a zero embedding bids 0.1 and not 0."""
+    mod = MockSemanticModule(embedding_dim=8, hash_bins=4)
+    assert mod.bid_from_embedding(torch.zeros(8)) == 0.1
+
+
 def test_mock_semantic_varies_with_input():
     """Different observations should produce different embeddings (the whole
     point is to be a non-zero, input-dependent signal)."""

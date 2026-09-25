@@ -17,7 +17,7 @@ semantic-bid sync_R contribution is non-zero.
 
 When `--enable-mock-semantic` is on AND Qwen2-VL is not loaded, this module
 replaces the zero stub. Its bid is the L2 norm of the embedding, clipped
-to [0, 1]; bid >= 0.1 in typical use.
+to [0.1, 1]; even a zero embedding bids 0.1.
 """
 from __future__ import annotations
 

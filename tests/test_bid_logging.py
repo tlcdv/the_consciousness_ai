@@ -93,3 +93,27 @@ def test_winners_default_is_not_shared_between_instances():
                        broadcast_strength=0.0, competition_results={})
     a.winners.append("vision")
     assert b.winners == []
+
+
+def test_workspace_state_has_no_unhashable_class_default():
+    """
+    Python 3.11 rejects any dataclass default whose class is unhashable, at class
+    creation, so `import models.core.global_workspace` raised ValueError there while
+    `qualia_vector` defaulted to `np.zeros(3)`. CI runs 3.10, which only rejects
+    list, dict and set, so this applies the 3.11 rule directly.
+    """
+    import dataclasses
+
+    offenders = [f.name for f in dataclasses.fields(WorkspaceState)
+                 if f.default is not dataclasses.MISSING
+                 and f.default.__class__.__hash__ is None]
+    assert offenders == []
+
+
+def test_qualia_vector_default_is_not_shared_between_instances():
+    a = WorkspaceState(active_content={}, access_history=[],
+                       broadcast_strength=0.0, competition_results={})
+    b = WorkspaceState(active_content={}, access_history=[],
+                       broadcast_strength=0.0, competition_results={})
+    a.qualia_vector[0] = 1.0
+    assert b.qualia_vector.tolist() == [0.0, 0.0, 0.0]

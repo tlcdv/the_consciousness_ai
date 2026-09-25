@@ -228,7 +228,10 @@ class AsimovComplianceFilter:
 
             return min(1.0, harm_score)
         except Exception as e:
-            logging.debug("World model prediction failed: %s", e)
+            # The check could not run and the caller will treat the action as
+            # harmless (score 0.0), so this must be visible at the default level.
+            logging.warning("World model harm prediction failed, scoring the action "
+                            "as harmless (0.0): %s", e)
             return 0.0
 
     # ------------------------------------------------------------------ #

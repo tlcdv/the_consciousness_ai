@@ -143,7 +143,9 @@ def build_config(args):
         "ce2_num_classes": getattr(args, "ce2_num_classes", 32),
         "workspace_dim": 256,
         "workspace": {
-            "broadcast_threshold": 0.6,
+            # Named "broadcast_threshold" until 2026-09-25, a key GlobalWorkspace never
+            # read; its own ignition_threshold default was also 0.6, so no run changed.
+            "ignition_threshold": 0.6,
             "ignition_gain": 5.0,
             "reverberation_alpha": 0.8,
             "workspace_dim": 256,
@@ -154,6 +156,9 @@ def build_config(args):
             # eligible module payloads, making broadcast structurally
             # downstream of AKOrN sync_R.
             "broadcast_mode": getattr(args, "broadcast_mode", "winner_take_all"),
+            # Which winner's "tensor" survives the winner_take_all merge. 'legacy'
+            # (default) keeps the weakest winner's; 'top_winner' the strongest's.
+            "broadcast_merge": getattr(args, "broadcast_merge", "legacy"),
             "ignition_rule": getattr(args, "ignition_rule", "running_average"),
             "ignition_tolerance_sd": getattr(args, "ignition_tolerance_sd", 1.0),
             "attention_temperature": getattr(args, "attention_temperature", 0.5),
@@ -2475,6 +2480,15 @@ def main():
                              "sum of all eligible module payloads, with weights "
                              "from AKOrN bound_bids. Makes phi-on-broadcast "
                              "structurally downstream of sync_R.")
+    parser.add_argument("--broadcast-merge", type=str, default="legacy",
+                        choices=["legacy", "top_winner"],
+                        help="How --broadcast-mode winner_take_all merges two or more "
+                             "winners. Every payload carries a 'tensor' key and winners "
+                             "arrive strongest first. 'legacy' (default, unchanged) lets "
+                             "each weaker winner overwrite it, so the policy reads the "
+                             "WEAKEST winner's tensor while the CSV records the strongest "
+                             "as bid_winner. 'top_winner' keeps the strongest winner's "
+                             "tensor and source. Rejected with attention_weighted.")
     parser.add_argument("--attention-temperature", type=float, default=0.5,
                         help="Softmax temperature for attention-weighted fusion. "
                              "Lower = sharper, higher = more uniform. Default 0.5.")

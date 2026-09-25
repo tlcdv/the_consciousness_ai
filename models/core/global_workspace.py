@@ -47,8 +47,9 @@ class WorkspaceState:
     # Diagnostic only; nothing branches on it.
     winners: list[str] = field(default_factory=list)
 
-    # Phenomenological State (Qualia)
-    qualia_vector: np.ndarray = np.zeros(3) # [Intensity, Valence, Complexity]
+    # Phenomenological state (qualia) as [Intensity, Valence, Complexity]. Built by a
+    # factory because Python 3.11 refuses an array as a class default at import time.
+    qualia_vector: np.ndarray = field(default_factory=lambda: np.zeros(3))
 
     # Structured payload from winning module (capsule poses, etc.)
     broadcast_payload: dict[str, Any] | None = None
@@ -112,6 +113,20 @@ class GlobalWorkspace:
         # all eligible module payloads, with weights derived from bound_bids.
         # Phi computed on this broadcast is structurally downstream of sync_R.
         self.broadcast_mode = config.get("broadcast_mode", "winner_take_all")
+        # How winner_take_all merges two or more dict payloads. Winners arrive strongest
+        # first and every training payload is a dict with a "tensor" key, so "legacy"
+        # (default, bit identical to every earlier run) lets each weaker winner overwrite
+        # that key, and the broadcast carries the WEAKEST winner's tensor. "top_winner"
+        # keeps the value the strongest winner wrote; keys only a weaker winner has
+        # still merge.
+        self.broadcast_merge = config.get("broadcast_merge", "legacy")
+        if self.broadcast_merge not in ("legacy", "top_winner"):
+            raise ValueError("broadcast_merge must be legacy or top_winner, got %r"
+                             % self.broadcast_merge)
+        if self.broadcast_merge != "legacy" and self.broadcast_mode != "winner_take_all":
+            raise ValueError("broadcast_merge %r applies only to broadcast_mode "
+                             "winner_take_all, got %r"
+                             % (self.broadcast_merge, self.broadcast_mode))
         self.attention_temperature = config.get("attention_temperature", 0.5)
         self.attention_floor = config.get("attention_floor", 0.05)
         # workspace_dim is the target tensor size for fusion. Payload tensors
@@ -441,7 +456,12 @@ class GlobalWorkspace:
                     if payload is None:
                         continue
                     if isinstance(payload, dict):
-                        broadcast_content.update(payload)
+                        if self.broadcast_merge == "top_winner":
+                            # A stronger winner came first; keep what it wrote.
+                            for key, value in payload.items():
+                                broadcast_content.setdefault(key, value)
+                        else:
+                            broadcast_content.update(payload)
                         structured_payload[winner] = payload
                     else:
                         broadcast_content[winner] = payload

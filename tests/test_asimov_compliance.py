@@ -108,6 +108,23 @@ class TestLaw1HarmPrediction(unittest.TestCase):
         }
         self.assertTrue(self.f.is_compliant(action, state))
 
+    def test_world_model_failure_is_logged_at_warning(self):
+        """
+        A world model that raises scores the action as harmless (0.0), so the
+        check that could not run lets the action through. That decision is
+        unchanged here; the failure used to be logged at DEBUG, invisible at the
+        default level, and must now be a WARNING.
+        """
+        mock_wm = MagicMock()
+        mock_wm.imagine_trajectory.side_effect = RuntimeError("shape mismatch")
+        self.f.set_world_model(mock_wm)
+
+        action = {"type": "move", "goal": "explore"}
+        state = {"world_model_internal": {"hidden_state": MagicMock()}}
+        with self.assertLogs(level="WARNING") as logs:
+            self.assertTrue(self.f.is_compliant(action, state))
+        self.assertTrue(any("shape mismatch" in line for line in logs.output))
+
 
 class TestLaw1InactionClause(unittest.TestCase):
     """Law 1 (inaction): through inaction, allow a human to come to harm."""
