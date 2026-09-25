@@ -276,7 +276,7 @@ def build_config(args):
         "phi1_min_active_modules": getattr(args, "phi1_min_active_modules", 0),
         # Global seed for reproducibility. None means inherit ambient RNG state
         # (matches pre-RIIU behavior). Setting an int seeds python/numpy/torch
-        # and the env.reset call on the first episode.
+        # and the environment's trial generator (seed_environment in main).
         "seed": getattr(args, "seed", None),
         # Phase 5 deliverable 4 (Rouleau-Levin): activate the dormant Levin
         # modules. When on, a HolonicSystem + LevinConsciousnessEvaluator run
@@ -899,6 +899,20 @@ def audio_waveform_tensor(waveform: np.ndarray, device: str) -> torch.Tensor:
     t = torch.from_numpy(waveform).float()
     t = t.unsqueeze(0) if t.dim() == 1 else t
     return t.unsqueeze(0).to(device)
+
+
+def seed_environment(env, seed: int | None) -> bool:
+    """Seed the environment's own trial generator from the run seed.
+
+    Before 2026-09-25 no call passed the seed to env.reset, and DMTSEnv and
+    WCSTEnv draw trials from an unseeded generator, so two runs with the same
+    --seed saw different stimuli. Later resets without a seed keep the seeded
+    generator. Returns False and changes nothing when seed is None.
+    """
+    if seed is None:
+        return False
+    env.reset(seed=seed)
+    return True
 
 
 def parse_colour(text: str) -> tuple:
@@ -2446,7 +2460,8 @@ def main():
     parser.add_argument("--seed", type=int, default=None,
                         help="Global RNG seed. None inherits ambient state. "
                              "Setting an int seeds python/numpy/torch and the "
-                             "env.reset call on episode 0.")
+                             "environment's trial generator (seed_environment). "
+                             "Before 2026-09-25 the environment was not seeded.")
 
     # Phase A of 2026-05-17 Phi-1 retest plan: attention-weighted broadcast
     # fusion. Default 'winner_take_all' preserves all existing test outputs
@@ -2833,6 +2848,7 @@ def main():
                               view=args.dark_room_view, view_radius=args.dark_room_view_radius,
                               agent_mark=args.dark_room_agent_mark,
                               agent_colour=parse_colour(args.dark_room_agent_colour))
+    env_seeded = seed_environment(env, args.seed)
     # Seed the environment audio noise from the run seed. Before 2026-09-15 it had
     # no seed, so no run with --enable-audio could be repeated exactly.
     if args.seed is not None and hasattr(env, "seed_audio"):
@@ -2871,6 +2887,7 @@ def main():
                        "seed": args.seed, "existence_drive": config["existence_drive"],
                        "framework_version": FRAMEWORK_VERSION,
                        "audio_seeded": args.seed is not None and hasattr(env, "seed_audio"),
+                       "env_seeded": env_seeded,
                        "dark_room_audio": args.dark_room_audio,
                        "dark_room_audio_channels": args.dark_room_audio_channels,
                        "dark_room_collision": args.dark_room_collision,
