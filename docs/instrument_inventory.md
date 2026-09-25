@@ -81,7 +81,7 @@ demonstration can fix.
 
 ## Inventory
 
-### Unproven (3), plus 1 kept under a narrowed claim
+### Unproven (4), plus 1 kept under a narrowed claim
 
 PCI is listed here because its evidence belongs beside the others. It is NOT unproven:
 its content clause is settled negatively and closed. It is kept for the narrower
