@@ -1,6 +1,6 @@
 # Instrument inventory
 
-**Nothing is TRUSTED. Of 17 instrument entries, 0 are trusted, 4 are unproven, 1 is kept
+**Nothing is TRUSTED. Of 18 instrument entries, 0 are trusted, 5 are unproven, 1 is kept
 under a narrowed claim, 6 are retired, and 6 are not running.** As of 2026-09-13 PCI is SETTLED and it FAILED the
 content clause. Its reading rule exists (rule 8, a 42x to 60x empty gap in the gate
 baseline across probe seeds) and the gate on `gate3_s42` does respond, on 81 of 120 probe
@@ -81,7 +81,7 @@ demonstration can fix.
 
 ## Inventory
 
-### Unproven (4), plus 1 kept under a narrowed claim
+### Unproven (5), plus 1 kept under a narrowed claim
 
 PCI is listed here because its evidence belongs beside the others. It is NOT unproven:
 its content clause is settled negatively and closed. It is kept for the narrower
@@ -93,6 +93,7 @@ question it does answer, and its row states that question.
 | **phi** `iit_phi.py` (pyphi) | **Downgraded 2026-09-02.** Contentless at 3 seeds: eta2 0.027118 / 0.008728 / 0.025970 against null p95 0.055994 / 0.062348 / 0.065874, below the null mean at 2 of 3 seeds (`scalar_content_2026_09.md`). Not degenerate: 1128 to 1267 distinct values, modal share 0.25 to 0.44 percent. Computed at only 1599 of 8000 steps; the rest carry the last value forward. Gated by `is_conscious`, which is pinned. | Show that whatever `phi` is computed over carries content, or restate what `phi` is a measure of on this architecture. |
 | **Coupling measures** `coupling_measures.py` (PLV, phase transfer entropy, PAC) | Smoke-tested only, never run on a trained checkpoint. Values are in cycles per step and carry no Hz grounding, so no published frequency band may be cited against them (clause 6, usage). | Run on a trained checkpoint, and settle whether a cycles-per-step value can be cited at all. |
 | **Wave detection** `wave_detection.py` (phase gradient directionality, phase singularities) <br>**UNPROVEN, added 2026-09-25** | Tests pin a plane wave, noise, one spiral, the shuffle null and refusal of a constant field. First run on the tectum h state (`tectum_wave_detection_2026_09.md`): PGD above the shuffle null at 3 of 3 capfix seeds, and the h-zeroed control shows the gradient survives without the carried state at 2 of 3, so PGD against the shuffle null alone reads input layout as a wave. Units are cells per step. | Must always be read with the h-zeroed control. Needs a case where it moves under an intervention that creates real propagation before any verdict can rest on it. |
+| **Temporal generalization** `temporal_generalization.py` <br>**UNPROVEN, added 2026-09-25** | Tests pin a stable code, a transient code and shuffled labels. First run (`sustained_vs_ignition_2026_09.md`) at 60 trials and 6 classes: broadcast SUSTAINED 9 of 9, tectum SUSTAINED 1 of 3 seeds. Low power, 20 permutations. | Needs a run with enough trials to reach the tectum decodability measured elsewhere, before its tectum labels can carry a verdict. |
 | **Ignition salience** | Alive but very small: 471 distinct values, std 2.385e-04 around a mean of 2.181e-06 (seed 42, measured 2026-09-02). Its saturation is what pins `is_conscious`. Never content-tested. | Content-test it, and decide whether the saturating transform is the defect. |
 
 ### Retired (6)
