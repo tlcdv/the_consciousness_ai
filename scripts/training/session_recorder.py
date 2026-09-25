@@ -1,14 +1,19 @@
-"""Record selected training episodes so a session can be replayed.
+"""Record training episodes so a session can be replayed.
 
 The run folder is the session record. The ethics manifest is written first
-(models/ethics/framework.py); this recorder adds `session.json` and, for each
-selected episode, `episodes/ep_NNNN/` with:
+(models/ethics/framework.py); this recorder adds `session.json` and, for EVERY
+episode, `episodes/ep_NNNN/` with the light tier:
 
     frames.npz    the frames the agent received, uint8, one per step
     steps.jsonl   one line per step: which input each module received, the raw
                   bids, the bound bids, winner, ignition, sync_R, reward, action,
                   environment phase, and the interoceptive state
-    meta.json     step count, frame count, and whether they match
+    vectors.npz   per step vectors such as tectum_content, broadcast and audio
+                  (VECTOR_NAMES in session_capture.py)
+    meta.json     step count, frame count, whether they match, and the tiers
+
+The selected episodes (--record-episodes) add maps.npz and weights.pt, and the first
+and last episodes add full tensors; SessionRecorder lists the tiers.
 
 Recording which input each module received is the point. A module fed zeros or a
 constant produces a constant bid, and a constant bid looks like a mechanism

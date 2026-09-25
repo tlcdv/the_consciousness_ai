@@ -1,9 +1,15 @@
 """Tests for the vanilla DQN baseline."""
 from __future__ import annotations
 
+import os
+import sys
+import tempfile
 import unittest
+from unittest import mock
+
 import torch
 import numpy as np
+from scripts.training import train_baseline_dqn
 from scripts.training.train_baseline_dqn import DQN, ReplayBuffer, frame_to_tensor
 
 
@@ -55,6 +61,27 @@ class TestFrameConversion(unittest.TestCase):
         self.assertEqual(t.shape, (1, 3, 224, 224))
         self.assertTrue(t.max() <= 1.0)
         self.assertTrue(t.min() >= 0.0)
+
+
+class TestSeeding(unittest.TestCase):
+    """The baseline had no --seed and reset its environment unseeded, so no baseline
+    number could be reproduced. With --seed, two runs write the same CSV."""
+
+    def _run(self, log_dir: str, seed: int) -> str:
+        argv = ["train_baseline_dqn", "--env", "dark_room", "--episodes", "1",
+                "--max-steps", "40", "--log-dir", log_dir, "--seed", str(seed)]
+        with mock.patch.object(sys, "argv", argv):
+            train_baseline_dqn.main()
+        with open(os.path.join(log_dir, "baseline_dark_room.csv")) as fh:
+            return fh.read()
+
+    def test_same_seed_writes_the_same_csv_and_another_seed_does_not(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            first = self._run(os.path.join(tmp, "a"), 3)
+            again = self._run(os.path.join(tmp, "b"), 3)
+            other = self._run(os.path.join(tmp, "c"), 4)
+        self.assertEqual(first, again)
+        self.assertNotEqual(first, other)
 
 
 if __name__ == "__main__":

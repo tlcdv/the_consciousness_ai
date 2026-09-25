@@ -108,11 +108,23 @@ def main():
     parser.add_argument("--batch-size", type=int, default=32)
     parser.add_argument("--epsilon-start", type=float, default=1.0)
     parser.add_argument("--epsilon-end", type=float, default=0.05)
-    parser.add_argument("--epsilon-decay", type=int, default=500)
+    parser.add_argument("--epsilon-decay", type=int, default=500,
+                        help="Number of EPISODES (not steps) over which epsilon falls "
+                             "linearly from --epsilon-start to --epsilon-end. With the "
+                             "defaults a 100 episode run ends at epsilon 0.812.")
     parser.add_argument("--log-dir", type=str, default="runs_baseline")
     parser.add_argument("--difficulty", type=int, default=0)
     parser.add_argument("--render", action="store_true")
+    parser.add_argument("--seed", type=int, default=None,
+                        help="Seed python random, numpy, torch and the first "
+                             "environment reset, so two runs with the same seed write "
+                             "the same CSV. Default None leaves everything unseeded, "
+                             "as before.")
     args = parser.parse_args()
+    if args.seed is not None:
+        random.seed(args.seed)
+        np.random.seed(args.seed)
+        torch.manual_seed(args.seed)
     # Ethics framework rule E1. This baseline builds no self-model, affect or
     # homeostatic reward, so the drive is absent; the battery only ends episodes.
     write_ethics_manifest(args.log_dir, RunDeclaration(
@@ -145,7 +157,9 @@ def main():
 
     global_step = 0
     for ep in range(args.episodes):
-        obs, _ = env.reset()
+        # Seeding the first reset seeds the environment's own generator for the run;
+        # reset(seed=None) is the unseeded call used before --seed existed.
+        obs, _ = env.reset(seed=args.seed if ep == 0 else None)
         state = frame_to_tensor(obs).to(device)
         total_reward = 0.0
         steps = 0

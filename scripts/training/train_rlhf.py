@@ -187,7 +187,9 @@ def build_config(args):
         },
         "emotion": {
             "valence_weight": 0.5,
-            "arousal_penalty": 1.0,
+            # An "arousal_penalty" of 1.0 stood here until 2026-09-25. No code reads
+            # that key; the arousal penalty in force is EmotionalRewardShaper's
+            # arousal_lambda default, 0.1, and it is unchanged.
         },
         "action_selection": {
             "workspace_dim": 256,
@@ -935,6 +937,9 @@ def frame_to_tensor(frame: np.ndarray, device: str) -> torch.Tensor:
     return t.to(device)
 
 
+_APPRAISAL_FAILURE_REPORTED = False
+
+
 def evaluate_emotion(vision_bid: float, env_reward: float, prev_reward: float,
                      broadcast: torch.Tensor | None = None,
                      qualia_mapper=None) -> dict:
@@ -943,10 +948,14 @@ def evaluate_emotion(vision_bid: float, env_reward: float, prev_reward: float,
     Stage 1 (reflex): surprise from tectum bid and reward prediction error
     drive arousal and valence. This is fast and content-independent.
 
-    Stage 2 (appraisal): if a workspace broadcast exists, the phenomenological
-    mapper extracts valence and intensity from the broadcast content, blending
-    them into the reflex estimate. This is slower and content-specific.
+    Stage 2 (appraisal) is meant to blend the phenomenological mapper's valence
+    and intensity into the reflex estimate. It has never run. `map_state` needs a
+    goal vector as well as the broadcast, so the call below raises TypeError on
+    every step and the result is the reflex values with dominance 0.0. It stays
+    that way because passing a goal vector would change every training number;
+    the first failure in a process is now logged as a warning.
     """
+    global _APPRAISAL_FAILURE_REPORTED
     # Reflex: tectum surprise and reward delta
     # Arousal requires bid > 0.5 to activate (baseline bids are ~0.2-0.5)
     surprise = max(0.0, vision_bid - 0.5)
@@ -961,8 +970,11 @@ def evaluate_emotion(vision_bid: float, env_reward: float, prev_reward: float,
             phenom = qualia_mapper.map_state(broadcast)
             valence = 0.6 * valence + 0.4 * phenom.valence
             dominance = phenom.intensity * 0.3
-        except Exception:
-            pass  # graceful fallback to reflex-only
+        except Exception as exc:
+            if not _APPRAISAL_FAILURE_REPORTED:
+                _APPRAISAL_FAILURE_REPORTED = True
+                logger.warning("Stage 2 appraisal failed, so emotion is reflex only "
+                               "with dominance 0.0 (reported once per process). %s", exc)
 
     return {"valence": valence, "arousal": arousal, "dominance": dominance}
 
@@ -2222,6 +2234,18 @@ def run_episode(episode_idx, config, tectum, workspace, reentrant,
     return total_reward, steps_taken, avg_phi, consciousness_ratio
 
 
+def _reject_incompatible_flags(parser: argparse.ArgumentParser, args) -> None:
+    """Stop at the command line on flag pairs the training loop cannot support."""
+    if (getattr(args, "enable_wm_predict", False)
+            and getattr(args, "rssm_latent_mode", "discrete") == "continuous"):
+        # WorldModelObjective.kl_loss is a categorical KL over softmax logits. The
+        # continuous latent stores Gaussian means in those slots, so the pair would
+        # train a KL of the wrong distribution family.
+        parser.error("--enable-wm-predict trains a categorical KL on the RSSM logits, "
+                     "and --rssm-latent-mode continuous puts Gaussian means there. "
+                     "Use one or the other.")
+
+
 def main():
     parser = argparse.ArgumentParser(description="Train consciousness agent in the Dark Room")
     parser.add_argument("--episodes", type=int, default=20)
@@ -2233,7 +2257,10 @@ def main():
                         choices=["dark_room", "navigation", "dmts", "wcst"],
                         help="Environment to train in")
     parser.add_argument("--difficulty", type=int, default=0,
-                        help="Distractor overlap level for DMTS (0-3)")
+                        help="DMTS only. How many of the distractor's three features "
+                             "(shape, colour, size) copy the sample. Values 0 to 3 are "
+                             "accepted, but at most two features are ever shared, so "
+                             "3 behaves as 2.")
     parser.add_argument("--sample-contrast", type=float, default=1.0,
                         help="DMTS near-threshold knob: blends the SAMPLE toward "
                              "the background (1.0 = untouched, 0.0 = erased). The "
@@ -2303,7 +2330,10 @@ def main():
     #     --ablate-gate-entropy
     # -------------------------------------------------------------------------
     parser.add_argument("--enable-audio", action="store_true",
-                        help="Enable cochlear auditory pipeline")
+                        help="Enable the cochlear auditory pipeline. Only --env "
+                             "dark_room emits a waveform; in the other environments "
+                             "the audio module receives nothing and stays silent "
+                             "(zero content, bid 0.0).")
 
     # Ablation flags. Each reverts exactly one Phase 3 or 2026-04-27 change.
     parser.add_argument("--ablate-memory-replay", action="store_true",
@@ -2413,11 +2443,15 @@ def main():
                         help="dark_room reports info['collision'] when a wall stops a move, "
                              "so the collision sound plays. Touch, not damage.")
     parser.add_argument("--record-episodes", type=str, default="default",
-                        help="Episodes to record into <log-dir>/episodes/ for session "
-                             "replay: 'default' (first, last, and every 10th), "
-                             "'none', or a comma list of indices. Recording reads "
-                             "values the loop already computes and uses no random "
-                             "state, so metrics.csv is unchanged.")
+                        help="Session recording into <log-dir>/episodes/ for replay. "
+                             "'none' turns it off. Otherwise every episode gets the "
+                             "light tier (frames, steps.jsonl, vectors.npz), and the "
+                             "selected episodes also get maps.npz and weights.pt. "
+                             "'default' selects the first, the last and every 10th; "
+                             "a comma list of indices selects those. The first and "
+                             "last episodes also get full tensors. Recording reads values "
+                             "the loop already computes and uses no random state, so "
+                             "metrics.csv is unchanged.")
     parser.add_argument("--existence-drive", choices=["on", "off"], default=None,
                         help="REQUIRED by the ethics framework (rule E1, "
                              "docs/ethics_framework.md). 'on' keeps the existence drive "
@@ -2625,11 +2659,14 @@ def main():
                              "same obs_map but the PFC applies a conv stack first "
                              "(restores spatial processing, trained by the control "
                              "gradient). 'rssm' / 'rssm-conv' feed the RSSM recurrent "
-                             "state h_state (the working-memory store that holds the "
-                             "DMTS sample across the blank delay at 99%% decodability, "
-                             "while obs_map/tectum_content are blank); the PFC GRU can "
-                             "latch it. Comparing reward across taps localizes which "
-                             "pipeline stage loses the control-relevant signal.")
+                             "state h_state. The earlier claim that h_state holds the "
+                             "DMTS sample across the delay was a leakage artifact "
+                             "(corrected 2026-06-14); these taps are kept as a negative "
+                             "result. 'obsmem-conv' stacks the current obs_map with a "
+                             "gated memory slot that holds the DMTS sample, so a conv "
+                             "PFC can compare the two; it is the working memory path. "
+                             "Comparing reward across taps localizes which pipeline "
+                             "stage loses the signal the control needs.")
     parser.add_argument("--enable-control-repr", action="store_true",
                         help="P5 fix: add an action-conditioned forward model that "
                              "predicts the next observation from the current tectum "
@@ -2785,6 +2822,7 @@ def main():
                              "signal vs the trained run. Default off.")
 
     args = parser.parse_args()
+    _reject_incompatible_flags(parser, args)
 
     if args.seed is not None:
         _set_global_seed(args.seed)
