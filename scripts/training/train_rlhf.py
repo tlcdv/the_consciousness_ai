@@ -915,6 +915,10 @@ def seed_environment(env, seed: int | None) -> bool:
     WCSTEnv draw trials from an unseeded generator, so two runs with the same
     --seed saw different stimuli. Later resets without a seed keep the seeded
     generator. Returns False and changes nothing when seed is None.
+
+    The dark room (SimpleVisualEnv) ignores this seed. It draws its layout from
+    numpy's global stream, which _set_global_seed seeds. Its layouts repeat
+    across runs only while nothing else draws from that stream in between.
     """
     if seed is None:
         return False

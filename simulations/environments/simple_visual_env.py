@@ -117,6 +117,15 @@ class SimpleVisualEnv(DarkRoomAudioMixin, gym.Env):
             self._padded_canvas = pygame.Surface((self.width + pad, self.height + pad))
         
     def reset(self, seed: int | None = None, options: dict | None = None) -> tuple[np.ndarray, dict]:
+        """Start an episode with the agent and the light at random positions.
+
+        The positions come from numpy's global random stream (np.random), not from
+        the generator that `seed` initialises (self.np_random, which nothing here
+        reads). So reset(seed=s) alone does NOT fix the layout. A run is
+        reproducible because train_rlhf seeds numpy's global stream from --seed
+        before the first reset; any new draw from that stream before a reset
+        changes every later layout.
+        """
         super().reset(seed=seed)
         
         # Randomize positions

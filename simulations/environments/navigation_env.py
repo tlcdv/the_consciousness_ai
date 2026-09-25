@@ -7,7 +7,7 @@ room, testing memory. A battery system adds time pressure.
 
 Observation: RGB image [height, width, 3] uint8.
 Action: [move_x, move_y] continuous in [-1, 1].
-Info dict: current_room, goal_room, rooms_visited, goals_collected, battery.
+Info dict: current_room, goal_rooms, rooms_visited, goals_collected, battery, step.
 """
 from __future__ import annotations
 
