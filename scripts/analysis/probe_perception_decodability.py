@@ -100,7 +100,9 @@ def linear_decode(X, y, seed: int = 0, test_size: float = 0.3):
         clf.fit(x_tr, y_tr)
         acc = float(clf.score(x_te, y_te))
         method = "sklearn"
-    except Exception:
+    except ImportError:
+        # Only a missing sklearn falls back. Any other error (NaN input, for one)
+        # raises. The torch probe used to train on the same bad data and report it.
         acc = _torch_probe(X, y_idx, n_classes, seed, test_size)
         method = "torch"
 
@@ -210,70 +212,69 @@ def _downsample(obs: np.ndarray, k: int = 32) -> np.ndarray:
 
 def _compute_broadcast(config, tectum, workspace, reentrant, self_model,
                        memory, mock_sem, tectum_content, vision_bid, obs):
-    """Replicate the run_episode forward (train_rlhf.py:646-816) to get broadcast.
+    """Replicate the run_episode workspace forward to get the broadcast.
 
-    Returns a flat numpy vector, or None if anything fails (the core stage taps do
-    not depend on this).
+    Returns a flat numpy vector. A broadcast without a tensor, which is the empty
+    broadcast of a step that does not ignite, comes back as zeros, the substitution the
+    training loop makes. Any error raises. It used to return None, and three probes
+    turned None into a zero broadcast and kept measuring.
     """
-    try:
-        device = config["device"]
-        ws_dim = config["workspace_dim"]
-        emotion = evaluate_emotion(vision_bid, 0.0, 0.0)
+    device = config["device"]
+    ws_dim = config["workspace_dim"]
+    emotion = evaluate_emotion(vision_bid, 0.0, 0.0)
 
-        semantic_content = torch.zeros(1, ws_dim, device=device)
-        semantic_bid = 0.0
-        if mock_sem is not None and isinstance(obs, np.ndarray):
-            emb = mock_sem.embed(obs)
-            semantic_bid = mock_sem.bid_from_embedding(emb)
-            if emb.shape[0] >= ws_dim:
-                proj = emb[:ws_dim]
-            else:
-                proj = torch.nn.functional.pad(emb, (0, ws_dim - emb.shape[0]))
-            semantic_content = proj.unsqueeze(0).to(device)
-
-        raw_bids = {
-            "vision": max(0.0, min(1.0, vision_bid)),
-            "audio": 0.0,
-            "memory": 0.1,
-            "body": 0.05,
-            "semantic": max(0.0, min(1.0, semantic_bid)),
-        }
-        vision_payload = {"tensor": tectum_content, "source": "tectum"}
-        capsule_data = tectum.get_capsule_payload()
-        if capsule_data:
-            vision_payload.update(capsule_data)
-        payloads = {
-            "vision": vision_payload,
-            "audio": {"tensor": torch.zeros(1, ws_dim, device=device), "source": "audio"},
-            "semantic": {"tensor": semantic_content, "source": "semantic"},
-        }
-        intero = None
-        if self_model is not None:
-            intero = dict(self_model.state.interoceptive_state)
-
-        result = reentrant.settle(
-            workspace=workspace,
-            specialists={"vision": tectum},
-            initial_bids=raw_bids,
-            payloads=payloads,
-            goal_vector=torch.tensor([1.0, -1.0, 1.0], device=device),
-            pad_state=emotion,
-            interoceptive_state=intero,
-        )
-        bc = result.broadcast_content
-        if isinstance(bc, torch.Tensor):
-            t = bc
-        elif isinstance(bc, dict) and isinstance(bc.get("_fused"), torch.Tensor):
-            t = bc["_fused"]
-        elif isinstance(bc, dict) and isinstance(bc.get("tensor"), torch.Tensor):
-            t = bc["tensor"]
+    semantic_content = torch.zeros(1, ws_dim, device=device)
+    semantic_bid = 0.0
+    if mock_sem is not None and isinstance(obs, np.ndarray):
+        emb = mock_sem.embed(obs)
+        semantic_bid = mock_sem.bid_from_embedding(emb)
+        if emb.shape[0] >= ws_dim:
+            proj = emb[:ws_dim]
         else:
-            return np.zeros(ws_dim, dtype=np.float64)
-        if t.dim() == 1:
-            t = t.unsqueeze(0)
-        return t.detach().reshape(-1).cpu().numpy().astype(np.float64)
-    except Exception:
-        return None
+            proj = torch.nn.functional.pad(emb, (0, ws_dim - emb.shape[0]))
+        semantic_content = proj.unsqueeze(0).to(device)
+
+    raw_bids = {
+        "vision": max(0.0, min(1.0, vision_bid)),
+        "audio": 0.0,
+        "memory": 0.1,
+        "body": 0.05,
+        "semantic": max(0.0, min(1.0, semantic_bid)),
+    }
+    vision_payload = {"tensor": tectum_content, "source": "tectum"}
+    capsule_data = tectum.get_capsule_payload()
+    if capsule_data:
+        vision_payload.update(capsule_data)
+    payloads = {
+        "vision": vision_payload,
+        "audio": {"tensor": torch.zeros(1, ws_dim, device=device), "source": "audio"},
+        "semantic": {"tensor": semantic_content, "source": "semantic"},
+    }
+    intero = None
+    if self_model is not None:
+        intero = dict(self_model.state.interoceptive_state)
+
+    result = reentrant.settle(
+        workspace=workspace,
+        specialists={"vision": tectum},
+        initial_bids=raw_bids,
+        payloads=payloads,
+        goal_vector=torch.tensor([1.0, -1.0, 1.0], device=device),
+        pad_state=emotion,
+        interoceptive_state=intero,
+    )
+    bc = result.broadcast_content
+    if isinstance(bc, torch.Tensor):
+        t = bc
+    elif isinstance(bc, dict) and isinstance(bc.get("_fused"), torch.Tensor):
+        t = bc["_fused"]
+    elif isinstance(bc, dict) and isinstance(bc.get("tensor"), torch.Tensor):
+        t = bc["tensor"]
+    else:
+        return np.zeros(ws_dim, dtype=np.float64)
+    if t.dim() == 1:
+        t = t.unsqueeze(0)
+    return t.detach().reshape(-1).cpu().numpy().astype(np.float64)
 
 
 # --------------------------------------------------------------------------- #
@@ -335,8 +336,7 @@ def collect_dmts(episodes, seed, include_broadcast, mock_semantic, load_tectum=N
                         bc = _compute_broadcast(config, tectum, workspace, reentrant,
                                                 self_model, memory, mock_sem,
                                                 tectum_content, vision_bid, obs)
-                        if bc is not None:
-                            rec["broadcast"] = bc
+                        rec["broadcast"] = bc
                     records.append(rec)
 
                 action = 0 if phase != "choice" else int(np.random.randint(1, env.num_choices + 1))
@@ -385,8 +385,7 @@ def collect_wcst(episodes, seed, include_broadcast, mock_semantic, load_tectum=N
                         bc = _compute_broadcast(config, tectum, workspace, reentrant,
                                                 self_model, memory, mock_sem,
                                                 tectum_content, vision_bid, obs)
-                        if bc is not None:
-                            rec["broadcast"] = bc
+                        rec["broadcast"] = bc
                     records.append(rec)
 
                 action = int(rng.integers(0, 4))

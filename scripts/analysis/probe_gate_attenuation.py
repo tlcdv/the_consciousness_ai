@@ -142,8 +142,6 @@ def _rollout(env_name, seed, n_steps, actions, perturb_step, magnitude,
                 config, tectum, workspace, reentrant, self_model, memory,
                 mock_sem, tectum_content, vision_bid, obs,
             )
-            if broadcast is None:
-                broadcast = np.zeros(ws_dim, dtype=np.float64)
 
             gate_in = torch.tensor(broadcast[:ws_dim], dtype=torch.float32, device=device)
             if gate_in.numel() < gate.hidden_size:

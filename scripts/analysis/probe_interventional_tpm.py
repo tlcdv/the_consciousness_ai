@@ -128,8 +128,6 @@ def collect_observational(config, tectum, workspace, reentrant, self_model, memo
                 broadcast = _compute_broadcast(config, tectum, workspace, reentrant,
                                                self_model, memory, mock_sem,
                                                tectum_content, vision_bid, obs)
-                if broadcast is None:
-                    break
                 gate_input = _as_gate_input(broadcast, config)
                 gate(gate_input)
                 vals = gate.prev_gate_values.detach().cpu().numpy().reshape(-1)[:N_NODES]

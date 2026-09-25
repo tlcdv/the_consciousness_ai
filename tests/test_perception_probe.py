@@ -4,12 +4,18 @@ These test only the linear-decoding contract (no env, no model weights):
   - linearly separable classes decode well above chance
   - random labels decode at ~chance
   - the return contract and the skip path for degenerate inputs
+  - NaN input raises
+and the error contract of `_compute_broadcast`, with stubs in place of the models.
 """
 from __future__ import annotations
 
-import numpy as np
+import types
 
-from scripts.analysis.probe_perception_decodability import linear_decode
+import numpy as np
+import pytest
+import torch
+
+from scripts.analysis.probe_perception_decodability import _compute_broadcast, linear_decode
 
 
 def _separable(n_per_class=120, dim=16, n_classes=4, seed=0):
@@ -57,3 +63,56 @@ def test_return_contract_and_skip_path():
     assert skip["n_classes"] == 1
     assert skip["method"] == "skip"
     assert np.isnan(skip["test_acc"])
+
+
+def test_nan_input_raises_instead_of_falling_back_to_torch():
+    # The sklearn path used to sit in `except Exception`, so the ValueError sklearn
+    # raises on NaN sent the data to a torch probe that trained on it and reported
+    # an accuracy. The torch path is now reserved for a missing sklearn.
+    X, y = _separable(seed=5)
+    X[3, 2] = np.nan
+    with pytest.raises(ValueError):
+        linear_decode(X, y, seed=5)
+
+
+# --- _compute_broadcast, the workspace forward shared by six probes ---------------
+
+class _Tectum:
+    def get_capsule_payload(self):
+        return None
+
+
+class _Reentrant:
+    def __init__(self, broadcast=None, error=None):
+        self.broadcast, self.error = broadcast, error
+
+    def settle(self, **kwargs):
+        if self.error is not None:
+            raise self.error
+        return types.SimpleNamespace(broadcast_content=self.broadcast)
+
+
+def _broadcast(reentrant, ws_dim=8):
+    config = {"device": "cpu", "workspace_dim": ws_dim}
+    return _compute_broadcast(config, _Tectum(), None, reentrant, None, None, None,
+                              torch.zeros(1, ws_dim), 0.5, None)
+
+
+def test_a_failing_forward_raises_instead_of_returning_none():
+    # It returned None on ANY exception, and three probes (PCI, workspace ordering,
+    # gate attenuation) turned None into a zero broadcast and kept measuring.
+    with pytest.raises(RuntimeError, match="settle failed"):
+        _broadcast(_Reentrant(error=RuntimeError("settle failed")))
+
+
+def test_an_empty_broadcast_is_zeros_as_in_training():
+    # A step that does not ignite returns {}; the training loop feeds zeros then.
+    out = _broadcast(_Reentrant(broadcast={}))
+    assert out.shape == (8,)
+    assert not out.any()
+
+
+def test_a_tensor_broadcast_is_returned_flat():
+    tensor = torch.arange(8, dtype=torch.float32).unsqueeze(0)
+    out = _broadcast(_Reentrant(broadcast={"tensor": tensor, "source": "tectum"}))
+    assert out.tolist() == list(range(8))

@@ -130,6 +130,11 @@ def task(tables: list) -> dict:
     if len(pooled_f) < MIN_EPISODES_POOLED:
         return {"episodes": len(pooled_f), "measurable": False, "rho_per_seed": per_seed}
     observed = float(spearmanr(pooled_f, np.concatenate(pooled_a)).correlation)
+    if not np.isfinite(observed):
+        # A constant f or a constant audio share has no rank correlation. Compared
+        # with the null, NaN exceeds nothing and p came out as 1/2001, the smallest.
+        return {"episodes": len(pooled_f), "measurable": False, "rho_per_seed": per_seed,
+                "reason": "pooled rho undefined because a share is constant across episodes"}
     rng = np.random.default_rng(0)
     null = [spearmanr(pooled_f, np.concatenate([rng.permutation(a) for a in pooled_a])).correlation
             for _ in range(SHUFFLES_TASK)]

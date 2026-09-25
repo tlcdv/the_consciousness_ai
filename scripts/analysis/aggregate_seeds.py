@@ -74,12 +74,13 @@ def rolling_peak_r(valid: pd.DataFrame, window: int) -> tuple[float, int, int]:
 
     Steps are step-indexed by `global_step`. We slide a window of `window`
     steps and compute r(phi_riiu, sync_R) inside each, skipping windows with
-    < 50 rows or zero variance. Returns the maximum r encountered.
+    < 50 rows or zero variance. Returns the maximum r encountered, or NaN when no
+    window could be scored (it used to return 0.0, which averaged in as a result).
     """
     if "global_step" not in valid.columns:
-        return 0.0, 0, 0
+        return float("nan"), 0, 0
     if len(valid) == 0:
-        return 0.0, 0, 0
+        return float("nan"), 0, 0
     min_step = int(valid["global_step"].min())
     max_step = int(valid["global_step"].max())
     best_r = -2.0
@@ -98,7 +99,7 @@ def rolling_peak_r(valid: pd.DataFrame, window: int) -> tuple[float, int, int]:
                 best_end = end
         start += stride
     if best_r == -2.0:
-        return 0.0, min_step, min(min_step + window, max_step)
+        return float("nan"), min_step, min(min_step + window, max_step)
     return best_r, best_start, best_end
 
 
@@ -110,14 +111,16 @@ def evaluate_seed(run_dir: str, substrate: str, peak_window_size: int) -> SeedRe
     df = load_metrics(run_dir, substrate=substrate)
     valid = filter_valid(df)
     if len(valid) == 0 or valid["phi_riiu"].std() == 0 or valid["sync_r"].std() == 0:
+        # Without variance there is no correlation. NaN keeps that visible in the
+        # report and in the cross seed mean.
         return SeedResult(
             run_dir=run_dir,
             seed=extract_seed(run_dir),
-            full_run_r=0.0,
-            full_run_p=1.0,
-            phi_mean=float(valid["phi_riiu"].mean()) if len(valid) else 0.0,
-            phi_std=float(valid["phi_riiu"].std()) if len(valid) else 0.0,
-            peak_r=0.0,
+            full_run_r=float("nan"),
+            full_run_p=float("nan"),
+            phi_mean=float(valid["phi_riiu"].mean()) if len(valid) else float("nan"),
+            phi_std=float(valid["phi_riiu"].std()) if len(valid) else float("nan"),
+            peak_r=float("nan"),
             peak_window_start=0,
             peak_window_end=0,
             overlaps_reference=False,

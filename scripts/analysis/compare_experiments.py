@@ -1,9 +1,10 @@
 """
 Multi-environment comparison: consciousness agent vs DQN baseline.
 
-Generates a summary table and markdown report comparing reward curves,
-consciousness metrics, and pre-registered prediction results across
-dark_room, DMTS, and WCST environments.
+Generates a summary table and markdown report comparing reward summaries
+and two consciousness metrics (average phi, EI ratio) across dark_room, DMTS
+and WCST. The report holds computed tables only. Findings are written by a
+person who read the tables, never by this script.
 
 Usage:
     python -m scripts.analysis.compare_experiments
@@ -163,27 +164,6 @@ def compare_all(output_dir: str = "."):
                 f"| {r['env']} | {r['phi_mean']:.5f} | {r['phi_varies']} "
                 f"| {r['ei_ratio']:.3f} | {r['ei_n']} |\n"
             )
-        f.write("\n## Findings\n\n")
-        f.write("### Structural fixes applied (2026-03-29)\n\n")
-        f.write("1. **ConsciousnessGate wired**: all 5 gate values (attention, stability, adaptation, "
-                "coherence, confidence) computed from broadcast via learned networks. "
-                "No longer static. Phi now varies per step.\n")
-        f.write("2. **`compute_phi_proxy()` replaced** with `compute_phi_from_gate_state()` "
-                "in GlobalWorkspace and training loop.\n")
-        f.write("3. **Adaptive EI binning**: per-dimension median thresholds instead of fixed 0.5, "
-                "so adaptation_rate (range 0.004-0.006) contributes to joint state diversity.\n")
-        f.write("4. **DMTS/WCST action discretization**: consciousness agent now correctly converts "
-                "continuous actions to discrete indices via argmax.\n\n")
-        f.write("### Known limitations for this run\n\n")
-        f.write("- Phi proxy converges to empirical fixed point after ~5000 steps "
-                "(TPM saturates). Per-episode phi becomes constant after early training.\n")
-        f.write("- EI stable across measurement windows: gate transitions converge to a "
-                "stationary distribution quickly. Longer training or sliding-window TPM needed.\n")
-        f.write("- DQN outperforms consciousness agent on all reward metrics. "
-                "The consciousness pipeline adds ~200ms overhead per step without "
-                "contributing to the action policy directly.\n")
-        f.write("- sync_R range [0.216, 0.220]: workspace binding optimizer needs stronger "
-                "reward signal over many more episodes to shift coupling weights significantly.\n")
 
     print(f"\nReport saved to: {out_path}")
     return rows

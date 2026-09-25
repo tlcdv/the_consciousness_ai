@@ -72,8 +72,6 @@ def _step_states(comps, obs) -> tuple[np.ndarray, np.ndarray]:
     content, bid = tectum(frame, audio)
     broadcast = _compute_broadcast(config, tectum, workspace, reentrant, self_model,
                                    memory, mock_sem, content, bid, obs)
-    if broadcast is None:
-        raise RuntimeError("broadcast could not be computed; refusing to substitute zeros")
     return _flat(content), np.asarray(broadcast, dtype=np.float64).ravel()
 
 

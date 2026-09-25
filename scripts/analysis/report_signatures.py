@@ -107,9 +107,12 @@ def analyze_run(run_dir: Path) -> dict:
         for m in methods:
             counts[m] = counts.get(m, 0) + 1
         out["phi_method_counts"] = counts
+        # Only these two methods produce a phi from data. Every other
+        # label (skipped, insufficient_data, pyphi_error, no_gate, empty) is a
+        # carried or substituted value.
         computed = np.asarray([
             float(p) for p, m in zip(metrics["phi"], methods)
-            if m not in ("skipped", "insufficient_data")
+            if m in ("pyphi", "proxy")
         ])
         out["phi_computed"] = stats(computed)
 

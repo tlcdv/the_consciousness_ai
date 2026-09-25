@@ -209,8 +209,6 @@ def _rollout(
                 config, tectum, workspace, reentrant, self_model, memory,
                 mock_sem, tectum_content, vision_bid, obs,
             )
-            if broadcast is None:
-                broadcast = np.zeros(ws_dim, dtype=np.float64)
 
             if (
                 perturb_step is not None
