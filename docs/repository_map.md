@@ -93,6 +93,9 @@ structure only, kept current from the actual tree.
 - `coupling_measures.py` -- PLV, phase transfer entropy and phase-amplitude coupling on
   step-indexed signals. Units are CYCLES PER STEP with no Hz reading; see the module
   docstring. Driven by `scripts/analysis/probe_workspace_ordering.py`.
+- `wave_detection.py` -- phase gradient directionality and phase singularities on a
+  step-indexed spatial field against a spatial-shuffle null, in cells per step. Driven by
+  `scripts/analysis/probe_tectum_waves.py`; read it with that probe's `--no-carry` control.
 - `levin_consciousness_metrics.py` -- Levin-framework consciousness metrics.
 - `consciousness_monitor.py` -- metric-only consciousness evaluation. Its import-failure
   fallbacks raise when called rather than returning 0.0, so a missing dependency cannot
