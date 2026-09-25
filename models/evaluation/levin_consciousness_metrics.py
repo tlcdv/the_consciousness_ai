@@ -147,9 +147,18 @@ class LevinConsciousnessEvaluator:
         """
         Evaluate evidence of goal-directed behavior
         Based on Levin's concept of goal-directedness
+
+        Returns 0.0 when any list is empty. Lists of different lengths raise
+        ValueError, because each outcome is scored against the goal at the same
+        index.
         """
-        if not actions or not goals or not outcomes or len(actions) != len(goals) != len(outcomes):
+        if not actions or not goals or not outcomes:
             return 0.0
+        if not len(actions) == len(goals) == len(outcomes):
+            raise ValueError(
+                "actions, goals and outcomes must have the same length, got "
+                f"{len(actions)}, {len(goals)} and {len(outcomes)}"
+            )
             
         # Calculate alignment between goals and outcomes
         alignments = []

@@ -1,5 +1,5 @@
 """
-Regression tests for the placeholder metrics retired 2026-07-29.
+Regression tests for the placeholder metrics retired 2026-07-29 and 2026-09-25.
 
 WHY THIS FILE EXISTS. An audit found 14 functions that returned a number they never
 computed: a phi "approximation" that was a module count plus `np.random.rand()`, a
@@ -7,6 +7,9 @@ GWT ignition detector that fired on a 20% coin flip, three self-awareness scores
 were scaled random floats, a dashboard serving `random.uniform(0, 1)` as a
 consciousness score, and several methods returning a hardcoded 0.0, 0.5 or 1.0 while
 their names promised a measurement.
+
+A second audit on 2026-09-25 found five more in ConsciousnessCapabilityTester, each
+returning a fixed score (0.5, 0.3, 0.7, 0.6, 0.4) with the details "Placeholder result".
 
 None was wired into the training loop, so no committed verdict came from them. They
 were retired because they are landmines: they sit in `models/evaluation/` beside the
@@ -28,6 +31,15 @@ import sys
 import pytest
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
+
+
+CAPABILITY_SCORERS = (
+    "test_embodiment_interaction",
+    "test_self_awareness_mirror_test_analogue",
+    "test_goal_directed_behavior",
+    "test_meta_cognition_confidence",
+    "test_reportability",
+)
 
 
 class TestEvaluationPlaceholdersRaise:
@@ -64,6 +76,34 @@ class TestEvaluationPlaceholdersRaise:
         tester = PerturbationTester({}, None)
         with pytest.raises(NotImplementedError, match="perturbational_complexity"):
             tester.calculate_pci_approximation({})
+
+    def test_capability_scores_raise_instead_of_returning_constants(self):
+        from models.evaluation.consciousness_metrics import ConsciousnessCapabilityTester
+
+        # No __init__: it builds a MetricsLogger, and this is a pure stub check.
+        tester = ConsciousnessCapabilityTester.__new__(ConsciousnessCapabilityTester)
+        for name in CAPABILITY_SCORERS:
+            with pytest.raises(NotImplementedError, match="placeholder"):
+                getattr(tester, name)(step=0)
+
+    def test_capability_suite_calls_only_methods_that_exist(self):
+        # run_all_tests called test_self_awareness_mirror_analogue, which does not
+        # exist, so the suite died with AttributeError after its first placeholder.
+        import ast
+        import inspect
+        import textwrap
+
+        from models.evaluation.consciousness_metrics import ConsciousnessCapabilityTester
+
+        source = textwrap.dedent(inspect.getsource(ConsciousnessCapabilityTester.run_all_tests))
+        called = {node.func.attr for node in ast.walk(ast.parse(source))
+                  if isinstance(node, ast.Call)
+                  and isinstance(node.func, ast.Attribute)
+                  and isinstance(node.func.value, ast.Name)
+                  and node.func.value.id == "self"
+                  and node.func.attr.startswith("test_")}
+        assert called == set(CAPABILITY_SCORERS)
+        assert all(hasattr(ConsciousnessCapabilityTester, name) for name in called)
 
     def test_dashboard_does_not_serve_random_numbers_as_metrics(self):
         # flask is an optional dependency and is not installed in the default env.
@@ -168,9 +208,9 @@ def test_no_new_fabricated_numbers_in_evaluation():
     old fabricating expressions verbatim and a text grep flags those quotes. Comments
     and string literals are therefore excluded by construction.
 
-    The known-benign hits are `if __name__ == '__main__'` demo sections in
-    gnw_metrics.py and subjective_testing_suite.py, which build explicitly named Mock
-    objects. Anything else is a fabricated measurement.
+    Code after a file's first `if __name__` line is skipped. The one demo section that
+    draws random numbers today is in gnw_metrics.py, where it builds explicitly named
+    mock states. Anything else is a fabricated measurement.
     """
     import io
     import tokenize

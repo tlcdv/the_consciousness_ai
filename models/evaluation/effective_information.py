@@ -129,8 +129,10 @@ def compute_effective_information(
 
     Returns:
         EI value (float). Range: [0, log2(num_states)].
-        0 = maximally noisy (identity/random TPM).
-        log2(num_states) = fully deterministic.
+        0 = maximally noisy (every row uniform, as for random transitions).
+        log2(num_states) = fully deterministic, which includes the identity TPM
+        (every state stays where it is). Laplace smoothing keeps a finite
+        trajectory just below that ceiling.
     """
     if num_states < 2:
         return 0.0

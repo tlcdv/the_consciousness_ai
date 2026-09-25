@@ -37,6 +37,16 @@ class TestEffectiveInformation(unittest.TestCase):
         # but should be close to the maximum
         self.assertGreater(ei, 1.5, "Deterministic TPM should have high EI")
 
+    def test_identity_dynamics_score_near_the_maximum(self):
+        """Every state staying where it is is fully deterministic, so EI approaches
+        log2(num_states). The docstring used to list the identity TPM with the random
+        one as scoring 0."""
+        trajectories = [np.full(500, state) for state in range(4)]
+
+        ei = compute_effective_information(trajectories, num_states=4)
+
+        self.assertGreater(ei, 1.9)
+
     def test_uniform_tpm_low_ei(self):
         """A system with uniform random transitions should have EI near 0."""
         rng = np.random.RandomState(42)

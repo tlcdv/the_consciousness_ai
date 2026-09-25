@@ -81,10 +81,12 @@ class StepMetrics:
     env_trial: int = -1
     env_sample_shape: str = ""
     # Which phi computation produced the value: "pyphi" (exact),
-    # "proxy" (unvalidated geometric heuristic), "insufficient_data"
-    # (early TPM, returns 0.0), or "" when not produced via the gate
-    # pathway. Logged so post-hoc analysis can tell whether a phi
-    # value is scientifically grounded.
+    # "pyphi_error" (pyphi raised; the 0.0 is not a result), "proxy"
+    # (unvalidated geometric heuristic), "insufficient_data" (early TPM,
+    # returns 0.0), "skipped" (not a sampled step; the last value carried
+    # forward), "no_gate", or "" when not produced via the gate pathway.
+    # Logged so later analysis can tell whether a phi value is
+    # scientifically grounded.
     phi_method: str = ""
     # Parallel phi from the RIIU pathway (sliding-window SVD residual).
     # Computed alongside the pyphi value when --enable-riiu is on, zero

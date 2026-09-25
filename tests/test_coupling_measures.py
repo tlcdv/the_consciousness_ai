@@ -117,6 +117,24 @@ class TestPhaseLockingValue:
         with pytest.raises(ValueError, match="length mismatch"):
             phase_locking_value(_sine(0.03, n=256), _sine(0.03, n=512), SLOW)
 
+    def test_constant_signals_raise_instead_of_scoring_perfect_locking(self):
+        # A constant has no phase. Before this check two constants scored 1.0, the
+        # strongest possible locking, because both phase series were identically 0.
+        with pytest.raises(ValueError, match="no variance"):
+            phase_locking_value(np.full(N, 0.5), np.full(N, 0.2))
+
+    def test_a_constant_raises_with_a_band_too(self):
+        # Band limiting removes the constant's only component, its mean, so no
+        # phase is left to lock.
+        with pytest.raises(ValueError, match="no variance in the band"):
+            phase_locking_value(np.full(N, 0.5), _sine(0.03), SLOW)
+
+    def test_nan_input_raises(self):
+        a = _sine(0.03)
+        a[5] = np.nan
+        with pytest.raises(ValueError):
+            phase_locking_value(a, _sine(0.03), SLOW)
+
 
 class TestPhaseTransferEntropy:
     def test_returns_a_result_with_the_surrogate_null_exposed(self):

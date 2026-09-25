@@ -132,14 +132,37 @@ def phase_locking_value(
     uniformly distributed. It is symmetric and says nothing about direction; use
     phase_transfer_entropy for that.
 
+    A signal with no variance (in the band, when one is given) has no phase. Two
+    constants would give identical zero phase series and score 1.0, the strongest
+    possible locking, so such input raises ValueError instead. NaN input raises too.
+
     Returns:
         A float in [0, 1].
     """
-    px = analytic_phase(x, band)
-    py = analytic_phase(y, band)
+    sx = _band_limited_with_variance(x, band, "x")
+    sy = _band_limited_with_variance(y, band, "y")
+    px = analytic_phase(sx)
+    py = analytic_phase(sy)
     if px.size != py.size:
         raise ValueError(f"length mismatch: {px.size} vs {py.size}")
     return float(np.abs(np.mean(np.exp(1j * (px - py)))))
+
+
+def _band_limited_with_variance(x: np.ndarray, band: tuple | None, name: str) -> np.ndarray:
+    """The signal the phase is read from, or ValueError when it has no variance.
+
+    The bar is relative to the raw signal's scale, because band limiting a constant
+    leaves floating point residue near 1e-17 rather than exact zeros.
+    """
+    raw = _as_1d(x, name)
+    arr = raw if band is None else bandpass(raw, band[0], band[1])
+    if not np.std(arr) > 1e-9 * float(np.max(np.abs(raw))):
+        where = " in the band" if band is not None else ""
+        raise ValueError(
+            f"{name} has no variance{where} (or contains NaN), so its phase is "
+            "undefined and a phase locking value would be meaningless"
+        )
+    return arr
 
 
 @dataclass

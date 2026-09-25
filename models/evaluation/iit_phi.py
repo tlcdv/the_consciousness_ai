@@ -41,7 +41,7 @@ class PhiResult:
     phi: float
     num_nodes: int
     num_transitions: int
-    method: str  # "pyphi", "proxy", or "insufficient_data"
+    method: str  # "pyphi", "pyphi_error", "proxy", or "insufficient_data"
     node_labels: tuple[str, ...]
     current_state: tuple[int, ...]
 
@@ -129,6 +129,11 @@ class IITMetrics:
         # without spamming.
         self._floor_pinned_warned = np.zeros(5, dtype=bool)
 
+        # Set when the last calculate_phi call caught a pyphi exception, so the
+        # caller can label the 0.0 it returned; None after a clean call.
+        self.last_phi_error: str | None = None
+        self.phi_error_count = 0
+
         # Node labels
         self.node_labels = GATE_NODE_LABELS
 
@@ -191,19 +196,20 @@ class IITMetrics:
         medians = np.median(raw, axis=0)
         floors = np.array(_DEFAULT_BINARIZATION_FLOORS)
         self._thresholds = np.maximum(medians, floors)
-        # Mirror-mode warning: when the running median is strictly below the
-        # floor, the threshold is being clamped to the floor and binarization
-        # is always 1 (because `v > floor` rarely fails for the actual
-        # distribution). This is the "always 1" mirror of the pre-2026-05-17
-        # "always 0" bug. The warning fires once per dimension per instance.
+        # Floor warning. When the running median is strictly below the floor, the
+        # threshold is clamped to the floor, and `v > floor` fails for every value
+        # below it, which is at least half of the history. The bit is pinned
+        # towards 0, the same failure as the pre-2026-05-17 "always 0" bug. The
+        # warning fires once per dimension per instance.
         if len(self._raw_history) >= 50:
             pinned = (medians < floors) & ~self._floor_pinned_warned
             for i in np.where(pinned)[0]:
                 warnings.warn(
                     f"IITMetrics: gate dimension '{GATE_NODE_LABELS[i]}' median "
                     f"({medians[i]:.3e}) is below floor ({floors[i]:.3e}); "
-                    f"binarization threshold is clamped to the floor and may be "
-                    f"saturated to 1. The dimension may not be informative in "
+                    f"binarization threshold is clamped to the floor, so every "
+                    f"value below it binarizes to 0 and the bit is 0 on at least "
+                    f"half of the steps. The dimension may not be informative in "
                     f"the TPM. Consider lowering the floor further or revising "
                     f"the gate scaling.",
                     RuntimeWarning,
@@ -307,8 +313,12 @@ class IITMetrics:
             cm: Connectivity matrix, shape (N, N). Uses GATE_CM by default.
 
         Returns:
-            Big Phi value, or 0.0 on error / pyphi unavailable.
+            Big Phi value, or 0.0 when pyphi is unavailable, the system has more
+            than 8 nodes, or pyphi raised. A raise also sets `last_phi_error` and
+            counts in `phi_error_count`, so compute_phi_from_gate_state can label
+            the row "pyphi_error" instead of passing the 0.0 off as a result.
         """
+        self.last_phi_error = None
         if pyphi is None:
             return 0.0
 
@@ -327,7 +337,14 @@ class IITMetrics:
             return float(sia.phi) if sia is not None else 0.0
 
         except Exception as e:
-            self.logger.debug("Phi computation error: %s", e)
+            self.last_phi_error = f"{type(e).__name__}: {e}"
+            self.phi_error_count += 1
+            # The module logger, because the consciousness monitor passes a
+            # MetricsLogger as `self.logger`. The first failure warns; the rest
+            # are labelled per row and counted, which keeps long runs readable.
+            log = logger.warning if self.phi_error_count == 1 else logger.debug
+            log("pyphi raised %s. Phi reported as 0.0 with method 'pyphi_error' "
+                "(%d so far).", self.last_phi_error, self.phi_error_count)
             return 0.0
 
     def compute_phi_proxy_from_tpm(self, tpm: np.ndarray,
@@ -401,7 +418,7 @@ class IITMetrics:
 
         if pyphi is not None:
             phi = self.calculate_phi(tpm, current_state, cm=GATE_CM)
-            method = "pyphi"
+            method = "pyphi_error" if self.last_phi_error else "pyphi"
         else:
             phi = self.compute_phi_proxy_from_tpm(tpm, current_state)
             method = "proxy"

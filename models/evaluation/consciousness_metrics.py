@@ -253,6 +253,17 @@ class ConsciousnessMetrics:
 
           return metrics
 
+
+def _retired_capability_score(name: str, score: float) -> NotImplementedError:
+    return NotImplementedError(
+        f"ConsciousnessCapabilityTester.{name} was a placeholder that returned the "
+        f"fixed score {score} with the details 'Placeholder result', whatever the "
+        "agent did. It was retired on 2026-09-25 and has no replacement. Implement "
+        "a real test against the agent interface, with its own tests, before "
+        "calling it."
+    )
+
+
 class ConsciousnessCapabilityTester:
     def __init__(self, agent_interface, config: dict = None, logger: MetricsLogger = None):
         """
@@ -288,7 +299,7 @@ class ConsciousnessCapabilityTester:
         
         # Example of how tests might be called and results stored
         results["embodiment_and_environment_interaction"] = self.test_embodiment_interaction(step)
-        results["self_awareness_mirror_test_analogue"] = self.test_self_awareness_mirror_analogue(step)
+        results["self_awareness_mirror_test_analogue"] = self.test_self_awareness_mirror_test_analogue(step)
         results["goal_directed_behavior_and_planning"] = self.test_goal_directed_behavior(step)
         results["meta_cognition_confidence_reporting"] = self.test_meta_cognition_confidence(step)
         results["reportability_of_internal_states"] = self.test_reportability(step)
@@ -305,9 +316,9 @@ class ConsciousnessCapabilityTester:
 
         return results
 
-    # --- Placeholder Test Methods for Capabilities ---
-    # These methods would need to be implemented with actual test logic,
-    # interacting with the self.agent_interface.
+    # --- Capability tests, retired 2026-09-25 ---
+    # Each method returned a fixed score with the details "Placeholder result",
+    # whatever the agent did. They now raise; see _retired_capability_score.
 
     def test_embodiment_interaction(self, step: int) -> dict:
         """
@@ -315,62 +326,38 @@ class ConsciousnessCapabilityTester:
         showing understanding of its embodiment.
         (Corresponds to indicators like "Embodiment", "Interaction with environment")
         """
-        # Example: Send a command to interact with an object, check for appropriate action and state change.
-        # result = self.agent_interface.perform_action("touch_object_A")
-        # success = result.get("status") == "success"
-        # score = 1.0 if success else 0.0
-        print(f"Step {step}: Running test_embodiment_interaction (Placeholder)")
-        score = 0.5 # Placeholder
-        return {"score": score, "details": "Placeholder result"}
+        raise _retired_capability_score("test_embodiment_interaction", 0.5)
 
     def test_self_awareness_mirror_test_analogue(self, step: int) -> dict:
         """
         Tests a form of self-recognition or self-modeling, analogous to a mirror test.
         (Corresponds to indicators like "Self-Awareness", "Self-Recognition")
         """
-        # Example: Present agent with its own "reflection" or data stream, see if it recognizes it as self.
-        # response = self.agent_interface.query_self_recognition("show_agent_avatar")
-        # score = response.get("self_recognized_score", 0.0)
-        print(f"Step {step}: Running test_self_awareness_mirror_test_analogue (Placeholder)")
-        score = 0.3 # Placeholder
-        return {"score": score, "details": "Placeholder result"}
+        raise _retired_capability_score("test_self_awareness_mirror_test_analogue", 0.3)
 
     def test_goal_directed_behavior(self, step: int) -> dict:
         """
         Tests the agent's ability to formulate and pursue goals, and adapt its plans.
         (Corresponds to indicators like "Goal-directed behavior", "Planning")
         """
-        print(f"Step {step}: Running test_goal_directed_behavior (Placeholder)")
-        score = 0.7 # Placeholder
-        return {"score": score, "details": "Placeholder result"}
+        raise _retired_capability_score("test_goal_directed_behavior", 0.7)
 
     def test_meta_cognition_confidence(self, step: int) -> dict:
         """
         Tests the agent's ability to report confidence in its knowledge or decisions.
         (Corresponds to indicators like "Metacognition", "Confidence estimation")
         """
-        # Example: Ask a question, then ask for confidence in the answer.
-        # answer = self.agent_interface.query("What is X?")
-        # confidence = self.agent_interface.query_confidence(answer_context=answer)
-        # score = confidence.get("level", 0.0)
-        print(f"Step {step}: Running test_meta_cognition_confidence (Placeholder)")
-        score = 0.6 # Placeholder
-        return {"score": score, "details": "Placeholder result"}
+        raise _retired_capability_score("test_meta_cognition_confidence", 0.6)
 
     def test_reportability(self, step: int) -> dict:
         """
         Tests the agent's ability to report on its internal states, focus of attention, etc.
         (Corresponds to indicators like "Reportability", "Access consciousness")
         """
-        # Example: Query agent about its current focus or "what it's thinking about."
-        # report = self.agent_interface.query_internal_focus()
-        # coherence_score = self._analyze_report_coherence(report) # Internal helper
-        print(f"Step {step}: Running test_reportability (Placeholder)")
-        score = 0.4 # Placeholder
-        return {"score": score, "details": "Placeholder result"}
+        raise _retired_capability_score("test_reportability", 0.4)
 
-    # ... Add more placeholder methods for the other ~9-10 capabilities ...
-    # Examples:
+    # Capabilities with no test yet. Implement each against the agent interface;
+    # never return a fixed score. Candidates:
     # def test_information_integration(self, step: int) -> dict: ... (IIT-inspired behavioral test)
     # def test_global_availability(self, step: int) -> dict: ... (GNW-inspired behavioral test)
     # def test_attention_mechanisms(self, step: int) -> dict: ...

@@ -26,6 +26,28 @@ class TestLevinConsciousnessMetrics(unittest.TestCase):
         }
         self.evaluator = LevinConsciousnessEvaluator(self.config)
         
+    def test_goal_directedness_rejects_lists_of_different_lengths(self):
+        """`len(a) != len(b) != len(c)` is a chained comparison, so 3, 3, 2 passed the
+        old check and zip silently dropped a pair, while 2, 3, 2 returned a 0.0 that
+        was never computed."""
+        embedding = {'embedding': torch.ones(4)}
+        for sizes in ((3, 3, 2), (2, 3, 2), (1, 2, 3)):
+            actions, goals, outcomes = ([embedding] * n for n in sizes)
+            with self.assertRaises(ValueError):
+                self.evaluator.evaluate_goal_directed_behavior(actions, goals, outcomes)
+
+    def test_goal_directedness_of_empty_lists_is_still_zero(self):
+        """The training loop passes empty lists; that path is unchanged."""
+        self.assertEqual(self.evaluator.evaluate_goal_directed_behavior([], [], []), 0.0)
+
+    def test_goal_directedness_of_matching_lists_is_the_mean_cosine(self):
+        goal = {'embedding': torch.tensor([1.0, 0.0])}
+        same = {'embedding': torch.tensor([2.0, 0.0])}
+        orthogonal = {'embedding': torch.tensor([0.0, 1.0])}
+        score = self.evaluator.evaluate_goal_directed_behavior(
+            [{}, {}], [goal, goal], [same, orthogonal])
+        self.assertAlmostEqual(score, 0.5, places=6)
+
     def test_bioelectric_complexity_evaluation(self):
         """Test evaluation of bioelectric field complexity"""
         # Create mock bioelectric state
