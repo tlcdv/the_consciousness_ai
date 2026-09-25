@@ -1,7 +1,7 @@
 # Website update notes: v1.3.0 (2026-06-24)
 
 This document contains ready-to-port content for theconsciousness.ai. Apply the changes
-in venturaEffect/the_consciousness_ai_page. The research repo itself is not modified by
+in the website repository. The research repo itself is not modified by
 this document.
 
 ---

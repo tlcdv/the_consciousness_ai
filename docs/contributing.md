@@ -73,7 +73,7 @@ Refer to the [README](README.md) for detailed setup instructions.
 
 ## Reporting Issues
 
-If you encounter a bug or have a feature request, please [open an issue](https://github.com/venturaEffect/the_consciousness_ai/issues). Include the following details:
+If you encounter a bug or have a feature request, please [open an issue](https://github.com/tlcdv/the_consciousness_ai/issues). Include the following details:
 
 - A clear and descriptive title
 - Steps to reproduce the issue (if applicable)
