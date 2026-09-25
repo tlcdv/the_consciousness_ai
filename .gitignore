@@ -57,3 +57,7 @@ docs/markdowns/
 # Provenance verification (local only)
 scripts/verify_provenance.py
 plan.md
+
+# Code graph cache, rebuilt by the code search server.
+graft/
+.ignore
