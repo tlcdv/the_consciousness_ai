@@ -139,7 +139,7 @@ The flag-off arm reproduces the modal value 0.450108000 at all 3 seeds, the valu
 
 ## The baseline check
 
-**The flag-off path is bit-identical.** With the environment seeding fix (PR #16) applied
+**The flag-off path is bit-identical.** With the environment seeding fix (PR #19) applied
 under both, a DMTS smoke run (`--seed 42`, 1 episode, 120 steps, the flags above) gives the
 same md5 for `metrics.csv` and `episodes.csv` with this fix and the flag off as without this
 fix. With the flag on, the md5 differs, which shows the check can detect a change.
@@ -156,7 +156,7 @@ CuBLAS nondeterminism. That was wrong. With the seeding fix, two runs are identi
 column, so the float differences also came from the unseeded environment. It changes colour,
 size and target position as well as shape, and only the shape is logged.
 
-The unseeded environment is fixed separately, in PR #16. `--seed` had never seeded the DMTS or
+The unseeded environment is fixed separately, in PR #19. `--seed` had never seeded the DMTS or
 WCST trial generator, although its help text said it did.
 
 ## What this does and does not change
