@@ -919,10 +919,18 @@ def seed_environment(env, seed: int | None) -> bool:
     The dark room (SimpleVisualEnv) ignores this seed. It draws its layout from
     numpy's global stream, which _set_global_seed seeds. Its layouts repeat
     across runs only while nothing else draws from that stream in between.
+
+    The reset made here must not draw from that stream itself. From 2026-09-25
+    to 2026-10-03 it did. The dark room drew one layout here and discarded it,
+    so every episode of a seeded run received the layout of the next episode and
+    no dark room run made before 2026-09-25 could be repeated. The global stream
+    is now put back after the reset.
     """
     if seed is None:
         return False
+    global_stream = np.random.get_state()
     env.reset(seed=seed)
+    np.random.set_state(global_stream)
     return True
 
 
@@ -2504,7 +2512,10 @@ def main():
                         help="Global RNG seed. None inherits ambient state. "
                              "Setting an int seeds python/numpy/torch and the "
                              "environment's trial generator (seed_environment). "
-                             "Before 2026-09-25 the environment was not seeded.")
+                             "Before 2026-09-25 the environment was not seeded. "
+                             "The dark room takes its layout from the numpy seed. "
+                             "Seeded dark room runs made from 2026-09-25 to "
+                             "2026-10-03 received each layout one episode early.")
 
     # Phase A of 2026-05-17 Phi-1 retest plan: attention-weighted broadcast
     # fusion. Default 'winner_take_all' preserves all existing test outputs

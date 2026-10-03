@@ -74,6 +74,35 @@ def test_reset_seed_alone_does_not_fix_the_dark_room_layout():
     assert not np.array_equal(_dark_room_layout(1, 7), _dark_room_layout(2, 7))
 
 
+def test_seeding_does_not_move_the_dark_room_layout_sequence():
+    """seed_environment resets the environment once. From 2026-09-25 to 2026-10-03
+    that reset drew one layout from numpy's global stream, so every episode of a
+    seeded dark room run received the layout of the next episode, and no run made
+    before 2026-09-25 could be repeated."""
+    np.random.seed(57)
+    first_episode_draws = np.random.rand(4)
+    np.random.seed(57)
+    env = SimpleVisualEnv(width=224, height=224)
+
+    seed_environment(env, 57)
+    env.reset()                     # the first episode, as run_episode resets it
+
+    assert np.array_equal(env.agent_pos, first_episode_draws[:2] * [224, 224])
+    assert np.array_equal(env.light_pos, first_episode_draws[2:] * [224, 224])
+
+
+def test_seeding_leaves_numpys_global_stream_where_it_was():
+    np.random.seed(3)
+    env = SimpleVisualEnv(width=224, height=224)
+    state_before = np.random.get_state()
+
+    seed_environment(env, 3)
+
+    state_after = np.random.get_state()
+    assert state_before[2] == state_after[2]
+    assert np.array_equal(state_before[1], state_after[1])
+
+
 def test_navigation_info_has_the_documented_keys():
     """The module docstring listed `goal_room`; the environment writes `goal_rooms`."""
     from simulations.environments import navigation_env
