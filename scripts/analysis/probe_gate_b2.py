@@ -30,8 +30,10 @@ step 0 of each episode (as Gate B). Read from session records only.
                       its ignited steps. Pooled over the 3 seeds: Spearman rho(f, a) above
                       0, with a one-sided permutation p below 0.05 (a shuffled across
                       episodes within each seed, 2000 shuffles, seed 0). Also rho above 0 at
-                      2 or more of the 3 seeds. MEASURABLE only with at least 15 qualifying
-                      episodes pooled; otherwise not measurable, which fails.
+                      2 or more of the 3 seeds. With more than 3 seeds the same rule is
+                      two thirds of the seeds, rounded up (7 of 10). MEASURABLE only with at
+                      least 15 qualifying episodes pooled; otherwise not measurable, which
+                      fails.
     KILL              any module at 0.95 or more of ignited steps at any seed.
 
     Reported only, never a gate: Spearman rho of audio share against episode index
@@ -162,11 +164,18 @@ def seed_failures(comp: dict, sel: dict) -> list:
     return failures
 
 
+def min_positive_seeds(seed_count: int) -> int:
+    """Two thirds of the seeds, rounded up. 2 of 3 at the original gate size, 7 of 10."""
+    return -(-2 * seed_count // 3)
+
+
 def task_failures(result: dict) -> list:
     if not result["measurable"]:
         return ["(4) task not measurable"]
-    positive_seeds = sum(1 for rho in result["rho_per_seed"] if rho == rho and rho > 0)
-    if result["rho_pooled"] <= 0 or result["p_one_sided"] >= TASK_P_MAX or positive_seeds < 2:
+    per_seed = result["rho_per_seed"]
+    positive_seeds = sum(1 for rho in per_seed if rho == rho and rho > 0)
+    too_few_positive = positive_seeds < min_positive_seeds(len(per_seed))
+    if result["rho_pooled"] <= 0 or result["p_one_sided"] >= TASK_P_MAX or too_few_positive:
         return ["(4) task"]
     return []
 
@@ -174,8 +183,12 @@ def task_failures(result: dict) -> list:
 def main():
     parser = argparse.ArgumentParser(description=__doc__,
                                      formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument("--runs", nargs=3, required=True)
+    parser.add_argument("--runs", nargs="+", required=True,
+                        help="Run folders, one per seed, 3 or more. Criterion (4) asks "
+                             "for a rho above 0 at two thirds of the seeds, rounded up.")
     args = parser.parse_args()
+    if len(args.runs) < 3:
+        parser.error("--runs needs 3 or more run folders")
     failures, tables = [], []
     for run in args.runs:
         rows = load_steps(run)

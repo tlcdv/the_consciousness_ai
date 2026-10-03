@@ -12,8 +12,9 @@ no public claim is changed by this document.
 2. **FAILED. Gate B4 does not pass on the current code, with either merge rule.** With
    the default merge the gate fails at seed 57 and on the task criterion. With
    `--broadcast-merge top_winner` it fails at all three seeds. The published Gate B4
-   values are correct for the original runs, and those runs cannot be reproduced from
-   their seeds.
+   values are correct for the original runs. **Corrected 2026-10-03.** The first version
+   of this document said those runs cannot be reproduced. That was wrong. They are
+   reproduced bit for bit when a defect in the seeding call is removed (section 2).
 3. **No pyphi error in 1000 steps.** `phi_method` holds `pyphi` 199 times, `skipped`
    800 times and `insufficient_data` once. `pyphi_error` and `proxy` do not occur.
 4. **No probe rerun crashed.** 28 reruns of 5 probes completed. 23 are identical to the
@@ -38,7 +39,7 @@ affected. Nothing here was repaired.
 
 ## 2. Gate B4 with `--broadcast-merge top_winner`. FAILED
 
-### The original runs cannot be reproduced
+### Why the current code did not repeat the original runs (corrected 2026-10-03)
 
 A control came first. Seed 57 with the original Gate B4 flags and the default merge on
 the current code gives a `metrics.csv` that differs from `runs/gate_b4_s57/metrics.csv`
@@ -46,14 +47,23 @@ in 16 of 39 columns, from step 0. A second run of the same command is bit identi
 the first (md5 `c06baf798c35f415fb14da6d5f379da3` for both), so the current code is
 deterministic and the difference is not noise.
 
-One cause is known. Commit `ab1bf7b` of 2026-09-25 seeds the environment's trial
-generator from `--seed`. The original runs are from 2026-09-16, and their run facts
-carry no `env_seeded` entry while the new runs carry `env_seeded: true`
-(`session.json` in each run folder). Whether other changes since 2026-09-16 also
-contribute was not measured.
+**Correction.** The first version of this section said the original runs could not be
+reproduced because the environment had no seed. That was wrong. The dark room has always
+taken its layout from numpy's global stream, which `--seed` sets. The cause is a defect
+in commit `ab1bf7b` of 2026-09-25. Its seeding call resets the environment once, and in
+the dark room that reset drew one layout and discarded it. Every episode then received
+the layout of the next episode of its seed.
 
-Because of this, the new flag is compared with control runs on the same code, same
-seeds and same flags. The published values are shown beside them.
+Evidence. With the seeding call removed, the code of this revision gives a `metrics.csv`
+identical to the original at seeds 57, 58 and 59 (md5 `34e05e181c1f1913e1bb21b2464fe29f`,
+`86a6f3f5c157780853e95a774a0812a2`, `fe75d6e106a6e6d76b79ef4a25341a60`). The defect is
+repaired in a later revision, and the repaired code gives the identical file at all three
+seeds.
+
+So the control runs and the `top_winner` runs below are runs of the unchanged agent on
+layouts moved by one episode. They are comparable with each other, same code, same seeds
+and same flags. They repeat only at this revision. The published values are shown beside
+them.
 
 ### Result
 
@@ -89,16 +99,18 @@ Sources. `runs/gate_b4_s57..59` (original), `runs/gate_b4_legacy_ctrl_s57..59`,
 ### What this establishes and what it does not
 
 - The published Gate B4 numbers are reproduced exactly from the original run folders.
-- The same seeds and flags on the current code do not pass the gate. The Gate B4 pass
-  therefore holds for the trials those three runs received, and it is not a property
-  that survives a change of trials at the same seeds.
+- With the layouts moved by one episode, the same seeds and flags do not pass the gate.
+  The Gate B4 pass therefore holds for the layouts those three runs received, and it
+  does not survive this change of layouts.
 - At these three seeds `top_winner` gives vision 0.961 or more of ignited steps and
   removes the task link. The flag changes which tensor the policy reads when two
   modules win, so it changes behaviour, and the comparison with the control isolates
   that change.
-- Not established. Whether the environment seeding is the only cause of the difference
-  from the original runs. Whether other seeds would pass. Three seeds were run per arm
-  and no further seeds.
+- Established after the first version. The extra reset is the only cause of the
+  difference from the original runs at seeds 57 to 59, because the code without it gives
+  identical files.
+- Not established. Whether other seeds would pass. Three seeds were run per arm and no
+  further seeds.
 - The default of `--broadcast-merge` is unchanged. The public Gate B4 text is unchanged.
   Both are decisions for the project owner.
 
@@ -170,9 +182,9 @@ files under `runs/pci_trained/`, `runs/_pci_multi/`, `runs/_pci_null/`,
 ## Open decisions for the project owner
 
 1. Repair or retire `--broadcast-mode attention_weighted`, which cannot run on a GPU.
-2. How to state Gate B4 in public text, given that it does not pass on the current
-   code at the same seeds. A rerun on fresh seeds with a gate written before the runs
-   is the usual next step.
+2. How to state Gate B4 in public text. It is reproducible, and it does not pass when
+   the layouts move by one episode. A gate on fresh seeds, written before its runs, is
+   the next step (Gate B5 and Gate B6 in `docs/results/dark_room_senses_2026_09.md`).
 3. The default of `--broadcast-merge`. At these three seeds `top_winner` fails the gate
    more strongly than the default merge.
 4. Whether to find the cause of the `test_acc` differences in the decodability probe.

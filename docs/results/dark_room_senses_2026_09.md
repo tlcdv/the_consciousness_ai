@@ -16,6 +16,24 @@
 > agent drawn as the project mark in the site colour (`--dark-room-agent-mark ring`). This is
 > the first full pass. It is NOT a repeat of Gate B3, because the seeds differ and the pixels
 > the agent receives differ. The episode-index confound is still there at 2 of 3 seeds.
+>
+> **Update 2026-10-03 (Gate B5 below). Gate B4 is reproduced bit for bit, and Gate B5
+> FAILED on the task criterion.** From 2026-09-25 to 2026-10-03 a defect in the seeding
+> call moved the dark room layouts by one episode. With the moved layouts the Gate B4
+> seeds 57 to 59 FAILED the gate (kill rule and competition at seed 57, task pooled rho
+> 0.289, p 0.084). Gate B5, written before its runs, used fresh seeds 60 to 62, also with
+> moved layouts. Competition, silence, selectivity and the kill rule passed at all 3
+> seeds. The task criterion FAILED (pooled rho 0.200, one-sided p 0.095). The agent is
+> the same in all of these runs. The gate result depends on the layouts, so 3 seeds do
+> not settle the task link.
+>
+> **Update 2026-10-03 (Gate B6 below). FAILED on competition at 3 of 10 fresh seeds. The
+> task link PASSED.** Gate B6 was written before its runs and used seeds 63 to 72 on the
+> code with the seeding call repaired. Pooled over 100 episodes, hearing wins a larger
+> share in episodes where the light is out of view (rho 0.362, one-sided p 0.002, rho
+> above 0 at 8 of 10 seeds). At seeds 64, 65 and 68 vision took 0.968 to 0.996 of ignited
+> steps and fired the kill rule, so the gate as a whole FAILED. The confound with the
+> episode index is not excluded.
 
 **Gate B FAILED at all 3 seeds** on silence and on the task variable. **Its competition
 criterion passed at all 3 seeds:** hearing wins 17 to 25 percent of ignited steps, the
@@ -241,6 +259,11 @@ learning over time are not separated by this design.
 
 ## Gate B4, the same criteria with the agent drawn as the project mark. PASSED
 
+**Note added 2026-10-03.** The three runs of this gate are reproduced bit for bit by the
+code with the seeding call repaired, at seeds 57, 58 and 59. The same seeds with the
+layouts moved by one episode fail the gate. Read this section together with Gate B5 and
+Gate B6 below.
+
 The agent's own body is drawn into the frames it receives, so its shape and colour are run
 configuration. `--dark-room-agent-mark ring --dark-room-agent-colour 217,119,87` draws two
 rings and a centre dot in the site colour, and the run facts record it
@@ -268,16 +291,109 @@ Four limits stated with the pass.
 4. A passed gate is not evidence of affect. Finding a light is automatic approach, which
    Feinberg and Mallatt exclude as evidence.
 
+## Gate B5, the Gate B4 criteria on the current code. FAILED on the task criterion
+
+Written before its runs (`docs/decisions/2026_09_16_precision_weighted_bids.md`, Gate B5).
+Two sets of runs with the Gate B4 flags and the default `--broadcast-merge`. Both were
+made while the seeding defect was present, so each episode received the layout of the next
+episode of its seed. The agent code is the same as in Gate B4. The runs are deterministic
+and repeat at revision `b1c1afb`. Two runs of seed 57 gave identical files.
+
+The first set uses the Gate B4 seeds 57 to 59 with the moved layouts. It is not a gate,
+because it was run before a gate was written for it
+(`docs/results/audit_gpu_checks_2026_10.md`). The second set is Gate B5 at fresh seeds 60 to
+62, one run per seed, 1990 steps judged per run.
+
+| Criterion | Seeds 57 / 58 / 59, moved layouts | Gate B5, seeds 60 / 61 / 62 |
+|---|---|---|
+| (1) runner-up share, at least 0.05 | **0.017** / 0.127 / 0.356 | 0.292 / 0.166 / 0.359 |
+| (2) silence, below 0.50 | 0.104 / 0.239 / 0.307 | 0.298 / 0.332 / 0.320 |
+| (3) selectivity, difference | 0.140 / 0.240 / 0.156 | 0.160 / 0.119 / 0.121 |
+| (3) selectivity, null p95 | 0.072 / 0.160 / 0.058 | 0.064 / 0.067 / 0.034 |
+| KILL, a module at 0.95 or more | **0.983** / 0.873 / 0.644 | 0.708 / 0.834 / 0.641 |
+| (4) task, rho per seed | 0.181 / 0.239 / 0.577 | 0.294 / 0.007 / 0.063 |
+| (4) task, pooled rho and one-sided p | **0.289, 0.084** | **0.200, 0.095** |
+| Audio share against episode index, rho | -0.149 / 0.460 / 0.450 | -0.067 / 0.779 / 0.511 |
+| Probe verdict | FAILED | FAILED: (4) task |
+
+Bold marks a failed criterion. Vision is the top module in all 6 runs.
+
+**Gate B5 FAILED.** Criteria 1 to 3 and the kill rule passed at all 3 fresh seeds. The
+task criterion failed. The pooled rho is above 0 and its one-sided p of 0.095 is above the
+limit of 0.05.
+
+Read over these 6 runs.
+
+1. Competition, silence and selectivity hold at 5 of 6 seeds. Seed 57 fails on the kill
+   rule, where vision takes 0.983 of ignited steps.
+2. The task link is not shown. It fails in both sets. Per seed rho is above 0 at all 6
+   seeds and is close to 0 at seeds 61 and 62.
+3. The task criterion passed in Gate B3 (which FAILED on the kill rule) and in Gate B4,
+   and failed in both sets here. Per seed rho is above 0 in all 12 runs of these four
+   sets. Three seeds do not settle the link.
+4. The episode-index confound stands. The audio share rises with the episode number at 4
+   of 6 seeds (rho 0.45 or more).
+
+## Gate B6, 10 fresh seeds on the repaired code. FAILED on competition at 3 seeds, the task link PASSED
+
+Written before its runs (`docs/decisions/2026_09_16_precision_weighted_bids.md`, Gate B6),
+with two questions and a separate verdict for each. Seeds 63 to 72, Gate B4 flags, default
+`--broadcast-merge`, revision `5ad584e`. 1990 steps judged per run and 100 qualifying
+episodes. The first run of seed 71 stopped after 6 seconds with exit code 127 and no step
+on disk. It was run again with the same seed, as the gate rule states.
+
+| Criterion | 63 | 64 | 65 | 66 | 67 | 68 | 69 | 70 | 71 | 72 |
+|---|---|---|---|---|---|---|---|---|---|---|
+| (1) runner-up share, at least 0.05 | 0.306 | **0.032** | **0.024** | 0.252 | 0.422 | **0.004** | 0.217 | 0.289 | 0.224 | 0.274 |
+| (2) silence, below 0.50 | 0.336 | 0.130 | 0.154 | 0.203 | 0.324 | 0.088 | 0.299 | 0.256 | 0.345 | 0.286 |
+| (3) selectivity, difference | 0.106 | 0.149 | 0.151 | 0.119 | 0.147 | 0.082 | 0.180 | 0.150 | 0.071 | 0.175 |
+| (3) selectivity, null p95 | 0.014 | 0.149 | 0.050 | 0.092 | 0.054 | -0.006 | 0.116 | 0.083 | 0.017 | 0.126 |
+| KILL, a module at 0.95 or more | 0.694 | **0.968** | **0.976** | 0.748 | 0.578 | **0.996** | 0.783 | 0.711 | 0.776 | 0.726 |
+| (4) task, rho per seed | 0.073 | 0.349 | -0.038 | 0.613 | 0.457 | -0.202 | 0.492 | 0.535 | 0.493 | 0.383 |
+| Audio share against episode index, rho | 0.745 | -0.049 | 0.219 | -0.340 | 0.224 | 0.493 | 0.839 | 0.292 | 0.316 | 0.559 |
+
+Bold marks a failed criterion. Vision is the top module at all 10 seeds.
+
+**The task link PASSED.** Pooled rho 0.362 over 100 episodes, one-sided permutation p 0.002.
+Rho is above 0 at 8 of 10 seeds, and the rule asks for 7. The 2 seeds below 0 are seeds 65
+and 68, where hearing won 0.024 and 0.004 of ignited steps.
+
+**Competition at every seed FAILED.** Seeds 64, 65 and 68 fired the kill rule and failed
+criterion (1). Seeds 63, 66, 67, 69, 70, 71 and 72 passed criteria (1) to (3).
+
+**Gate B6 as a whole FAILED**, because both questions must pass.
+
+Three limits stand with this result.
+
+1. The confound with the episode index is not excluded. The audio share rises with the
+   episode number at 8 of 10 seeds, with rho 0.45 or more at 4 of them.
+2. At 3 of 10 fresh seeds vision takes 0.95 or more of ignited steps. The cause is open.
+3. A passed criterion is not evidence of affect. Finding a light is automatic approach.
+
 ## What this establishes
 
 - The repaired dark room gives the agent direction and distance to the light by sound,
   and weak vision (Gate A3, 3 fresh seeds).
 - With change-based bids, hearing competes with vision for the workspace at 3 seeds.
+- With reliability-weighted bids and the ring mark, hearing competes with vision at 3 of 3
+  seeds in Gate B4, at 5 of the 6 runs with moved layouts (not seed 57) and at 7 of 10
+  seeds in Gate B6.
+- With the same flags, hearing wins a larger share of ignited steps in episodes where the
+  light is out of view. Gate B6, 10 fresh seeds and 100 episodes, pooled rho 0.362,
+  one-sided p 0.002. This is a correlation across episodes, and the episode index is a
+  measured confound.
 - The vision bid no longer sits at a fixed ceiling.
 - The ignition rule, not the senses, now blocks the workspace on most steps.
 
 ## What this does NOT establish
 
+- **No cause for the task link.** The criterion passed in Gate B3, Gate B4 and Gate B6,
+  and FAILED at 3 seeds with the layouts moved by one episode (seeds 57 to 59, pooled rho
+  0.289, p 0.084) and in Gate B5 (seeds 60 to 62, pooled rho 0.200, p 0.095). The design
+  does not separate the task from learning over time, because the audio share also rises
+  with the episode number.
+- **No stable competition at every seed.** Vision takes 0.95 or more of ignited steps at
+  seed 55 (Gate B3), at seed 57 with moved layouts, and at seeds 64, 65 and 68 (Gate B6).
 - **No task variable with change-based bids.** In Gate B2 hearing does not measurably win
   more when the light is out of view. With reliability-weighted bids the task criterion
   passed at seeds 54 to 56, but that gate FAILED on the KILL rule, and the confound with
@@ -305,12 +421,24 @@ Four limits stated with the pass.
 4. Open: separate the task link from learning over time. The audio share rises with the
    episode index in these runs.
 5. An agent that moves: the untrained policy stays at walls in the agent-driven sessions.
+6. Done 2026-10-03: Gate B5 at fresh seeds 60 to 62. FAILED on the task criterion. Open:
+   why vision takes 0.983 of ignited steps at seed 57 when the layouts move by one
+   episode.
+7. Done 2026-10-03: Gate B6, 10 fresh seeds on the repaired code. The task link PASSED
+   and competition FAILED at 3 of 10 seeds.
+8. Open: why vision takes 0.95 or more of ignited steps at some seeds (55, 57 with moved
+   layouts, 64, 65, 68).
+9. Open: a design that separates the task link from learning over time.
 
 ## Reproduce
 
 ```
 python -m scripts.analysis.probe_sense_gain --runs runs/gain_check_s51 runs/gain_check_s52 runs/gain_check_s53
 python -m scripts.analysis.probe_gate_b2 --runs runs/gate_b3_s54 runs/gate_b3_s55 runs/gate_b3_s56
+python -m scripts.analysis.probe_gate_b2 --runs runs/gate_b5_s60 runs/gate_b5_s61 runs/gate_b5_s62
+python -m scripts.analysis.probe_gate_b2 --runs runs/gate_b6_s63 runs/gate_b6_s64 runs/gate_b6_s65 \
+    runs/gate_b6_s66 runs/gate_b6_s67 runs/gate_b6_s68 runs/gate_b6_s69 runs/gate_b6_s70 \
+    runs/gate_b6_s71 runs/gate_b6_s72
 
 python -m scripts.analysis.probe_dark_room_senses --gate-a3 --seeds 45 46 47
 

@@ -83,6 +83,33 @@ def test_task_with_a_defined_rank_correlation_still_gets_a_p_value():
     assert 0.0 < result["p_one_sided"] <= 1.0
 
 
+def _task_result(rho_per_seed):
+    return {"measurable": True, "rho_pooled": 0.3, "p_one_sided": 0.01,
+            "rho_per_seed": rho_per_seed}
+
+
+def test_positive_seed_rule_is_two_of_three_at_the_original_gate_size():
+    from scripts.analysis.probe_gate_b2 import min_positive_seeds, task_failures
+
+    assert min_positive_seeds(3) == 2
+    assert task_failures(_task_result([0.5, 0.2, -0.1])) == []
+    assert task_failures(_task_result([0.5, -0.2, -0.1])) == ["(4) task"]
+
+
+def test_positive_seed_rule_keeps_two_thirds_at_ten_seeds():
+    from scripts.analysis.probe_gate_b2 import min_positive_seeds, task_failures
+
+    assert min_positive_seeds(10) == 7
+    assert task_failures(_task_result([0.1] * 7 + [-0.1] * 3)) == []
+    assert task_failures(_task_result([0.1] * 6 + [-0.1] * 4)) == ["(4) task"]
+
+
+def test_an_undefined_seed_rho_does_not_count_as_positive():
+    from scripts.analysis.probe_gate_b2 import task_failures
+
+    assert task_failures(_task_result([0.5, float("nan"), -0.1])) == ["(4) task"]
+
+
 # --- 3. report_signatures phi filter ------------------------------------------------
 
 def test_signature_report_counts_only_computed_phi(tmp_path):
