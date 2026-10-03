@@ -3,7 +3,7 @@
 [![License](https://img.shields.io/badge/License-Non--Commercial-blue.svg)](LICENSE.md)
 [![Version](https://img.shields.io/badge/Version-v1.6.0-blue)]()
 [![Python](https://img.shields.io/badge/Python-3.10%2B-blue)](https://www.python.org/)
-[![Tests](https://img.shields.io/badge/Tests-1384%20passing-brightgreen)]()
+[![Tests](https://img.shields.io/badge/Tests-1473%20passing-brightgreen)]()
 
 [![Project Website](https://img.shields.io/badge/Project-Website-181717?logo=googlechrome&logoColor=white)](https://theconsciousness.ai/)
 [![Architecture](https://img.shields.io/badge/Architecture-Technical-0052CC?logo=read-the-docs&logoColor=white)](https://theconsciousness.ai/architecture/)
@@ -170,7 +170,9 @@ python -m scripts.training.train_rlhf --env dark_room --enable-audio --episodes 
 python -m scripts.training.train_rlhf --render
 ```
 
-This runs the full cognitive loop: DINOv2 retinotopic encoding -> cochlear auditory encoding (optional, via `--enable-audio`) -> trimodal tectum fusion -> RSSM surprise bidding -> GNW competition with oscillatory binding (AKOrN by default, or KomplexNet via `--binding-mechanism komplex`) -> reentrant convergence -> basal ganglia action selection -> two-stage emotion appraisal -> PAD reward shaping. No large model weights are required.
+This runs the full cognitive loop: DINOv2 retinotopic encoding -> cochlear auditory encoding (optional, via `--enable-audio`) -> trimodal tectum fusion -> RSSM surprise bidding -> GNW competition with oscillatory binding (AKOrN by default, or KomplexNet via `--binding-mechanism komplex`) -> reentrant convergence -> basal ganglia action selection -> reflex emotion (Stage 1 of the two-stage appraisal) -> PAD reward shaping. No large model weights are required.
+
+Stage 2 of the emotion appraisal does not run. `map_state` needs a goal vector and the training loop passes only the broadcast, so the call fails on every step. Emotion is the reflex values and dominance is always 0.0. The training loop logs the first failure in a process as a warning.
 
 ### 3. Running Tests
 
@@ -178,7 +180,7 @@ This runs the full cognitive loop: DINOv2 retinotopic encoding -> cochlear audit
 pytest tests/ -v
 ```
 
-1384 tests pass, covering oscillatory binding, capsule routing, reentrant processing, inverse effectiveness fusion, topographic loss, affective modulation, ethics compliance, effective information, causal emergence (CE 2.0 SVD heuristic), perturbational complexity (PCI), phase coupling measures, near-threshold stimulus rendering, IIT Phi with causal gate states, Brian2 biological validation, the experimental substrate package (p-bit emulation against exact Boltzmann statistics, free energy relaxation against closed-form posteriors, rate, latency and phase spike coding, a stand-in driver, NIR export of spiking layers, an optional THRML sampler checked against exact statistics, and an import guard that keeps it out of production), cochlear auditory pipeline (gammatone, hair cell, tonotopic, spatial, affect extraction), environment audio synthesis, DMTS/WCST consciousness demanding environments, DQN baseline, memory consolidation, semantic pathway, the RSSM reconstruction and value-equivalent world-model objectives, and full pipeline integration.
+1473 tests pass, covering oscillatory binding, capsule routing, reentrant processing, inverse effectiveness fusion, topographic loss, affective modulation, ethics compliance, effective information, causal emergence (CE 2.0 SVD heuristic), perturbational complexity (PCI), phase coupling measures, near-threshold stimulus rendering, IIT Phi with causal gate states, Brian2 biological validation, the experimental substrate package (p-bit emulation against exact Boltzmann statistics, free energy relaxation against closed-form posteriors, rate, latency and phase spike coding, a stand-in driver, NIR export of spiking layers, an optional THRML sampler checked against exact statistics, and an import guard that keeps it out of production), cochlear auditory pipeline (gammatone, hair cell, tonotopic, spatial, affect extraction), environment audio synthesis, DMTS/WCST consciousness demanding environments, DQN baseline, memory consolidation, semantic pathway, the RSSM reconstruction and value-equivalent world-model objectives, and full pipeline integration.
 
 ### 4. AKOrN Binding Demo
 
@@ -224,7 +226,7 @@ the_consciousness_ai/
 │   ├── analysis/           # Analysis and comparison scripts
 │   └── demos/              # AKOrN binding visualization
 ├── configs/                # YAML and Python configuration files
-├── tests/                  # 1384 passing tests
+├── tests/                  # 1473 passing tests
 ├── unity_scripts/          # C# scripts for Unity ML-Agents integration
 ├── docs/                   # Research docs, theory review, architecture deep dives
 └── requirements.txt

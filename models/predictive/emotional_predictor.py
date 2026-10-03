@@ -17,7 +17,7 @@ import torch
 import torch.nn as nn
 from dataclasses import dataclass
 
-# `consciousness_state` is duck typed: any object with `memory_stability`. The module
+# `consciousness_state` is duck typed. Any object with `memory_stability` works. The module
 # used to import a ConsciousnessState class that consciousness_core does not define,
 # so the module could not be imported at all.
 from models.emotion.tgnn.emotional_graph import EmotionalGraphNetwork

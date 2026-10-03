@@ -127,7 +127,7 @@ cuts only two of them:
 | Path | Location | Cut by `off` today? |
 |---|---|---|
 | Interoceptive affect: energy, fatigue, damage turned into valence, arousal, dominance | `models/emotion/affective_modulator.py:109` | YES |
-| Homeostatic arousal penalty and dominance term in the shaped reward | `models/emotion/reward_shaping.py:200-206` | YES |
+| Homeostatic arousal penalty and dominance term in the shaped reward | `models/emotion/reward_shaping.py:200-206` | YES. With the drive `on` the dominance term adds 0.0, because the training loop passes dominance 0.0 on every step (Stage 2 of the emotion appraisal does not run) |
 | Environment `battery` copied into `energy` | `scripts/training/train_rlhf.py:1150-1154` | YES |
 | Body bid: 0.15 when `energy` is below 0.4, otherwise 0.05 | `scripts/training/train_rlhf.py:1092-1099` | YES. With the drive `off` the body bid is 0.05 |
 | `energy`, `fatigue`, `damage` as self-vector features, when the self-vector module is enabled | `models/self_model/self_representation_core.py:426-441` | YES. With the drive `off` the features carry the neutral starting values |
@@ -192,7 +192,10 @@ implemented. The comparison was not run, for two reasons found in an audit on
    at all three seeds; nothing in the repository produces damage; and, derived from
    the code at the logged arousal values, fatigue can only rise because the self-model
    is never reset. This fatigue point is derived from the code and has not yet been
-   confirmed by a replay.
+   confirmed by a replay. The cause of the single dominance value was found on
+   2026-10-03. Stage 2 of the emotion appraisal is the only code that sets dominance
+   in the training loop, and it does not run. `map_state` needs a goal vector and the
+   loop passes only the broadcast, so the call fails on every step.
 
 Metzinger's precaution concerns not BUILDING the craving. It does not require proof
 that the craving causes anything. So the framework adopts a structural rule (E3) in

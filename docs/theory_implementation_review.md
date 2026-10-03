@@ -78,6 +78,8 @@ The three-subsystem design (Perception, Emotion, Global Workspace) correctly mir
 1. **Reflex layer** (pre-workspace): computes valence from reward prediction error and arousal from tectum surprise bid
 2. **Appraisal layer** (post-broadcast): uses PhenomenologicalMapper on workspace broadcast content to modulate valence and compute dominance
 
+**Correction (2026-10-03).** The resolution is partial. The reflex layer runs. The appraisal layer has never run. `map_state` needs a goal vector and `evaluate_emotion()` passes only the broadcast, so the call raises `TypeError` on every step. Emotion is the reflex values and dominance is always 0.0. The training loop logs the first failure in a process as a warning.
+
 ### 11. ~~Environments Trivially Solvable Without Consciousness~~ RESOLVED (2026-03-22)
 **Severity: HIGH. Dark Room could be solved by a simple gradient follower. No task required working memory, binding, or meta-cognition.**
 
@@ -99,7 +101,7 @@ The three-subsystem design (Perception, Emotion, Global Workspace) correctly mir
 | Phi spikes correlated with insight moments | **FAILED first test.** IM-1 verdict 2026-05-14: insight phi mean 1e-04, threshold 5e-04. See `docs/preregistered_predictions.md` section 7. |
 | Downward causation (strong emergence) | **Tooling complete.** EI function implemented. Needs experimental validation. |
 | Environments require consciousness machinery | **Complete.** DMTS (working memory), WCST (meta-cognition), DQN baseline for comparison. |
-| Emotion drives workspace dynamics | **Complete.** Two-stage appraisal (reflex + post-broadcast). Consciousness monitor metric-only. |
+| Emotion drives workspace dynamics | **Partial (corrected 2026-10-03).** Stage 1 (reflex) runs. Stage 2 (post-broadcast appraisal) does not run, because `map_state` needs a goal vector that the training loop does not pass. Dominance is always 0.0. Consciousness monitor metric-only. |
 | Capsule structure accessible post-broadcast | **Complete.** Structured payloads preserved through GNW broadcast. |
 | Phi correlates with strict supervenience test | **Closed for the binding+phi+gate architecture.** The prerequisite in-training Phi-1 prediction is exhausted at 9 runs (sections 7-12). The project pursues emergent consciousness via other measurable signatures (EI causal emergence, DMTS/WCST behavioral integration, phenomenological mapping) and Phase 5 self-representation dynamics, not the binding-phi correlation. |
 

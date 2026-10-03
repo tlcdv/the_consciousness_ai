@@ -109,7 +109,7 @@ Raw waveform [B,1,T] (16 kHz mono)
 
 3. **Reentrant feedback**: `receive_broadcast()` computes prediction error between broadcast content and last audio content. High PE increases bid (audio was not attended), low PE settles.
 
-4. **Emotion (affect)**: `get_affect_output()` provides PAD deltas and paralinguistic class to the two stage appraisal system. Stage 1 (reflex): spectral flux drives arousal, roughness drives negative valence. Stage 2 (appraisal): integrated through the phenomenological mapper.
+4. **Emotion (affect)**: `get_affect_output()` provides PAD deltas and paralinguistic class to the two stage appraisal system. Stage 1 (reflex): spectral flux drives arousal, roughness drives negative valence. Stage 2 (appraisal): designed to integrate through the phenomenological mapper. Stage 2 does not run in the training loop. `map_state` needs a goal vector and the loop passes only the broadcast, so the call fails on every step and emotion stays at the reflex values.
 
 5. **Environment (synthesis)**: `AudioMixin` generates FM/ADSR synthesized audio per step based on environment state. Each environment type has specialized audio mappings (proximity tones, collision bursts, reward jingles, warning roughness).
 

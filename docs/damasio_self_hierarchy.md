@@ -75,7 +75,7 @@ This is directly relevant to the project. The agent can simulate body states wit
 | Damasio Concept | Project Component | Status |
 |----------------|-------------------|--------|
 | Proto-self | `interoceptive_to_pad()` in `affective_modulator.py` (energy/fatigue/damage → PAD) | PARTIAL |
-| Core self (delta computation) | Workspace broadcast changes internal state (PAD changes from two-stage appraisal) | IMPLICIT, not formalized |
+| Core self (delta computation) | Workspace broadcast changes internal state (PAD changes from two-stage appraisal) | NOT RUNNING. The post-broadcast stage of the appraisal fails on every step, so the broadcast does not change PAD |
 | Autobiographical self | `EmotionalMemoryCore` + `NarrativeEngine` + `SelfRepresentationCore` | PARTIAL |
 | Body Loop | Interoceptive PAD → affective modulation → bid modification | IMPLEMENTED |
 | As-If Body Loop | RSSM world model predicts future states | PARTIAL |
