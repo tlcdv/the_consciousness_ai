@@ -754,3 +754,18 @@ def test_replay_rejects_nonreal_waveform_types(dtype):
     vectors["audio_waveform"] = vectors["audio_waveform"].astype(dtype)
     with pytest.raises(ValueError, match="samples"):
         exporter.prepare_replay(records, vectors, {"env": "dark_room"}, 3)
+
+
+def test_a_run_without_learned_valence_exports_an_empty_value_table():
+    """Without --learned-valence the recorder writes null for the field, not a dict."""
+    record = _step_record(2)
+    record["internals"]["learned_valence"] = None
+    step_entry = exporter.slim_step(record, _step_record(1), None)
+    assert step_entry["learned_valence"] == {}
+
+
+def test_a_record_without_the_learned_valence_field_exports_an_empty_value_table():
+    record = _step_record(2)
+    del record["internals"]["learned_valence"]
+    step_entry = exporter.slim_step(record, _step_record(1), None)
+    assert step_entry["learned_valence"] == {}

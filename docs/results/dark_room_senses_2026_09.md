@@ -50,6 +50,14 @@
 > seeds). Only 1 of the 10 seeds reached a learned value high enough to test the limit.
 > A paired check at the 3 Gate B6 seeds that locked gave a vision share of 0.910, 0.839 and
 > 0.736 with the limit, against 0.968, 0.976 and 0.996 without it.
+>
+> **Update 2026-10-03 (`docs/results/broadcast_carrier_2026_10.md`). Every gate in this
+> document judges the bids, and the competition needs the default merge.** With the
+> default `--broadcast-merge legacy` the policy receives the vector of the recorded winner
+> at 0.025 to 0.095 of ignited steps (39 runs). With `--broadcast-merge top_winner`, where
+> the policy receives the vector of the module with the highest bid, vision took 0.990 to
+> 1.000 of ignited steps at 6 of 6 seeds of Gate B7 and Gate B8. Read every "wins" below as
+> "has the highest bid".
 
 **Gate B FAILED at all 3 seeds** on silence and on the task variable. **Its competition
 criterion passed at all 3 seeds:** hearing wins 17 to 25 percent of ignited steps, the
@@ -513,6 +521,11 @@ Five limits stand with this result.
 - **Not which vector the policy receives.** Every gate here judges the module with the
   highest bid. With the default merge, when two modules pass the threshold the broadcast
   holds the vector of the weaker one (`models/core/global_workspace.py`, lines 116 to 121).
+  Measured on 39 runs, the policy receives the vector of the recorded winner at 0.025 to
+  0.095 of ignited steps (`docs/results/broadcast_carrier_2026_10.md`).
+- **No competition when the policy receives the winner's vector.** With
+  `--broadcast-merge top_winner` vision took 0.961 or more of ignited steps in 9 of 9 runs,
+  over 3 configurations.
 - **No task variable with change-based bids.** In Gate B2 hearing does not measurably win
   more when the light is out of view. With reliability-weighted bids the task criterion
   passed at seeds 54 to 56, but that gate FAILED on the KILL rule, and the confound with
@@ -552,11 +565,14 @@ Five limits stand with this result.
     (`docs/results/vision_lockin_2026_10.md`).
 11. Done 2026-10-03: Gate B7, 10 fresh seeds without the learned valence. PASSED both
     questions.
-12. Open: measure which vector the policy receives at ignited steps, and repeat the gate
-    with a merge that keeps the vector of the module with the highest bid.
+12. Done 2026-10-03: which vector the policy receives at ignited steps, and a check with
+    the merge that keeps the vector of the module with the highest bid. Competition FAILED
+    at 6 of 6 seeds with that merge (`docs/results/broadcast_carrier_2026_10.md`).
 13. Done 2026-10-03: Gate B8, 10 fresh seeds with `--valence-boost saturating`. PASSED both
     questions. One seed in 10 reached a high learned value. The paired check at seeds 64,
     65 and 68 PASSED.
+14. Open: why the hearing bid stays below the vision bid when the policy receives the
+    vision vector.
 
 ## Reproduce
 

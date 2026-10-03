@@ -279,7 +279,7 @@ def slim_step(record: dict, previous: dict, direction) -> dict:
         "interoception": record.get("interoception", {}),
         "audio_spatial": direction,
         "internals_kl_div_pre_tanh": internals.get("kl_div_pre_tanh"),
-        "learned_valence": internals.get("learned_valence", {}).get("values", {}),
+        "learned_valence": (internals.get("learned_valence") or {}).get("values", {}),
     }
     step_entry.update(slim_environment(previous))
     return step_entry
