@@ -15,6 +15,14 @@ option 2 of the decisions below, was written before its runs and passed both que
 No seed fired the kill rule (top share 0.522 to 0.789). The table is in
 `docs/results/dark_room_senses_2026_09.md`.
 
+**Follow-up, Gate B8. PASSED.** The gate with the learned valence and
+`--valence-boost saturating` at 10 fresh seeds, option 3 of the decisions below, passed
+both questions (top share 0.516 to 0.890). One seed in 10 reached a learned value in the
+range that locked before. A paired check at seeds 64, 65 and 68, stated before its runs
+in `docs/decisions/2026_09_16_precision_weighted_bids.md`, PASSED. With the limit the
+vision share is 0.910, 0.839 and 0.736 at a mean learned value of vision of 3.061, 2.943
+and 5.212.
+
 ## The question
 
 Gate B6 FAILED on competition at 3 of 10 seeds, where vision took 0.968 to 0.996 of
@@ -164,7 +172,10 @@ rho of 0.404 with a one-sided p of 0.015 over 30 episodes, and in Arm B a pooled
 3. Give the boost a limit, behind a new default-off flag, and then run the same gate. One
    form is to take the value of each module as a share of the sum over modules, so that
    the values rank the modules and their sum cannot grow. This needs new code with tests
-   and its own pre-stated gate.
+   and its own pre-stated gate. The form chosen 2026-10-03 is `--valence-boost saturating`,
+   a boost of `valence_gain * tanh(|value|)`. It needs no new constant and it leaves the
+   small-value behaviour as it was. It is judged by Gate B8 in
+   `docs/decisions/2026_09_16_precision_weighted_bids.md`.
 
 ## Reproduce
 

@@ -131,6 +131,7 @@ def build_config(args):
         "audio_salience": getattr(args, "audio_salience", "untrained_mlp"),
         "bid_precision": getattr(args, "bid_precision", "off"),
         "learned_valence": getattr(args, "learned_valence", False),
+        "valence_boost": getattr(args, "valence_boost", "linear"),
         # Capsule workspace source (Path B downstream fix). "final" (default) projects
         # workspace_content from the last routing level only; "all_levels" concatenates
         # every routing level, carrying the identity that survives the lower levels into
@@ -442,7 +443,7 @@ def init_components(config):
     # the new explicit-arg modulation path is silently inert.
     workspace.affective_modulator = modulator
     if config.get("learned_valence", False):
-        modulator.learned_valence = LearnedValence()
+        modulator.learned_valence = LearnedValence(boost_rule=config.get("valence_boost", "linear"))
 
     emotion_cfg = dict(config["emotion"])
     emotion_cfg["ablate_existence_bias"] = config.get("ablate_existence_bias", False)
@@ -2256,6 +2257,12 @@ def _reject_incompatible_flags(parser: argparse.ArgumentParser, args) -> None:
         parser.error("--enable-wm-predict trains a categorical KL on the RSSM logits, "
                      "and --rssm-latent-mode continuous puts Gaussian means there. "
                      "Use one or the other.")
+    if (getattr(args, "valence_boost", "linear") != "linear"
+            and not getattr(args, "learned_valence", False)):
+        # Only the learned valence reads the boost rule. Without it the flag would be
+        # stored and never used.
+        parser.error("--valence-boost %s changes the boost of --learned-valence, "
+                     "and --learned-valence is not set." % args.valence_boost)
 
 
 def main():
@@ -2428,6 +2435,14 @@ def main():
                              "affective modulator with per-module values learned from the "
                              "temporal difference error of the EXTERNAL task reward "
                              "(models/emotion/learned_valence.py).")
+    parser.add_argument("--valence-boost", choices=["linear", "saturating"],
+                        default="linear",
+                        help="How --learned-valence turns a learned value into a bid "
+                             "boost. 'linear' (default, unchanged) adds gain * |value|, "
+                             "which has no upper limit. 'saturating' adds "
+                             "gain * tanh(|value|), which is at most the gain of 0.15. "
+                             "The learned values are the same under both. Rejected "
+                             "without --learned-valence.")
     parser.add_argument("--audio-salience", choices=["untrained_mlp", "surprise"],
                         default="untrained_mlp",
                         help="Audio bid. 'untrained_mlp' (default): an MLP no optimizer "

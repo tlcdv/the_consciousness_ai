@@ -379,6 +379,166 @@ What this does NOT show, stated with the result.
 
 No default is changed and no indicator moves.
 
+## Gate B8, pre-stated 2026-10-03, before the runs it judges
+
+Why the run is made. The learned valence is in the configuration for a stated reason.
+Valence is assigned to the senses separately and is learned from the temporal difference
+error. Gate B7 passed without it. Gate B8 asks if the gate also passes with it, when its
+boost has a limit.
+
+The change. `--valence-boost saturating` gives a boost of `valence_gain * tanh(|value|)`.
+It is at most `valence_gain`, which is 0.15, and it equals the old boost to first order
+for small values. It adds no constant. The values the critic learns are the same under
+both rules. The default `linear` is unchanged (`models/emotion/learned_valence.py`,
+`tests/test_valence_boost_rule.py`).
+
+Code. The revision of the commit that adds this section. Seeds 83 to 92, never run before.
+The Gate B6 command with one more flag.
+
+```
+python -m scripts.training.train_rlhf --env dark_room --episodes 10 --max-steps 200 \
+    --seed <83 to 92> --enable-audio --rssm-latent-mode continuous \
+    --capsule-workspace-source all_levels --existence-drive on \
+    --dark-room-audio binaural --dark-room-audio-channels 4 --dark-room-collision \
+    --dark-room-view agent_centered --vision-bid-reduction zscore \
+    --audio-salience surprise --learned-valence --valence-boost saturating \
+    --ignition-rule tolerance --ignition-tolerance-sd 1.0 --bid-precision gain \
+    --dark-room-agent-mark ring --dark-room-agent-colour 217,119,87 \
+    --log-dir runs/gate_b8_s<seed>
+python -m scripts.analysis.probe_gate_b2 --runs runs/gate_b8_s83 ... runs/gate_b8_s92
+```
+
+Two questions, each with its own verdict. Both are the Gate B6 questions, unchanged.
+
+1. **Competition at every seed.** Criteria (1) to (3) and the kill rule at each of the 10
+   seeds. One failing seed fails this question.
+2. **Task link.** Criterion (4) of the probe. Pooled Spearman rho above 0, a one-sided
+   permutation p below 0.05, at least 15 qualifying episodes, and rho above 0 at 7 or more
+   of the 10 seeds.
+
+Gate B8 as a whole PASSES only when both questions pass.
+
+Rules fixed before the runs.
+
+- One run per seed. A run with fewer than 10 episodes or 2000 steps on disk is run again
+  with the same seed, and that is reported. No other rerun.
+- No change of seeds, criteria or thresholds after a result is seen.
+- Check that the rule was in use. Every recorded step of every run must hold
+  `learned_valence.boost_rule` equal to `saturating`. A run that does not is void.
+- Reported and never gated. The rho of the audio share against the episode index, per
+  seed. The mean learned value of vision and of hearing per run, from
+  `scripts/analysis/probe_valence_lockin.py`.
+
+What a result means here.
+
+- Competition PASSED. With a limit on the boost, the learned valence does not lock the
+  workspace at 10 fresh seeds.
+- Competition FAILED. A boost of at most 0.15 is still enough for a lock at some seed, or
+  the lock has a second route.
+- Task link PASSED or FAILED. As in Gate B7. The confound with the episode index is not
+  excluded by this design.
+
+The limit of Gate B7 applies here too. The gate judges which module has the highest bid.
+It does not judge which vector the policy receives. No result here changes a default, and
+no result moves an indicator. Neither result is evidence of affect.
+
+## Result of Gate B8, 2026-10-03. PASSED both questions
+
+Run at revision `4622796`, after the gate above was committed. Seeds 83 to 92, 10 episodes
+and 2000 steps per run on disk, 1990 steps judged per run, 100 qualifying episodes. No run
+was repeated. Every one of the 20000 recorded steps holds the boost rule `saturating`.
+
+| Criterion | 83 | 84 | 85 | 86 | 87 | 88 | 89 | 90 | 91 | 92 |
+|---|---|---|---|---|---|---|---|---|---|---|
+| (1) runner-up share, at least 0.05 | 0.328 | 0.154 | 0.238 | 0.230 | 0.110 | 0.484 | 0.440 | 0.403 | 0.406 | 0.295 |
+| (2) silence, below 0.50 | 0.297 | 0.331 | 0.348 | 0.278 | 0.290 | 0.312 | 0.301 | 0.310 | 0.321 | 0.327 |
+| (3) selectivity, difference | 0.122 | 0.135 | 0.108 | 0.163 | 0.154 | 0.082 | 0.060 | 0.081 | 0.064 | 0.137 |
+| (3) selectivity, null p95 | 0.065 | 0.045 | 0.046 | 0.107 | 0.064 | 0.002 | 0.005 | 0.002 | 0.008 | 0.046 |
+| KILL, a module at 0.95 or more | 0.672 | 0.846 | 0.762 | 0.770 | 0.890 | 0.516 | 0.560 | 0.597 | 0.594 | 0.705 |
+| (4) task, rho per seed | 0.253 | 0.696 | 0.394 | 0.425 | -0.287 | 0.058 | 0.808 | 0.298 | 0.546 | 0.695 |
+| Audio share against episode index, rho | -0.042 | 0.541 | 0.706 | -0.285 | -0.194 | 0.382 | -0.224 | -0.255 | -0.321 | 0.503 |
+| Mean learned value of vision | 0.014 | 0.843 | 0.232 | 2.786 | -0.106 | -0.058 | -0.035 | 0.063 | 0.155 | 0.118 |
+| Mean learned value of hearing | -0.009 | 0.040 | -0.007 | 0.183 | -0.093 | 0.002 | 0.028 | 0.012 | 0.015 | 0.066 |
+
+No criterion failed. Vision is the top module at all 10 seeds.
+
+**Question 1, competition at every seed. PASSED.** Criteria (1) to (3) pass at all 10
+seeds and the kill rule fires at none. The top share is 0.516 to 0.890.
+
+**Question 2, the task link. PASSED.** Pooled over 100 episodes rho is 0.372 with a
+one-sided permutation p of 0.001. Rho is above 0 at 9 of 10 seeds and the rule asks for 7.
+
+**Gate B8 as a whole PASSED.** The configuration is the Gate B6 configuration with
+`--valence-boost saturating`.
+
+What this does NOT show, stated with the result.
+
+1. **The limit was tested hard at 1 seed only.** A learned value of vision in the range
+   that locked the workspace before (2.3 or more as the mean of a run) occurred at seed 86
+   and at no other seed. There the value rose to 6.80 in episode 3, in 177 steps in the
+   light, and vision then had the highest bid at 0.55 to 0.99 of ignited steps in the 6
+   later episodes, 0.770 over the run. At the other 9 seeds the mean value stayed below
+   0.85, where the two boost rules differ little. In Gate B6 a mean of 2.3 or more occurred
+   at 3 of 10 seeds. The paired check below tests the rule at the seeds that locked.
+2. The gate judges which module has the highest bid. It does not judge which vector the
+   policy receives (`models/core/global_workspace.py`, lines 116 to 121).
+3. The audio share rises with the episode number at 4 of 10 seeds (rho 0.38 to 0.71) and
+   falls at 6. The confound with the episode index is weaker than in Gate B6 and Gate B7.
+   It is not excluded by this design.
+4. Gate B6, Gate B7 and Gate B8 use different seeds. The three do not rank the three
+   configurations.
+5. A passed criterion is not evidence of affect.
+
+No default is changed and no indicator moves.
+
+## Paired check of the boost rule, pre-stated 2026-10-03, before its runs
+
+Why. Gate B8 passed, and only 1 of its 10 seeds reached a learned value high enough to
+test the limit. The 3 Gate B6 seeds that fired the kill rule did reach it.
+
+Code. The revision of the commit that adds this section. Seeds 64, 65 and 68. The Gate B6
+command with `--valence-boost saturating`, output `runs/lockin_sat_s<seed>`. Each run is
+paired with the Gate B6 run of the same seed and differs from it in that flag only.
+
+**Prediction P4.** The vision share of ignited steps, as the gate probe computes it, is
+below 0.95 at all 3 seeds. In Gate B6 it was 0.968, 0.976 and 0.996. If it is 0.95 or more
+at a seed, P4 FAILED, and a boost of at most 0.15 is enough for the lock at that seed.
+
+Rules. One run per seed. A run with fewer than 10 episodes or 2000 steps on disk is run
+again with the same seed, and that is reported. Every recorded step must hold
+`learned_valence.boost_rule` equal to `saturating`. The mean learned value of vision per
+run is reported, because the check tests the limit only where that value is high.
+
+## Result of the paired check, 2026-10-03. P4 PASSED
+
+Run at revision `15f18b0`, after the section above was committed. Each run has 10 episodes
+and 2000 steps on disk. No run was repeated. Every recorded step holds the boost rule
+`saturating`.
+
+| | Seed 64 | Seed 65 | Seed 68 |
+|---|---|---|---|
+| Gate B6, linear boost. Vision share | **0.968** | **0.976** | **0.996** |
+| Saturating boost. Vision share | 0.910 | 0.839 | 0.736 |
+| Saturating boost. Runner-up share | 0.090 | 0.161 | 0.264 |
+| Saturating boost. Mean learned value of vision | 3.061 | 2.943 | 5.212 |
+| Saturating boost. Steps in the light | 313 | 380 | 407 |
+| Arm without `--learned-valence`. Vision share | 0.786 | 0.847 | 0.665 |
+
+Bold marks a share at or above the kill limit of 0.95. The last row is from
+`docs/results/vision_lockin_2026_10.md`.
+
+**P4 PASSED.** With the limit the vision share is below 0.95 at all 3 seeds, and criteria
+(1) to (3) pass at all 3. The learned value of vision is as high as in the runs that
+locked (a mean of 2.943 to 5.212, and 7.02, 6.21 and 8.04 as the highest value at the end
+of an episode), so the limit was tested where it applies.
+
+Reported and not predicted. The task criterion over these 30 episodes gives a pooled rho
+of 0.317 with a one-sided p of 0.052, which does not pass. Three seeds chosen because they
+failed are not a sample.
+
+Limit. At seed 64 the share is 0.910, which is 0.04 below the kill limit. The rule removes
+the lock at these seeds. It does not make vision and hearing equal.
+
 ## Result, 2026-09-16: Gate B3 FAILED
 
 Seed 55 fired the KILL rule (vision 0.961 of ignited steps) and failed criterion (1) with a

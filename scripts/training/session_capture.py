@@ -136,7 +136,8 @@ def _learned_valence(modulator) -> Optional[dict]:
     learned = getattr(modulator, "learned_valence", None)
     if learned is None:
         return None
-    return {"values": dict(learned.values), "td_error": learned.last_td_error}
+    return {"values": dict(learned.values), "td_error": learned.last_td_error,
+            "boost_rule": getattr(learned, "boost_rule", "linear")}
 
 
 def _ignition(workspace) -> dict:

@@ -16,20 +16,32 @@ The reward is the EXTERNAL task reward only, never the shaped reward that contai
 homeostatic terms (ethics rule E2, docs/ethics_framework.md).
 
 TD_DISCOUNT and TD_LEARNING_RATE are engineering values set 2026-09-15 before any run.
+
+The boost rule. A value has no upper limit, so under the default rule `linear` the boost
+gain * |value| has none either. In recorded runs the value of vision reached 6 to 8 in one
+long episode in the light, and the boost alone then put the vision bid at its upper limit
+(docs/results/vision_lockin_2026_10.md). The rule `saturating` gives gain * tanh(|value|),
+which is at most the gain and equals the linear rule to first order for small values. It
+adds no constant. The rule changes the boost only. What the critic learns is the same.
 """
 
 from __future__ import annotations
 
+import math
 from typing import Dict, Optional
 
 TD_DISCOUNT = 0.95
 TD_LEARNING_RATE = 0.05
+BOOST_RULES = ("linear", "saturating")
 
 
 class LearnedValence:
     """Per-module values learned from temporal difference error."""
 
-    def __init__(self):
+    def __init__(self, boost_rule: str = "linear"):
+        if boost_rule not in BOOST_RULES:
+            raise ValueError("boost_rule must be one of %s, got %r" % (BOOST_RULES, boost_rule))
+        self.boost_rule = boost_rule
         self.values: Dict[str, float] = {}
         self.previous_bids: Optional[Dict[str, float]] = None
         self.previous_reward = 0.0
@@ -57,7 +69,10 @@ class LearnedValence:
         self.previous_reward = 0.0
 
     def boost(self, name: str, gain: float) -> float:
-        return gain * abs(self.values.get(name, 0.0))
+        size = abs(self.values.get(name, 0.0))
+        if self.boost_rule == "saturating":
+            return gain * math.tanh(size)
+        return gain * size
 
     def _learn(self, delta: float) -> None:
         self.last_td_error = float(delta)

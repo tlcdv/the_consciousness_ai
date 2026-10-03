@@ -42,6 +42,14 @@
 > above 0 at 8 of 10 seeds). The gate judges which module has the highest bid. It does not
 > judge which vector the policy receives, and the confound with the episode index is not
 > excluded.
+>
+> **Update 2026-10-03 (Gate B8 below). PASSED both questions at 10 fresh seeds, with the
+> learned valence and a limit on its boost.** Seeds 83 to 92, the Gate B6 flags with
+> `--valence-boost saturating`. Competition holds at all 10 seeds (top share 0.516 to
+> 0.890). The task link holds (pooled rho 0.372, one-sided p 0.001, rho above 0 at 9 of 10
+> seeds). Only 1 of the 10 seeds reached a learned value high enough to test the limit.
+> A paired check at the 3 Gate B6 seeds that locked gave a vision share of 0.910, 0.839 and
+> 0.736 with the limit, against 0.968, 0.976 and 0.996 without it.
 
 **Gate B FAILED at all 3 seeds** on silence and on the task variable. **Its competition
 criterion passed at all 3 seeds:** hearing wins 17 to 25 percent of ignited steps, the
@@ -420,6 +428,56 @@ Four limits stand with this result.
    valence adds or removes at a given seed.
 4. A passed criterion is not evidence of affect. Finding a light is automatic approach.
 
+## Gate B8, 10 fresh seeds with a limit on the valence boost. PASSED both questions
+
+Written before its runs (`docs/decisions/2026_09_16_precision_weighted_bids.md`, Gate B8).
+The Gate B6 flags with `--valence-boost saturating`, which gives a boost of
+`valence_gain * tanh(|value|)`, at most 0.15. Seeds 83 to 92, default `--broadcast-merge`,
+revision `4622796`. 1990 steps judged per run and 100 qualifying episodes. No run was
+repeated. Every recorded step holds the boost rule `saturating`.
+
+| Criterion | 83 | 84 | 85 | 86 | 87 | 88 | 89 | 90 | 91 | 92 |
+|---|---|---|---|---|---|---|---|---|---|---|
+| (1) runner-up share, at least 0.05 | 0.328 | 0.154 | 0.238 | 0.230 | 0.110 | 0.484 | 0.440 | 0.403 | 0.406 | 0.295 |
+| (2) silence, below 0.50 | 0.297 | 0.331 | 0.348 | 0.278 | 0.290 | 0.312 | 0.301 | 0.310 | 0.321 | 0.327 |
+| (3) selectivity, difference | 0.122 | 0.135 | 0.108 | 0.163 | 0.154 | 0.082 | 0.060 | 0.081 | 0.064 | 0.137 |
+| (3) selectivity, null p95 | 0.065 | 0.045 | 0.046 | 0.107 | 0.064 | 0.002 | 0.005 | 0.002 | 0.008 | 0.046 |
+| KILL, a module at 0.95 or more | 0.672 | 0.846 | 0.762 | 0.770 | 0.890 | 0.516 | 0.560 | 0.597 | 0.594 | 0.705 |
+| (4) task, rho per seed | 0.253 | 0.696 | 0.394 | 0.425 | -0.287 | 0.058 | 0.808 | 0.298 | 0.546 | 0.695 |
+| Audio share against episode index, rho | -0.042 | 0.541 | 0.706 | -0.285 | -0.194 | 0.382 | -0.224 | -0.255 | -0.321 | 0.503 |
+| Mean learned value of vision | 0.014 | 0.843 | 0.232 | 2.786 | -0.106 | -0.058 | -0.035 | 0.063 | 0.155 | 0.118 |
+| Mean learned value of hearing | -0.009 | 0.040 | -0.007 | 0.183 | -0.093 | 0.002 | 0.028 | 0.012 | 0.015 | 0.066 |
+
+No criterion failed. Vision is the top module at all 10 seeds.
+
+**Competition at every seed PASSED.** The top share is 0.516 to 0.890.
+
+**The task link PASSED.** Pooled rho 0.372 over 100 episodes, one-sided permutation p
+0.001. Rho is above 0 at 9 of 10 seeds, and the rule asks for 7.
+
+**Gate B8 as a whole PASSED.**
+
+Five limits stand with this result.
+
+1. **The limit was tested hard at 1 seed only.** A learned value of vision in the range
+   that locked the workspace before (2.3 or more as the mean of a run) occurred at seed 86
+   and at no other seed. There the value rose to 6.80 in episode 3, in 177 steps in the
+   light, and vision then had the highest bid at 0.55 to 0.99 of ignited steps in the 6
+   later episodes, 0.770 over the run. At the other 9 seeds the mean value stayed below
+   0.85, where the two boost rules differ little. In Gate B6 a mean of 2.3 or more occurred
+   at 3 of 10 seeds. A paired check then ran the rule at those 3 seeds, 64, 65 and 68.
+   The vision share is 0.910, 0.839 and 0.736, against 0.968, 0.976 and 0.996 with the
+   linear boost, and the prediction that it stays below 0.95 PASSED
+   (`docs/decisions/2026_09_16_precision_weighted_bids.md`).
+2. The gate judges which module has the highest bid. It does not judge which vector the
+   policy receives (`models/core/global_workspace.py`, lines 116 to 121).
+3. The audio share rises with the episode number at 4 of 10 seeds (rho 0.38 to 0.71) and
+   falls at 6. The confound with the episode index is weaker than in Gate B6 and Gate B7.
+   It is not excluded by this design.
+4. Gate B6, Gate B7 and Gate B8 use different seeds. The three do not rank the three
+   configurations.
+5. A passed criterion is not evidence of affect.
+
 ## What this establishes
 
 - The repaired dark room gives the agent direction and distance to the light by sound,
@@ -432,6 +490,8 @@ Four limits stand with this result.
   of 10 fresh seeds (Gate B7), and the task criterion passes (pooled rho 0.388, one-sided
   p 0.0005). "Competes" here means that hearing has the highest bid at 0.211 to 0.478 of
   ignited steps.
+- With the learned valence and a boost of at most 0.15, the same holds at 10 of 10 fresh
+  seeds (Gate B8, top share 0.516 to 0.890, task pooled rho 0.372, one-sided p 0.001).
 - With the same flags, hearing wins a larger share of ignited steps in episodes where the
   light is out of view. Gate B6, 10 fresh seeds and 100 episodes, pooled rho 0.362,
   one-sided p 0.002. This is a correlation across episodes, and the episode index is a
@@ -494,6 +554,9 @@ Four limits stand with this result.
     questions.
 12. Open: measure which vector the policy receives at ignited steps, and repeat the gate
     with a merge that keeps the vector of the module with the highest bid.
+13. Done 2026-10-03: Gate B8, 10 fresh seeds with `--valence-boost saturating`. PASSED both
+    questions. One seed in 10 reached a high learned value. The paired check at seeds 64,
+    65 and 68 PASSED.
 
 ## Reproduce
 
@@ -507,6 +570,10 @@ python -m scripts.analysis.probe_gate_b2 --runs runs/gate_b6_s63 runs/gate_b6_s6
 python -m scripts.analysis.probe_gate_b2 --runs runs/gate_b7_s73 runs/gate_b7_s74 runs/gate_b7_s75 \
     runs/gate_b7_s76 runs/gate_b7_s77 runs/gate_b7_s78 runs/gate_b7_s79 runs/gate_b7_s80 \
     runs/gate_b7_s81 runs/gate_b7_s82
+python -m scripts.analysis.probe_gate_b2 --runs runs/gate_b8_s83 runs/gate_b8_s84 runs/gate_b8_s85 \
+    runs/gate_b8_s86 runs/gate_b8_s87 runs/gate_b8_s88 runs/gate_b8_s89 runs/gate_b8_s90 \
+    runs/gate_b8_s91 runs/gate_b8_s92
+python -m scripts.analysis.probe_valence_lockin --runs runs/gate_b8_s83 ... runs/gate_b8_s92
 
 python -m scripts.analysis.probe_dark_room_senses --gate-a3 --seeds 45 46 47
 
