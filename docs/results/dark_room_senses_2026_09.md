@@ -34,6 +34,14 @@
 > above 0 at 8 of 10 seeds). At seeds 64, 65 and 68 vision took 0.968 to 0.996 of ignited
 > steps and fired the kill rule, so the gate as a whole FAILED. The confound with the
 > episode index is not excluded.
+>
+> **Update 2026-10-03 (Gate B7 below). PASSED both questions at 10 fresh seeds, without
+> the learned valence.** Gate B7 was written before its runs and used seeds 73 to 82 with
+> the Gate B6 flags and without `--learned-valence`. Competition holds at all 10 seeds (top
+> share 0.522 to 0.789). The task link holds (pooled rho 0.388, one-sided p 0.0005, rho
+> above 0 at 8 of 10 seeds). The gate judges which module has the highest bid. It does not
+> judge which vector the policy receives, and the confound with the episode index is not
+> excluded.
 
 **Gate B FAILED at all 3 seeds** on silence and on the task variable. **Its competition
 criterion passed at all 3 seeds:** hearing wins 17 to 25 percent of ignited steps, the
@@ -370,6 +378,48 @@ Three limits stand with this result.
 2. At 3 of 10 fresh seeds vision takes 0.95 or more of ignited steps. The cause is open.
 3. A passed criterion is not evidence of affect. Finding a light is automatic approach.
 
+## Gate B7, 10 fresh seeds without the learned valence. PASSED both questions
+
+Written before its runs (`docs/decisions/2026_09_16_precision_weighted_bids.md`, Gate B7).
+The reason for the gate is in `docs/results/vision_lockin_2026_10.md`. At the 3 Gate B6
+seeds that fired the kill rule, the kill needed `--learned-valence`. Gate B7 asks the Gate
+B6 questions at seeds 73 to 82 with the Gate B6 flags and without that flag. Default
+`--broadcast-merge`, revision `4a01ba2`. 1990 steps judged per run and 100 qualifying
+episodes. No run was repeated.
+
+| Criterion | 73 | 74 | 75 | 76 | 77 | 78 | 79 | 80 | 81 | 82 |
+|---|---|---|---|---|---|---|---|---|---|---|
+| (1) runner-up share, at least 0.05 | 0.436 | 0.213 | 0.264 | 0.317 | 0.285 | 0.478 | 0.344 | 0.347 | 0.211 | 0.336 |
+| (2) silence, below 0.50 | 0.351 | 0.268 | 0.300 | 0.314 | 0.311 | 0.333 | 0.303 | 0.310 | 0.355 | 0.295 |
+| (3) selectivity, difference | 0.103 | 0.264 | 0.150 | 0.118 | 0.140 | 0.092 | 0.070 | 0.131 | 0.074 | 0.137 |
+| (3) selectivity, null p95 | 0.014 | 0.072 | 0.069 | 0.044 | 0.029 | 0.019 | 0.008 | 0.047 | 0.017 | 0.070 |
+| KILL, a module at 0.95 or more | 0.564 | 0.787 | 0.736 | 0.683 | 0.715 | 0.522 | 0.656 | 0.653 | 0.789 | 0.664 |
+| (4) task, rho per seed | 0.469 | 0.671 | 0.244 | 0.508 | 0.322 | -0.313 | 0.620 | -0.289 | 0.529 | 0.726 |
+| Audio share against episode index, rho | 0.285 | 0.280 | 0.200 | 0.705 | 0.394 | 0.523 | 0.236 | 0.875 | 0.697 | 0.608 |
+
+No criterion failed. Vision is the top module at all 10 seeds.
+
+**Competition at every seed PASSED.** Criteria (1) to (3) pass at all 10 seeds and the kill
+rule fires at none.
+
+**The task link PASSED.** Pooled rho 0.388 over 100 episodes, one-sided permutation p
+0.0005. Rho is above 0 at 8 of 10 seeds, and the rule asks for 7.
+
+**Gate B7 as a whole PASSED.** It is the first pass of the full gate at 10 seeds.
+
+Four limits stand with this result.
+
+1. The confound with the episode index is not excluded. The audio share rises with the
+   episode number at all 10 seeds, with rho 0.45 or more at 5 of them.
+2. The gate judges which module has the highest bid. It does not judge which vector the
+   policy receives. With the default `--broadcast-merge legacy`, when two modules pass the
+   threshold the broadcast holds the vector of the weaker one
+   (`models/core/global_workspace.py`, lines 116 to 121). How often that occurs was not
+   measured by this gate.
+3. Gate B6 and Gate B7 use different seeds. The pair does not show what the learned
+   valence adds or removes at a given seed.
+4. A passed criterion is not evidence of affect. Finding a light is automatic approach.
+
 ## What this establishes
 
 - The repaired dark room gives the agent direction and distance to the light by sound,
@@ -378,6 +428,10 @@ Three limits stand with this result.
 - With reliability-weighted bids and the ring mark, hearing competes with vision at 3 of 3
   seeds in Gate B4, at 5 of the 6 runs with moved layouts (not seed 57) and at 7 of 10
   seeds in Gate B6.
+- With the same flags and without the learned valence, hearing competes with vision at 10
+  of 10 fresh seeds (Gate B7), and the task criterion passes (pooled rho 0.388, one-sided
+  p 0.0005). "Competes" here means that hearing has the highest bid at 0.211 to 0.478 of
+  ignited steps.
 - With the same flags, hearing wins a larger share of ignited steps in episodes where the
   light is out of view. Gate B6, 10 fresh seeds and 100 episodes, pooled rho 0.362,
   one-sided p 0.002. This is a correlation across episodes, and the episode index is a
@@ -392,8 +446,13 @@ Three limits stand with this result.
   0.289, p 0.084) and in Gate B5 (seeds 60 to 62, pooled rho 0.200, p 0.095). The design
   does not separate the task from learning over time, because the audio share also rises
   with the episode number.
-- **No stable competition at every seed.** Vision takes 0.95 or more of ignited steps at
-  seed 55 (Gate B3), at seed 57 with moved layouts, and at seeds 64, 65 and 68 (Gate B6).
+- **No stable competition at every seed with the learned valence.** Vision takes 0.95 or
+  more of ignited steps at seed 55 (Gate B3), at seed 57 with moved layouts, and at seeds
+  64, 65 and 68 (Gate B6). Without the learned valence it does so at none of the 10 seeds
+  of Gate B7.
+- **Not which vector the policy receives.** Every gate here judges the module with the
+  highest bid. With the default merge, when two modules pass the threshold the broadcast
+  holds the vector of the weaker one (`models/core/global_workspace.py`, lines 116 to 121).
 - **No task variable with change-based bids.** In Gate B2 hearing does not measurably win
   more when the light is out of view. With reliability-weighted bids the task criterion
   passed at seeds 54 to 56, but that gate FAILED on the KILL rule, and the confound with
@@ -429,6 +488,12 @@ Three limits stand with this result.
 8. Open: why vision takes 0.95 or more of ignited steps at some seeds (55, 57 with moved
    layouts, 64, 65, 68).
 9. Open: a design that separates the task link from learning over time.
+10. Done 2026-10-03: the cause of item 8. The learned value of vision has no upper limit
+    (`docs/results/vision_lockin_2026_10.md`).
+11. Done 2026-10-03: Gate B7, 10 fresh seeds without the learned valence. PASSED both
+    questions.
+12. Open: measure which vector the policy receives at ignited steps, and repeat the gate
+    with a merge that keeps the vector of the module with the highest bid.
 
 ## Reproduce
 
@@ -439,6 +504,9 @@ python -m scripts.analysis.probe_gate_b2 --runs runs/gate_b5_s60 runs/gate_b5_s6
 python -m scripts.analysis.probe_gate_b2 --runs runs/gate_b6_s63 runs/gate_b6_s64 runs/gate_b6_s65 \
     runs/gate_b6_s66 runs/gate_b6_s67 runs/gate_b6_s68 runs/gate_b6_s69 runs/gate_b6_s70 \
     runs/gate_b6_s71 runs/gate_b6_s72
+python -m scripts.analysis.probe_gate_b2 --runs runs/gate_b7_s73 runs/gate_b7_s74 runs/gate_b7_s75 \
+    runs/gate_b7_s76 runs/gate_b7_s77 runs/gate_b7_s78 runs/gate_b7_s79 runs/gate_b7_s80 \
+    runs/gate_b7_s81 runs/gate_b7_s82
 
 python -m scripts.analysis.probe_dark_room_senses --gate-a3 --seeds 45 46 47
 

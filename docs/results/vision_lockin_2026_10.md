@@ -10,6 +10,11 @@ without `--bid-precision gain`, seeds 64 and 65 still fire the kill rule (0.967 
 
 Three seeds, one configuration. No default is changed and no indicator moves.
 
+**Follow-up, Gate B7. PASSED.** The gate without `--learned-valence` at 10 fresh seeds,
+option 2 of the decisions below, was written before its runs and passed both questions.
+No seed fired the kill rule (top share 0.522 to 0.789). The table is in
+`docs/results/dark_room_senses_2026_09.md`.
+
 ## The question
 
 Gate B6 FAILED on competition at 3 of 10 seeds, where vision took 0.968 to 0.996 of
@@ -155,7 +160,7 @@ rho of 0.404 with a one-sided p of 0.015 over 30 episodes, and in Arm B a pooled
 1. Keep `--learned-valence` in the gate configuration as it is, and accept that about 3
    seeds in 10 lock.
 2. Run the gate without `--learned-valence` at 10 fresh seeds, with the rule written
-   first. This costs 10 runs and no new code.
+   first. This costs 10 runs and no new code. Done 2026-10-03 as Gate B7. PASSED.
 3. Give the boost a limit, behind a new default-off flag, and then run the same gate. One
    form is to take the value of each module as a share of the sum over modules, so that
    the values rank the modules and their sum cannot grow. This needs new code with tests

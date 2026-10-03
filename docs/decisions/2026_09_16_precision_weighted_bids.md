@@ -282,6 +282,103 @@ What this does NOT show, stated with the result.
   some seeds is still open. It also happened at seed 55 in Gate B3.
 - Nothing here is evidence of affect. Finding a light is automatic approach.
 
+## Gate B7, pre-stated 2026-10-03, before the runs it judges
+
+Why the run is made. Gate B6 FAILED on competition at seeds 64, 65 and 68. An ablation at
+those 3 seeds showed that the kill needs `--learned-valence`
+(`docs/results/vision_lockin_2026_10.md`). Those seeds were chosen because they failed, so
+they are not a sample. Gate B7 asks the same two questions as Gate B6 at 10 fresh seeds,
+with the Gate B6 flags and without `--learned-valence`.
+
+Code. The revision of the commit that adds this section. Seeds 73 to 82, never run before.
+
+```
+python -m scripts.training.train_rlhf --env dark_room --episodes 10 --max-steps 200 \
+    --seed <73 to 82> --enable-audio --rssm-latent-mode continuous \
+    --capsule-workspace-source all_levels --existence-drive on \
+    --dark-room-audio binaural --dark-room-audio-channels 4 --dark-room-collision \
+    --dark-room-view agent_centered --vision-bid-reduction zscore \
+    --audio-salience surprise \
+    --ignition-rule tolerance --ignition-tolerance-sd 1.0 --bid-precision gain \
+    --dark-room-agent-mark ring --dark-room-agent-colour 217,119,87 \
+    --log-dir runs/gate_b7_s<seed>
+python -m scripts.analysis.probe_gate_b2 --runs runs/gate_b7_s73 ... runs/gate_b7_s82
+```
+
+Two questions, each with its own verdict. Both are the Gate B6 questions, unchanged.
+
+1. **Competition at every seed.** This is the reason for the gate. Criteria (1) to (3) and
+   the kill rule at each of the 10 seeds. One failing seed fails this question.
+2. **Task link.** Criterion (4) of the probe. Pooled Spearman rho above 0, a one-sided
+   permutation p below 0.05, at least 15 qualifying episodes, and rho above 0 at 7 or more
+   of the 10 seeds.
+
+Gate B7 as a whole PASSES only when both questions pass. The two answers are reported
+separately in any case.
+
+Rules fixed before the runs.
+
+- One run per seed. A run with fewer than 10 episodes or 2000 steps on disk is run again
+  with the same seed, and that is reported. No other rerun.
+- No change of seeds, criteria or thresholds after a result is seen.
+- Reported and never gated. The rho of the audio share against the episode index, per seed.
+
+What a result means here.
+
+- Competition PASSED. Without the learned valence no module takes the workspace at 10
+  fresh seeds. It does not show that the lock cannot occur by another route.
+- Competition FAILED. The lock has a second route that does not need the learned value.
+- Task link PASSED. The link does not need the learned valence. The confound with the
+  episode index is not excluded by this design.
+- Task link FAILED. In this configuration the link is not measurable at this sample size.
+  It does not show that the learned valence causes the link, because Gate B6 and Gate B7
+  use different seeds.
+
+No result here changes a default, and no result moves an indicator. Neither result is
+evidence of affect.
+
+## Result of Gate B7, 2026-10-03. PASSED both questions
+
+Run at revision `4a01ba2`, after the gate above was committed. Seeds 73 to 82, 10 episodes
+and 2000 steps per run on disk, 1990 steps judged per run, 100 qualifying episodes. No run
+was repeated.
+
+| Criterion | 73 | 74 | 75 | 76 | 77 | 78 | 79 | 80 | 81 | 82 |
+|---|---|---|---|---|---|---|---|---|---|---|
+| (1) runner-up share, at least 0.05 | 0.436 | 0.213 | 0.264 | 0.317 | 0.285 | 0.478 | 0.344 | 0.347 | 0.211 | 0.336 |
+| (2) silence, below 0.50 | 0.351 | 0.268 | 0.300 | 0.314 | 0.311 | 0.333 | 0.303 | 0.310 | 0.355 | 0.295 |
+| (3) selectivity, difference | 0.103 | 0.264 | 0.150 | 0.118 | 0.140 | 0.092 | 0.070 | 0.131 | 0.074 | 0.137 |
+| (3) selectivity, null p95 | 0.014 | 0.072 | 0.069 | 0.044 | 0.029 | 0.019 | 0.008 | 0.047 | 0.017 | 0.070 |
+| KILL, a module at 0.95 or more | 0.564 | 0.787 | 0.736 | 0.683 | 0.715 | 0.522 | 0.656 | 0.653 | 0.789 | 0.664 |
+| (4) task, rho per seed | 0.469 | 0.671 | 0.244 | 0.508 | 0.322 | -0.313 | 0.620 | -0.289 | 0.529 | 0.726 |
+| Audio share against episode index, rho | 0.285 | 0.280 | 0.200 | 0.705 | 0.394 | 0.523 | 0.236 | 0.875 | 0.697 | 0.608 |
+
+No criterion failed. Vision is the top module at all 10 seeds.
+
+**Question 1, competition at every seed. PASSED.** Criteria (1) to (3) pass at all 10
+seeds and the kill rule fires at none. The top share is 0.522 to 0.789.
+
+**Question 2, the task link. PASSED.** Pooled over 100 episodes rho is 0.388 with a
+one-sided permutation p of 0.0005. Rho is above 0 at 8 of 10 seeds and the rule asks for 7.
+
+**Gate B7 as a whole PASSED.** This is the first pass of the full gate at 10 seeds. The
+configuration is the Gate B6 configuration without `--learned-valence`.
+
+What this does NOT show, stated with the result.
+
+1. The confound with the episode index is not excluded. The audio share rises with the
+   episode number at all 10 seeds, with rho 0.45 or more at 5 of them.
+2. The gate judges which module has the highest bid. It does not judge which vector the
+   policy receives. With the default `--broadcast-merge legacy`, when two modules pass the
+   threshold the broadcast holds the vector of the weaker one
+   (`models/core/global_workspace.py`, lines 116 to 121). How often that occurs was not
+   measured by this gate.
+3. Gate B6 and Gate B7 use different seeds. The pair does not show what the learned
+   valence adds or removes at a given seed.
+4. A passed criterion is not evidence of affect. Finding a light is automatic approach.
+
+No default is changed and no indicator moves.
+
 ## Result, 2026-09-16: Gate B3 FAILED
 
 Seed 55 fired the KILL rule (vision 0.961 of ignited steps) and failed criterion (1) with a
