@@ -607,3 +607,75 @@ def validate_binding_matched(kuramoto: KuramotoLayer,
                                      amplitudes, angles, times, brian2_dt_ms)
     error = _circular_distance(akorn, brian)
     return MatchedComparison(akorn, brian, float(error.max()), float(error.mean()))
+
+
+# ---------------------------------------------------------------------------
+# Spike transduction check for the LIF bridge layer.
+#
+# LIFBridgeLayer steps  v <- v + dt/tau (-(v - v_rest) + I),  spikes when v >= v_th and
+# resets to v_reset. Two comparisons against Brian2 on the same input current:
+#   matched   Brian2 Euler at the same dt. The update order is the same, so the spike
+#             trains must agree except where float32 against float64 moves a crossing.
+#   reference Brian2 RK4 at dt / refine. This is the continuous time ODE. The bridge
+#             uses Euler, so a spike time can differ by a bounded number of steps.
+# ---------------------------------------------------------------------------
+
+
+@dataclass
+class LIFComparison:
+    """Spike trains [T, N] (0/1) of the bridge layer and of Brian2, plus the counts."""
+    bridge_spikes: np.ndarray
+    matched_spikes: np.ndarray
+    reference_spikes: np.ndarray
+    matched_mismatch_fraction: float   # fraction of (step, neuron) bins that differ
+    reference_count_error: float       # max over neurons of |count difference| / max(count, 1)
+
+
+def _bridge_spike_train(currents: np.ndarray, tau: float, v_th: float, v_rest: float,
+                        v_reset: float, dt: float) -> np.ndarray:
+    from models.thermodynamic.interfaces.snn_bridge import LIFBridgeLayer
+
+    n = currents.shape[1]
+    layer = LIFBridgeLayer(n, n, tau, v_th, dt, v_rest, v_reset, bias=False)
+    with torch.no_grad():
+        layer.linear.weight.copy_(torch.eye(n))
+        spikes = layer(torch.as_tensor(currents, dtype=torch.float32).unsqueeze(1))
+    return spikes[:, 0, :].numpy()
+
+
+def _brian2_spike_train(currents: np.ndarray, tau: float, v_th: float, v_rest: float,
+                        v_reset: float, dt: float, method: str, refine: int) -> np.ndarray:
+    """Spike train on the original step grid, from Brian2 run at dt / refine."""
+    steps, n = currents.shape
+    drive = brian2.TimedArray(currents, dt=dt * second)
+    group = NeuronGroup(
+        n, 'dv/dt = (-(v - v_rest_) + drive(t, i)) / tau_ : 1',
+        threshold='v >= v_th_', reset='v = v_reset_', method=method,
+        namespace={'v_rest_': v_rest, 'tau_': tau * second, 'v_th_': v_th, 'v_reset_': v_reset})
+    group.v = v_rest
+    monitor = brian2.SpikeMonitor(group)
+    defaultclock.dt = dt / refine * second
+    net = brian2.Network(group, monitor)
+    net.run(steps * dt * second)
+    train = np.zeros((steps, n))
+    bins = np.minimum((np.asarray(monitor.t / second) / dt + 1e-9).astype(int), steps - 1)
+    np.add.at(train, (bins, np.asarray(monitor.i)), 1.0)
+    return train
+
+
+def validate_lif_bridge(currents: np.ndarray, tau: float = 0.02, v_th: float = 1.0,
+                        v_rest: float = 0.0, v_reset: float = 0.0, dt: float = 0.001,
+                        refine: int = 10, random_seed: int = 42) -> LIFComparison:
+    """Compare LIFBridgeLayer spike trains with Brian2 on currents [T, N] (units of v).
+
+    Raises RuntimeError without Brian2.
+    """
+    if not BRIAN2_AVAILABLE:
+        raise RuntimeError("Brian2 is not installed. Install with: pip install brian2")
+    brian_seed(random_seed)
+    bridge = _bridge_spike_train(currents, tau, v_th, v_rest, v_reset, dt)
+    matched = _brian2_spike_train(currents, tau, v_th, v_rest, v_reset, dt, 'euler', 1)
+    reference = _brian2_spike_train(currents, tau, v_th, v_rest, v_reset, dt, 'rk4', refine)
+    mismatch = float(np.mean(bridge != np.minimum(matched, 1.0)))
+    counts = np.abs(bridge.sum(0) - reference.sum(0)) / np.maximum(reference.sum(0), 1.0)
+    return LIFComparison(bridge, matched, reference, mismatch, float(counts.max()))

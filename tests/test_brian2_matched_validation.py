@@ -94,3 +94,82 @@ def test_matched_comparison_detects_a_frequency_mismatch():
 
     # Assert: the check must fail when the two systems differ.
     assert wrong.max_phase_error > 10 * ok.max_phase_error
+
+
+# ---------------------------------------------------------------------------
+# LIF bridge layer against Brian2. Brian2 stays optional.
+#
+# Closed form for a constant current I above threshold, v_rest = v_reset = 0:
+#   first spike at t* = tau ln(I / (I - v_th)). Euler steps lag this by at most one dt.
+# Count tolerance against the continuous time reference: 1 spike plus 5 percent.
+# ---------------------------------------------------------------------------
+
+LIF = dict(tau=0.02, v_th=1.0, v_rest=0.0, v_reset=0.0, dt=0.001)
+
+
+def _constant_currents(steps: int = 400, seed: int = 0) -> np.ndarray:
+    rates = np.random.default_rng(seed).uniform(1.2, 3.0, (1, 8))
+    return np.tile(rates, (steps, 1))
+
+
+def _within_tolerance(bridge: np.ndarray, reference: np.ndarray) -> bool:
+    diff = np.abs(bridge.sum(0) - reference.sum(0))
+    return bool(np.all(diff <= 1 + 0.05 * reference.sum(0)))
+
+
+def test_bridge_first_spike_matches_closed_form_without_brian2():
+    # Arrange
+    currents = _constant_currents()
+
+    # Act
+    spikes = bv._bridge_spike_train(currents, **LIF)
+
+    # Assert: step k is tested after k + 1 updates, so the spike time is (k + 1) dt,
+    # and it lies within one dt of tau ln(I / (I - v_th)).
+    first = (spikes.argmax(0) + 1) * LIF["dt"]
+    expected = LIF["tau"] * np.log(currents[0] / (currents[0] - LIF["v_th"]))
+    assert np.all(np.abs(first - expected) <= LIF["dt"] + 1e-12)
+
+
+@needs_brian2
+def test_bridge_matches_brian2_euler_at_the_same_dt():
+    # Arrange
+    currents = np.random.default_rng(1).uniform(0.5, 4.0, (400, 8))
+
+    # Act
+    result = bv.validate_lif_bridge(currents, **LIF)
+
+    # Assert
+    assert result.matched_mismatch_fraction == 0.0
+
+
+@needs_brian2
+def test_bridge_counts_match_continuous_time_reference():
+    # Arrange
+    currents = _constant_currents()
+
+    # Act
+    result = bv.validate_lif_bridge(currents, **LIF)
+
+    # Assert
+    assert _within_tolerance(result.bridge_spikes, result.reference_spikes)
+
+
+@needs_brian2
+def test_wrong_drive_fails_the_tolerance():
+    # Arrange: Brian2 reference driven at 1.5 times the current the bridge sees.
+    currents = _constant_currents()
+    bridge = bv._bridge_spike_train(currents, **LIF)
+
+    # Act
+    wrong = bv._brian2_spike_train(1.5 * currents, **LIF, method="rk4", refine=10)
+
+    # Assert: the check can fail.
+    assert not _within_tolerance(bridge, wrong)
+
+
+@needs_brian2
+def test_validate_lif_bridge_raises_without_brian2(monkeypatch):
+    monkeypatch.setattr(bv, "BRIAN2_AVAILABLE", False)
+    with pytest.raises(RuntimeError):
+        bv.validate_lif_bridge(_constant_currents(10))
