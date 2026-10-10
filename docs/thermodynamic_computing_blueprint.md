@@ -129,60 +129,48 @@ citing any figure.
 
 ## 3. Substrate independence protocol
 
-The profiler `scripts/analysis/probe_thermodynamic_cost.py` implements stages 1 to 6 below. Four runs exist (3 seeds
-each, 2026-10-10). Gate v1 used a nearest class centroid reference and was UNTESTABLE on all four streams
-(`docs/results/thermodynamic_transduction_2026_10.md`). Gate v2 used a ridge reference and FAILED on `workspace_broadcast`
-and `obs_map` (`docs/results/thermodynamic_transduction_gate_v2_2026_10.md`). Gate v3 compared the settled arm with the
-noise-free binarised arm and PASSED on those two streams on one set of stimulus sequences, with a narrow margin and a
-design chosen after the v2 result (`docs/results/thermodynamic_transduction_gate_v3_2026_10.md`). The replication on unused
-stimulus sequences, with the gate unchanged, FAILED on both streams
-(`docs/results/thermodynamic_transduction_gate_v3_replication_2026_10.md`). Across six stimulus draws the settled arm sat
-about 0.03 accuracy points below the noise-free binarised arm on average, and the gap varied by up to 0.14 between draws,
-so a 0.05 margin cannot separate pass from fail reliably. `tectum_content` and `z_state` were UNTESTABLE in every run. No
-stream holds a stable PASS, and the protocol has not shown that the verified vectors survive transduction at a stated
-tolerance.
+The cost profiler `scripts/analysis/probe_thermodynamic_cost.py` ran four pass/fail gates (2026-10-10). They gave
+UNTESTABLE, FAILED, a PASS and a failed replication of that PASS
+(`docs/results/thermodynamic_transduction_2026_10.md` and the three documents that follow it). All four used a ridge readout
+with an untuned penalty, which understated the class information. Those verdicts are records of that probe. They are not
+statements about the representations. The gate series is superseded by
+`scripts/analysis/probe_thermodynamic_fidelity.py`, which measures a dose response and not a pass line
+(`docs/results/thermodynamic_fidelity_2026_10.md`). Its findings are these. All four streams carry the class when the readout is
+tuned. The budget needed through a stochastic spike channel depends on the stream and on the model. The p-bit channel needs
+fewer events than the Poisson channel. The cost is set by where the class information sits in the variance spectrum
+of the representation. Survival at infinite budget follows from an unbiased decoder and is not a finding.
 
-**Stages.**
+**Stages (dose-response protocol).**
 
-1. Record vectors from a trained checkpoint at 3 or more seeds. The profiler records
-   `tectum_content`, the workspace broadcast, `obs_map` and `z_state`. The last two are pooled
-   4 by 4 spatially, then reduced by training-fold PCA to 256 components.
-2. Decode the stimulus class from the recorded vectors, with a cross validated readout grouped by
-   trial and a label-permutation null. This is the reference accuracy. If it is not above its null,
-   the stream is UNTESTABLE and the protocol stops there for that stream.
-3. Transduce the vectors with the Poisson rate code into spins.
-4. Settle them in a p-bit memory of class prototypes (6 patterns in 256 spins), at a stated beta and sweep
-   count. Gate v2 builds the prototypes in the ridge subspace and stores them with the projection rule, which
-   keeps correlated prototypes as fixed points.
-5. Read the class from the settled state by largest overlap with a prototype.
-6. Compare accuracies per seed against the reference and against a beta near 0 control. Report the
-   range over seeds, not the best seed.
+1. Record vectors from trained checkpoints, on several stimulus draws per checkpoint. The probe records `tectum_content`, the
+   workspace broadcast, `obs_map` and `z_state`. The last two are pooled 4 by 4 spatially. Vectors larger than 256 dimensions
+   are reduced by training-fold PCA to 256 components, and all vectors are z-scored on the training rows.
+2. Fit the reference readout, a ridge readout of the stimulus class on x = sigmoid(z), with the penalty chosen by nested cross
+   validation grouped by trial. A fixed untuned penalty understated the class information in every stream and must not be used.
+3. Send held-out vectors through a stochastic channel at a ladder of event budgets T per dimension. The channels are a Poisson
+   rate code and independent p-bits. Decode, then apply the same readout fitted on clean vectors.
+4. Report retained information rho(T) = (A_T - 1/6) / (A_clean - 1/6) with a trial bootstrap interval, and the budgets T90 and T95
+   at which it reaches 0.90 and 0.95. Report per checkpoint. Do not pool checkpoints.
+5. Pre-state what is reported before the data run, and keep pass lines out of it. The earlier pass/fail gates were unstable at the
+   margins they used.
 
-**Gate.** Write the threshold before any value is read. The profiler uses four gates per version (G1 to G4 for v1, H1 to H4 for v2, K1 to K4 for v3). The first gate asks that the
-reference is above its null. The second asks that settled accuracy is within a stated margin of the reference (0.10 in v1
-and v2, 0.05 in v3). The third
-asks that settled accuracy is above its own null. The fourth asks that the control is not above that null. A failure at any seed
-gives FAILED (or UNTESTABLE when the first gate fails), and the document that reports it says so first.
+**Controls and checks.**
 
-**Controls that must be able to fail.**
-
-- Shuffled vectors, with class labels kept. Accuracy must fall to the null.
-- beta near 0, where the p-bits output noise. Accuracy must fall to the null.
-- A very large beta with a corrupted start, where the sampler freezes into a wrong
-  attractor. Recall overlap and accuracy must both be reported, because a low energy does
-  not show that the right pattern was recalled.
-- A deterministic quantizer with the same bit budget. This separates the effect of
-  stochastic settling from the effect of coarse quantization.
+- Shuffled labels must bring the reference readout to chance. The permutation null was used in the earlier gates.
+- An unbiased decoder gives rho -> 1 as T grows, so survival at infinite budget is not a finding. The finding is the budget.
+- A sensitivity check on the readout penalty is needed. At model 44, `z_state` and `tectum_content` are readable only with a nearly
+  unregularised readout. Their class information sits in low-variance directions, which a white-noise channel removes first.
+- The Poisson spike probability scale (0.2) and the sigmoid map are assumptions. State them with every result.
 
 **Reading rules.**
 
-- A drop in `pbit_energy` shows only that the sampler descended. It says nothing about
-  the stimulus.
-- `fep_free_energy` falls for any fitted model, so a fall is not evidence about the
-  architecture. Compare against a model fitted to shuffled vectors.
-- Energy and efficiency estimates in the profiler use assumed hardware constants passed on
-  the command line. They are assumptions and not measurements.
+- A drop in `pbit_energy` shows only that a sampler descended. It says nothing about the stimulus.
+- `fep_free_energy` falls for any fitted model, so a fall is not evidence about the architecture.
+- Energy estimates use assumed constants. They are assumptions and not measurements. No energy per event has been measured here.
 - A result about transduction does not change any rubric entry or the instrument count.
+
+**Open experiments, in order.** Variance-equalised encoding (gain allocation across directions). A readout trained on channel outputs.
+A noisy attractor memory across the delay phase. The policy in the loop. The penalty grid below 0.001 for the entries at its edge.
 
 ## 4. Files
 
@@ -195,5 +183,6 @@ gives FAILED (or UNTESTABLE when the first gate fails), and the document that re
 | `models/thermodynamic/interfaces/thrml_adapter.py` | Optional wrapper for `thrml` |
 | `models/thermodynamic/interfaces/hardware_stub.py` | Deterministic stand-in driver for tests |
 | `models/validation/brian2_binding_validation.py` | Spike train check against Brian2 (optional dependency) |
-| `scripts/analysis/probe_thermodynamic_cost.py` | Offline cost profile |
+| `scripts/analysis/probe_thermodynamic_cost.py` | Offline cost profile with the superseded pass/fail gates |
+| `scripts/analysis/probe_thermodynamic_fidelity.py` | Dose-response probe for the stochastic channel |
 | `tests/test_substrate_isolation.py` | Import graph guard |

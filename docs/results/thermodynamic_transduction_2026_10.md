@@ -95,3 +95,12 @@ Instruments stay UNPROVEN. No indicator or rubric entry changes.
 3. A prototype memory built from a discriminative direction (for example class means of the ridge
    projection) so the p-bit readout uses the information the ridge readout finds.
 4. The `delay` phase, once the `sample` phase has a testable stream.
+
+## Correction, 2026-10-10
+
+The ridge readout in this probe used a fixed penalty of 100 that was never tuned. A later run with a penalty chosen by nested
+cross validation (`docs/results/thermodynamic_fidelity_2026_10.md`) found that all four streams carry the 6-class stimulus label
+at all three models (clean accuracy 0.33 to 0.77, chance 0.167). So any statement in this document that a stream "does not
+carry the class", or that the readout was "at chance" because of the stream, is withdrawn. It describes the readout of this
+probe. The pass, fail and untestable verdicts above remain correct records of what this probe measured. They are not
+statements about the representations. The gate series is superseded by the dose-response study.

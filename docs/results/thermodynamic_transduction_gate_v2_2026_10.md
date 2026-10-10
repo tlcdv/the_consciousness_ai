@@ -100,3 +100,12 @@ to a negative result, not a replication.
    binarisation is the main loss.
 3. The `delay` phase (`--phase delay`), once `sample` has a stream that passes.
 4. More trials for `tectum_content` and `z_state`, where the ridge readout is near the null at one or two seeds.
+
+## Correction, 2026-10-10
+
+The ridge readout in this probe used a fixed penalty of 100 that was never tuned. A later run with a penalty chosen by nested
+cross validation (`docs/results/thermodynamic_fidelity_2026_10.md`) found that all four streams carry the 6-class stimulus label
+at all three models (clean accuracy 0.33 to 0.77, chance 0.167). So any statement in this document that a stream "does not
+carry the class", or that the readout was "at chance" because of the stream, is withdrawn. It describes the readout of this
+probe. The pass, fail and untestable verdicts above remain correct records of what this probe measured. They are not
+statements about the representations. The gate series is superseded by the dose-response study.
