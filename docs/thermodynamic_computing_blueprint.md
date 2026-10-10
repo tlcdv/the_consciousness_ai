@@ -129,13 +129,16 @@ citing any figure.
 
 ## 3. Substrate independence protocol
 
-The profiler `scripts/analysis/probe_thermodynamic_cost.py` implements stages 1 to 6 below. Two runs
-exist (3 seeds each, 2026-10-10). Gate v1 used a nearest class centroid reference and was UNTESTABLE on all
-four streams (`docs/results/thermodynamic_transduction_2026_10.md`). Gate v2 used a ridge reference and a
-memory built from the ridge subspace. It FAILED on `workspace_broadcast` and `obs_map` and was UNTESTABLE on
-`tectum_content` and `z_state` (`docs/results/thermodynamic_transduction_gate_v2_2026_10.md`). In the two
-testable streams the class stayed above the permutation null after transduction and settling, and fell more
-than the pre-stated margin below the ridge readout. The protocol has not yet produced a PASS.
+The profiler `scripts/analysis/probe_thermodynamic_cost.py` implements stages 1 to 6 below. Three runs exist (3 seeds
+each, 2026-10-10). Gate v1 used a nearest class centroid reference and was UNTESTABLE on all four streams
+(`docs/results/thermodynamic_transduction_2026_10.md`). Gate v2 used a ridge reference and FAILED on
+`workspace_broadcast` and `obs_map` (`docs/results/thermodynamic_transduction_gate_v2_2026_10.md`). Gate v3 compared
+the settled arm with the noise-free binarised arm on fresh stimulus sequences and PASSED on those two streams, with a
+narrow margin, a design chosen after the v2 result, and the same three checkpoints
+(`docs/results/thermodynamic_transduction_gate_v3_2026_10.md`). `tectum_content` and `z_state` were UNTESTABLE at one
+checkpoint in every run. The v3 PASS says the p-bit stage adds little loss on top of binarisation. It does not say the
+original vector survives, because the binarised readout is itself well below the ridge readout. A replication on unused
+stimulus seeds with the gate unchanged is the next step.
 
 **Stages.**
 
@@ -153,8 +156,9 @@ than the pre-stated margin below the ridge readout. The protocol has not yet pro
 6. Compare accuracies per seed against the reference and against a beta near 0 control. Report the
    range over seeds, not the best seed.
 
-**Gate.** Write the threshold before any value is read. The profiler uses four gates per version (G1 to G4 for v1, H1 to H4 for v2). The first gate asks that the
-reference is above its null. The second asks that settled accuracy is within 0.10 of the reference. The third
+**Gate.** Write the threshold before any value is read. The profiler uses four gates per version (G1 to G4 for v1, H1 to H4 for v2, K1 to K4 for v3). The first gate asks that the
+reference is above its null. The second asks that settled accuracy is within a stated margin of the reference (0.10 in v1
+and v2, 0.05 in v3). The third
 asks that settled accuracy is above its own null. The fourth asks that the control is not above that null. A failure at any seed
 gives FAILED (or UNTESTABLE when the first gate fails), and the document that reports it says so first.
 

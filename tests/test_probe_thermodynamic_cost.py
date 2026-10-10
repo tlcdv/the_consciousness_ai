@@ -303,3 +303,54 @@ class TestProjectionRule:
         probe.main(["--synthetic", "--sweeps", "4", "--permutations", "3", "--seed", "0", "1", "--output-json", str(out)])
         assert json.loads(out.read_text())["complete"] is True
         assert json.loads(out.with_suffix(".partial.json").read_text())["complete"] is False
+
+
+class TestGateV3:
+    """Gate v3 compares the settled arm with the noise-free binarised arm. Both use the prototype readout."""
+
+    def _profile(self, quant, settled, control, null_q=0.25, null_s=0.25):
+        return {"gate_version": "v3", "accuracy": {"disc_quantizer": quant, "disc_settled": settled, "disc_control": control},
+                "null_p95": {"disc_quantizer": null_q, "disc_settled": null_s}}
+
+    def test_pass_requires_k1_to_k4(self):
+        ok = self._profile(0.6, 0.58, 0.15)
+        assert set(probe.gate(ok)) == {"K1", "K2", "K3", "K4"} and all(probe.gate(ok).values())
+        assert probe.stream_verdict([ok] * 3) == "PASSED"
+
+    def test_margin_is_five_points_and_sharp(self):
+        assert probe.MARGIN_V3 == 0.05
+        assert probe.gate(self._profile(0.60, 0.5501, 0.15))["K2"]
+        assert not probe.gate(self._profile(0.60, 0.5400, 0.15))["K2"]
+
+    def test_quantizer_at_chance_makes_the_stream_untestable(self):
+        weak = self._profile(0.20, 0.60, 0.15)
+        assert not probe.gate(weak)["K1"]
+        assert probe.stream_verdict([weak] * 3).startswith("UNTESTABLE")
+
+    def test_settling_loss_and_control_leak_fail(self):
+        lost = self._profile(0.60, 0.40, 0.15)
+        assert probe.stream_verdict([lost] * 3) == "FAILED" and not probe.gate(lost)["K2"]
+        leaky = self._profile(0.60, 0.58, 0.55)
+        assert not probe.gate(leaky)["K4"]
+
+    def test_v3_arms_and_null_arms(self):
+        assert probe.NULL_ARMS["v3"] == ("disc_quantizer", "disc_settled")
+        assert "disc_control" in probe.GATE_ARMS["v3"]
+
+    def test_recording_seeds_default_to_model_seeds_and_must_match_in_length(self):
+        parser = probe.build_parser()
+        args = parser.parse_args(["--synthetic", "--seed", "1", "2", "3"])
+        assert probe.recording_seeds(args) == [1, 2, 3]
+        args = parser.parse_args(["--synthetic", "--seed", "1", "2", "3", "--recording-seed", "142", "143", "144"])
+        assert probe.recording_seeds(args) == [142, 143, 144]
+        with pytest.raises(SystemExit):
+            probe.recording_seeds(parser.parse_args(["--synthetic", "--seed", "1", "2", "--recording-seed", "9"]))
+
+    def test_v3_run_records_both_seed_kinds_and_binarisation_cost_is_separated(self):
+        out = probe.run(probe.build_parser().parse_args(
+            ["--synthetic", "--gate", "v3", "--seed", "0", "1", "2", "--recording-seed", "10", "11", "12",
+             "--sweeps", "8", "--permutations", "4"]))
+        profiles = out["streams"]["synthetic"]
+        assert out["gate_version"] == "v3" and out["recording_seeds"] == [10, 11, 12]
+        assert [p["model_seed"] for p in profiles] == [0, 1, 2] and [p["seed"] for p in profiles] == [10, 11, 12]
+        assert set(out["gates"]["synthetic"][0]) == {"K1", "K2", "K3", "K4"}

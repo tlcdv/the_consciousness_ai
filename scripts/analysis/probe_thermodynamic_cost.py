@@ -67,6 +67,28 @@ with at least 3 seeds:
 Arms reported in v2 are ridge, disc_quantizer, disc_noisy, disc_settled and disc_control.
 The subspace is fitted on training rows only. It carries the training labels, so the
 permutation null must refit it, and it does.
+
+GATE V3, pre-stated 2026-10-10 after the second run (gate v2) FAILED on workspace_broadcast and
+obs_map and was UNTESTABLE on tectum_content and z_state
+(docs/results/thermodynamic_transduction_gate_v2_2026_10.md). v3 was designed AFTER seeing the v2
+result. It is a follow-up question, not a replication. Gate v2 compared the settled arm with a ridge
+readout of 256 real numbers, and part of the gap came from binarisation and not from the p-bit
+physics. v3 compares the settled arm with the noise-free binarised arm (disc_quantizer), which uses
+the same prototype readout. The difference isolates what the Poisson spike code and the settling add.
+Data: DMTS stimulus sequences from fresh recording seeds 142, 143, 144 (--recording-seed), on the
+same three checkpoints as before (models 42, 43, 44). The checkpoints are not new, only the stimulus
+sequences are. 120 trials per seed, phase sample, BETA = 4, SWEEPS = 30, 100 permutations. Per
+stream, with at least 3 seeds:
+    K1  disc_quantizer accuracy is above the p95 of its own permutation null (the noise-free
+        binarised readout carries the class). If K1 fails at any seed the verdict is UNTESTABLE.
+    K2  disc_settled accuracy >= disc_quantizer accuracy - 0.05. The margin 0.05 was chosen after
+        the v2 gaps between these two arms (0.01 to 0.10) were seen. It is stricter than 0.10 on purpose.
+    K3  disc_settled accuracy is above the p95 of its own permutation null.
+    K4  disc_control (beta 0.05) accuracy is not above that p95.
+    PASSED if K1 to K4 hold at every seed. FAILED if K1 holds and any of K2 to K4 fails.
+    With fewer than 3 seeds the verdict is HYPOTHESIS.
+ridge, disc_noisy and disc_control are reported. disc_noisy minus disc_settled is the effect of
+settling alone. It enters no gate. The gate text above must not be edited after the v3 run.
 Efficiency numbers use ASSUMED hardware constants passed on the command line. They are not
 measurements. The dense prototype memory needs one color class per spin, so the estimate
 counts 256 sequential updates per sweep. That is a cost of this memory, not of the hardware.
@@ -103,13 +125,16 @@ STATUS = "UNPROVEN"
 MIN_SEEDS = 3
 F_MAX_HZ, DT_S, N_BINS = 200.0, 1e-3, 64
 N_FOLDS, N_COMPONENTS, MARGIN = 5, 256, 0.10
+MARGIN_V3 = 0.05
 CONTROL_BETA = 0.05
 RIDGE_LAMBDA = 100.0
 GATE_ARMS = {
     "v1": ("reference", "ridge", "quantizer", "noisy", "settled", "control"),
     "v2": ("ridge", "disc_quantizer", "disc_noisy", "disc_settled", "disc_control"),
+    "v3": ("ridge", "disc_quantizer", "disc_noisy", "disc_settled", "disc_control"),
 }
-NULL_ARMS = {"v1": ("reference", "settled"), "v2": ("ridge", "disc_settled")}
+NULL_ARMS = {"v1": ("reference", "settled"), "v2": ("ridge", "disc_settled"),
+             "v3": ("disc_quantizer", "disc_settled")}
 TRACE_ARMS = ("settled", "disc_settled")
 
 
@@ -415,8 +440,13 @@ def profile_stream(z: torch.Tensor, labels: torch.Tensor, trials: torch.Tensor, 
 
 
 def gate(profile: Dict[str, object]) -> Dict[str, bool]:
-    """The pre-stated gates for one stream and one seed. G1 to G4 for v1, H1 to H4 for v2."""
+    """The pre-stated gates for one stream and one seed. G1 to G4 for v1, H1 to H4 for v2, K1 to K4 for v3."""
     acc, null = profile["accuracy"], profile["null_p95"]
+    if profile.get("gate_version") == "v3":
+        return {"K1": acc["disc_quantizer"] > null["disc_quantizer"],
+                "K2": acc["disc_settled"] >= acc["disc_quantizer"] - MARGIN_V3,
+                "K3": acc["disc_settled"] > null["disc_settled"],
+                "K4": acc["disc_control"] <= null["disc_settled"]}
     if profile.get("gate_version") == "v2":
         return {"H1": acc["ridge"] > null["ridge"],
                 "H2": acc["disc_settled"] >= acc["ridge"] - MARGIN,
@@ -470,8 +500,13 @@ def _record_row(streams, tectum, content, broadcast) -> None:
     streams["z_state"].append(avg_pool2d(z.reshape(1, -1, *z.shape[-2:]), 4).flatten().float())
 
 
-def load_recording(checkpoint: str, n_trials: int, seed: int, phase: str = "sample") -> Recording:
-    """Four streams over DMTS rows in `phase`. Needs the full training stack."""
+def load_recording(checkpoint: str, n_trials: int, seed: int, phase: str = "sample",
+                   env_seed: Optional[int] = None) -> Recording:
+    """Four streams over DMTS rows in `phase`. Needs the full training stack.
+
+    seed seeds the model build. env_seed (default seed) seeds the stimulus sequence and the actions.
+    """
+    env_seed = seed if env_seed is None else env_seed
     import numpy as np
     from scripts.analysis.probe_pci import _seed_everything
     from scripts.analysis.probe_perception_decodability import _build_components
@@ -482,8 +517,8 @@ def load_recording(checkpoint: str, n_trials: int, seed: int, phase: str = "samp
     comps = _build_components("dmts", action_dim=5, seed=seed, mock_semantic=True, load_tectum=checkpoint,
                               latent_mode="continuous", capsule_workspace_source="all_levels")
     env = DMTSEnv(num_trials=n_trials, sample_steps=5, fixation_steps=5, min_delay=12, max_delay=12)
-    obs, info = env.reset(seed=seed)
-    rng, done = np.random.default_rng(seed), False
+    obs, info = env.reset(seed=env_seed)
+    rng, done = np.random.default_rng(env_seed), False
     streams: Dict[str, list] = {k: [] for k in ("tectum_content", "workspace_broadcast", "obs_map", "z_state")}
     meta: List[Tuple[str, int]] = []
     with torch.no_grad():
@@ -510,7 +545,8 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--gate", choices=sorted(GATE_ARMS), default="v2", help="pre-stated gate version")
     parser.add_argument("--phase", default="sample", help="DMTS phase to record (sample, delay)")
     parser.add_argument("--beta", type=float, default=4.0, help="inverse temperature of the p-bits")
-    parser.add_argument("--seed", type=int, nargs="+", default=[0, 1, 2])
+    parser.add_argument("--seed", type=int, nargs="+", default=[0, 1, 2], help="model seeds, one per checkpoint")
+    parser.add_argument("--recording-seed", type=int, nargs="+", help="stimulus seeds, one per --seed (default the same)")
     parser.add_argument("--sweeps", type=int, default=30)
     parser.add_argument("--permutations", type=int, default=100, help="label shuffles for each null")
     parser.add_argument("--streams", nargs="+", help="only these streams (default all recorded)")
@@ -522,11 +558,19 @@ def build_parser() -> argparse.ArgumentParser:
     return parser
 
 
-def _recording(args: argparse.Namespace, index: int, seed: int) -> Recording:
+def recording_seeds(args: argparse.Namespace) -> List[int]:
+    """Stimulus seeds, one per model seed. They default to the model seeds."""
+    seeds = args.recording_seed or list(args.seed)
+    if len(seeds) != len(args.seed):
+        raise SystemExit("give one --recording-seed per --seed")
+    return seeds
+
+
+def _recording(args: argparse.Namespace, index: int, seed: int, env_seed: int) -> Recording:
     if args.synthetic:
-        return synthetic_recording(seed)
+        return synthetic_recording(env_seed)
     paths = args.checkpoint
-    return load_recording(paths[index % len(paths)], args.episodes, seed, args.phase)
+    return load_recording(paths[index % len(paths)], args.episodes, seed, args.phase, env_seed)
 
 
 def build_report(args: argparse.Namespace, assumptions: Dict[str, float],
@@ -534,6 +578,7 @@ def build_report(args: argparse.Namespace, assumptions: Dict[str, float],
     return {"status": STATUS, "complete": complete, "source": "synthetic" if args.synthetic else args.checkpoint,
             "phase": args.phase, "gate_version": args.gate, "beta": args.beta, "sweeps": args.sweeps,
             "permutations": args.permutations, "assumptions": assumptions, "seeds": list(args.seed),
+            "recording_seeds": recording_seeds(args),
             "verdicts": {n: stream_verdict(p) for n, p in per_stream.items()},
             "gates": {n: [gate(p) for p in ps] for n, ps in per_stream.items()}, "streams": per_stream}
 
@@ -552,15 +597,17 @@ def run(args: argparse.Namespace) -> Dict[str, object]:
                    "pbit_power_w": args.pbit_power_w, "pbit_rate_hz": args.pbit_rate_hz}
     per_stream: Dict[str, List[Dict[str, object]]] = {}
     started = time.time()
+    stim = recording_seeds(args)
     for index, seed in enumerate(args.seed):
-        rec = _recording(args, index, seed)
-        _progress(f"seed {seed} recorded, {len(rec.labels)} rows", started)
+        rec = _recording(args, index, seed, stim[index])
+        _progress(f"model {seed} stimulus {stim[index]} recorded, {len(rec.labels)} rows", started)
         for name, z in rec.streams.items():
             if args.streams and name not in args.streams:
                 continue
             per_stream.setdefault(name, []).append(profile_stream(
-                z, rec.labels, rec.trials, seed, args.beta, args.sweeps, args.permutations, assumptions, args.gate))
-            _progress(f"seed {seed} stream {name} done", started)
+                z, rec.labels, rec.trials, stim[index], args.beta, args.sweeps, args.permutations, assumptions, args.gate))
+            per_stream[name][-1]["model_seed"] = seed
+            _progress(f"model {seed} stimulus {stim[index]} stream {name} done", started)
         if args.output_json:
             partial = build_report(args, assumptions, per_stream, complete=False)
             Path(args.output_json).with_suffix(".partial.json").write_text(json.dumps(partial, indent=2))
@@ -577,7 +624,7 @@ def print_report(report: Dict[str, object]) -> None:
             failed = [k for k, ok in g.items() if not ok]
             arms = "  ".join(f"{k} {v:.3f}" for k, v in p["accuracy"].items())
             nulls = "  ".join(f"{k} {v:.3f}" for k, v in p["null_p95"].items())
-            print(f"  seed {p['seed']}  gates {'all pass' if not failed else 'FAIL ' + ','.join(failed)}  "
+            print(f"  model {p.get('model_seed', p['seed'])} stimulus {p['seed']}  gates {'all pass' if not failed else 'FAIL ' + ','.join(failed)}  "
                   f"{arms}  | null p95 {nulls}  | energy {p['pbit_energy'][0]:.1f}->{p['pbit_energy'][-1]:.1f}  "
                   f"rows {p['n_rows']}")
 
