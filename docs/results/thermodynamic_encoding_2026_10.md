@@ -199,3 +199,9 @@ result says nothing about consciousness or Phi.
 3. **Sweep the equalisation strength** (the exponent and the shrinkage) with a held-out set of draws, to find whether `half` or `full` is
    better and whether tail axes should be dropped.
 4. **A noisy attractor memory across the delay phase**, and then the policy in the loop.
+
+## Follow-up, 2026-10-10
+
+The main reservation above (readouts fitted on clean vectors) was tested in `docs/results/thermodynamic_matched_readout_2026_10.md`.
+With readouts trained on the channel's own noisy outputs, the budget saving over plain stayed at the same size (`half` 16 to 256 times,
+`full` 64 to 1024 times, where both reach 95%). The gain did not come from a brittle plain readout.
