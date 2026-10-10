@@ -175,7 +175,14 @@ dimensions (`docs/results/thermodynamic_encoding_2026_10.md`). The saving stayed
 own noisy outputs (`docs/results/thermodynamic_matched_readout_2026_10.md`). It is still an exploratory finding. The cost of the transform is
 not counted, and the encoded vectors of `workspace_broadcast` have a lower clean ceiling.
 
-**Open experiments, in order.** A cost for the transform. A sweep of the
+**Cost of the transform (2026-10-10).** Counting the multiply-adds of the pre-processing changes the picture
+(`docs/results/thermodynamic_transform_cost_2026_10.md`). For the raw 256-D streams the dense rotation pays for itself only if one
+multiply-add costs less than about 60 channel events. A sourced reference scenario (a 45 nm digital multiply-add of about 4.6 pJ, against a
+modelled cell energy of about 2 fJ) gives a ratio near 2300, where it does not pay. For the larger streams the scaling folds into the PCA
+matrix at no cost, but that projection dominates the total energy. So the equalisation is a lever on fidelity per channel event, and a lever
+on total energy only where the pre-processing is cheap.
+
+**Open experiments, in order.** Rank-truncated equalisation for the raw streams. A sweep of the
 equalisation strength on held-out draws. A noisy attractor memory across the delay phase. The policy in the loop.
 
 ## 4. Files
@@ -193,4 +200,5 @@ equalisation strength on held-out draws. A noisy attractor memory across the del
 | `scripts/analysis/probe_thermodynamic_fidelity.py` | Dose-response probe for the stochastic channel |
 | `scripts/analysis/probe_thermodynamic_encoding.py` | Variance-equalised encoding arms on the cached recordings |
 | `scripts/analysis/probe_thermodynamic_matched.py` | The same arms with a readout trained on channel outputs |
+| `scripts/analysis/probe_thermodynamic_transform_cost.py` | Operation counts of the transform and the break-even energy ratio |
 | `tests/test_substrate_isolation.py` | Import graph guard |
