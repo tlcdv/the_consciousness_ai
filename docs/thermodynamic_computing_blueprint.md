@@ -169,8 +169,13 @@ of the representation. Survival at infinite budget follows from an unbiased deco
 - Energy estimates use assumed constants. They are assumptions and not measurements. No energy per event has been measured here.
 - A result about transduction does not change any rubric entry or the instrument count.
 
-**Open experiments, in order.** Variance-equalised encoding (gain allocation across directions). A readout trained on channel outputs.
-A noisy attractor memory across the delay phase. The policy in the loop. The penalty grid below 0.001 for the entries at its edge.
+**Variance-equalised encoding (2026-10-10).** Rotating each vector into its training principal axes and scaling the axes before the
+channel cut the events needed to reach a stated accuracy by 16 to 256 times where both encodings reach it, at equal numbers of
+dimensions (`docs/results/thermodynamic_encoding_2026_10.md`). It is an exploratory finding. The readout was fitted on clean vectors,
+the cost of the transform is not counted, and the encoded vectors of `workspace_broadcast` have a lower clean ceiling.
+
+**Open experiments, in order.** A readout trained on channel outputs for every encoding. A cost for the transform. A sweep of the
+equalisation strength on held-out draws. A noisy attractor memory across the delay phase. The policy in the loop.
 
 ## 4. Files
 
@@ -185,4 +190,5 @@ A noisy attractor memory across the delay phase. The policy in the loop. The pen
 | `models/validation/brian2_binding_validation.py` | Spike train check against Brian2 (optional dependency) |
 | `scripts/analysis/probe_thermodynamic_cost.py` | Offline cost profile with the superseded pass/fail gates |
 | `scripts/analysis/probe_thermodynamic_fidelity.py` | Dose-response probe for the stochastic channel |
+| `scripts/analysis/probe_thermodynamic_encoding.py` | Variance-equalised encoding arms on the cached recordings |
 | `tests/test_substrate_isolation.py` | Import graph guard |

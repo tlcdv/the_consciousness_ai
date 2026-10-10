@@ -119,11 +119,12 @@ class Readout:
         return ((x - self.mean_x) @ self.weights + self.mean_y).argmax(1)
 
 
-def select_penalty(x: torch.Tensor, y: torch.Tensor, trials: torch.Tensor, seed: int) -> float:
+def select_penalty(x: torch.Tensor, y: torch.Tensor, trials: torch.Tensor, seed: int,
+                   penalties: Sequence[float] = PENALTIES) -> float:
     """Penalty with the lowest 5-fold grouped cross validation error on the rows given. Ties go larger."""
     folds = make_folds(trials, seed)
-    best, best_error = PENALTIES[-1], float("inf")
-    for penalty in PENALTIES:
+    best, best_error = penalties[-1], float("inf")
+    for penalty in penalties:
         wrong = 0
         for held in folds:
             wrong += int((Readout(x[~held], y[~held], penalty).predict(x[held]) != y[held]).sum())

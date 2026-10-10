@@ -141,3 +141,12 @@ was measured.
 3. **The delay phase** and a memory test: hold the sample in a noisy attractor memory across the 12-step delay.
 4. **The policy in the loop:** feed round-tripped vectors to the agent and measure task accuracy against budget.
 5. **Penalty grid edge:** extend the grid below 0.001 and rerun the reference for the entries at the edge.
+
+## Correction, 2026-10-10 (penalty grid)
+
+The reference table above used a penalty grid with a lower limit of 0.001, and several entries sat at that limit. A later run with
+the grid extended to 1e-5 (`docs/results/thermodynamic_encoding_2026_10.md`, the plain arm) raised the clean accuracy of model 44
+`z_state` from 0.483 to 0.722, of model 44 `tectum_content` from 0.335 to 0.424, and of model 42 `z_state` from 0.751 to 0.769.
+The other entries moved by 0.01 or less. So the clean accuracies and the retention values of those three entries in this document
+are understated, and their budgets describe a readout that was not at its optimum. The caveat above that said so is confirmed.
+The ordering of the streams by cost is unchanged for the other entries.
