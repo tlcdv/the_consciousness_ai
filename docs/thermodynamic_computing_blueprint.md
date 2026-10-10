@@ -129,10 +129,13 @@ citing any figure.
 
 ## 3. Substrate independence protocol
 
-The profiler `scripts/analysis/probe_thermodynamic_cost.py` implements stages 1 to 6 below with a
-nearest class centroid readout and a prototype memory. Its first run (2026-10-10, 3 seeds) was
-UNTESTABLE on all four streams, so the protocol has not yet produced a transduction result
-(`docs/results/thermodynamic_transduction_2026_10.md`).
+The profiler `scripts/analysis/probe_thermodynamic_cost.py` implements stages 1 to 6 below. Two runs
+exist (3 seeds each, 2026-10-10). Gate v1 used a nearest class centroid reference and was UNTESTABLE on all
+four streams (`docs/results/thermodynamic_transduction_2026_10.md`). Gate v2 used a ridge reference and a
+memory built from the ridge subspace. It FAILED on `workspace_broadcast` and `obs_map` and was UNTESTABLE on
+`tectum_content` and `z_state` (`docs/results/thermodynamic_transduction_gate_v2_2026_10.md`). In the two
+testable streams the class stayed above the permutation null after transduction and settling, and fell more
+than the pre-stated margin below the ridge readout. The protocol has not yet produced a PASS.
 
 **Stages.**
 
@@ -143,16 +146,17 @@ UNTESTABLE on all four streams, so the protocol has not yet produced a transduct
    trial and a label-permutation null. This is the reference accuracy. If it is not above its null,
    the stream is UNTESTABLE and the protocol stops there for that stream.
 3. Transduce the vectors with the Poisson rate code into spins.
-4. Settle them in a p-bit memory of class prototypes (6 patterns in 256 spins, far below capacity),
-   at a stated beta and sweep count.
+4. Settle them in a p-bit memory of class prototypes (6 patterns in 256 spins), at a stated beta and sweep
+   count. Gate v2 builds the prototypes in the ridge subspace and stores them with the projection rule, which
+   keeps correlated prototypes as fixed points.
 5. Read the class from the settled state by largest overlap with a prototype.
 6. Compare accuracies per seed against the reference and against a beta near 0 control. Report the
    range over seeds, not the best seed.
 
-**Gate.** Write the threshold before any value is read. The profiler uses four gates. G1 the
-reference is above its null. G2 settled accuracy is within 0.10 of the reference. G3 settled
-accuracy is above its own null. G4 the control is not above that null. A failure at any seed
-gives FAILED (or UNTESTABLE when G1 fails), and the document that reports it says so first.
+**Gate.** Write the threshold before any value is read. The profiler uses four gates per version (G1 to G4 for v1, H1 to H4 for v2). The first gate asks that the
+reference is above its null. The second asks that settled accuracy is within 0.10 of the reference. The third
+asks that settled accuracy is above its own null. The fourth asks that the control is not above that null. A failure at any seed
+gives FAILED (or UNTESTABLE when the first gate fails), and the document that reports it says so first.
 
 **Controls that must be able to fail.**
 

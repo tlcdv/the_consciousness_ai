@@ -41,6 +41,32 @@ stream, with at least 3 seeds:
     PASSED if G1 to G4 hold at every seed. FAILED if G1 holds and any of G2 to G4 fails.
     With fewer than 3 seeds the verdict is HYPOTHESIS.
 Permutations shuffle the class label between whole trials and rerun the full pipeline.
+
+GATE V2, pre-stated 2026-10-10 after the first run (gate v1) was UNTESTABLE on all four streams
+(docs/results/thermodynamic_transduction_2026_10.md). v1 is unchanged and still runs with
+--gate v1. v2 differs in three ways, all fixed before any v2 value was read. The reference is
+the ridge readout, with its own label-permutation null. The p-bit memory is built from the
+discriminative subspace. That subspace is the orthonormal basis B (n x K) of the ridge weights
+fitted on the training fold. Every vector is projected as z B B^T, divided by the training
+standard deviation of the projection, then transduced and settled as in v1. Prototypes are the
+sign of the class means of the projected training vectors. The couplings use the projection rule
+J = P^T (P P^T)^+ P, symmetrised, with a zero diagonal (the pseudo-inverse equals the inverse
+for independent prototypes), in place of the Hebbian rule. Class
+prototypes are correlated, and the Hebbian rule mixes correlated patterns. The rule was chosen
+on synthetic data, before any v2 value from a checkpoint was read. Settling is read from the
+final sweep, as in v1 (a time-averaged readout was tried on synthetic data and changed nothing). The default is 120 DMTS trials per
+seed (about 20 per class), BETA = 4, SWEEPS = 30, 100 permutations, margin 0.10. Per stream,
+with at least 3 seeds:
+    H1  ridge accuracy is above the p95 of its own permutation null. If H1 fails at any seed
+        the verdict is UNTESTABLE.
+    H2  disc_settled accuracy >= ridge accuracy - 0.10.
+    H3  disc_settled accuracy is above the p95 of the permutation null of the disc_settled
+        pipeline (labels shuffled before the subspace is fitted, so the subspace is refitted).
+    H4  disc_control (beta 0.05) accuracy is not above that p95.
+    PASSED if H1 to H4 hold at every seed. FAILED if H1 holds and any of H2 to H4 fails.
+Arms reported in v2 are ridge, disc_quantizer, disc_noisy, disc_settled and disc_control.
+The subspace is fitted on training rows only. It carries the training labels, so the
+permutation null must refit it, and it does.
 Efficiency numbers use ASSUMED hardware constants passed on the command line. They are not
 measurements. The dense prototype memory needs one color class per spin, so the estimate
 counts 256 sequential updates per sweep. That is a cost of this memory, not of the hardware.
@@ -56,6 +82,7 @@ from __future__ import annotations
 import argparse
 import json
 import sys
+import time
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Dict, List, Optional, Sequence, Tuple
@@ -78,6 +105,12 @@ F_MAX_HZ, DT_S, N_BINS = 200.0, 1e-3, 64
 N_FOLDS, N_COMPONENTS, MARGIN = 5, 256, 0.10
 CONTROL_BETA = 0.05
 RIDGE_LAMBDA = 100.0
+GATE_ARMS = {
+    "v1": ("reference", "ridge", "quantizer", "noisy", "settled", "control"),
+    "v2": ("ridge", "disc_quantizer", "disc_noisy", "disc_settled", "disc_control"),
+}
+NULL_ARMS = {"v1": ("reference", "settled"), "v2": ("ridge", "disc_settled")}
+TRACE_ARMS = ("settled", "disc_settled")
 
 
 @dataclass
@@ -162,9 +195,26 @@ def entropy_production(energy: torch.Tensor, beta: float) -> torch.Tensor:
     return beta * (energy[:-1] - energy[1:])
 
 
-def settle(prototypes: torch.Tensor, spins: torch.Tensor, beta: float, sweeps: int, seed: int):
-    """Settle a copy of spins in the Hebbian memory of prototypes. Returns the trace dict."""
-    sampler = BlockGibbsSampler(hebbian_couplings(prototypes), torch.zeros(prototypes.shape[1]), beta, seed=seed)
+def projection_couplings(patterns: torch.Tensor) -> torch.Tensor:
+    """Projection rule J = P^T (P P^T)^-1 P, symmetrised, zero diagonal, for patterns [P, n].
+
+    Before the diagonal is removed, J maps every stored pattern to itself even when the patterns
+    are correlated. The Hebbian rule does that only for orthogonal patterns.
+    A pseudo-inverse is used, so identical or dependent prototypes do not raise. Such prototypes
+    cannot be told apart, and their classes read out at chance.
+    """
+    projector = patterns.T @ torch.linalg.pinv(patterns @ patterns.T) @ patterns
+    projector = (projector + projector.T) / 2
+    return projector - torch.diag(torch.diagonal(projector))
+
+
+COUPLING_RULES = {"hebbian": hebbian_couplings, "projection": projection_couplings}
+
+
+def settle(prototypes: torch.Tensor, spins: torch.Tensor, beta: float, sweeps: int, seed: int,
+           rule: str = "hebbian"):
+    """Settle a copy of spins in the memory of prototypes built with `rule`. Returns the trace dict."""
+    sampler = BlockGibbsSampler(COUPLING_RULES[rule](prototypes), torch.zeros(prototypes.shape[1]), beta, seed=seed)
     return gibbs_energy_trace(sampler, spins.clone(), sweeps)
 
 
@@ -214,10 +264,37 @@ def prepare_folds(z: torch.Tensor, trials: torch.Tensor, seed: int) -> List[Fold
     return folds
 
 
-def _ridge_predict(ztr: torch.Tensor, ytr: torch.Tensor, zte: torch.Tensor, n_classes: int) -> torch.Tensor:
+def ridge_weights(ztr: torch.Tensor, ytr: torch.Tensor, n_classes: int) -> torch.Tensor:
+    """Ridge regression weights [n, n_classes] from z to one-hot labels."""
     onehot = torch.nn.functional.one_hot(ytr, n_classes).to(ztr.dtype)
     gram = ztr.T @ ztr + RIDGE_LAMBDA * torch.eye(ztr.shape[1], dtype=ztr.dtype)
-    return (zte @ torch.linalg.solve(gram, ztr.T @ onehot)).argmax(1)
+    return torch.linalg.solve(gram, ztr.T @ onehot)
+
+
+def discriminative_basis(ztr: torch.Tensor, ytr: torch.Tensor, n_classes: int) -> torch.Tensor:
+    """Orthonormal basis [n, n_classes] of the span of the ridge weights."""
+    return torch.linalg.qr(ridge_weights(ztr, ytr, n_classes))[0]
+
+
+def _disc_predictions(fold: FoldData, ytr, beta, sweeps, seed, arms, n_classes):
+    """Arms that read the discriminative subspace: quantizer, noisy, settled, control."""
+    basis = discriminative_basis(fold.ztr, ytr, n_classes)
+    proj = basis @ basis.T
+    dtr, dte = fold.ztr @ proj, fold.zte @ proj
+    scale = dtr.std().clamp_min(1e-8)
+    dtr, dte = dtr / scale, dte / scale
+    protos = quantize(class_means(dtr, ytr, n_classes))
+    spins = to_spins(dte, seed + 5000)
+    out = {}
+    if "disc_quantizer" in arms:
+        out["disc_quantizer"] = (predict_by_overlap(quantize(dte), protos), None)
+    if "disc_noisy" in arms:
+        out["disc_noisy"] = (predict_by_overlap(spins, protos), None)
+    for arm, b in (("disc_settled", beta), ("disc_control", CONTROL_BETA)):
+        if arm in arms:
+            trace = settle(protos, spins, b, sweeps, seed, rule="projection")
+            out[arm] = (predict_by_overlap(trace["spins"], protos), trace["energy"])
+    return out
 
 
 def _fold_predictions(fold: FoldData, ytr, protos, beta, sweeps, seed, arms, n_classes):
@@ -226,7 +303,7 @@ def _fold_predictions(fold: FoldData, ytr, protos, beta, sweeps, seed, arms, n_c
     if "reference" in arms:
         out["reference"] = (_cosine(fold.zte, class_means(fold.ztr, ytr, n_classes)).argmax(1), None)
     if "ridge" in arms:
-        out["ridge"] = (_ridge_predict(fold.ztr, ytr, fold.zte, n_classes), None)
+        out["ridge"] = ((fold.zte @ ridge_weights(fold.ztr, ytr, n_classes)).argmax(1), None)
     if "quantizer" in arms:
         out["quantizer"] = (predict_by_overlap(quantize(fold.zte), protos), None)
     if "noisy" in arms:
@@ -235,6 +312,8 @@ def _fold_predictions(fold: FoldData, ytr, protos, beta, sweeps, seed, arms, n_c
         if arm in arms:
             trace = settle(protos, fold.spins, b, sweeps, seed)
             out[arm] = (predict_by_overlap(trace["spins"], protos), trace["energy"])
+    if any(a.startswith("disc_") for a in arms):
+        out.update(_disc_predictions(fold, ytr, beta, sweeps, seed, arms, n_classes))
     return out
 
 
@@ -248,7 +327,7 @@ def run_arms(folds: Sequence[FoldData], labels: torch.Tensor, n_classes: int, be
         protos = quantize(class_means(fold.ztr, ytr, n_classes))
         for arm, (pred, trace) in _fold_predictions(fold, ytr, protos, beta, sweeps, seed + k, arms, n_classes).items():
             correct[arm] += int((pred == labels[fold.test]).sum())
-            if arm == "settled":
+            if arm in TRACE_ARMS:
                 traces.append(trace)
     result: Dict[str, object] = {a: correct[a] / len(labels) for a in arms}
     if traces:
@@ -256,14 +335,16 @@ def run_arms(folds: Sequence[FoldData], labels: torch.Tensor, n_classes: int, be
     return result
 
 
-def permutation_null(folds, labels, trials, n_classes, beta, sweeps, seed, n_perm: int) -> Dict[str, List[float]]:
-    """Reference and settled accuracy under n_perm trial-level label shuffles."""
+def permutation_null(folds, labels, trials, n_classes, beta, sweeps, seed, n_perm: int,
+                     arms: Sequence[str] = NULL_ARMS["v1"]) -> Dict[str, List[float]]:
+    """Accuracy of `arms` under n_perm trial-level label shuffles. The whole pipeline is refitted."""
     generator = torch.Generator().manual_seed(seed + 7919)
-    out: Dict[str, List[float]] = {"reference": [], "settled": []}
+    out: Dict[str, List[float]] = {a: [] for a in arms}
     for _ in range(n_perm):
         shuffled = permute_labels(labels, trials, generator)
-        r = run_arms(folds, shuffled, n_classes, beta, sweeps, seed, ("reference", "settled"))
-        out["reference"].append(r["reference"]); out["settled"].append(r["settled"])
+        r = run_arms(folds, shuffled, n_classes, beta, sweeps, seed, arms)
+        for a in arms:
+            out[a].append(r[a])
     return out
 
 
@@ -309,20 +390,20 @@ def energy_estimate(n_spins: int, n_chains: int, n_sweeps: int, n_colors: int,
 
 
 def profile_stream(z: torch.Tensor, labels: torch.Tensor, trials: torch.Tensor, seed: int, beta: float,
-                   sweeps: int, n_perm: int, assumptions: Dict[str, float]) -> Dict[str, object]:
+                   sweeps: int, n_perm: int, assumptions: Dict[str, float],
+                   version: str = "v1") -> Dict[str, object]:
     """Full profile of one stream for one seed."""
     n_classes = int(labels.max()) + 1
     folds = prepare_folds(z, trials, seed)
-    arms = run_arms(folds, labels, n_classes, beta, sweeps, seed,
-                    ("reference", "ridge", "quantizer", "noisy", "settled", "control"))
-    null = permutation_null(folds, labels, trials, n_classes, beta, sweeps, seed, n_perm)
+    arms = run_arms(folds, labels, n_classes, beta, sweeps, seed, GATE_ARMS[version])
+    null = permutation_null(folds, labels, trials, n_classes, beta, sweeps, seed, n_perm, NULL_ARMS[version])
     energy = arms.pop("energy")
     zall = normalise(z, z[:1])[0]
     fep = fep_relaxation_trace(pca_model(zall, 8, 1.0), zall[0], sweeps)
     n_spins = min(z.shape[1], N_COMPONENTS)
     colors = n_spins  # a dense memory needs one color class per spin
     return {
-        "seed": seed, "n_rows": len(labels), "n_trials": int(trials.unique().numel()), "n_classes": n_classes,
+        "seed": seed, "gate_version": version, "n_rows": len(labels), "n_trials": int(trials.unique().numel()), "n_classes": n_classes,
         "class_counts": torch.bincount(labels, minlength=n_classes).tolist(), "accuracy": arms,
         "null_p95": {k: p95(v) for k, v in null.items()},
         "null_mean": {k: sum(v) / len(v) for k, v in null.items()},
@@ -334,8 +415,13 @@ def profile_stream(z: torch.Tensor, labels: torch.Tensor, trials: torch.Tensor, 
 
 
 def gate(profile: Dict[str, object]) -> Dict[str, bool]:
-    """The pre-stated gates G1 to G4 for one stream and one seed."""
+    """The pre-stated gates for one stream and one seed. G1 to G4 for v1, H1 to H4 for v2."""
     acc, null = profile["accuracy"], profile["null_p95"]
+    if profile.get("gate_version") == "v2":
+        return {"H1": acc["ridge"] > null["ridge"],
+                "H2": acc["disc_settled"] >= acc["ridge"] - MARGIN,
+                "H3": acc["disc_settled"] > null["disc_settled"],
+                "H4": acc["disc_control"] <= null["disc_settled"]}
     return {"G1": acc["reference"] > null["reference"],
             "G2": acc["settled"] >= acc["reference"] - MARGIN,
             "G3": acc["settled"] > null["settled"],
@@ -343,11 +429,11 @@ def gate(profile: Dict[str, object]) -> Dict[str, bool]:
 
 
 def stream_verdict(profiles: Sequence[Dict[str, object]]) -> str:
-    """Verdict across seeds for one stream."""
+    """Verdict across seeds for one stream. The first gate of each version is the testability gate."""
     gates = [gate(p) for p in profiles]
     if len(profiles) < MIN_SEEDS:
         return "HYPOTHESIS (fewer than 3 seeds)"
-    if not all(g["G1"] for g in gates):
+    if not all(next(iter(g.values())) for g in gates):
         return "UNTESTABLE (the stream does not carry the class at every seed)"
     return "PASSED" if all(all(g.values()) for g in gates) else "FAILED"
 
@@ -356,15 +442,20 @@ def stream_verdict(profiles: Sequence[Dict[str, object]]) -> str:
 
 
 def synthetic_recording(seed: int, n_classes: int = 6, n_trials: int = 60, steps: int = 5, dim: int = 96,
-                        separation: float = 1.0) -> Recording:
-    """Class centroids plus noise, several rows per trial. A per-trial offset mimics slow drift."""
+                        separation: float = 1.0, nuisance: float = 0.0) -> Recording:
+    """Class centroids plus noise, several rows per trial. A per-trial offset mimics slow drift.
+
+    nuisance scales 8 fixed directions with a random coefficient per row. They carry no class.
+    """
     gen = torch.Generator().manual_seed(seed)
     centroids = separation * torch.randn(n_classes, dim, generator=gen)
+    directions = torch.randn(8, dim, generator=gen)
     rows, labels, trials = [], [], []
     for t in range(n_trials):
         offset = 0.3 * torch.randn(dim, generator=gen)
         for _ in range(steps):
-            rows.append(centroids[t % n_classes] + offset + 0.5 * torch.randn(dim, generator=gen))
+            drift = nuisance * torch.randn(8, generator=gen) @ directions
+            rows.append(centroids[t % n_classes] + offset + drift + 0.5 * torch.randn(dim, generator=gen))
             labels.append(t % n_classes); trials.append(t)
     return Recording({"synthetic": torch.stack(rows)}, torch.tensor(labels), torch.tensor(trials))
 
@@ -415,7 +506,8 @@ def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--checkpoint", nargs="+", help="tectum.pt per seed (one path is reused for every seed)")
     parser.add_argument("--synthetic", action="store_true", help="use synthetic vectors, no checkpoint")
-    parser.add_argument("--episodes", type=int, default=60, help="DMTS trials to record per seed")
+    parser.add_argument("--episodes", type=int, default=120, help="DMTS trials to record per seed")
+    parser.add_argument("--gate", choices=sorted(GATE_ARMS), default="v2", help="pre-stated gate version")
     parser.add_argument("--phase", default="sample", help="DMTS phase to record (sample, delay)")
     parser.add_argument("--beta", type=float, default=4.0, help="inverse temperature of the p-bits")
     parser.add_argument("--seed", type=int, nargs="+", default=[0, 1, 2])
@@ -425,6 +517,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--gpu-flops-per-joule", type=float, default=6.7e10, help="ASSUMED GPU efficiency")
     parser.add_argument("--pbit-power-w", type=float, default=1.0, help="ASSUMED p-bit chip power (W)")
     parser.add_argument("--pbit-rate-hz", type=float, default=5e7, help="ASSUMED p-bit update rate (Hz)")
+    parser.add_argument("--threads", type=int, default=1, help="torch threads (1 is fastest on these small matrices)")
     parser.add_argument("--output-json", help="write the full report here")
     return parser
 
@@ -436,42 +529,57 @@ def _recording(args: argparse.Namespace, index: int, seed: int) -> Recording:
     return load_recording(paths[index % len(paths)], args.episodes, seed, args.phase)
 
 
+def build_report(args: argparse.Namespace, assumptions: Dict[str, float],
+                 per_stream: Dict[str, List[Dict[str, object]]], complete: bool) -> Dict[str, object]:
+    return {"status": STATUS, "complete": complete, "source": "synthetic" if args.synthetic else args.checkpoint,
+            "phase": args.phase, "gate_version": args.gate, "beta": args.beta, "sweeps": args.sweeps,
+            "permutations": args.permutations, "assumptions": assumptions, "seeds": list(args.seed),
+            "verdicts": {n: stream_verdict(p) for n, p in per_stream.items()},
+            "gates": {n: [gate(p) for p in ps] for n, ps in per_stream.items()}, "streams": per_stream}
+
+
+def _progress(message: str, started: float) -> None:
+    print(f"[{time.time() - started:7.0f} s] {message}", file=sys.stderr, flush=True)
+
+
 def run(args: argparse.Namespace) -> Dict[str, object]:
     if not args.synthetic and not args.checkpoint:
         raise SystemExit("give --checkpoint or --synthetic")
     if args.checkpoint and len(args.checkpoint) not in (1, len(args.seed)):
         raise SystemExit("give one --checkpoint, or one per --seed")
+    torch.set_num_threads(args.threads)
     assumptions = {"gpu_flops_per_joule": args.gpu_flops_per_joule,
                    "pbit_power_w": args.pbit_power_w, "pbit_rate_hz": args.pbit_rate_hz}
     per_stream: Dict[str, List[Dict[str, object]]] = {}
+    started = time.time()
     for index, seed in enumerate(args.seed):
         rec = _recording(args, index, seed)
+        _progress(f"seed {seed} recorded, {len(rec.labels)} rows", started)
         for name, z in rec.streams.items():
             if args.streams and name not in args.streams:
                 continue
             per_stream.setdefault(name, []).append(profile_stream(
-                z, rec.labels, rec.trials, seed, args.beta, args.sweeps, args.permutations, assumptions))
-    return {"status": STATUS, "source": "synthetic" if args.synthetic else args.checkpoint,
-            "phase": args.phase, "beta": args.beta, "sweeps": args.sweeps, "permutations": args.permutations,
-            "assumptions": assumptions, "seeds": list(args.seed),
-            "verdicts": {n: stream_verdict(p) for n, p in per_stream.items()},
-            "gates": {n: [gate(p) for p in ps] for n, ps in per_stream.items()}, "streams": per_stream}
+                z, rec.labels, rec.trials, seed, args.beta, args.sweeps, args.permutations, assumptions, args.gate))
+            _progress(f"seed {seed} stream {name} done", started)
+        if args.output_json:
+            partial = build_report(args, assumptions, per_stream, complete=False)
+            Path(args.output_json).with_suffix(".partial.json").write_text(json.dumps(partial, indent=2))
+    return build_report(args, assumptions, per_stream, complete=True)
 
 
 def print_report(report: Dict[str, object]) -> None:
-    print(f"instruments: {report['status']}   source: {report['source']}   beta {report['beta']}  "
-          f"sweeps {report['sweeps']}  permutations {report['permutations']}")
+    print(f"instruments: {report['status']}   source: {report['source']}   gate {report['gate_version']}   "
+          f"beta {report['beta']}  sweeps {report['sweeps']}  permutations {report['permutations']}")
     print(f"assumed constants (not measured): {report['assumptions']}")
     for name, profiles in report["streams"].items():
         print(f"\n{name}: {report['verdicts'][name]}")
         for p, g in zip(profiles, report["gates"][name]):
-            a, n = p["accuracy"], p["null_p95"]
             failed = [k for k, ok in g.items() if not ok]
+            arms = "  ".join(f"{k} {v:.3f}" for k, v in p["accuracy"].items())
+            nulls = "  ".join(f"{k} {v:.3f}" for k, v in p["null_p95"].items())
             print(f"  seed {p['seed']}  gates {'all pass' if not failed else 'FAIL ' + ','.join(failed)}  "
-                  f"ref {a['reference']:.3f} ridge {a['ridge']:.3f} quant {a['quantizer']:.3f} noisy {a['noisy']:.3f} "
-                  f"settled {a['settled']:.3f} control {a['control']:.3f}  "
-                  f"null p95 ref {n['reference']:.3f} settled {n['settled']:.3f}  "
-                  f"energy {p['pbit_energy'][0]:.1f}->{p['pbit_energy'][-1]:.1f}  rows {p['n_rows']}")
+                  f"{arms}  | null p95 {nulls}  | energy {p['pbit_energy'][0]:.1f}->{p['pbit_energy'][-1]:.1f}  "
+                  f"rows {p['n_rows']}")
 
 
 def main(argv: Optional[Sequence[str]] = None) -> None:

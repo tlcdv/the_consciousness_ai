@@ -200,3 +200,106 @@ class TestCli:
         done = subprocess.run([sys.executable, "scripts/analysis/probe_thermodynamic_cost.py", "--help"],
                               cwd=ROOT, capture_output=True, text=True)
         assert done.returncode == 0 and "--output-json" in done.stdout
+
+
+class TestGateV2:
+    """Gate v2 reads a discriminative subspace. Nuisance directions without class content are the
+    failure that gate v1 showed on real checkpoints, so the synthetic case includes them."""
+
+    def _fold_inputs(self, nuisance: float):
+        rec = probe.synthetic_recording(0, separation=0.5, nuisance=nuisance)
+        z = rec.streams["synthetic"]
+        return probe.prepare_folds(z, rec.trials, 0), rec.labels, rec
+
+    def test_basis_is_orthonormal_and_spans_the_ridge_weights(self):
+        rec = probe.synthetic_recording(1, separation=0.5)
+        z = rec.streams["synthetic"].double()
+        ztr, _ = probe.normalise(z, z[:1])
+        basis = probe.discriminative_basis(ztr, rec.labels, 6)
+        weights = probe.ridge_weights(ztr, rec.labels, 6)
+        assert torch.allclose(basis.T @ basis, torch.eye(6, dtype=torch.float64), atol=1e-9)
+        assert torch.allclose(basis @ (basis.T @ weights), weights, atol=1e-9)
+
+    def test_ridge_weights_solve_the_normal_equations(self):
+        gen = torch.Generator().manual_seed(4)
+        z = torch.randn(50, 8, generator=gen, dtype=torch.float64)
+        y = torch.arange(50) % 3
+        w = probe.ridge_weights(z, y, 3)
+        onehot = torch.nn.functional.one_hot(y, 3).double()
+        residual = (z.T @ z + probe.RIDGE_LAMBDA * torch.eye(8, dtype=torch.float64)) @ w - z.T @ onehot
+        assert residual.abs().max() < 1e-9
+
+    def test_subspace_memory_survives_nuisance_that_defeats_the_centroid_memory(self):
+        folds, labels, _ = self._fold_inputs(nuisance=1.0)
+        acc = probe.run_arms(folds, labels, 6, 4.0, 20, 0,
+                             ("reference", "ridge", "settled", "disc_settled", "disc_control"))
+        assert acc["ridge"] > 0.9
+        assert acc["reference"] < 0.5 and acc["settled"] < 0.5
+        assert acc["disc_settled"] > acc["settled"] + 0.3
+        assert acc["disc_control"] < 0.3
+
+    def test_v2_null_is_refitted_and_sits_at_chance(self):
+        folds, labels, rec = self._fold_inputs(nuisance=1.0)
+        null = probe.permutation_null(folds, labels, rec.trials, 6, 4.0, 10, 0, 10, probe.NULL_ARMS["v2"])
+        assert set(null) == {"ridge", "disc_settled"}
+        assert sum(null["disc_settled"]) / 10 == pytest.approx(1 / 6, abs=0.07)
+
+    def test_v2_profile_passes_on_separable_synthetic_data(self):
+        rec = probe.synthetic_recording(0, separation=0.5)
+        profile = probe.profile_stream(rec.streams["synthetic"], rec.labels, rec.trials, 0, 4.0, 15, 10,
+                                       ASSUMED, "v2")
+        assert profile["gate_version"] == "v2" and set(probe.gate(profile)) == {"H1", "H2", "H3", "H4"}
+        assert all(probe.gate(profile).values())
+
+    def test_v2_gate_logic(self):
+        ok = {"gate_version": "v2", "accuracy": {"ridge": 0.8, "disc_settled": 0.75, "disc_control": 0.15},
+              "null_p95": {"ridge": 0.25, "disc_settled": 0.25}}
+        assert probe.stream_verdict([ok] * 3) == "PASSED"
+        weak = {**ok, "accuracy": {"ridge": 0.2, "disc_settled": 0.75, "disc_control": 0.15}}
+        assert probe.stream_verdict([weak] * 3).startswith("UNTESTABLE")
+        lost = {**ok, "accuracy": {"ridge": 0.8, "disc_settled": 0.5, "disc_control": 0.15}}
+        assert not probe.gate(lost)["H2"] and probe.stream_verdict([lost] * 3) == "FAILED"
+        leaky = {**ok, "accuracy": {"ridge": 0.8, "disc_settled": 0.75, "disc_control": 0.6}}
+        assert not probe.gate(leaky)["H4"]
+
+    def test_cli_defaults_to_gate_v2(self):
+        args = probe.build_parser().parse_args(["--synthetic"])
+        assert args.gate == "v2" and args.episodes == 120
+
+
+class TestProjectionRule:
+    def _correlated(self):
+        gen = torch.Generator().manual_seed(7)
+        base = torch.where(torch.rand(1, 64, generator=gen, dtype=torch.float64) > 0.5, 1.0, -1.0)
+        flips = torch.rand(4, 64, generator=gen, dtype=torch.float64) < 0.25
+        return torch.where(flips, -base, base)
+
+    def test_projection_couplings_are_valid_for_the_sampler(self):
+        J = probe.projection_couplings(self._correlated())
+        assert torch.equal(J, J.T) and torch.count_nonzero(torch.diagonal(J)) == 0
+
+    def test_projector_maps_each_stored_pattern_to_itself(self):
+        P = self._correlated()
+        projector = P.T @ torch.linalg.solve(P @ P.T, P)
+        assert torch.allclose(P @ projector, P, atol=1e-9)
+
+    def test_projection_stores_correlated_patterns_as_fixed_points(self):
+        P = self._correlated()
+        J = probe.projection_couplings(P)
+        assert torch.equal(torch.where(P @ J >= 0, 1.0, -1.0), P)
+
+    def test_unknown_rule_raises(self):
+        with pytest.raises(KeyError):
+            probe.settle(self._correlated(), self._correlated(), 4.0, 1, 0, rule="nope")
+
+    def test_duplicate_prototypes_do_not_raise(self):
+        P = self._correlated()
+        P[1] = P[0]
+        J = probe.projection_couplings(P)
+        assert torch.equal(J, J.T) and torch.isfinite(J).all()
+
+    def test_partial_report_is_written_after_each_seed(self, tmp_path):
+        out = tmp_path / "r.json"
+        probe.main(["--synthetic", "--sweeps", "4", "--permutations", "3", "--seed", "0", "1", "--output-json", str(out)])
+        assert json.loads(out.read_text())["complete"] is True
+        assert json.loads(out.with_suffix(".partial.json").read_text())["complete"] is False
