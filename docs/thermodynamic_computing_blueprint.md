@@ -129,16 +129,18 @@ citing any figure.
 
 ## 3. Substrate independence protocol
 
-The profiler `scripts/analysis/probe_thermodynamic_cost.py` implements stages 1 to 6 below. Three runs exist (3 seeds
+The profiler `scripts/analysis/probe_thermodynamic_cost.py` implements stages 1 to 6 below. Four runs exist (3 seeds
 each, 2026-10-10). Gate v1 used a nearest class centroid reference and was UNTESTABLE on all four streams
-(`docs/results/thermodynamic_transduction_2026_10.md`). Gate v2 used a ridge reference and FAILED on
-`workspace_broadcast` and `obs_map` (`docs/results/thermodynamic_transduction_gate_v2_2026_10.md`). Gate v3 compared
-the settled arm with the noise-free binarised arm on fresh stimulus sequences and PASSED on those two streams, with a
-narrow margin, a design chosen after the v2 result, and the same three checkpoints
-(`docs/results/thermodynamic_transduction_gate_v3_2026_10.md`). `tectum_content` and `z_state` were UNTESTABLE at one
-checkpoint in every run. The v3 PASS says the p-bit stage adds little loss on top of binarisation. It does not say the
-original vector survives, because the binarised readout is itself well below the ridge readout. A replication on unused
-stimulus seeds with the gate unchanged is the next step.
+(`docs/results/thermodynamic_transduction_2026_10.md`). Gate v2 used a ridge reference and FAILED on `workspace_broadcast`
+and `obs_map` (`docs/results/thermodynamic_transduction_gate_v2_2026_10.md`). Gate v3 compared the settled arm with the
+noise-free binarised arm and PASSED on those two streams on one set of stimulus sequences, with a narrow margin and a
+design chosen after the v2 result (`docs/results/thermodynamic_transduction_gate_v3_2026_10.md`). The replication on unused
+stimulus sequences, with the gate unchanged, FAILED on both streams
+(`docs/results/thermodynamic_transduction_gate_v3_replication_2026_10.md`). Across six stimulus draws the settled arm sat
+about 0.03 accuracy points below the noise-free binarised arm on average, and the gap varied by up to 0.14 between draws,
+so a 0.05 margin cannot separate pass from fail reliably. `tectum_content` and `z_state` were UNTESTABLE in every run. No
+stream holds a stable PASS, and the protocol has not shown that the verified vectors survive transduction at a stated
+tolerance.
 
 **Stages.**
 
