@@ -26,6 +26,10 @@ We hypothesize that consciousness is not a programmable feature, but an emergent
 
 ## Core Principle: Functionalist Emergentism
 
+[![Watch the video: Does a mind need a brain? Functionalist emergentism in 60 seconds](docs/assets/video-functionalist-thumbnail.jpg)](https://youtu.be/fOtTpea0_f0)
+
+**Video:** [Watch "Does a mind need a brain? Functionalist emergentism in 60 seconds" on YouTube](https://youtu.be/fOtTpea0_f0)
+
 The philosophical foundation is **Functionalist Emergentism**. This framework synthesizes two major perspectives:
 1.  **Emergentism:** The ontological claim that consciousness is a novel, irreducible phenomenon that arises from complex systems.
 2.  **Functionalism:** The methodological insight that mental states are defined by their causal roles, not their physical substrate.
