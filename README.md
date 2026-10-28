@@ -119,6 +119,16 @@ A parallel modulation system. Emotion does not compete with sensory modules for 
 
 ---
 
+## Thermodynamic Computing
+
+[![Watch the video: Can noise help a computer think? Thermodynamic computing explained](docs/assets/video-thermodynamic-thumbnail.jpg)](https://youtu.be/1zBmYXRSc7U)
+
+**Video:** [Watch "Can noise help a computer think? Thermodynamic computing explained" on YouTube](https://youtu.be/1zBmYXRSc7U)
+
+The folder `models/thermodynamic/` holds an experimental substrate package. It emulates p-bit sampling and free energy relaxation in software on a CPU. No physical device has been used, and production code does not import the package. The question it tests is whether the verified vector representations survive a noisy, spike-like channel. This is a goal, not a result. The method, the limits and the runs that failed are in [docs/thermodynamic_computing_blueprint.md](docs/thermodynamic_computing_blueprint.md) and on the [project page](https://theconsciousness.ai/thermodynamic-computing/).
+
+---
+
 ## Scientific Approach
 
 The development validates emergent properties through:
