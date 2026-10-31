@@ -1,5 +1,10 @@
 # Working roadmap 2026 H2: gated tracks toward measurable consciousness signatures
 
+> **Note added 2026-10-31.** This document stops in the middle of a sentence below. It was cut when it was
+> committed on 2026-07-19, and its "Current position" is from 2026-07-05. For the current state, read the
+> status updates in [consciousness_indicators_butlin.md](consciousness_indicators_butlin.md) and the newest
+> verdicts in [results/](results/).
+
 This is the operational companion to [roadmap.md](roadmap.md). The main roadmap records
 phases and history; this document is the forward decision tree for the coming work
 sessions. It exists because the project's recent history is a chain of pre-registered

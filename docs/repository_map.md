@@ -50,6 +50,12 @@ structure only, kept current from the actual tree.
 - `oscillatory_binding.py` -- AKOrN Kuramoto oscillatory binding (default mechanism).
 - `complex_binding.py` -- KomplexNet-style content binding (opt-in, `--binding-mechanism komplex`).
 - `binding_attention.py` -- phase-coherence-modulated cross-attention (content-level binding experiment).
+- `map_binding.py`, `rhythm_binding.py` -- oscillators on the tectum map, joined to the sound by timing (opt-in, `--map-binding`). FAILED in harder rooms, see `docs/results/rhythm_binding_harder_rooms_2026_10.md`.
+
+### Selection and movement on the tectum
+- `tectal_motor_map.py` -- the selected place drives an orienting movement (opt-in, `--tectal-orienting`).
+- `value_gate.py` -- one fast value per tone, learned from reward, chooses the tectal target (`--tectal-orienting value`).
+- `tectal_attention.py` -- a gain on the tectum's map at the selected cells (opt-in, `--tectal-attention`). FAILED, see `docs/results/tectal_attention_2026_10.md`.
 
 ### Workspace (consciousness)
 - `global_workspace.py` -- the GNW: competition, ignition, reverberation, broadcast, binding integration.
@@ -155,6 +161,7 @@ structure only, kept current from the actual tree.
 - Working-memory probes: `probe_wm_leakage_free.py`, `probe_match_decode.py`, `decode_choice_records.py`.
 - Experiment analysis: `analyze_experiment.py`, `analyze_phi1_retest.py`, `compare_experiments.py`, `compare_phi_pathways.py`, `ablation_report.py`, `aggregate_seeds.py`.
 - Phi diagnostics: `diagnose_phi_in_training.py`, `diagnose_phi_zero*.py`, `diagnose_levin_variance.py`, `inspect_verify_run.py`.
+- Gate probes of the October dark room chapter: `probe_rhythm_binding.py`, `probe_motor_map.py`, `probe_value_gate.py`, `probe_reversal.py`, `probe_tectal_attention.py`, `diagnose_attention_modes.py`, `probe_broadcast_carrier.py`.
 - `scripts/demos/demo_akorn_binding.py` -- AKOrN synchronization visualization.
 
 ## Documentation index (docs/)
