@@ -97,3 +97,7 @@ keep the capsule content as that input, by the smallest change behind the flag.
 It would not show that the workspace acts on behaviour, because the movement network ignores its input
 (`docs/results/action_core_relay_defect_2026_10.md`). It would not move GWT-2 by itself, and the score stays the
 owner's decision. It would say nothing about consciousness.
+
+## Note added the same day: design B stopped
+
+The owner chose design B. Before any build, cheap checks asked if a policy can use the route. With the real binder selecting the cells, they FAILED at 6 of 6 seeds, so design B stopped and no live run took place (`docs/results/route_learnability_2026_10.md`). A draft gate above is not in force.
