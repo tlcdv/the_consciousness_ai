@@ -154,6 +154,8 @@ seed 521, gain 1.5): 0.217 at episode 0, 0.189 at episode 10, and 0.959 at episo
   not a behavioural test.
 - No indicator moves. The GWT-2 score stays the owner's decision. The flags stay off by default.
 - An offline check must run in the same module mode as its gate.
+- Added 2026-10-31. The covert runs kept the tectum near its starting state, and the offline check passes at
+  only 2 of 4 weight sets in evaluation mode (`docs/results/content_map_sensitivity_2026_11.md`).
 
 ## Runs
 
