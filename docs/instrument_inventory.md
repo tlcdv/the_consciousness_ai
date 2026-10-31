@@ -24,7 +24,7 @@ Status meanings, from the seven-clause acceptance bar:
 - **NOT RUNNING**: logs a constant because its module is disabled. No verdict is possible
   either way, and this is not the same as broken.
 
-Last updated 2026-10-10 (three thermodynamic rows added; PCI row 2026-09-12; everything else 2026-09-02). Run evidence is `runs/bcast_s4{2,3,4}`: 3 seeds, 40 episodes,
+Last updated 2026-10-31 (scope of the decode rows; three thermodynamic rows 2026-10-10; PCI row 2026-09-12; everything else 2026-09-02). Run evidence is `runs/bcast_s4{2,3,4}`: 3 seeds, 40 episodes,
 8000 steps each, dmts, `--enable-audio --enable-mock-semantic`.
 
 ## The finding that organizes this inventory
@@ -44,6 +44,14 @@ Last updated 2026-10-10 (three thermodynamic rows added; PCI row 2026-09-12; eve
 Sources: `b1_continuous_latent_2026_07.md`, `klmap_phase_information_2026_08.md`,
 `broadcast_geometry_2026_08.md`, `bid_reduction_candidates_2026_08.md`,
 `sync_r_content_2026_09.md`, `scalar_content_2026_09.md`.
+
+**Scope of the three decode rows, added 2026-10-31.** Measured on a closed set of 72
+pixel-identical stimuli. The decoders tell a known stimulus apart from the others (72-way
+identity 1.000 on `obs_map`). They do not read shape from an unseen stimulus (0.10 to 0.16,
+chance 0.167), and the shape decode does not hold under pixel noise of sd 8
+(`thermodynamic_survival_2026_10.md`). `kl_map` and the broadcast are not yet measured on
+held-out stimuli with the project's decoders. With a different readout and whole stimuli held
+out, the broadcast stays above chance at 0.48 to 0.55 (`thermodynamic_closed_stimulus_2026_10.md`).
 
 The content is present in the architecture. Every point that reduces one of those vectors
 to a single number discards it, and every instrument in this inventory reads a single
