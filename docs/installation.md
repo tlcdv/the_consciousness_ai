@@ -27,7 +27,7 @@ We recommend **Conda** to manage the complex CUDA dependencies.
 
 ```bash
 # 1. Create Environment
-conda create -n acm_lab python=3.10
+conda create -n acm_lab python=3.12
 conda activate acm_lab
 
 # 2. Install PyTorch with CUDA 12.1 (Compatible with RTX 40-series)

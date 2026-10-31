@@ -75,6 +75,7 @@ Use `AgentManager.cs` to map these values to visual cues:
 3.  **Environment Path:** Save the built executable to `simulations/builds/`.
 
 ### Running the System
+The training loop has no flag for a Unity build yet. `--env` selects one of its built in environments, and every run declares the existence drive ([ethics framework](ethics_framework.md), rule E1).
 ```bash
-python scripts/training/train_rlhf.py --env_path "simulations/builds/MyEnvironment.exe"
+python -m scripts.training.train_rlhf --env dark_room --existence-drive off
 ```

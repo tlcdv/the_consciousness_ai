@@ -162,35 +162,37 @@ pip install -r requirements.txt
 
 ### 2. Running Training
 
+Every run that changes weights must declare the existence drive with `--existence-drive off` or `--existence-drive on`. A run without this flag stops with an error ([ethics framework](docs/ethics_framework.md), rule E1). The commands below use `off`, so no noxious channel reaches the agent. Commands from before 2026-09-15 need `on` to repeat the same run. The DQN baseline has no such drive and needs no flag.
+
 ```bash
 # Run the Dark Room training loop (default: 20 episodes, 200 steps each)
-python -m scripts.training.train_rlhf
+python -m scripts.training.train_rlhf --existence-drive off
 
 # With custom parameters
-python -m scripts.training.train_rlhf --episodes 50 --max-steps 300 --lr 1e-3
+python -m scripts.training.train_rlhf --existence-drive off --episodes 50 --max-steps 300 --lr 1e-3
 
 # Long runs: sample pyphi every 5th step to stay under the ~91k-call segfault threshold
-python -m scripts.training.train_rlhf --episodes 200 --max-steps 200 \
+python -m scripts.training.train_rlhf --existence-drive off --episodes 200 --max-steps 200 \
   --ablate-gate-diversity --phi-sample-every 5
 
 # DMTS environment (consciousness-demanding)
-python -m scripts.training.train_rlhf --env dmts --episodes 500 --max-steps 500
+python -m scripts.training.train_rlhf --existence-drive off --env dmts --episodes 500 --max-steps 500
 
 # Wisconsin Card Sort (meta-cognition test)
-python -m scripts.training.train_rlhf --env wcst --episodes 200 --max-steps 300
+python -m scripts.training.train_rlhf --existence-drive off --env wcst --episodes 200 --max-steps 300
 
 # Navigation environment (multi-room exploration)
-python -m scripts.training.train_rlhf --env navigation --episodes 100
+python -m scripts.training.train_rlhf --existence-drive off --env navigation --episodes 100
 
 # DQN baseline for comparison
 python -m scripts.training.train_baseline_dqn --env dark_room --episodes 100
 python -m scripts.training.train_baseline_dqn --env dmts --episodes 500
 
 # With cochlear auditory pipeline enabled
-python -m scripts.training.train_rlhf --env dark_room --enable-audio --episodes 100
+python -m scripts.training.train_rlhf --existence-drive off --env dark_room --enable-audio --episodes 100
 
 # With visual rendering
-python -m scripts.training.train_rlhf --render
+python -m scripts.training.train_rlhf --existence-drive off --render
 ```
 
 This runs the full cognitive loop: retinotopic encoding with the convolutional stack (DINOv2 is off by default) -> cochlear auditory encoding (optional, via `--enable-audio`) -> trimodal tectum fusion -> RSSM surprise bidding -> GNW competition with oscillatory binding (AKOrN by default, or KomplexNet via `--binding-mechanism komplex`) -> reentrant convergence -> basal ganglia action selection -> reflex emotion (Stage 1 of the two-stage appraisal) -> PAD reward shaping. No large model weights are required.
