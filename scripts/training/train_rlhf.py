@@ -2330,13 +2330,15 @@ def _wire_map_binding(tectum, workspace, log_dir, mode: str = "limit", auditory_
     atexit.register(write_record)
 
 
-def _wire_tectal_orienting(action_core, tectum, mode: str, seed: int, log_dir, idle: str = "policy") -> None:
+def _wire_tectal_orienting(action_core, tectum, mode: str, seed: int, log_dir, idle: str = "policy",
+                           covert: bool = False) -> None:
     """The motor map of the tectum (docs/decisions/2026_10_15_tectal_motor_map.md).
 
     Wraps action_core.select_action. The policy is always called first, so every random
     stream stays as it is. When the map binding of this step has a target, its orienting
     command replaces the policy's action. Without a target, `idle` "policy" uses the policy's
-    action and "still" gives no movement."""
+    action and "still" gives no movement. `covert` (docs/decisions/2026_10_17_tectal_attention.md):
+    the motor map still selects and records its target, and the agent does not move at all."""
     import atexit
     import json
     from models.core.tectal_motor_map import TectalMotorMap
@@ -2350,6 +2352,8 @@ def _wire_tectal_orienting(action_core, tectum, mode: str, seed: int, log_dir, i
         action, value = policy_select(*args, **kwargs)
         group = tectum.map_history[-1]["group"] if tectum.map_history else []
         oriented = motor.step(tectum.map_binding, group)
+        if covert:
+            return np.zeros_like(np.asarray(action)), value
         if oriented is None:
             return (action if idle == "policy" else np.zeros_like(np.asarray(action))), value
         return np.asarray(oriented, dtype=np.asarray(action).dtype), value
@@ -2360,7 +2364,8 @@ def _wire_tectal_orienting(action_core, tectum, mode: str, seed: int, log_dir, i
         if log_dir:
             os.makedirs(log_dir, exist_ok=True)
             with open(os.path.join(log_dir, "tectal_orienting.json"), "w", encoding="utf-8") as handle:
-                json.dump({"mode": mode, "steps": len(motor.history), "history": motor.history}, handle)
+                json.dump({"mode": mode, "covert": covert, "steps": len(motor.history),
+                           "history": motor.history}, handle)
     atexit.register(write_record)
 
 
@@ -2418,6 +2423,51 @@ def _wire_value_gate(action_core, tectum, seed: int, log_dir, idle: str = "still
                            "values": {str(b): v for b, v in gate.values.items()}}, handle)
             with open(os.path.join(log_dir, "tectal_orienting.json"), "w", encoding="utf-8") as handle:
                 json.dump({"mode": "value", "steps": len(motor.history), "history": motor.history}, handle)
+    atexit.register(write_record)
+
+
+def _wire_tectal_attention(tectum, gain: float, log_dir, env=None) -> None:
+    """The tectal attention gain (docs/decisions/2026_10_17_tectal_attention.md).
+
+    A forward hook on tectum.topo_map multiplies its map by the attention field of the group that
+    the map binding selected at the previous step (tectum.map_history[-1]: the binding runs after
+    the map in the same forward pass), and keeps the map's total absolute activity. No group, or
+    no record since the last reset of `env`, leaves the map unchanged."""
+    import atexit
+    import json
+    from models.core.tectal_attention import attend, attention_field
+    if getattr(tectum, "map_binding", None) is None:
+        raise ValueError("--tectal-attention needs --map-binding")
+    if gain < 1.0:
+        raise ValueError("--tectal-attention-gain must be 1 or more, got %r" % (gain,))
+    record = {"gain": float(gain), "steps": 0, "steps_with_gain": 0}
+    tectum.tectal_attention = record
+    boundary = {"records": 0}
+
+    if env is not None:
+        env_reset = env.reset
+
+        def reset(*args, **kwargs):
+            boundary["records"] = len(tectum.map_history)
+            return env_reset(*args, **kwargs)
+        env.reset = reset
+
+    def hook(module, inputs, output):
+        record["steps"] += 1
+        fresh = len(tectum.map_history) > boundary["records"]
+        group = tectum.map_history[-1].get("group", []) if fresh else []
+        if not group:
+            return output
+        record["steps_with_gain"] += 1
+        return attend(output, attention_field(group, output.shape[-1], gain))
+
+    tectum.topo_map.register_forward_hook(hook)
+
+    def write_record() -> None:
+        if log_dir:
+            os.makedirs(log_dir, exist_ok=True)
+            with open(os.path.join(log_dir, "tectal_attention.json"), "w", encoding="utf-8") as handle:
+                json.dump(record, handle)
     atexit.register(write_record)
 
 
@@ -2796,6 +2846,20 @@ def main():
                         help="With --tectal-orienting, what the agent does at a step without a "
                              "target. 'policy' (default): the policy's action, as before. 'still': no "
                              "movement (docs/decisions/2026_10_15_rhythm_binding.md).")
+    parser.add_argument("--tectal-orienting-covert", action="store_true",
+                        help="With --tectal-orienting group, active or audio: the motor map still "
+                             "selects and records its target, and the agent does not move at all "
+                             "(covert attention, docs/decisions/2026_10_17_tectal_attention.md). "
+                             "Off by default.")
+    parser.add_argument("--tectal-attention", choices=["off", "gain"], default="off",
+                        help="The tectal attention gain (docs/decisions/2026_10_17_tectal_attention.md). "
+                             "Needs --map-binding. 'gain': the cells of the group the map binding "
+                             "selected at the previous step get --tectal-attention-gain on the "
+                             "tectum's topographic map, which keeps its total absolute activity. "
+                             "'off' (default) is unchanged.")
+    parser.add_argument("--tectal-attention-gain", type=float, default=2.0,
+                        help="With --tectal-attention gain, the gain on the selected cells (1 or "
+                             "more). Default 2.0.")
     parser.add_argument("--binding-relation", choices=["none", "place", "overlap"], default="none",
                         help="Stage 2 of docs/decisions/2026_10_14_oscillator_binding_design.md. "
                              "'place': the coupling of the vision and audio oscillators becomes "
@@ -3181,13 +3245,15 @@ def main():
                           auditory_specialist=auditory_specialist,
                           seed=args.seed if args.seed is not None else 0,
                           bands_to_bind=2 if args.tectal_orienting == "value" else 1)
+    if args.tectal_orienting_covert and args.tectal_orienting in ("off", "value"):
+        parser.error("--tectal-orienting-covert needs --tectal-orienting group, active or audio")
     if args.tectal_orienting == "value":
         _wire_value_gate(action_core, tectum, args.seed if args.seed is not None else 0, args.log_dir,
                          idle=args.tectal_orienting_idle, learning_rate=args.value_learning_rate)
     elif args.tectal_orienting != "off":
         _wire_tectal_orienting(action_core, tectum, args.tectal_orienting,
                                args.seed if args.seed is not None else 0, args.log_dir,
-                               idle=args.tectal_orienting_idle)
+                               idle=args.tectal_orienting_idle, covert=args.tectal_orienting_covert)
     if args.binding_relation in ("place", "overlap"):
         _wire_place_relation(tectum, workspace, args.log_dir, args.binding_relation)
 
@@ -3232,6 +3298,8 @@ def main():
         env.seed_audio(args.seed)
     if args.seed is not None and getattr(env, "decoy_sound", False):
         env.seed_decoy(args.seed)
+    if args.tectal_attention == "gain":
+        _wire_tectal_attention(tectum, args.tectal_attention_gain, args.log_dir, env=env)
 
     metrics_logger = ConsciousnessMetricsLogger(
         log_dir=args.log_dir, use_tensorboard=True
