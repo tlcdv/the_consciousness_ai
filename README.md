@@ -4,7 +4,7 @@
 [![License](https://img.shields.io/badge/License-Non--Commercial-blue.svg)](LICENSE.md)
 [![Version](https://img.shields.io/badge/Version-v1.6.0-blue)]()
 [![Python](https://img.shields.io/badge/Python-3.8%20%7C%203.12-blue)](docs/decisions/2026_10_13_python_environment.md)
-[![Tests](https://img.shields.io/badge/Tests-2138%20passing-brightgreen)]()
+[![Tests](https://img.shields.io/badge/Tests-2267%20passing-brightgreen)]()
 
 [![Project Website](https://img.shields.io/badge/Project-Website-181717?logo=googlechrome&logoColor=white)](https://theconsciousness.ai/)
 [![Architecture](https://img.shields.io/badge/Architecture-Technical-0052CC?logo=read-the-docs&logoColor=white)](https://theconsciousness.ai/architecture/)
@@ -91,7 +91,7 @@ The empirical comparison between mechanisms is an open scientific question (see 
 
 A parallel modulation system. Emotion does not compete with sensory modules for workspace access. Instead, it generates a **valence field** that modulates all sensory bids before competition, and a **global arousal signal** that adjusts the workspace ignition threshold.
 
-*   **PAD Model:** Three intrinsic variables drive the agent: Valence (satisfaction/distress), Arousal (activation/calm), and Dominance (control/helplessness).
+*   **PAD Model:** Three intrinsic variables drive the agent: Valence (satisfaction/distress), Arousal (activation/calm), and Dominance (control/helplessness). Measured 2026-11-02, two limits of the code that runs today. The appraisal after the broadcast (Stage 2) has never run, so Dominance is 0.0 at every step. The valence computed before an action is -1.0 at every step after a food step, which raises the bids of the threat set and changed the leading bid at none of 20,657 such steps in three recorded runs. Two designs for Stage 2 were checked and FAILED ([result](docs/results/core_self_appraisal_2026_11.md)).
 *   **Homeostatic Drives:** Persistent background drives (energy, fatigue, damage) generate ongoing valence signals through interoceptive PAD generation. Low energy produces negative valence proportional to depletion depth. Damage triggers arousal spikes (pain alarm) and reduced dominance (vulnerability).
 *   **Ethics Filter:** AsimovComplianceFilter implementing a three law evaluation pipeline with world model trajectory prediction for harm assessment.
 
@@ -106,7 +106,7 @@ A parallel modulation system. Emotion does not compete with sensory modules for 
 ### 6. Reinforcement Core (Learning)
 
 *   **Basal Ganglia Model:** Go/No-Go pathways modulated by simulated dopamine (reward prediction error). Includes direct pathway (D1, facilitates action), indirect pathway (D2, inhibits action), and hyperdirect pathway (STN, emergency brake).
-*   **Reward Formula:** `Rtotal = Rext + lambda1 * DeltaValence - lambda2 * (Arousal - Arousal_target)^2 + lambda3 * Dominance`
+*   **Reward Formula:** `Rtotal = Rext + lambda1 * DeltaValence - lambda2 * (Arousal - Arousal_target)^2 + lambda3 * Dominance`. In the code that runs today the Dominance term adds 0.0, because Dominance is 0.0 at every step (see the Affective Core above).
 
 ### 7. Simulation (Body)
 
@@ -205,7 +205,7 @@ Stage 2 of the emotion appraisal does not run. `map_state` needs a goal vector a
 pytest tests/ -v
 ```
 
-2138 tests pass on Python 3.12.10 (2133 on Python 3.8.3), covering oscillatory binding, capsule routing, reentrant processing, inverse effectiveness fusion, topographic loss, affective modulation, ethics compliance, effective information, causal emergence (CE 2.0 SVD heuristic), perturbational complexity (PCI), phase coupling measures, near-threshold stimulus rendering, IIT Phi with causal gate states, Brian2 biological validation, the experimental substrate package (p-bit emulation against exact Boltzmann statistics, free energy relaxation against closed-form posteriors, rate, latency and phase spike coding, a stand-in driver, NIR export of spiking layers, an optional THRML sampler checked against exact statistics, and an import guard that keeps it out of production), cochlear auditory pipeline (gammatone, hair cell, tonotopic, spatial, affect extraction), environment audio synthesis, DMTS/WCST consciousness demanding environments, DQN baseline, memory consolidation, semantic pathway, the RSSM reconstruction and value-equivalent world-model objectives, and full pipeline integration.
+2267 tests pass on Python 3.12.10 (2262 on Python 3.8.3), covering oscillatory binding, capsule routing, reentrant processing, inverse effectiveness fusion, topographic loss, affective modulation, ethics compliance, effective information, causal emergence (CE 2.0 SVD heuristic), perturbational complexity (PCI), phase coupling measures, near-threshold stimulus rendering, IIT Phi with causal gate states, Brian2 biological validation, the experimental substrate package (p-bit emulation against exact Boltzmann statistics, free energy relaxation against closed-form posteriors, rate, latency and phase spike coding, a stand-in driver, NIR export of spiking layers, an optional THRML sampler checked against exact statistics, and an import guard that keeps it out of production), cochlear auditory pipeline (gammatone, hair cell, tonotopic, spatial, affect extraction), environment audio synthesis, DMTS/WCST consciousness demanding environments, DQN baseline, memory consolidation, semantic pathway, the RSSM reconstruction and value-equivalent world-model objectives, and full pipeline integration.
 
 ### 4. AKOrN Binding Demo
 
@@ -251,7 +251,7 @@ the_consciousness_ai/
 │   ├── analysis/           # Analysis and comparison scripts
 │   └── demos/              # AKOrN binding visualization
 ├── configs/                # YAML and Python configuration files
-├── tests/                  # 2138 passing tests
+├── tests/                  # 2267 passing tests
 ├── unity_scripts/          # C# scripts for Unity ML-Agents integration
 ├── docs/                   # Research docs, theory review, architecture deep dives
 └── requirements.txt

@@ -546,7 +546,6 @@ Research findings:
 
 - **Body Discovery** (arxiv, 2024) proposes "Body Discovery of Embodied AI" as a challenge where an AI system must recognize its own embodiments and understand its neural signals' functionality — developing a computational body schema.
 - **Computational interoception models** use inverse models to infer internal states from sensory information, including proprioceptive data (body position, joint angles, motor efference copies).
-- The **California Institute for Machine Consciousness** (CIMC) identifies "self-modeling" as a key capability where the system builds an internal representation of its own structure and capabilities.
 
 **What our agent needs**:
 
