@@ -35,11 +35,11 @@ PULSE_VISUAL_GAIN = (0.85, 0.15)
 PULSE_SOUND_GAIN = (0.7, 0.3)
 
 
-def _checked_colour(colour) -> tuple:
+def _checked_colour(colour, name: str = "agent_colour") -> tuple:
     """An (R, G, B) triple of bytes, or a clear error naming what was given."""
     channels = tuple(colour)
     if len(channels) != 3 or any(not (0 <= int(c) <= 255) for c in channels):
-        raise ValueError("agent_colour must be three values 0 to 255, got %r" % (colour,))
+        raise ValueError("%s must be three values 0 to 255, got %r" % (name, colour))
     return tuple(int(c) for c in channels)
 
 
@@ -74,7 +74,8 @@ class SimpleVisualEnv(DarkRoomAudioMixin, gym.Env):
                  agent_mark: str = "disc", agent_colour: tuple = AGENT_COLOUR,
                  decoy_sound: bool = False, decoy_level: float = 1.0,
                  decoy_visible: bool = False, start_between: bool = False,
-                 pulse: bool = False, sound_direction: bool = True, food_switch: int | None = None):
+                 pulse: bool = False, sound_direction: bool = True, food_switch: int | None = None,
+                 decoy_colour: tuple | None = None, tone_switch: int | None = None):
         """`audio`: "legacy" (mono events, the behaviour of every run before
         2026-09-15) or "binaural" (the light emits a tone heard across the room,
         with direction; `audio_channels` 2 = left/right, 4 = adds upper/lower).
@@ -115,7 +116,15 @@ class SimpleVisualEnv(DarkRoomAudioMixin, gym.Env):
         which count every reset, do count it).
         info["_truth_food"] names the food object; info["in_light"] still names the light. The
         switch draws nothing, so the room, its pixels and its sound are unchanged. Needs
-        `decoy_visible`. None (default) is unchanged."""
+        `decoy_visible`. None (default) is unchanged.
+        `decoy_colour`: the RGB the visible decoy is drawn in, so vision can tell the two objects
+        apart (docs/decisions/2026_11_02_content_relation_design.md). The pulse scales it as it
+        scales the light. It changes the pixels the agent receives. Needs `decoy_visible`. None
+        (default) draws the decoy with the light colour, as before.
+        `tone_switch`: from this episode on, counted as for `food_switch`, the light sounds at
+        DECOY_TONE_HZ and the decoy at BINAURAL_TONE_HZ, so a learned pairing of colour and pitch
+        is broken. info["_truth_tones_swapped"] says which pairing holds. Needs `decoy_sound`. None
+        (default) is unchanged."""
         if view not in ("full", "agent_centered"):
             raise ValueError("view must be 'full' or 'agent_centered', got %r" % view)
         if agent_mark not in AGENT_MARKS:
@@ -141,6 +150,15 @@ class SimpleVisualEnv(DarkRoomAudioMixin, gym.Env):
         if food_switch is not None and int(food_switch) < 0:
             raise ValueError("food_switch must be 0 or more, got %r" % (food_switch,))
         self.food_switch = None if food_switch is None else int(food_switch)
+        if decoy_colour is not None and not decoy_visible:
+            raise ValueError("decoy_colour needs decoy_visible")
+        self.decoy_colour = None if decoy_colour is None else _checked_colour(decoy_colour, "decoy_colour")
+        if tone_switch is not None and not decoy_sound:
+            raise ValueError("tone_switch needs decoy_sound")
+        if tone_switch is not None and int(tone_switch) < 0:
+            raise ValueError("tone_switch must be 0 or more, got %r" % (tone_switch,))
+        self.tone_switch = None if tone_switch is None else int(tone_switch)
+        self.tones_swapped = False
         self.food = "light"
         self._episodes_run = 0
         self._new_episode = False
@@ -233,6 +251,8 @@ class SimpleVisualEnv(DarkRoomAudioMixin, gym.Env):
             self._episodes_run += 1
             if self.food_switch is not None:
                 self.food = "decoy" if self._episodes_run - 1 >= self.food_switch else "light"
+            if self.tone_switch is not None:
+                self.tones_swapped = self._episodes_run - 1 >= self.tone_switch
         if self.pulse_on:
             self._pulse_step += 1
         # Update Physics
@@ -264,6 +284,9 @@ class SimpleVisualEnv(DarkRoomAudioMixin, gym.Env):
         if self.food_switch is not None:
             # Ground truth for analysis only; no agent code reads keys starting '_truth_'.
             info["_truth_food"] = self.food
+        if self.tone_switch is not None:
+            # Ground truth for analysis only; no agent code reads keys starting '_truth_'.
+            info["_truth_tones_swapped"] = self.tones_swapped
 
         if self.view == "agent_centered":
             # Ground truth for analysis only; no agent code reads keys starting '_truth_'.
@@ -345,10 +368,11 @@ class SimpleVisualEnv(DarkRoomAudioMixin, gym.Env):
         return float(mean + depth * np.sin(2.0 * np.pi * frequency * self._pulse_step + phase))
 
     def _object_colour(self, name: str) -> tuple:
+        base = self.decoy_colour if name == "decoy" and self.decoy_colour is not None else LIGHT_COLOUR
         if not self.pulse_on:
-            return LIGHT_COLOUR
+            return base
         g = self.pulse_gain(name, PULSE_VISUAL_GAIN)
-        return tuple(int(round(c * g)) for c in LIGHT_COLOUR)
+        return tuple(int(round(c * g)) for c in base)
 
     def _get_pulse_rng(self) -> np.random.Generator:
         if self._pulse_rng is None:

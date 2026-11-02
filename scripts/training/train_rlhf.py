@@ -2712,6 +2712,18 @@ def main():
                              "reverse (docs/decisions/2026_10_16_reversal.md). The room, its "
                              "pixels and its sound do not change. Needs --dark-room-decoy-visible. "
                              "Off by default.")
+    parser.add_argument("--dark-room-decoy-colour", default=None,
+                        help="dark_room: the colour R,G,B of the visible decoy, so vision can tell "
+                             "the decoy from the light (docs/decisions/"
+                             "2026_11_02_content_relation_design.md). It changes the pixels the "
+                             "agent receives, so runs drawn differently are not comparable. Needs "
+                             "--dark-room-decoy-visible. Off by default: the decoy has the light "
+                             "colour.")
+    parser.add_argument("--dark-room-tone-switch", type=int, default=None,
+                        help="dark_room: from this episode on (counted from 0, as for "
+                             "--dark-room-food-switch), the light and the decoy swap their tones, "
+                             "so a learned pairing of colour and pitch is broken. Needs "
+                             "--dark-room-decoy-sound. Off by default.")
     parser.add_argument("--dark-room-decoy-level", type=str, default="1.0",
                         help="Amplitude of the second tone source relative to the light, with "
                              "--dark-room-decoy-sound. A comma list (for example 0.5,3.0) is "
@@ -3290,7 +3302,10 @@ def main():
                               start_between=args.dark_room_start_between,
                               pulse=args.dark_room_pulse,
                               sound_direction=args.dark_room_sound_direction == "on",
-                              food_switch=args.dark_room_food_switch)
+                              food_switch=args.dark_room_food_switch,
+                              decoy_colour=(None if args.dark_room_decoy_colour is None
+                                            else parse_colour(args.dark_room_decoy_colour)),
+                              tone_switch=args.dark_room_tone_switch)
     env_seeded = seed_environment(env, args.seed)
     # Seed the environment audio noise from the run seed. Before 2026-09-15 it had
     # no seed, so no run with --enable-audio could be repeated exactly.
@@ -3345,12 +3360,15 @@ def main():
                        "dark_room_pulse": args.dark_room_pulse,
                        "dark_room_sound_direction": args.dark_room_sound_direction,
                        "dark_room_food_switch": args.dark_room_food_switch,
+                       "dark_room_decoy_colour": args.dark_room_decoy_colour,
+                       "dark_room_tone_switch": args.dark_room_tone_switch,
                        "dark_room_view": args.dark_room_view,
                        "dark_room_view_radius": args.dark_room_view_radius,
                        # How the agent's own body was drawn into the frames it
                        # received. Runs drawn differently are not comparable.
                        "agent_mark": getattr(env, "agent_mark", None),
                        "agent_colour": list(getattr(env, "agent_colour", ())) or None,
+                       "decoy_colour": list(getattr(env, "decoy_colour", None) or ()) or None,
                        "light_colour": list(LIGHT_COLOUR),
                        "wall_colour": list(WALL_COLOUR)},
             module_facts=describe_modules(

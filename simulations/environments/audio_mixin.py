@@ -341,7 +341,8 @@ class DarkRoomAudioMixin(AudioMixin):
         level difference from the direction to the light, plus independent noise.
         With a second source (info["_truth_decoy_offset"], --dark-room-decoy-sound)
         a tone of DECOY_TONE_HZ comes from that place by the same rules. It has no
-        visual object. A collision adds a short noise burst to every ear.
+        visual object. A collision adds a short noise burst to every ear. After
+        --dark-room-tone-switch the two sources swap their tones.
         """
         sr, n = self._audio_sample_rate, int(self._audio_frame_duration * self._audio_sample_rate)
         rng = self._get_audio_rng()
@@ -349,10 +350,13 @@ class DarkRoomAudioMixin(AudioMixin):
         # --dark-room-sound-direction off gives every ear the same signal. Both default off.
         directional = getattr(self, "sound_direction", True)
         light_gain, decoy_gain = self._tone_gains()
-        signal = source_ears(info["_truth_light_offset"], BINAURAL_TONE_HZ, channels, sr, n,
+        light_hz, decoy_hz = BINAURAL_TONE_HZ, DECOY_TONE_HZ
+        if getattr(self, "tones_swapped", False):
+            light_hz, decoy_hz = DECOY_TONE_HZ, BINAURAL_TONE_HZ
+        signal = source_ears(info["_truth_light_offset"], light_hz, channels, sr, n,
                              level=light_gain, directional=directional)
         if info.get("_truth_decoy_offset") is not None:
-            signal = signal + source_ears(info["_truth_decoy_offset"], DECOY_TONE_HZ, channels, sr, n,
+            signal = signal + source_ears(info["_truth_decoy_offset"], decoy_hz, channels, sr, n,
                                           level=getattr(self, "decoy_level", 1.0) * decoy_gain,
                                           directional=directional)
         signal = signal + BINAURAL_NOISE_STD * rng.standard_normal((channels, n))
