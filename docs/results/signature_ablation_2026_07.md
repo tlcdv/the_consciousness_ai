@@ -1,5 +1,14 @@
 # Signature ablation over the perception-fix ladder (2026-07-06): multiple consciousness markers respond to completing the integration pathway
 
+> **Note, 2026-11-03.** The project no longer uses any of the three markers below as a
+> measure. `broadcast_mag` is the norm of the broadcast vector, and the
+> [instrument inventory](../instrument_inventory.md) retired it in September 2026 because
+> it carries no stimulus content at 3 seeds. Its CV measures variation of the broadcast's
+> size, so the row label "content variation" says more than was measured. EI and
+> `sync_R` are retired too, and phi was dropped on 2026-11-03
+> ([decision](../decisions/2026_11_03_phi_out_of_the_agent.md)). The 3-seed figures below
+> stand as measured. The website clock no longer shows a bar for any of them.
+
 **Mission framing.** Success in this project is judged by consciousness SIGNATURES (the
 Butlin indicators, `consciousness_indicators_butlin.md`), not by task reward. The
 2026-07-02 assessment (`signature_assessment_2026_07.md`) found most signature instruments
