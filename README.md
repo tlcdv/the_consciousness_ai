@@ -52,6 +52,10 @@ We posit that consciousness emerges when systems achieve sufficient organization
 
 The system is built on a biologically grounded architecture informed by Feinberg & Mallatt's neuroevolutionary theory of consciousness (*The Ancient Origins of Consciousness*, MIT Press 2016). Six special neurobiological features guide the design: hierarchical depth, isomorphic mapping, reciprocal connections, oscillatory binding, nested compositional hierarchies, and neuron type diversity.
 
+[![Watch the video: Did awareness begin 520 million years ago?](docs/assets/video-cambrian-thumbnail.jpg)](https://youtu.be/Zn8z_XOcuKM)
+
+**Video:** [Watch "Did awareness begin 520 million years ago?" on YouTube](https://youtu.be/Zn8z_XOcuKM). It shows the optic tectum of an early jawless fish, the structure the Sensory Tectum layer below is modeled on.
+
 ### 1. Sensory Tectum (Perception)
 
 A multisensory spatial integration layer modeled after the biological optic tectum (superior colliculus). Stacks aligned topographic maps for visual, auditory, and somatosensory modalities in a common coordinate frame, fused via inverse effectiveness (Stein & Meredith 1993).

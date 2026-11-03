@@ -20,6 +20,10 @@ Our project implements these biological principles as a working AI system, combi
 
 ## 2. What Feinberg & Mallatt Discovered
 
+[![Watch the video: Did awareness begin 520 million years ago?](assets/video-cambrian-thumbnail.jpg)](https://youtu.be/Zn8z_XOcuKM)
+
+**Video:** [Watch "Did awareness begin 520 million years ago?" on YouTube](https://youtu.be/Zn8z_XOcuKM). A short film on the Cambrian origin of consciousness that Feinberg and Mallatt propose, the optic tectum of the first jawless fish and its stacked sensory maps.
+
 ### 2.1 Consciousness Is Not About the Cortex
 
 The most revolutionary finding: consciousness does not require a cerebral cortex. The first conscious creatures were early vertebrates (~520 million years ago), and their consciousness lived in the **optic tectum** — a midbrain structure that stacks aligned sensory maps into a unified spatial model of the environment.
