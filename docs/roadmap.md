@@ -1,12 +1,14 @@
 # Development Roadmap
 
+> **Note, 2026-11-03.** The project dropped Integrated Information Theory on this date. Phi no longer acts on the agent by default and is not one of the project's measures ([decision](decisions/2026_11_03_phi_out_of_the_agent.md)). Mentions of phi below describe the earlier design. Where this document calls Phi-1 FAILED, read RE-RUN. None of its 9 runs met the variance floors that the pre-registration requires before a negative counts, so Phi-1 was never confirmed, and the chapter was closed (`consciousness_indicators_butlin.md`, RPT-2 row, corrected 2026-09-13).
+
 This roadmap outlines the planned development phases for The Consciousness AI.
 
 ## Guiding Principles
 
 - **Iterative Development:** Build and test components incrementally.
 - **Emergence-Focused:** Design for emergent properties rather than explicit programming of consciousness.
-- **Theory-Grounded:** Integrate insights from neuroscience and AI consciousness research (GNW, IIT, Feinberg-Mallatt).
+- **Theory-Grounded:** Integrate insights from neuroscience and AI consciousness research (GNW, Feinberg-Mallatt). The project dropped IIT on 2026-11-03.
 - **Ethical Alignment:** Continuously ensure adherence to Asimov's Laws and responsible AI principles.
 
 ---
@@ -358,9 +360,9 @@ existing quantities" bar.
 
 - **Goal:** Introduce mechanisms for creative simulation and refine advanced consciousness metrics.
 - **Deliverables:**
-  - **Creative Imagination Buffer:** Generate and evaluate novel mental simulations, selecting based on Phi or GNW ignition.
+  - **Creative Imagination Buffer:** Generate and evaluate novel mental simulations, selecting based on GNW ignition.
   - Reward-shaping hooks based on creative outputs.
-  - Advanced IIT metrics (CES visualization).
+  - ~~Advanced IIT metrics (CES visualization).~~ Dropped on 2026-11-03 with IIT.
   - **Active inference reframing (Rouleau-Levin §6.1; elevated 2026-06-02):** Replace or complement the ad-hoc front-end training (reward-MSE + TDANN topography) and the RSSM ELBO + reward objective with an explicit expected-free-energy / prediction-error objective along the lines of Friston et al. (2023) *Active Inference* (MIT Press), Rao et al. (Active Predictive Coding, Neural Computation 2024, MIT Press), and recent deep-active-inference world-model agents ([arXiv:2505.19867](https://arxiv.org/abs/2505.19867)). **Motivation (2026-06-02):** the perception is trained by an ad-hoc mix of auxiliary losses (reward-MSE + TDANN topography), and the broader training loop stacks ~6 hand-wired, partly reward-coupled objectives that contradict the project's stated "intrinsic motivation, not external reward" philosophy. An action-coupled expected-free-energy objective unifies most of them (predictive perception, exploration in place of RND, world-modeling, action selection) under one biologically principled principle, and resolves the reward-vs-signatures incoherence. The competence localization is consistent with this (the front-end may be a bottleneck) but is provisional; the unification case rests on coherence/elegance, not on that single confounded probe. If the Phase 5 perception prerequisite fails, this work moves earlier (Phase-5 enabling). See [`active_inference_unification.md`](active_inference_unification.md). Rationale and integration target in [`rouleau_levin_substrate_independence.md`](rouleau_levin_substrate_independence.md) §6.1.
 
 ## Phase 7: Peer Consciousness & Robustness

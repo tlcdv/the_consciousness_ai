@@ -1,5 +1,7 @@
 # Simulation Guide: Unity ML-Agents
 
+> **Note, 2026-11-03.** The project dropped Integrated Information Theory on this date. Phi no longer acts on the agent by default and is not one of the project's measures ([decision](decisions/2026_11_03_phi_out_of_the_agent.md)). Mentions of phi below describe the earlier design.
+
 ## Overview
 
 This guide explains how to build and configure Unity environments for the The Consciousness AI. Unlike standard RL environments where the goal is just "score points," simulation environments must be designed to challenge the agent's **Emotional Homeostasis**.

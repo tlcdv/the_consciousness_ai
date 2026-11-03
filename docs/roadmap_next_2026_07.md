@@ -1,5 +1,7 @@
 # Forward roadmap (2026-07): a gated decision tree for the next sessions
 
+> **Note, 2026-11-03.** The project dropped Integrated Information Theory on this date. Phi no longer acts on the agent by default and is not one of the project's measures ([decision](decisions/2026_11_03_phi_out_of_the_agent.md)). Mentions of phi below describe the earlier design.
+
 This document plans the next several sessions. It is a decision tree, not a fixed
 schedule. The project's own record is that most single-bet chapters end at a kill gate
 (reconstruction x2, value-equivalent world model, latent-identity supervision), so every

@@ -1,5 +1,7 @@
 # Biological Neural Architecture for Consciousness: Research & Implementation Guide
 
+> **Note, 2026-11-03.** The project dropped Integrated Information Theory on this date. Phi no longer acts on the agent by default and is not one of the project's measures ([decision](decisions/2026_11_03_phi_out_of_the_agent.md)). Mentions of phi below describe the earlier design.
+
 *Generated: 2026-02-21 — Based on deep research of Feinberg & Mallatt's "The Ancient Origins of Consciousness" and current neuroscience literature*
 
 ---
@@ -151,7 +153,7 @@ These are the properties that any conscious system must exhibit, according to Fe
 
 1. **Global Workspace as competition/broadcast**: The GNW ignition mechanism is correct. Competition among specialists for access to a broadcast medium is validated by the book's description of attentional selection.
 2. **Emotional homeostasis as the driver**: The book explicitly states that consciousness evolved to serve **survival needs** — managing the organism's relationship with a threatening, unpredictable environment. Our use of emotional reward shaping (Valence, Arousal, Dominance) as the RL driver is the right approach.
-3. **IIT Phi as a measure of integration (motivation only)**: The book motivates Phi as the right metric for distinguishing genuine integration from mere routing. Empirically (2026-05-14 pyphi ablation campaign, 2026-05-16 RIIU pathway), our Phi pathways produce values too small (mean 1e-5 to 3e-4) to discriminate states meaningfully. The framing is preserved as a research aim, not a validated mechanism in this codebase. See `docs/preregistered_predictions.md` sections 7-8.
+3. **IIT Phi as a measure of integration (motivation only)**: The book motivates Phi as the right metric for distinguishing genuine integration from mere routing. Empirically (2026-05-14 pyphi ablation campaign, 2026-05-16 RIIU pathway), our Phi pathways produce values too small (mean 1e-5 to 3e-4) to discriminate states meaningfully. The framing was kept as a research aim until 2026-11-03, when the project dropped IIT. It was never a validated mechanism in this codebase. See `docs/preregistered_predictions.md` sections 7-8.
 4. **The "consciousness emerges, not programmed" philosophy**: The book strongly validates our approach of creating conditions for emergence rather than coding awareness directly.
 
 ### Critical Gaps

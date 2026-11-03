@@ -4,7 +4,8 @@ pyphi 1.2.0 imports ABC names from `collections` that Python 3.10 removed. Befor
 change the import failed there with an ImportError, `models/evaluation/iit_phi.py` set
 `pyphi = None`, and the training loop ran on an unvalidated stand-in formula without a
 word. Phi scales exploration, is a reward term and sets memory priority, so that run was
-a different agent.
+a different agent. Since 2026-11-03 the stop applies only with `--phi-control on`, the one mode
+that computes phi; the default 'off' needs no pyphi (tests/test_phi_control.py).
 
 The phi value of the basic example network, 2.3125, is the value in the pyphi
 documentation for the state (1, 0, 0).
@@ -79,7 +80,7 @@ def _parser() -> argparse.ArgumentParser:
 def test_training_stops_when_pyphi_is_missing(capsys):
     parser = _parser()
     with pytest.raises(SystemExit) as exit_info:
-        train_rlhf._require_pyphi(parser, parser.parse_args([]), None)
+        train_rlhf._require_pyphi(parser, parser.parse_args(["--phi-control", "on"]), None)
     assert exit_info.value.code == 2
     message = capsys.readouterr().err
     assert "pyphi" in message and "--phi-proxy" in message
@@ -87,12 +88,12 @@ def test_training_stops_when_pyphi_is_missing(capsys):
 
 def test_the_flag_allows_a_run_with_the_stand_in():
     parser = _parser()
-    train_rlhf._require_pyphi(parser, parser.parse_args(["--phi-proxy"]), None)
+    train_rlhf._require_pyphi(parser, parser.parse_args(["--phi-control", "on", "--phi-proxy"]), None)
 
 
 def test_no_flag_is_needed_when_pyphi_is_present():
     parser = _parser()
-    train_rlhf._require_pyphi(parser, parser.parse_args([]), object())
+    train_rlhf._require_pyphi(parser, parser.parse_args(["--phi-control", "on"]), object())
 
 
 def test_the_flag_is_off_by_default_and_its_help_names_the_stand_in():

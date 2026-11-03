@@ -1,5 +1,7 @@
 # Aligned external knowledge resources
 
+> **Note, 2026-11-03.** The project dropped Integrated Information Theory on this date ([decision](decisions/2026_11_03_phi_out_of_the_agent.md)). The IIT entries below stay as literature. Where they say how the project computes phi, they describe the earlier design.
+
 *Compiled 2026-06-21. A curated reading map of external work that complements this
 project's core and is useful for its live frontiers. Every entry sits on the existing
 spine (tectum-first neuroevolution, affective homeostasis, oscillatory binding,

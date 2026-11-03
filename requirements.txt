@@ -24,11 +24,14 @@ Pillow>=10.4.0
 pytest>=8.2.0
 
 # -------------------------------------------------------
-# Integrated information
+# Integrated information, optional since 2026-11-03
+# The project dropped IIT on that date (docs/decisions/2026_11_03_phi_out_of_the_agent.md).
+# A default run computes no phi and needs no pyphi. pyphi is needed only with
+# --phi-control on, which reproduces the runs made before that date.
 # pyphi 1.2.0 uses names that Python 3.10 removed. models/evaluation/iit_phi.py adds
-# them for the import, so pyphi 1.2.0 works on Python 3.8 and on Python 3.12. Without
-# pyphi the training loop stops, unless --phi-proxy asks for a stand-in formula,
-# labelled "proxy" in the phi_method column.
+# them for the import, so pyphi 1.2.0 works on Python 3.8 and on Python 3.12. With
+# --phi-control on and without pyphi the training loop stops, unless --phi-proxy asks
+# for a stand-in formula, labelled "proxy" in the phi_method column.
 # The pin keeps pyphi 2.x out, which has a different interface.
 # -------------------------------------------------------
 pyphi==1.2.0          # licence GPL 3.0 or later

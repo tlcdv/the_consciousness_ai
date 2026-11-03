@@ -4,7 +4,7 @@
 
 This document outlines the integration of Masataka Watanabe's "Generative Model Law" of consciousness into the The Consciousness AI project. Watanabe posits that consciousness arises when information participates in a generative algorithm that continuously predicts and explains incoming sensory data, creating an "inner VR." The primary method for verifying machine consciousness, according to this view, is the "Subjective Test," where a machine's reported qualia (subjective experiences) are compared to human reports under identical, often ambiguous, stimuli.
 
-This approach complements existing GNW and IIT-inspired metrics by focusing on the *active construction of experience* and its *first-person reportability*.
+This approach complements existing GNW metrics by focusing on the *active construction of experience* and its *first-person reportability*.
 
 ## 2. Core Principles for the system Implementation
 
@@ -54,7 +54,7 @@ This approach complements existing GNW and IIT-inspired metrics by focusing on t
 * **ConsciousnessCore:** Orchestrates the presentation of subjective tests and the collection of reports.
 * **Perception Modules:** Provide the initial sensory data that feeds the generative world model. The richness of this input is critical.
 * **EmotionalProcessingCore:** Prediction errors from the generative model could be a significant input to the emotional system (e.g., surprise, confusion from large errors; satisfaction from accurate predictions).
-* **GNW/IIT Metrics:** Can run in parallel. It would be interesting to see if GNW ignition or high Φ* correlate with moments when the system reports a coherent (even if illusory) percept.
+* **GNW Metrics:** Can run in parallel. It would be interesting to see if GNW ignition correlates with moments when the system reports a coherent (even if illusory) percept.
 
 ## 6. Challenges and Considerations
 
@@ -76,6 +76,6 @@ This approach complements existing GNW and IIT-inspired metrics by focusing on t
   * Add more complex illusions (rivalry, masking).
   * Explore generative/NL reporting.
 * **Phase 4: Correlation with Other Consciousness Metrics.**
-  * Analyze relationships between Watanabe-style subjective test outcomes and GNW/IIT metrics.
+  * Analyze relationships between Watanabe-style subjective test outcomes and GNW metrics.
 
 This approach offers a pathway to investigate consciousness in the system from a perspective that emphasizes active, predictive modeling and first-person reportability, aligning with Watanabe's compelling theoretical framework.

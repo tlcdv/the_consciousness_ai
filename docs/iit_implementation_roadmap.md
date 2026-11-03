@@ -1,5 +1,7 @@
 # IIT (Φ*/ and CES/Q*) Implementation Roadmap
 
+> **Superseded on 2026-11-03.** The project dropped Integrated Information Theory on this date. This roadmap is a record of the earlier design. Phi no longer acts on the agent by default, and the code it describes runs only with `--phi-control on` ([decision](decisions/2026_11_03_phi_out_of_the_agent.md)).
+
 This document outlines the theoretical and practical considerations for implementing Integrated Information Theory (IIT) metrics, specifically Φ*/ (Phi-star, an approximation of integrated information Φ) and aspects of the Cause-Effect Structure (CES, related to Qualia or Q*), within the The Consciousness AI.
 
 **Disclaimer:** Calculating true Φ or a full CES for large-scale, dynamic artificial neural networks like those in the system is a frontier research problem. It is exceptionally computationally intensive and involves unresolved theoretical questions regarding continuous systems. The following roadmap describes the ideal process and acknowledges significant challenges. Practical implementations will likely involve approximations and proxies.

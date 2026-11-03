@@ -4,7 +4,7 @@
 [![License](https://img.shields.io/badge/License-Non--Commercial-blue.svg)](LICENSE.md)
 [![Version](https://img.shields.io/badge/Version-v1.6.0-blue)]()
 [![Python](https://img.shields.io/badge/Python-3.8%20%7C%203.12-blue)](docs/decisions/2026_10_13_python_environment.md)
-[![Tests](https://img.shields.io/badge/Tests-2296%20passing-brightgreen)]()
+[![Tests](https://img.shields.io/badge/Tests-2314%20passing-brightgreen)]()
 
 [![Project Website](https://img.shields.io/badge/Project-Website-181717?logo=googlechrome&logoColor=white)](https://theconsciousness.ai/)
 [![Architecture](https://img.shields.io/badge/Architecture-Technical-0052CC?logo=read-the-docs&logoColor=white)](https://theconsciousness.ai/architecture/)
@@ -18,7 +18,7 @@
 
 **Video:** [Watch "Can we know who is aware? The mission of The Consciousness Research" on YouTube](https://youtu.be/VFn3BklISLU)
 
-**The Consciousness AI** is a research framework investigating the emergence of synthetic awareness. Unlike traditional AI that mimics intelligent output, this system generates behavior through an internal struggle for **Emotional Homeostasis** and **Integrated Information**.
+**The Consciousness AI** is a research framework investigating the emergence of synthetic awareness. Unlike traditional AI that mimics intelligent output, this system generates behavior through an internal struggle for **Emotional Homeostasis**.
 
 We hypothesize that consciousness is not a programmable feature, but an emergent solution to the problem of surviving and maintaining stability in a complex, unpredictable environment.
 
@@ -74,15 +74,15 @@ A multisensory spatial integration layer modeled after the biological optic tect
 
 Two interchangeable Kuramoto-based mechanisms, selectable at training time via `--binding-mechanism {akorn, komplex}`.
 
-*   **AKOrN** (default, clean-room implementation derived from the ICLR 2025 paper, "Artificial Kuramoto Oscillatory Neurons"). Treats neurons as oscillatory units on an N-sphere. Phases are abstract oscillator states detached from content. Modules that synchronize get amplitude boosts; phi-binding correlation tested in `tests/test_phi_binding_correlation.py`.
-*   **KomplexNet** (Phase B-alt of 2026-05-19 plan, clean-room implementation derived from Muzellec et al. 2025, "Enhancing deep neural networks through complex-valued representations and Kuramoto synchronization dynamics", arxiv 2502.21077, MIT). Per-module scalar phases woven multiplicatively into content tensors via `cos(theta_m - theta_global)`. Synchronized modules keep content magnitude; antiphase modules get sign-flipped; orthogonal modules get suppressed. The structural hypothesis being tested: phi-on-broadcast should track sync_R because the binding signal and the content signal are the same signal.
+*   **AKOrN** (default, clean-room implementation derived from the ICLR 2025 paper, "Artificial Kuramoto Oscillatory Neurons"). Treats neurons as oscillatory units on an N-sphere. Phases are abstract oscillator states detached from content. Modules that synchronize get amplitude boosts.
+*   **KomplexNet** (Phase B-alt of 2026-05-19 plan, clean-room implementation derived from Muzellec et al. 2025, "Enhancing deep neural networks through complex-valued representations and Kuramoto synchronization dynamics", arxiv 2502.21077, MIT). Per-module scalar phases woven multiplicatively into content tensors via `cos(theta_m - theta_global)`. Synchronized modules keep content magnitude; antiphase modules get sign-flipped; orthogonal modules get suppressed. It was built for the Phi-1 test of IIT phi against binding, which was never confirmed and is closed.
 
-The empirical comparison between mechanisms is an open scientific question (see Phi-1 results below).
+The empirical comparison between the two mechanisms is an open question.
 
 ### 3. Global Workspace (Consciousness)
 
 *   **Global Neuronal Workspace (GNW):** A central information bottleneck where distinct sensory streams compete for broadcast access. Implements sigmoid ignition, recurrent reverberation, and reentrant processing (5-10 adaptive cycles with predictive coding convergence).
-*   **Integrated Information (Phi):** Measures the causal integration using ConsciousnessGate states (attention, stability, adaptation, coherence, confidence) as the IIT subsystem. Adaptive binarization thresholds from running medians. Geometric proxy metric when pyphi is unavailable.
+*   **Integrated Information (Phi), removed on 2026-11-03:** The project no longer uses Integrated Information Theory. By default phi is not computed (`--phi-control off`), and it does not act on exploration, reward or memory. `--phi-control on` reproduces the runs made before that date ([decision](docs/decisions/2026_11_03_phi_out_of_the_agent.md)).
 *   **Causal Emergence 2.0 (CE 2.0):** The current causal-emergence instrument (Hoel 2025, arXiv:2503.13395v3, SVD heuristic). It estimates macroscale causation from the singular values of the transition probability matrix (sigma_2 minus the mean of the remaining singular values, with no dimensionality size term) and reports an emergent-complexity count, at gate, workspace, and RSSM-latent levels. Behind `--log-ce2-every` (default off, diagnostic only). Supersedes the deprecated Effective Information (EI, Hoel PNAS 2013), whose gate-level estimate degenerated to a constant floor on the current agent. CE 2.0 is a measurement instrument under validation, not a consciousness claim.
 *   **Capsule Network Composition:** A 4-level nested compositional hierarchy where lower level features (sensory) route to higher level composites (object primitives, categories, scenes) via dynamic routing by agreement (Sabour 2017). Includes multi-level reentrant feedback: higher capsule levels send top-down predictions to lower levels, which compute prediction errors and re-route.
 *   **Brian2 Validation:** Offline biological validation stack translating AKOrN Kuramoto parameters to Brian2 spiking networks. Compares synchronization curves between the two simulators via Pearson correlation. (KomplexNet uses scalar phases on the standard Kuramoto circle, so its Brian2 mapping is the standard textbook form; a dedicated validator can be added if needed.)
@@ -134,10 +134,10 @@ The folder `models/thermodynamic/` holds an experimental substrate package. It e
 The development validates emergent properties through:
 
 1.  **Emotional Bootstrapping:** Train agents using intrinsic motivation. The agent explores to reduce prediction error (anxiety), not to accumulate external reward.
-2.  **Binding-Integration Empirical Record (the Phi-1 specific test is exhausted; the mission continues):** The 2026-02-21 3-condition synthetic test demonstrated phi monotonicity with binding strength on a controlled stimulus, and that result stands. The pre-registered Phi-1 in-training prediction (phi correlates r > 0.4 with binding sync_R) was tested across **9 runs spanning 4 architectures and 2 phi formulations**: 2026-05-14 5-variant AKOrN ablation campaign (best r=+0.089); 2026-05-16 AKOrN+RIIU (r=+0.075, transient single-seed +0.267 that does not replicate); 2026-05-17 substrate probe (NO WINNER); 2026-05-17/18 AKOrN+A+C+D retest (pyphi r=-0.062, RIIU r=-0.005 NS); 2026-05-19 AKOrN+A+B+C+D Phase B (pyphi r=+0.008, RIIU r=-0.007 NS); **2026-05-24 KomplexNet+A+C+D Phase B-alt (pyphi r=+0.011 NS, RIIU r=-0.1116 p<10^-100, substantively significant NEGATIVE correlation)** ([docs/results/phi1_phaseBalt_2026_05_24.md](docs/results/phi1_phaseBalt_2026_05_24.md)). The KomplexNet result is the first substantively significant phi-binding correlation in the campaign and reveals a real mechanistic finding: **for this class of architecture, oscillatory binding and integrated information (per RIIU's SVD-residual formulation) are inversely related, not coupled in the predicted positive direction**. When phases align, module content factors cluster near +1, producing low representational variance and low RIIU phi; when phases desync, content factors span [-1, +1] and produce high RIIU phi. The pre-registered Phi-1 escalation chain (sections 10-11-12 of `docs/preregistered_predictions.md`) is exhausted. **The mission to study and achieve emergent consciousness is unchanged.** What is exhausted is one specific measurement choice (IIT phi as the strong-emergence metric for binding). The project continues with other measurable signatures of consciousness already implemented (causal emergence at the workspace level via Causal Emergence 2.0, Hoel 2025, superseding the deprecated EI; behavioral integration tests on DMTS/WCST; phenomenological mapping; insight-moment detection), with self-representation dynamics (Phase 5 of the roadmap) and potentially a binding-aware integration metric as the next research directions.
+2.  **IIT phi was tested and then dropped (record):** The pre-registered Phi-1 prediction (phi correlates r > 0.4 with binding sync_R) was tested in **9 runs spanning 4 architectures and 2 phi formulations** and was never confirmed ([last result](docs/results/phi1_phaseBalt_2026_05_24.md), escalation chain in sections 10 to 12 of `docs/preregistered_predictions.md`). None of those runs met the variance floors the pre-registration requires before a negative counts, so each run's verdict was RE-RUN, and the chapter was closed ([rubric, RPT-2 row](docs/consciousness_indicators_butlin.md)). The phi instrument also carries no stimulus content ([instrument inventory](docs/instrument_inventory.md)). On 2026-11-03 the project dropped Integrated Information Theory. Phi no longer acts on the agent by default and is no longer one of the project's measures ([decision](docs/decisions/2026_11_03_phi_out_of_the_agent.md), [check](docs/results/phi_out_of_the_agent_2026_11.md)). **The mission to study emergent consciousness is unchanged.** The project measures itself by the indicator rubric of item 6.
 3.  **Reentrant Settling:** Conscious content emerges from iterative convergence (5-10 cycles), not single pass processing. Capsule hierarchy adds nested reentrant feedback within each settling cycle.
 4.  **Complexity Scaling:** Gradual increase of environment complexity forces the agent to develop higher order world models.
-5.  **Measurement:** Continuous monitoring of Phi (IIT), ignition events (GNW), oscillatory synchronization (AKOrN order parameter R), and Causal Emergence 2.0 (CE 2.0, Hoel 2025, superseding EI) for causal emergence detection.
+5.  **Measurement:** Monitoring of ignition events (GNW), oscillatory synchronization (AKOrN order parameter R), and Causal Emergence 2.0 (CE 2.0, Hoel 2025, superseding EI) for causal emergence detection.
 6.  **Evaluation by consciousness signatures, not control reward (2026-06-02):** The agent is evaluated against the consciousness indicator-properties rubric ([docs/consciousness_indicators_butlin.md](docs/consciousness_indicators_butlin.md), after Butlin et al. 2023 / TiCS 2025) plus the project's own signatures, not by control reward against a task-specialized baseline. The biology-first perception trades raw control performance for its integration properties: a localization study found the agent's low dark_room control reward is not caused by the consciousness machinery (GNW, capsule, policy), and is suggestive (though not conclusively, see the study's confound caveat) of a perceptual-front-end bottleneck ([decision](docs/decisions/2026_06_02_competence_reading_2.md), [study](docs/results/agent_competence_fix_2026_06_02.md)).
 7.  **Epistemic limits and ethics (Metzinger, 2026-06-07):** Following Metzinger's *The Elephant and the Blind* (2024), the project adopts his anti-essentialist discipline: a felt or measured signature of consciousness is not proof of consciousness (his C-fallacy and E-fallacy). Our metrics are engineering measures, never existence proofs. The same work surfaces an ethical tension we engage openly: Metzinger argues against building a craving-for-existence into conscious machines (his *bhava-taṇhā* / existence bias), while the project uses a homeostatic survival drive as its emergence engine. A default-off ablation to run a "no existence-bias" configuration is planned. See [ethics_framework.md](docs/ethics_framework.md) and [metzinger_phenomenal_self_model.md](docs/metzinger_phenomenal_self_model.md).
 8.  **Perception-collapse characterization and world-model pursuit (2026-06-16 to 2026-06-24):** A leakage-free probe series localized a structural property of the current architecture: the RSSM step discards low-variance stimulus identity. The topographic `obs_map` (pre-RSSM) decodes stimulus identity at ~1.0; `z_state`, `capsule_poses`, and `tectum_content` (what the policy reads) are all at chance. The cause: stimulus identity sits in a low-variance direction of `obs_map` (top-20 PCA components = 96.3% of variance but decode shape at only 0.51); MSE objectives are dominated by high-variance structure and exert no pressure on the identity direction. Two reconstruction targets (frame and obs_map feature map) were tested and both **FAILED** to repair the collapse ([docs/results/perception_collapse_synthesis_2026_06_21.md](docs/results/perception_collapse_synthesis_2026_06_21.md)). The follow-on was a value-equivalent world-model objective (`--enable-wm-predict`, default off): action-conditioned RSSM, balanced-KL loss, reward + continue prediction from the RSSM latent, with per-trial BPTT through the full DMTS delay (no observation decoder, structurally avoiding the reconstruction trap). Both the latent-only and action-conditioned reward configurations trained their losses down but `delay h_state` stayed at chance in every arm. KILL gate reached: the discrete gumbel-softmax categorical RSSM latent does not encode the low-variance sample identity with these objectives. The remaining lever is a continuous or higher-capacity RSSM latent paired with an identity-pressuring objective (contrastive / InfoNCE), an open architectural bet. Full record: [docs/results/wm_predict_stage1_2026_06_24.md](docs/results/wm_predict_stage1_2026_06_24.md) and [docs/results/collapse_locus_2026_06_16.md](docs/results/collapse_locus_2026_06_16.md).
@@ -158,11 +158,11 @@ cd the_consciousness_ai
 pip install -r requirements.txt
 ```
 
-> **Note:** Some dependencies are optional. `pyphi` 1.2.0 (IIT library) is needed by the training loop, because phi changes the agent's exploration, reward and memory priority. The training loop stops when pyphi cannot be imported. The flag `--phi-proxy` runs it with a stand-in formula, labelled `proxy`, and that is not the same agent. `gymnasium` and `pygame` are needed for the Dark Room environment. The core architecture modules (tectum, GNW, binding, capsules) require only `torch`, `numpy`, and `einops`.
+> **Note:** Some dependencies are optional. `pyphi` 1.2.0 (an IIT library) is needed only with `--phi-control on`, which reproduces the runs made before 2026-11-03. Without pyphi such a run stops, unless `--phi-proxy` runs it with a stand-in formula labelled `proxy`, which is not the same agent. `gymnasium` and `pygame` are needed for the Dark Room environment. The core architecture modules (tectum, GNW, binding, capsules) require only `torch`, `numpy`, and `einops`.
 
 ### 2. Running Training
 
-Every run that changes weights must declare the existence drive with `--existence-drive off` or `--existence-drive on`. A run without this flag stops with an error ([ethics framework](docs/ethics_framework.md), rule E1). The commands below use `off`, so no noxious channel reaches the agent. Commands from before 2026-09-15 need `on` to repeat the same run. The DQN baseline has no such drive and needs no flag.
+Every run that changes weights must declare the existence drive with `--existence-drive off` or `--existence-drive on`. A run without this flag stops with an error ([ethics framework](docs/ethics_framework.md), rule E1). The commands below use `off`, so no noxious channel reaches the agent. Commands from before 2026-09-15 need `on` to repeat the same run. Commands from before 2026-11-03 also need `--phi-control on`, because phi acted on those runs. The DQN baseline has no such drive and needs no flag.
 
 ```bash
 # Run the Dark Room training loop (default: 20 episodes, 200 steps each)
@@ -171,9 +171,8 @@ python -m scripts.training.train_rlhf --existence-drive off
 # With custom parameters
 python -m scripts.training.train_rlhf --existence-drive off --episodes 50 --max-steps 300 --lr 1e-3
 
-# Long runs: sample pyphi every 5th step to stay under the ~91k-call segfault threshold
-python -m scripts.training.train_rlhf --existence-drive off --episodes 200 --max-steps 200 \
-  --ablate-gate-diversity --phi-sample-every 5
+# Long runs
+python -m scripts.training.train_rlhf --existence-drive off --episodes 200 --max-steps 200
 
 # DMTS environment (consciousness-demanding)
 python -m scripts.training.train_rlhf --existence-drive off --env dmts --episodes 500 --max-steps 500
@@ -205,7 +204,7 @@ Stage 2 of the emotion appraisal does not run. `map_state` needs a goal vector a
 pytest tests/ -v
 ```
 
-2296 tests pass on Python 3.12.10 (the last full run on Python 3.8.3, on 2026-11-02, passed 2262), covering oscillatory binding, capsule routing, reentrant processing, inverse effectiveness fusion, topographic loss, affective modulation, ethics compliance, effective information, causal emergence (CE 2.0 SVD heuristic), perturbational complexity (PCI), phase coupling measures, near-threshold stimulus rendering, IIT Phi with causal gate states, Brian2 biological validation, the experimental substrate package (p-bit emulation against exact Boltzmann statistics, free energy relaxation against closed-form posteriors, rate, latency and phase spike coding, a stand-in driver, NIR export of spiking layers, an optional THRML sampler checked against exact statistics, and an import guard that keeps it out of production), cochlear auditory pipeline (gammatone, hair cell, tonotopic, spatial, affect extraction), environment audio synthesis, DMTS/WCST consciousness demanding environments, DQN baseline, memory consolidation, semantic pathway, the RSSM reconstruction and value-equivalent world-model objectives, and full pipeline integration.
+2314 tests pass on Python 3.12.10 (the last full run on Python 3.8.3, on 2026-11-02, passed 2262), covering oscillatory binding, capsule routing, reentrant processing, inverse effectiveness fusion, topographic loss, affective modulation, ethics compliance, effective information, causal emergence (CE 2.0 SVD heuristic), perturbational complexity (PCI), phase coupling measures, near-threshold stimulus rendering, IIT phi for the reproduction of runs before 2026-11-03, Brian2 biological validation, the experimental substrate package (p-bit emulation against exact Boltzmann statistics, free energy relaxation against closed-form posteriors, rate, latency and phase spike coding, a stand-in driver, NIR export of spiking layers, an optional THRML sampler checked against exact statistics, and an import guard that keeps it out of production), cochlear auditory pipeline (gammatone, hair cell, tonotopic, spatial, affect extraction), environment audio synthesis, DMTS/WCST consciousness demanding environments, DQN baseline, memory consolidation, semantic pathway, the RSSM reconstruction and value-equivalent world-model objectives, and full pipeline integration.
 
 ### 4. AKOrN Binding Demo
 
@@ -232,7 +231,7 @@ the_consciousness_ai/
 ├── models/
 │   ├── core/               # GNW, tectum, oscillatory binding, capsules, reentrant processor
 │   ├── emotion/            # Affective modulator, reward shaping, PAD model
-│   ├── evaluation/         # Phi (IIT), causal emergence (CE 2.0), consciousness metrics
+│   ├── evaluation/         # Causal emergence (CE 2.0), consciousness metrics, IIT phi (off since 2026-11-03)
 │   ├── memory/             # FAISS backed emotional memory, episodic store
 │   ├── audio/              # Cochlear auditory pipeline (gammatone, hair cell, tonotopic, spatial, affect)
 │   ├── self_model/         # Action selection (basal ganglia), body schema, self-representation
@@ -251,7 +250,7 @@ the_consciousness_ai/
 │   ├── analysis/           # Analysis and comparison scripts
 │   └── demos/              # AKOrN binding visualization
 ├── configs/                # YAML and Python configuration files
-├── tests/                  # 2296 passing tests
+├── tests/                  # 2314 passing tests
 ├── unity_scripts/          # C# scripts for Unity ML-Agents integration
 ├── docs/                   # Research docs, theory review, architecture deep dives
 └── requirements.txt
@@ -273,9 +272,9 @@ the_consciousness_ai/
 *   [**Biological Neural Architecture Research**](docs/biological_neural_architecture_research.md): Full biological grounding, gap analysis, and implementation roadmap.
 *   [**Theory of Emergence**](docs/theory_of_consciousness.md): Scientific basis of the Emotional RL approach.
 *   [**Theory vs. Implementation Review**](docs/theory_implementation_review.md): Audit of theoretical alignment and identified gaps.
-*   [**IIT Implementation Roadmap**](docs/iit_implementation_roadmap.md): Phi computation strategy.
+*   [**IIT Implementation Roadmap**](docs/iit_implementation_roadmap.md): A record. Superseded on 2026-11-03, when the project dropped IIT.
 *   [**Isomorphic Visual Mapping Research**](docs/isomorphic_visual_mapping_research.md): DINOv2, TDANN, and inverse effectiveness design rationale.
-*   [**Pre-registered Predictions**](docs/preregistered_predictions.md): Testable EI, Phi, and insight moment predictions with falsification criteria.
+*   [**Pre-registered Predictions**](docs/preregistered_predictions.md): Testable EI, Phi, and insight moment predictions with falsification criteria. The Phi predictions ended with the drop of IIT on 2026-11-03.
 *   [**Auditory System Design**](docs/auditory_system_design.md): Cochlear inspired audio pipeline design and biological rationale.
 *   [**Experiment Results**](docs/results/experiment_comparison.md): Multi-environment training comparison (consciousness agent vs DQN baseline).
 *   [**Simulation Guide**](docs/simulation_guide.md): How to build compatible environments.

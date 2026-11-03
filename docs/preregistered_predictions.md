@@ -1,5 +1,7 @@
 # Pre-Registered Predictions for Consciousness Emergence
 
+> **Note, 2026-11-03.** The project dropped Integrated Information Theory on this date ([decision](decisions/2026_11_03_phi_out_of_the_agent.md)). The Phi predictions below ended then. Their text and verdicts stay as registered.
+
 This document defines falsifiable predictions about the system's behavior at specific training milestones. Following the methodology of the 2025 Nature adversarial IIT/GNW collaboration (Melloni et al.), all predictions are stated before training begins. Divergence from these predictions constitutes evidence against the current architecture, not something to be explained away post hoc.
 
 **Date of pre-registration:** 2026-03-18

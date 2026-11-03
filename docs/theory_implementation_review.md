@@ -1,6 +1,8 @@
 # Theory vs. Implementation Review
 *Generated: 2026-02-18*
 
+> **Note, 2026-11-03.** The project dropped Integrated Information Theory on this date. Phi no longer acts on the agent by default and is not one of the project's measures ([decision](decisions/2026_11_03_phi_out_of_the_agent.md)). Mentions of phi below describe the earlier design. Where this document calls Phi-1 FAILED, read RE-RUN. None of its 9 runs met the variance floors that the pre-registration requires before a negative counts, so Phi-1 was never confirmed, and the chapter was closed (`consciousness_indicators_butlin.md`, RPT-2 row, corrected 2026-09-13).
+
 This file documents the alignment between the Functionalist Emergentism thesis (theconsciousness.ai/functionalist-emergentism/) and the current codebase. It tracks issues to address in future sessions.
 
 ---

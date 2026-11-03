@@ -270,7 +270,7 @@ def build_config(args):
         # TPM stays warm. Cuts pyphi MIP calls N-fold to avoid the ~91k
         # call segfault threshold observed in pyphi 1.x Cython internals.
         "phi_sample_every": getattr(args, "phi_sample_every", 5),
-        "phi_control": getattr(args, "phi_control", "on"),
+        "phi_control": getattr(args, "phi_control", "off"),
         # RIIU parallel phi pathway (sliding-window SVD residual on broadcast).
         # Runs alongside pyphi each step, logged as phi_riiu. When enabled,
         # the phi-delta reward source switches from pyphi to RIIU so the
@@ -1098,7 +1098,7 @@ def run_episode(episode_idx, config, tectum, workspace, reentrant,
 
     prev_action = None
     prev_phi = 0.0
-    phi_off = config.get("phi_control", "on") == "off"
+    phi_off = config.get("phi_control", "off") == "off"
     prev_phi_riiu = 0.0  # parallel pathway, separate from pyphi prev_phi
     prev_env_reward = 0.0  # actual env reward (not shaped) for emotion delta
     # Phi-sampling state: pyphi runs only every Nth step; in between we
@@ -2271,7 +2271,7 @@ def run_episode(episode_idx, config, tectum, workspace, reentrant,
 
 def _reject_incompatible_flags(parser: argparse.ArgumentParser, args) -> None:
     """Stop at the command line on flag pairs the training loop cannot support."""
-    if getattr(args, "phi_control", "on") == "off":
+    if getattr(args, "phi_control", "off") == "off":
         if getattr(args, "enable_riiu", False):
             parser.error("--phi-control off takes integrated information out of the agent, and "
                          "--enable-riiu adds a reward from RIIU phi. Use one or the other.")
@@ -2505,7 +2505,7 @@ def _require_pyphi(parser: argparse.ArgumentParser, args, pyphi_module) -> None:
 
     With --phi-control off the run computes no phi, so it does not need pyphi.
     """
-    if getattr(args, "phi_control", "on") == "off":
+    if getattr(args, "phi_control", "off") == "off":
         return
     if pyphi_module is None and not getattr(args, "phi_proxy", False):
         parser.error("pyphi could not be imported, so phi would come from an unvalidated "
@@ -2792,7 +2792,8 @@ def main():
                         help="Run pyphi only every Nth step. State history "
                              "still updated every step so the TPM stays warm. "
                              "Cuts pyphi MIP calls N-fold to avoid the ~91k-call "
-                             "segfault threshold in pyphi 1.x. Default 5.")
+                             "segfault threshold in pyphi 1.x. Default 5. Used only "
+                             "with --phi-control on.")
 
     # RIIU parallel phi pathway flags
     parser.add_argument("--enable-riiu", action="store_true",
@@ -2800,7 +2801,7 @@ def main():
                              "on broadcast). When on, the phi-delta reward source "
                              "switches from pyphi to RIIU; pyphi-phi is still "
                              "logged for comparison. See docs/decisions/"
-                             "2026_05_16_riiu_license.md.")
+                             "2026_05_16_riiu_license.md. Needs --phi-control on.")
     parser.add_argument("--riiu-rank", type=int, default=16,
                         help="Truncated-SVD rank for RIIU. Default 16.")
     parser.add_argument("--riiu-window", type=int, default=64,
@@ -3223,22 +3224,24 @@ def main():
 
     parser.add_argument("--phi-proxy", action="store_true",
                         help="Run with the stand-in formula for phi when pyphi cannot be "
-                             "imported. Default off: without pyphi the run stops, because "
-                             "phi scales exploration, is a reward term and sets memory "
+                             "imported. Needs --phi-control on, the one mode that computes "
+                             "phi. Default off. Without pyphi such a run stops, because "
+                             "phi then scales exploration, is a reward term and sets memory "
                              "priority. The stand-in is not validated against pyphi, and "
                              "its rows are labelled proxy in the phi_method column. With "
                              "pyphi present the flag changes nothing.")
-    parser.add_argument("--phi-control", choices=["on", "off"], default="on",
+    parser.add_argument("--phi-control", choices=["on", "off"], default="off",
                         help="Whether phi, the integrated information of IIT, acts on the agent "
-                             "(docs/decisions/2026_11_03_phi_out_of_the_agent.md). 'on' (default) "
-                             "is unchanged. Phi is computed with pyphi and scales exploration, "
-                             "adds the change of phi to the reward and is the attention and "
-                             "priority of memory. 'off' calls no pyphi and records phi as NaN with "
-                             "phi_method 'off'. Exploration is not scaled, the reward gets no phi "
-                             "term, and memory gets attention and priority 0.0, which is what phi "
-                             "gave in practice because it stayed below 0.2. The workspace state "
-                             "of the instrument logs then holds no phi. Refused with "
-                             "--enable-riiu and with --phi-proxy.")
+                             "(docs/decisions/2026_11_03_phi_out_of_the_agent.md). 'off' (default "
+                             "since 2026-11-03, when the project dropped IIT) calls no pyphi and "
+                             "records phi as NaN with phi_method 'off'. Exploration is not scaled, "
+                             "the reward gets no phi term, and memory gets attention and priority "
+                             "0.0, which is what phi gave in practice because it stayed below 0.2. "
+                             "The workspace state of the instrument logs then holds no phi. With "
+                             "'off', --enable-riiu and --phi-proxy are refused. 'on' reproduces "
+                             "every run made before 2026-11-03. Phi is then computed with pyphi, "
+                             "scales exploration, adds the change of phi to the reward and is the "
+                             "attention and priority of memory.")
     args = parser.parse_args()
     _reject_incompatible_flags(parser, args)
     _require_pyphi(parser, args, iit_phi.pyphi)

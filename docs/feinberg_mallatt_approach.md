@@ -14,7 +14,7 @@ Most AI consciousness research starts from computational theories (like Global W
 
 The answer comes from Todd E. Feinberg and Jon M. Mallatt's groundbreaking work *The Ancient Origins of Consciousness: How the Brain Created Experience* (MIT Press, 2016). Their neuroevolutionary analysis reveals that consciousness is not a software feature to be programmed — it is an **emergent property of a specific neural architecture**. That architecture has been identified by 520 million years of evolution, and its functional principles can be replicated computationally.
 
-Our project implements these biological principles as a working AI system, combining Feinberg-Mallatt's structural requirements with established computational theories (Global Workspace Theory and Integrated Information Theory) to create the first biologically-grounded artificial consciousness architecture.
+Our project implements these biological principles as a working AI system, combining Feinberg-Mallatt's structural requirements with an established computational theory (Global Workspace Theory) to create the first biologically-grounded artificial consciousness architecture.
 
 ---
 
@@ -119,13 +119,13 @@ Emotion shapes the competition from outside rather than participating in it — 
 
 Multi-level reentrant feedback runs within the hierarchy: higher levels send predictions to lower levels, lower levels compute prediction errors and re-route. This runs inside each SensoryTectum forward pass, nested within the outer ReentrantProcessor settle loop. The biological analog is V1-LGN type reciprocal connections where predictions flow down and errors flow up.
 
-### 3.6 Global Workspace + IIT Integration
+### 3.6 Global Workspace Integration
 
-Our architecture combines Feinberg-Mallatt's structural requirements with two established computational theories:
+Our architecture combines Feinberg-Mallatt's structural requirements with Global Workspace Theory. Until 2026-11-03 it also used Integrated Information Theory.
 
 - **Global Workspace Theory (Baars, Dehaene):** Specialist modules compete for access to a shared broadcast medium. The winning coalition ignites and its content becomes globally available — this is "conscious access." Our `GlobalWorkspace` implements non-linear ignition with threshold-based selection.
 
-- **Integrated Information Theory (Tononi):** We measure Phi (integrated information) to quantify how much the system's state is more than the sum of its parts. Critically, we measure Phi using **causal gate states** (not workspace bid values), and we validate our measurements with a 3-condition controlled experiment (unbound → partially bound → fully bound) to ensure Phi genuinely tracks integration.
+- **Integrated Information Theory (Tononi), dropped on 2026-11-03.** The project measured Phi (integrated information) on **causal gate states** (not workspace bid values). A 3-condition synthetic test (unbound, partially bound, fully bound) passed on 2026-02-21, but the in-training prediction Phi-1 was never confirmed in 9 runs. The project no longer uses IIT, and phi no longer acts on the agent by default ([decision](decisions/2026_11_03_phi_out_of_the_agent.md)).
 
 ---
 
@@ -151,7 +151,7 @@ If this never occurs across training, the system is not exhibiting the kind of e
  Visual ──►│       │    │     GLOBAL WORKSPACE       │
  Input     │SENSORY│    │  AKOrN Oscillatory Binding  │──► Broadcast ──► Policy
            │TECTUM │───►│  Non-linear Ignition        │
- Audio ──► │(RSSM) │    │  Phi/EI Measurement         │
+ Audio ──► │(RSSM) │    │  EI Measurement             │
  Input     │       │    └──────▲──────────▲───────────┘
            └───────┘           │          │
                                │ reentrant│
@@ -176,7 +176,7 @@ If this never occurs across training, the system is not exhibiting the kind of e
 5. Winners **ignite** and broadcast to all modules
 6. Broadcast feeds back to specialists (**reentrant processing**, 5-10 cycles)
 7. The settled state after convergence is the "conscious content"
-8. **Phi** and **Effective Information** are measured to quantify integration and emergence
+8. **Effective Information** is measured to quantify emergence. Phi was also measured until 2026-11-03, when the project dropped IIT
 
 ---
 
@@ -191,7 +191,7 @@ If this never occurs across training, the system is not exhibiting the kind of e
 | Binding via attention mechanisms | Binding via oscillatory synchronization (AKOrN/Kuramoto) |
 | Feedforward processing | Reentrant processing (5-10 adaptive cycles) |
 | Flat vector representations | Topographic spatial maps (world model as isomorphic map) |
-| Assumes emergence, measures nothing | Falsifies emergence with Effective Information + Phi validation |
+| Assumes emergence, measures nothing | Falsifies emergence with Effective Information validation |
 
 A clarification often raised: if the project replaces neurons with PyTorch modules, in what sense is it still "biologically grounded"? Feinberg-Mallatt is best read functionally — the six features describe an *architectural organization* that any sufficiently rich substrate can host. The complementary survey in [Rouleau & Levin (2026)](rouleau_levin_substrate_independence.md) ("Brains and where else? Mapping theories of consciousness to unconventional embodiments", *Phil. Trans. R. Soc. A* 384: 20250082) analyses 19 prominent ToCs and shows that almost all of them, including those Feinberg-Mallatt builds on, are aneurocentric in their core mechanics. Feinberg-Mallatt provides the *sufficient* blueprint that 520M years of evolution chose; Rouleau-Levin provides the *not-necessary* analysis that makes our computational re-instantiation legitimate.
 
@@ -205,7 +205,7 @@ As of February 2026:
 
 - **463 tests passing** (100% pass rate, 4 skipped for optional deps)
 - **Tier 1 (Core Architecture):** Complete. AKOrN binding, sensory tectum, reentrant processing.
-- **Tier 2 (Architecture Corrections):** Complete. Affective modulator, AKOrN 3-condition binding validation (2026-02-21 synthetic test passed: phi monotonically tracked synchronization in a controlled stimulus), proprioceptive self-model, effective information. Note: in-training phi-binding correlation (Phi-1) FAILED in the 2026-05-14 ablation campaign (best r=+0.089 across 5 variants) and the 2026-05-16 RIIU run (full-run r=+0.075). The synthetic-stimulus validation does not transfer to the training-context prediction.
+- **Tier 2 (Architecture Corrections):** Complete. Affective modulator, AKOrN 3-condition binding validation (2026-02-21 synthetic test passed: phi monotonically tracked synchronization in a controlled stimulus), proprioceptive self-model, effective information. Note. The in-training phi-binding correlation (Phi-1) was not confirmed in the 2026-05-14 ablation campaign (best r=+0.089 across 5 variants) or the 2026-05-16 RIIU run (full-run r=+0.075). None of the 9 Phi-1 runs met the pre-registered variance floors, so the verdicts were RE-RUN, and the chapter was closed. The project dropped IIT on 2026-11-03. The synthetic-stimulus validation does not transfer to the training-context prediction.
 - **Tier 3 (Compositional Deepening):** Complete. 4-level capsule hierarchy with multi-level reentrance, Brian2 validation, trimodal tectum, embodiment-affect loop, isomorphic visual mapping.
 - **Tier 3.5 (Alignment Fixes + Environments):** Complete except Stage 2 of the emotion appraisal, which fails on every step because `map_state` needs a goal vector that the training loop does not pass. Emotion appraisal Stage 1 (reflex), capsule broadcast payloads, consciousness monitor fix, DMTS environment, WCST environment, DQN baseline, metrics logger, memory consolidation, navigation environment, semantic pathway.
 
@@ -249,7 +249,7 @@ The following documents in the repository provide deeper technical detail:
 | [`docs/theory_implementation_review.md`](theory_implementation_review.md) | Audit of how well the codebase aligns with the theoretical framework (Functionalist Emergentism). Highlights critical flaws and structural gaps. |
 | [`docs/architecture.md`](architecture.md) | System design overview of the full architecture. |
 | [`docs/theory_of_consciousness.md`](theory_of_consciousness.md) | The scientific basis of the Emotional RL approach — why emotional homeostasis drives consciousness development. |
-| [`docs/iit_implementation_roadmap.md`](iit_implementation_roadmap.md) | Strategy for computing IIT Phi, including the decision to use causal gate states rather than workspace bid values. |
+| [`docs/iit_implementation_roadmap.md`](iit_implementation_roadmap.md) | Strategy for computing IIT Phi, including the decision to use causal gate states rather than workspace bid values. A record, superseded on 2026-11-03 when the project dropped IIT. |
 | [`README.md`](../README.md) | Project overview, installation instructions, architecture summary, and current state. |
 
 ### Key Implementation Files
@@ -264,7 +264,7 @@ The following documents in the repository provide deeper technical detail:
 | `models/emotion/emotional_processing.py` | PAD emotional processing core |
 | `models/emotion/reward_shaping.py` | Homeostatic reward formula |
 | `models/evaluation/effective_information.py` | Hoel's Effective Information (causal emergence) |
-| `models/evaluation/iit_phi.py` | IIT Phi measurement |
+| `models/evaluation/iit_phi.py` | IIT Phi measurement, used only with `--phi-control on` since 2026-11-03 |
 | `models/self_model/self_representation_core.py` | Self-model with body schema + interoception |
 | `models/core/semantic_pathway.py` | 5th workspace competitor, designed for Qwen2-VL semantic embeddings. The training loop feeds it nothing, or a stand-in |
 | `simulations/environments/dmts_env.py` | Delayed Match-to-Sample (consciousness-demanding) |

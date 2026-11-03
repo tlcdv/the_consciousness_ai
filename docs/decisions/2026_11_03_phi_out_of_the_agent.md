@@ -6,7 +6,10 @@ the default. The public text and the logo follow that decision.
 
 ## Why
 
-- The hypothesis that phi tracks binding (Phi-1) FAILED across 9 runs and is closed.
+- The hypothesis that phi tracks binding (Phi-1) FAILED across 9 runs and is closed. **Corrected
+  2026-11-03.** Phi-1 was never confirmed in those 9 runs, but none of them met the variance floors the
+  pre-registration requires before a negative counts, so each run's verdict was RE-RUN, and the chapter
+  was closed (`docs/consciousness_indicators_butlin.md`, RPT-2 row, corrected 2026-09-13).
 - The phi instrument carries no stimulus content (`docs/instrument_inventory.md`).
 - The owner's new direction drops IIT as a measure.
 - Phi still acts on the agent. In `runs/vg_learn_s601` (8000 steps, read on 2026-11-02) pyphi computed phi
@@ -53,3 +56,11 @@ I2 and about 17 minutes for P, at the 45 to 51 seconds per episode measured on 2
 
 Whether `--phi-control off` becomes the default. A new default changes every training number from then
 on. Runs made before it stay reproducible with `--phi-control on`.
+
+## Owner decision, 2026-11-03
+
+`--phi-control off` is the default from 2026-11-03, because the project drops Integrated Information
+Theory as a whole. The phi code stays, reachable only with `--phi-control on`, so every earlier run can
+still be reproduced, and pyphi is needed only then. Texts that present phi or IIT as the project's method
+or measure change. Dated records keep their text and get a short dated note. The website, its
+architecture diagram and the logo follow the same decision.

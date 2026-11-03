@@ -1,7 +1,8 @@
 """--phi-control, which takes phi out of the agent (docs/decisions/2026_11_03_phi_out_of_the_agent.md).
 
-The default 'on' keeps every earlier run unchanged; a run-level md5 check in that decision document
-shows it. These tests pin the rules of the flag that do not need a training run.
+The default is 'off' since 2026-11-03, by the owner's decision to drop IIT. 'on' reproduces every earlier
+run, which a run-level md5 check in that decision document showed. These tests pin the rules of the flag
+that do not need a training run.
 """
 from __future__ import annotations
 
@@ -41,10 +42,10 @@ class TestNeutralMemoryValue:
 
 
 class TestConfig:
-    def test_the_default_is_on_and_off_is_passed_through(self):
+    def test_the_default_is_off_and_on_is_passed_through(self):
         base = dict(action_dim=2, lr=1e-3, episodes=1, max_steps=10)
-        assert train_rlhf.build_config(argparse.Namespace(**base))["phi_control"] == "on"
-        assert train_rlhf.build_config(argparse.Namespace(phi_control="off", **base))["phi_control"] == "off"
+        assert train_rlhf.build_config(argparse.Namespace(**base))["phi_control"] == "off"
+        assert train_rlhf.build_config(argparse.Namespace(phi_control="on", **base))["phi_control"] == "on"
 
 
 class TestFlagRules:
@@ -61,12 +62,18 @@ class TestFlagRules:
                 train_rlhf.main()
         return captured["parser"]
 
-    def test_the_flag_is_on_by_default_and_names_its_decision(self):
+    def test_the_flag_is_off_by_default_and_names_its_decision(self):
         parser = self.parser()
-        assert parser.parse_args([]).phi_control == "on"
-        assert parser.parse_args(["--phi-control", "off"]).phi_control == "off"
+        assert parser.parse_args([]).phi_control == "off"
+        assert parser.parse_args(["--phi-control", "on"]).phi_control == "on"
         text = next(a.help for a in parser._actions if "--phi-control" in a.option_strings)
         assert "2026_11_03_phi_out_of_the_agent" in text
+
+    def test_the_default_refuses_riiu_and_needs_no_pyphi(self):
+        """A command with no --phi-control is now a phi-off command."""
+        with pytest.raises(SystemExit):
+            train_rlhf._reject_incompatible_flags(argparse.ArgumentParser(), argparse.Namespace(enable_riiu=True))
+        train_rlhf._require_pyphi(argparse.ArgumentParser(), argparse.Namespace(), None)
 
     @pytest.mark.parametrize("other", ["enable_riiu", "phi_proxy"])
     def test_phi_off_refuses_riiu_and_the_proxy(self, other):

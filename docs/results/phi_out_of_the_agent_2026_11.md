@@ -1,5 +1,7 @@
 # Phi out of the agent. The default is unchanged, the off path runs, and on one seed the rewards barely move
 
+> **Note, 2026-11-03.** After these checks the owner made `--phi-control off` the default (`docs/decisions/2026_11_03_phi_out_of_the_agent.md`, owner decision). In this document "the default" means `--phi-control on`, the default at the time of the checks.
+
 Date: 2026-11-03. Decision document and rules: `docs/decisions/2026_11_03_phi_out_of_the_agent.md`,
 pushed at commit 3549da9 before any run, with one sentence reworded at d4d8b12, also before any run. All
 runs used Python 3.12.10 and the Gate B7 command (the recorded argv of `runs/f2_py312_s73`). The runs of

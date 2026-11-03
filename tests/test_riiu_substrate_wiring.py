@@ -1,5 +1,5 @@
-"""Tests for the RIIU substrate-probe wiring added in Phase B of plan
-let-s-plan-the-next-misty-parasol.md (2026-05-17).
+"""Tests for the RIIU substrate-probe wiring added in Phase B of the internal plan
+(2026-05-17). RIIU runs only with --phi-control on since 2026-11-03.
 
 Covers:
   1. --riiu-probe-all causes init_components to build three RIIUPhi instances
@@ -52,6 +52,7 @@ def _default_args(**overrides):
         ablate_bptt=False,
         phi_sample_every=5,
         enable_riiu=True,
+        phi_control="on",  # the command line refuses RIIU with phi off
         riiu_rank=4,
         riiu_window=16,
         riiu_source="broadcast",

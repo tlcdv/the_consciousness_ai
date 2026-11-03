@@ -172,8 +172,10 @@ IMPLEMENTED means" above; presence of a mechanism is not by itself evidence). Th
 project also has
 quantitative signatures that test whether those mechanisms do measurable work:
 
-- **IIT phi** (`models/evaluation/iit_phi.py`) - integration (RPT-2, GWT). In-training
-  Phi-1 coupling FAILED; phi varies but does not track binding. Reported honestly.
+- **IIT phi** (`models/evaluation/iit_phi.py`) - integration (RPT-2, GWT). **Removed from the
+  project's measures on 2026-11-03**, when the project dropped IIT. No score rested on it, so no
+  score changes. In-training Phi-1 coupling was never confirmed, and its 9 runs ended as RE-RUN (see
+  the RPT-2 row).
 - **Causal emergence** (Hoel; Causal Emergence 2.0 in `causal_emergence_svd.py`, superseding the
   deprecated EI in `effective_information.py`) - whether the workspace is a stronger causal
   macro-variable than its parts. Instrument under validation; it promotes no indicator on its own.
@@ -380,6 +382,21 @@ decisions of 2026-10-11 and 2026-10-31.
   behaviour.
 - **RPT-1, GWT-1 and GWT-3 will be re-examined** under the rule of 2026-08-11, before any promotion.
   They were awarded under the mechanism reading (see "What IMPLEMENTED means"). The count can go down.
+
+## Status update 2026-11-03. Phi and IIT are no longer measures of this project (NO status change)
+
+The count stays at 3 IMPLEMENTED, 11 PARTIAL, 14 total. The clock does not move.
+
+- **Owner decision of 2026-11-03.** The project dropped Integrated Information Theory. Phi no longer
+  acts on the agent by default (`--phi-control off`), and phi is not one of the project's measures
+  (`decisions/2026_11_03_phi_out_of_the_agent.md`). `--phi-control on` reproduces the runs made
+  before that date.
+- **No row changes.** No status in this rubric rested on phi. The RPT-2 rationale withdrew the Phi-1
+  claim on 2026-09-13.
+- **The frame stays the same.** IIT is not one of the six theory groups from which this rubric takes
+  its indicators (see "Why this document exists").
+- **Records.** The status updates above that mention phi describe the earlier design. They keep their
+  text.
 
 ## Caveat
 

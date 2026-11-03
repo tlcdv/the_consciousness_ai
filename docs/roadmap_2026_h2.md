@@ -1,5 +1,7 @@
 # Working roadmap 2026 H2: gated tracks toward measurable consciousness signatures
 
+> **Note, 2026-11-03.** The project dropped Integrated Information Theory on this date. Phi no longer acts on the agent by default and is not one of the project's measures ([decision](decisions/2026_11_03_phi_out_of_the_agent.md)). Mentions of phi below describe the earlier design. Where this document calls Phi-1 FAILED, read RE-RUN. None of its 9 runs met the variance floors that the pre-registration requires before a negative counts, so Phi-1 was never confirmed, and the chapter was closed (`consciousness_indicators_butlin.md`, RPT-2 row, corrected 2026-09-13).
+
 > **Note added 2026-10-31.** This document stops in the middle of a sentence below. It was cut when it was
 > committed on 2026-07-19, and its "Current position" is from 2026-07-05. For the current state, read the
 > status updates in [consciousness_indicators_butlin.md](consciousness_indicators_butlin.md) and the newest

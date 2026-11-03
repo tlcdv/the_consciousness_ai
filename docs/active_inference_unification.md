@@ -1,5 +1,7 @@
 # Active inference: unifying the training objective (design draft)
 
+> **Note, 2026-11-03.** The project dropped Integrated Information Theory on this date. Phi no longer acts on the agent by default and is not one of the project's measures ([decision](decisions/2026_11_03_phi_out_of_the_agent.md)). Mentions of phi below describe the earlier design.
+
 **Status: DESIGN DRAFT. Not implemented. Gated, probe-first, like every experimental
 direction in this project.** This document records the case for, and a concrete
 mapping of, replacing the current stack of hand-wired training objectives with a

@@ -12,7 +12,7 @@ structure only, kept current from the actual tree.
 |------|---------|
 | `models/core/` | The consciousness pipeline: workspace, tectum, binding, capsules, reentrant processing, gating, world-model objectives |
 | `models/emotion/` | Affective core: PAD modulator, homeostatic reward shaping, emotional processing |
-| `models/evaluation/` | Metrics and signatures: IIT Phi, Effective Information, Levin metrics, consciousness monitors |
+| `models/evaluation/` | Metrics and signatures: Causal Emergence 2.0, Effective Information, Levin metrics, consciousness monitors, and IIT Phi (off since 2026-11-03, kept to reproduce earlier runs) |
 | `models/audio/` | Cochlear auditory pipeline: gammatone filterbank, hair cell, tonotopic encoder, spatial audio, acoustic affect |
 | `models/self_model/` | Action selection (basal ganglia), self-representation, working memory, policy variants |
 | `models/memory/` | Episodic and emotional memory stores and indices |
@@ -61,7 +61,7 @@ structure only, kept current from the actual tree.
 - `global_workspace.py` -- the GNW: competition, ignition, reverberation, broadcast, binding integration.
 - `capsule_composition.py` -- 4-level hierarchical capsule routing with multi-level reentrant feedback.
 - `reentrant_processor.py` -- 5-10 adaptive convergence cycles wrapping the competition.
-- `consciousness_gating.py` -- the 5-node gate subsystem (attention, stability, adaptation, coherence, confidence) used as the IIT substrate.
+- `consciousness_gating.py` -- the 5-node gate subsystem (attention, stability, adaptation, coherence, confidence), the IIT substrate until 2026-11-03.
 - `gating_components.py` -- gate building blocks.
 - `qualia_mapper.py` -- phenomenological-state mapping from workspace content.
 - `consciousness_core.py` -- orchestration shell and the AsimovComplianceFilter ethics pipeline (not the training loop).
@@ -89,8 +89,8 @@ structure only, kept current from the actual tree.
 - `embodiment_core.py`, `self_representation_interface.py`, `networks/feature_networks.py` -- embodiment and feature helpers.
 
 ### Metrics and signatures (models/evaluation)
-- `iit_phi.py` -- IIT Phi from causal gate states (pyphi + geometric proxy).
-- `phi_riiu.py` -- RIIU sliding-window SVD-residual phi (diagnostic, opt-in).
+- `iit_phi.py` -- IIT Phi from causal gate states (pyphi + geometric proxy), used only with `--phi-control on` since 2026-11-03.
+- `phi_riiu.py` -- RIIU sliding-window SVD-residual phi (diagnostic, opt-in, refused with the default `--phi-control off` since 2026-11-03).
 - `effective_information.py` -- Hoel's EI for causal emergence (DEPRECATED 2026-07; see `causal_emergence_svd.py`).
 - `causal_emergence_svd.py` -- Causal Emergence 2.0 SVD heuristic (Hoel 2025, arXiv:2503.13395v3); successor to EI, logged via `--log-ce2-every`.
 - `perturbational_complexity.py` -- PCI_LZ (Casali et al. 2013), the perturbational
@@ -185,8 +185,9 @@ structure only, kept current from the actual tree.
 ### Design, roadmap, and reference
 - `architecture.md` -- system design overview (pillars, loops, validation).
 - `roadmap.md` -- the authoritative roadmap and phase status.
-- `preregistered_predictions.md` -- pre-registered EI/Phi/insight predictions and verdicts.
-- `iit_implementation_roadmap.md` -- Phi computation strategy.
+- `preregistered_predictions.md` -- pre-registered EI/Phi/insight predictions and verdicts. The Phi predictions ended with the drop of IIT on 2026-11-03.
+- `iit_implementation_roadmap.md` -- Phi computation strategy, a record superseded on 2026-11-03.
+- `decisions/2026_11_03_phi_out_of_the_agent.md` -- why and how phi left the agent.
 - `isomorphic_visual_mapping_research.md`, `auditory_system_design.md`, `levin_metrics_grounding.md` -- component design docs.
 - `aligned_external_resources.md` -- curated reading map of aligned external work.
 - `ethics_framework.md`, `simulation_guide.md`, `memory_system.md`, `pipeline.md`, `installation.md`, `datasets.md`, `contributing.md` -- supporting docs.

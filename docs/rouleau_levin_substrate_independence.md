@@ -55,10 +55,10 @@ Rouleau & Levin show that the 19 ToCs they survey collapse into eight functional
 | **2. Enactivism / ecological interactions** | `simulations/environments/` (Dark Room, Navigation, DMTS, WCST), embodiment-affect loop in `models/self_model/` + `models/emotion/` | Action-perception loops with interoceptive feedback; reward is shaped by homeostatic deviation, not external scalar. |
 | **3. Re-entrancy / looped feedback** | `models/core/reentrant_processor.py` (5-10 adaptive cycles), multi-level capsule feedback in `models/core/`, GNW reverberation | Bidirectional flow: predictions down, errors up. Convergence-based early termination. |
 | **4. Meta-representations** | `models/self_model/self_representation_core.py` and its Phase 5 `SelfVectorModule` | Currently partial. Phase 5 deepens this with a dynamic self-vector loop. (`meta_learner.py` and other orphaned self-model files were removed in the 2026-05-31 architecture audit; see `docs/architecture_audit_2026_05_31.md`.) |
-| **5. Attentional gating / monitoring** | `ConsciousnessGate` (attention, stability, adaptation, coherence, confidence) in `models/core/global_workspace.py`, non-linear ignition | The five-gate subsystem IS the IIT phi-measurement substrate. |
+| **5. Attentional gating / monitoring** | `ConsciousnessGate` (attention, stability, adaptation, coherence, confidence) in `models/core/global_workspace.py`, non-linear ignition | The five-gate subsystem was the IIT phi-measurement substrate until 2026-11-03, when the project dropped IIT. |
 | **6. Emergence from computation** | `models/evaluation/effective_information.py` (Hoel PNAS 2013), `compare_ei_levels()` macro-vs-micro test | We do not assume emergence; we measure EI(workspace) vs EI(gates) and falsify when EI(workspace) ≤ EI(gates). |
-| **7. Integration of information** | `models/evaluation/iit_phi.py` (pyphi + RIIU SVD-residual), causal gate-state TPM | Empirical Phi-1 record reported honestly in README; the *measurement choice* is what the 2026-05-24 KomplexNet result exhausted, not the theme itself. |
-| **8. Coarse-graining** | Workspace binarisation in `iit_phi.py`, EI macro/micro level comparison, capsule hierarchy collapse | Each capsule level coarse-grains the level below; Phi is computed over a coarse-grained gate-state TPM. |
+| **7. Integration of information** | `models/evaluation/iit_phi.py` (pyphi + RIIU SVD-residual), causal gate-state TPM | The Phi-1 record is in the README. Since 2026-11-03 phi runs only with `--phi-control on`, and the project no longer measures this theme with IIT ([decision](decisions/2026_11_03_phi_out_of_the_agent.md)). |
+| **8. Coarse-graining** | Workspace binarisation in `iit_phi.py`, EI macro/micro level comparison, capsule hierarchy collapse | Each capsule level coarse-grains the level below. Until 2026-11-03, phi was computed over a coarse-grained gate-state TPM. |
 
 Every theme has at least one concrete implementation file. The project is, structurally, an aneurocentric ToC engine: it instantiates the principles Rouleau & Levin extract from the surveyed theories, on a non-neuronal substrate, and measures whether the principles produce the predicted dynamics.
 
@@ -124,7 +124,7 @@ Recent (2024-2026) papers and architectures that align with the Rouleau-Levin fr
 ### 6.3 Causal emergence and integrated information beyond neurons
 
 - **Hoel, E.P. (2013, with 2017-2024 follow-ups). Causal emergence framework.** — Already implemented as `models/evaluation/effective_information.py`. Hoel's group has subsequently applied EI to gene-regulatory networks (Biswas, Manicka, Hoel, Levin 2021, *iScience* 24, 102131) and to xenobots — both cited by Rouleau & Levin as exemplars of aneural systems where the "integration of information" theme is empirically tractable.
-- **Marshall, W., Albantakis, L. & Tononi, G. (recent IIT 4.0 work).** Updates to phi computation that may be more tractable than IIT 3.0 / pyphi. Relevant if the project later revisits its IIT pipeline.
+- **Marshall, W., Albantakis, L. & Tononi, G. (recent IIT 4.0 work).** Updates to phi computation that may be more tractable than IIT 3.0 / pyphi. The project dropped IIT on 2026-11-03, so this entry is background only.
 
 ### 6.4 Multi-scale / nested agency
 
