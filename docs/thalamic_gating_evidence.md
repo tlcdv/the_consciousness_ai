@@ -4,6 +4,12 @@
 consciousness and audits this architecture against them. Paraphrase and citation only.
 Two of the three are preprints and are labelled as such at every use.*
 
+> **Note, 2026-11-03.** The Phi-1 line cited below as FAILED ended as RE-RUN, not FAIL.
+> None of its 9 runs met the pre-registered variance floors
+> ([audit](results/rpt2_evidence_audit_2026_09.md)), so it is not a negative result that
+> corroborates a published one. The project dropped Integrated Information Theory on
+> 2026-11-03 ([decision](decisions/2026_11_03_phi_out_of_the_agent.md)).
+
 ## Why this doc exists
 
 The architecture rests its subcortical thesis on Feinberg-Mallatt and Merker
