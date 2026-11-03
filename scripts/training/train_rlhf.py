@@ -270,6 +270,7 @@ def build_config(args):
         # TPM stays warm. Cuts pyphi MIP calls N-fold to avoid the ~91k
         # call segfault threshold observed in pyphi 1.x Cython internals.
         "phi_sample_every": getattr(args, "phi_sample_every", 5),
+        "phi_control": getattr(args, "phi_control", "on"),
         # RIIU parallel phi pathway (sliding-window SVD residual on broadcast).
         # Runs alongside pyphi each step, logged as phi_riiu. When enabled,
         # the phi-delta reward source switches from pyphi to RIIU so the
@@ -998,6 +999,18 @@ def evaluate_emotion(vision_bid: float, env_reward: float, prev_reward: float,
     return {"valence": valence, "arousal": arousal, "dominance": dominance}
 
 
+# --phi-control off (docs/decisions/2026_11_03_phi_out_of_the_agent.md). The attention and the
+# priority that memory and the action core get when phi is not computed. In the recorded runs
+# phi stayed below the memory attention threshold (0.7, MemoryConfig.attention_threshold) and
+# below the relevance floor of consolidation (0.2), so 0.0 leaves memory as phi left it in practice.
+PHI_OFF_ATTENTION = 0.0
+
+
+def exploration_scale_from_phi(phi: float, phi_off: bool) -> float:
+    """The factor on arousal. With phi on, the legacy rule max(0.2, 1 - 10 phi). With phi off, 1.0."""
+    return 1.0 if phi_off else max(0.2, 1.0 - phi * 10.0)
+
+
 def run_episode(episode_idx, config, tectum, workspace, reentrant,
                 modulator, action_core, env,
                 gate=None, memory=None,
@@ -1085,6 +1098,7 @@ def run_episode(episode_idx, config, tectum, workspace, reentrant,
 
     prev_action = None
     prev_phi = 0.0
+    phi_off = config.get("phi_control", "on") == "off"
     prev_phi_riiu = 0.0  # parallel pathway, separate from pyphi prev_phi
     prev_env_reward = 0.0  # actual env reward (not shaped) for emotion delta
     # Phi-sampling state: pyphi runs only every Nth step; in between we
@@ -1260,7 +1274,7 @@ def run_episode(episode_idx, config, tectum, workspace, reentrant,
             action_np = np.array(prev_action) if prev_action is not None and not isinstance(prev_action, np.ndarray) else prev_action
             self_model.update_self_model(
                 current_state={},
-                attention_level=prev_phi,
+                attention_level=PHI_OFF_ATTENTION if phi_off else prev_phi,
                 action=action_np,
                 emotional_state=emotion,
             )
@@ -1506,7 +1520,10 @@ def run_episode(episode_idx, config, tectum, workspace, reentrant,
             # can filter. See plan i-need-you-first-goofy-church for
             # the segfault-threshold rationale.
             sample_every = max(1, config.get("phi_sample_every", 5))
-            if step % sample_every == 0:
+            if phi_off:
+                # --phi-control off: pyphi is not called, so phi is not a number.
+                phi, phi_method = float("nan"), "off"
+            elif step % sample_every == 0:
                 phi_result = workspace.iit_metrics.compute_phi_from_gate_state(gate_state_obj)
                 # Report phi as the actual IIT result, not phi + sync_R * 0.1.
                 # The old additive term made phi tautologically correlate
@@ -1523,8 +1540,7 @@ def run_episode(episode_idx, config, tectum, workspace, reentrant,
             # Use the differentiable tensor directly from the gate (preserves grads)
             gate_values_tensor = gate.last_gate_values_tensor
         else:
-            phi = settle_result.phi
-            phi_method = "no_gate"
+            phi, phi_method = (float("nan"), "off") if phi_off else (settle_result.phi, "no_gate")
 
         # Stage 2: appraisal emotion (post-broadcast, content-specific).
         # Runs BEFORE action selection so the full conscious emotion drives the action.
@@ -1538,7 +1554,7 @@ def run_episode(episode_idx, config, tectum, workspace, reentrant,
         # This creates a causal pathway: phi -> behavior -> reward -> phi changes.
         # phi is typically in [0, 0.1] range, so we scale by 10x to get a meaningful effect.
         arousal = emotion["arousal"]
-        phi_exploration_scale = max(0.2, 1.0 - phi * 10.0)  # phi=0.05 -> scale=0.5
+        phi_exploration_scale = exploration_scale_from_phi(phi, phi_off)  # phi=0.05 -> scale=0.5
         effective_arousal = arousal * phi_exploration_scale
         # P3: when self-vector action-conditioning is on, feed the (detached)
         # self_vector into the policy so it causally drives action selection.
@@ -1959,7 +1975,7 @@ def run_episode(episode_idx, config, tectum, workspace, reentrant,
         # When RIIU is enabled, the reward source switches from pyphi-phi to
         # RIIU-phi so the policy learns from the high-variance pathway.
         # pyphi-phi continues to be computed and logged unchanged.
-        delta_phi = phi - prev_phi
+        delta_phi = 0.0 if phi_off else phi - prev_phi
         if riiu_phis is not None:
             delta_phi_reward = phi_riiu_val - prev_phi_riiu
         else:
@@ -1997,8 +2013,8 @@ def run_episode(episode_idx, config, tectum, workspace, reentrant,
                 action=action_t.view(-1),
                 reward=float(reward_for_action_core),
                 emotion_values=emotion_post,
-                attention_level=phi,
-                priority=phi,
+                attention_level=PHI_OFF_ATTENTION if phi_off else phi,
+                priority=PHI_OFF_ATTENTION if phi_off else phi,
             )
 
         # Pass env_reward + intrinsic bonuses to action_core, which applies
@@ -2011,7 +2027,7 @@ def run_episode(episode_idx, config, tectum, workspace, reentrant,
             next_broadcast=policy_state,
             done=done,
             emotion_state=emotion_post,
-            attention_level=phi,
+            attention_level=PHI_OFF_ATTENTION if phi_off else phi,
             narrative="",
             self_vector=sv_for_policy,
             next_self_vector=sv_for_policy,
@@ -2064,8 +2080,8 @@ def run_episode(episode_idx, config, tectum, workspace, reentrant,
             else:
                 comp = workspace.state.competition_results
                 gate_state = tuple(comp.get(k, 0.0) for k in sorted(comp.keys())) if comp else None
-            # Workspace state from broadcast magnitude bins
-            ws_state = (broadcast_mag, phi, sync_r)
+            # Workspace state from broadcast magnitude bins. With --phi-control off it has no phi.
+            ws_state = (broadcast_mag, sync_r) if phi_off else (broadcast_mag, phi, sync_r)
 
             # CE 2.0 (SVD heuristic) latent capture. Off by default; only runs when
             # --log-ce2-every > 0. Reads the live RSSM latent z_state (set by the
@@ -2255,6 +2271,13 @@ def run_episode(episode_idx, config, tectum, workspace, reentrant,
 
 def _reject_incompatible_flags(parser: argparse.ArgumentParser, args) -> None:
     """Stop at the command line on flag pairs the training loop cannot support."""
+    if getattr(args, "phi_control", "on") == "off":
+        if getattr(args, "enable_riiu", False):
+            parser.error("--phi-control off takes integrated information out of the agent, and "
+                         "--enable-riiu adds a reward from RIIU phi. Use one or the other.")
+        if getattr(args, "phi_proxy", False):
+            parser.error("--phi-proxy chooses a stand-in formula for phi, and --phi-control off "
+                         "computes no phi. Use one or the other.")
     if (getattr(args, "enable_wm_predict", False)
             and getattr(args, "rssm_latent_mode", "discrete") == "continuous"):
         # WorldModelObjective.kl_loss is a categorical KL over softmax logits. The
@@ -2478,7 +2501,12 @@ def parse_levels(text: str):
 
 
 def _require_pyphi(parser: argparse.ArgumentParser, args, pyphi_module) -> None:
-    """Stop when pyphi could not be imported, unless --phi-proxy asks for the stand-in."""
+    """Stop when pyphi could not be imported, unless --phi-proxy asks for the stand-in.
+
+    With --phi-control off the run computes no phi, so it does not need pyphi.
+    """
+    if getattr(args, "phi_control", "on") == "off":
+        return
     if pyphi_module is None and not getattr(args, "phi_proxy", False):
         parser.error("pyphi could not be imported, so phi would come from an unvalidated "
                      "stand-in formula. Phi scales exploration, is a reward term and sets "
@@ -3200,6 +3228,17 @@ def main():
                              "priority. The stand-in is not validated against pyphi, and "
                              "its rows are labelled proxy in the phi_method column. With "
                              "pyphi present the flag changes nothing.")
+    parser.add_argument("--phi-control", choices=["on", "off"], default="on",
+                        help="Whether phi, the integrated information of IIT, acts on the agent "
+                             "(docs/decisions/2026_11_03_phi_out_of_the_agent.md). 'on' (default) "
+                             "is unchanged. Phi is computed with pyphi and scales exploration, "
+                             "adds the change of phi to the reward and is the attention and "
+                             "priority of memory. 'off' calls no pyphi and records phi as NaN with "
+                             "phi_method 'off'. Exploration is not scaled, the reward gets no phi "
+                             "term, and memory gets attention and priority 0.0, which is what phi "
+                             "gave in practice because it stayed below 0.2. The workspace state "
+                             "of the instrument logs then holds no phi. Refused with "
+                             "--enable-riiu and with --phi-proxy.")
     args = parser.parse_args()
     _reject_incompatible_flags(parser, args)
     _require_pyphi(parser, args, iit_phi.pyphi)
@@ -3360,6 +3399,7 @@ def main():
                        "dark_room_pulse": args.dark_room_pulse,
                        "dark_room_sound_direction": args.dark_room_sound_direction,
                        "dark_room_food_switch": args.dark_room_food_switch,
+                       "phi_control": args.phi_control,
                        "dark_room_decoy_colour": args.dark_room_decoy_colour,
                        "dark_room_tone_switch": args.dark_room_tone_switch,
                        "dark_room_view": args.dark_room_view,
