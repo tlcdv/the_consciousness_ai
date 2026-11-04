@@ -15,8 +15,10 @@ hypothesis, and a comparative claim needs at least 3 seeds.
 
 **Isolation.** Production code never imports `models.thermodynamic`. The test
 `tests/test_substrate_isolation.py` checks this on the import graph. Every optional
-library (`thrml`, `nir`, `nirtorch`, `brian2`) is imported on call, skipped in tests when
-missing, and kept out of `requirements.txt`. Any experimental telemetry goes behind a
+library (`thrml`, `thermospike`, `nir`, `nirtorch`, `brian2`) is imported on call, skipped in tests when
+missing, and kept out of `requirements.txt`. New sampling work uses `thermospike`, the
+project's own library, and `thrml` serves only as an outside comparison. Results
+published before 2026-11-04 keep the code they were made with. Any experimental telemetry goes behind a
 default-off flag, and the baseline stays bit-identical when the flag is off.
 
 ## 1. Mathematical formalisms
@@ -212,6 +214,7 @@ stated target.
 | `models/thermodynamic/interfaces/snn_bridge.py` | Sections 1.1 to 1.4 |
 | `models/thermodynamic/interfaces/nir_export.py` | NIR export of the LIF layer |
 | `models/thermodynamic/interfaces/thrml_adapter.py` | Optional wrapper for `thrml` |
+| `models/thermodynamic/interfaces/thermospike_adapter.py` | Optional wrapper for `thermospike`, the project's own p-bit and spiking sampler library, with event counts per run |
 | `models/thermodynamic/interfaces/hardware_stub.py` | Deterministic stand-in driver for tests |
 | `models/validation/brian2_binding_validation.py` | Spike train check against Brian2 (optional dependency) |
 | `scripts/analysis/probe_thermodynamic_cost.py` | Offline cost profile with the superseded pass/fail gates |
