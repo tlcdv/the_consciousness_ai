@@ -6,6 +6,8 @@ This document outlines the integration of Masataka Watanabe's "Generative Model 
 
 This approach complements existing GNW metrics by focusing on the *active construction of experience* and its *first-person reportability*.
 
+Watanabe also proposes a gradual route to mind uploading. Each brain hemisphere is connected to a machine hemisphere, so that the mind could move without a break. The proposal is not tested in people, and it is separate from the Generative Model Law above. A short film presents it in its last part. [Watch "Does a mind have to end when its body does?" on YouTube](https://youtu.be/V5Sqie8oiok).
+
 ## 2. Core Principles for the system Implementation
 
 1 **Centrality of a Self-Updating Generative World Model:** The system's world model (e.g., based on DreamerV3) must be enhanced to explicitly function as a rich, multimodal sensory predictor and reconstructor. Prediction error minimization is a key driving force.

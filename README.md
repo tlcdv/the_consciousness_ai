@@ -38,6 +38,10 @@ We posit that consciousness emerges when systems achieve sufficient organization
 
 [**Read the full article on Functionalist Emergentism**](https://theconsciousness.ai/functionalist-emergentism/)
 
+[![Watch the video: Does a mind have to end when its body does?](docs/assets/video-replicant-thumbnail.jpg)](https://youtu.be/V5Sqie8oiok)
+
+**Video:** [Watch "Does a mind have to end when its body does?" on YouTube](https://youtu.be/V5Sqie8oiok). It goes from the 4-year replicants of Blade Runner to the biology of ageing, and to the idea that what stays in a brain may be its pattern of activity, not its material. That is the substrate-independence question this architecture studies in simulation.
+
 [![Watch the video: The Consciousness Research. Tokens vs. lived stakes](docs/assets/video-thumbnail.jpg)](https://youtu.be/5vOVLxMMIus)
 
 **Video:** [Watch "The Consciousness Research. Tokens vs. lived stakes" on YouTube](https://youtu.be/5vOVLxMMIus)
