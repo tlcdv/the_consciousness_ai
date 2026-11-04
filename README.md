@@ -290,7 +290,7 @@ the_consciousness_ai/
 
 ## Support the Project
 
-If you find this research valuable and would like to support the ongoing development of the architecture, you can do so by purchasing official project gear from our [merchandise store](https://theconsciousness.ai/merch/). All proceeds directly fund the infrastructure, API costs, and developer time required to maintain this open-source initiative.
+This research is self-funded. If you find it valuable, you can [support it directly](https://theconsciousness.ai/support/?utm_source=github&utm_medium=readme) with a one-time or monthly payment, or buy project gear in the [merchandise store](https://theconsciousness.ai/merch/). All of it funds the compute, infrastructure and development time behind this open-source project.
 
 ## Contributing
 
