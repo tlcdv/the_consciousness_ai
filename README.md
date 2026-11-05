@@ -78,6 +78,10 @@ A multisensory spatial integration layer modeled after the biological optic tect
 *   **Topographic Loss:** TDANN spatial loss (Margalit et al. 2024, Neuron) enforces topographic self-organization during training.
 *   **RSSM World Model:** DreamerV3 style recurrent state space model maintains temporal predictions and generates surprise based bidding for workspace access. An optional value-equivalent (MuZero / Dreamer-without-decoder) training objective (`--enable-wm-predict`, default off) action-conditions the RSSM and trains it to predict reward + continue from the latent with per-trial backpropagation-through-time across the DMTS delay, with the goal of giving the recurrent state usable working memory. As of 2026-06-24 this objective trains but does **not** yet repair the RSSM working memory (the held sample stays at chance in the recurrent state across the delay, in two reward configurations); the discrete categorical latent is the suspected bottleneck. Reported FAILED-first in [docs/results/wm_predict_stage1_2026_06_24.md](docs/results/wm_predict_stage1_2026_06_24.md).
 
+[![Watch the video: Do you see the world as it is?](docs/assets/video-hoffman-thumbnail.jpg)](https://youtu.be/uoavy-Sw2Io)
+
+**Video:** [Watch "Do you see the world as it is?" on YouTube](https://youtu.be/uoavy-Sw2Io). It goes from Kant to Donald Hoffman's interface theory and to the brain as a system that builds a model of the world from signals. The RSSM world model above is this project's predictive model. The film ends on the neutral core this architecture studies, and on why each mind built on it would still be unique.
+
 ### 2. Oscillatory Binding (Integration)
 
 Two interchangeable Kuramoto-based mechanisms, selectable at training time via `--binding-mechanism {akorn, komplex}`.
