@@ -1,0 +1,26 @@
+== Check A: action path per run family ==
+env | orienting | idle | covert | policy | policy input | merge | runs | examples
+dark_room | active | policy | overt | gonogo | broadcast | legacy | 3 | tmg3_active_s201, tmg3_active_s202, tmg3_active_s203
+dark_room | active | still | overt | gonogo | broadcast | legacy | 1 | _smoke_rb_rhythm_active
+dark_room | audio | policy | overt | gonogo | broadcast | legacy | 3 | tmg3_audio_s201, tmg3_audio_s202, tmg3_audio_s203
+dark_room | group | policy | overt | gonogo | broadcast | legacy | 7 | _smoke_tm, tmg3_group_s201, tmg3_group_s202
+dark_room | group | still | covert | gonogo | broadcast | top_winner | 8 | ta_link_s801, ta_link_s802, ta_link_s803
+dark_room | group | still | overt | gonogo | broadcast | legacy | 2 | _smoke_rb_rhythm-scrambled_group, _smoke_rb_rhythm_group
+dark_room | off | policy | overt | gonogo | broadcast | legacy | 131 | audit_attn_gpu, audit_bind_gpu, bitcheck_base
+dark_room | off | policy | overt | gonogo | broadcast | top_winner | 28 | carrier_t1_s73, carrier_t1_s74, carrier_t1_s75
+dark_room | value | still | overt | gonogo | broadcast | legacy | 13 | _smoke_vg_frozen, _smoke_vg_learn, _smoke_vg_scrambled
+dmts | off | policy | overt | gonogo | broadcast | legacy | 4 | audit_phi_errors, f3_py312_dmts, f3_py38_dmts
+
+== Check B: policy replay on the recorded policy input ==
+gate_b2_s48 ep_0009 | K1 gap 0 | mean [-0.2093  0.5538] | spread [0.00237 0.00023] | shuffled mean [-0.2091  0.5538] | zero input [-0.2093  0.5538] | tanh(bias) [-0.1984  0.5532] | noise spread [0.1182 0.1293] | input cosine to its mean 0.233 | ratio 0.0201 | EXCLUDED
+gate_b2_s49 ep_0009 | K1 gap 0 | mean [-0.5393 -0.2798] | spread [0.00158 0.0004 ] | shuffled mean [-0.5392 -0.2798] | zero input [-0.5367 -0.2791] | tanh(bias) [-0.5482 -0.2825] | noise spread [0.1026 0.1072] | input cosine to its mean 0.396 | ratio 0.0154 | EXCLUDED
+gate_b2_s50 ep_0009 | K1 gap 0 | mean [-0.1377 -0.4317] | spread [0.00269 0.00116] | shuffled mean [-0.137  -0.4321] | zero input [-0.1345 -0.4326] | tanh(bias) [-0.1718 -0.4112] | noise spread [0.1518 0.1556] | input cosine to its mean 0.670 | ratio 0.0177 | EXCLUDED
+gate_b3_s54 ep_0009 | K1 gap 0 | mean [0.4819 0.4655] | spread [0.00105 0.00156] | shuffled mean [0.4819 0.4654] | zero input [0.4831 0.4676] | tanh(bias) [0.5107 0.4946] | noise spread [0.152  0.1516] | input cosine to its mean 0.589 | ratio 0.0103 | EXCLUDED
+gate_b3_s55 ep_0009 | K1 gap 0 | mean [0.2768 0.2306] | spread [0.00089 0.00629] | shuffled mean [0.2767 0.2303] | zero input [0.2809 0.2072] | tanh(bias) [0.2914 0.1816] | noise spread [0.1086 0.1104] | input cosine to its mean 0.499 | ratio 0.0579 | EXCLUDED
+gate_b3_s56 ep_0009 | K1 gap 0 | mean [-0.4907  0.6171] | spread [0.00108 0.00213] | shuffled mean [-0.4907  0.6169] | zero input [-0.4916  0.6095] | tanh(bias) [-0.5103  0.5877] | noise spread [0.1369 0.1469] | input cosine to its mean 0.687 | ratio 0.0156 | EXCLUDED
+gate_b4_s57 ep_0009 | K1 gap 0 | mean [ 0.1645 -0.5832] | spread [0.00558 0.00164] | shuffled mean [ 0.1656 -0.5835] | zero input [ 0.1481 -0.5784] | tanh(bias) [ 0.108  -0.5663] | noise spread [0.1127 0.1117] | input cosine to its mean 0.877 | ratio 0.0499 | EXCLUDED
+gate_b4_s58 ep_0009 | K1 gap 0 | mean [ 0.4509 -0.2365] | spread [0.00878 0.00709] | shuffled mean [ 0.4482 -0.2385] | zero input [ 0.4304 -0.2524] | tanh(bias) [ 0.4396 -0.2468] | noise spread [0.1222 0.1207] | input cosine to its mean 0.441 | ratio 0.0728 | EXCLUDED
+gate_b4_s59 ep_0009 | K1 gap 0 | mean [0.5203 0.3081] | spread [0.00107 0.00378] | shuffled mean [0.5203 0.3081] | zero input [0.5174 0.3001] | tanh(bias) [0.5153 0.3073] | noise spread [0.1029 0.1161] | input cosine to its mean 0.231 | ratio 0.0368 | EXCLUDED
+gate_b7_s73 ep_0009 | K1 gap 0 | mean [-0.1808  0.5356] | spread [0.01992 0.00555] | shuffled mean [-0.179   0.5352] | zero input [-0.2226  0.547 ] | tanh(bias) [-0.2249  0.5448] | noise spread [0.107  0.1083] | input cosine to its mean 0.310 | ratio 0.1861 | UNDECIDED
+gate_b7_s74 ep_0009 | K1 gap 0 | mean [ 0.1125 -0.0513] | spread [0.00298 0.0053 ] | shuffled mean [ 0.1127 -0.0511] | zero input [ 0.1102 -0.0551] | tanh(bias) [ 0.1041 -0.0652] | noise spread [0.1211 0.1094] | input cosine to its mean 0.263 | ratio 0.0485 | EXCLUDED
+gate_b7_s75 ep_0009 | K1 gap 0 | mean [-0.251  -0.1651] | spread [0.00086 0.00082] | shuffled mean [-0.251  -0.1651] | zero input [-0.2496 -0.1638] | tanh(bias) [-0.2705 -0.1837] | noise spread [0.1199 0.1259] | input cosine to its mean 0.487 | ratio 0.0072 | EXCLUDED

@@ -1,0 +1,25 @@
+
+== Check C: the task link against the episode index ==
+B2 | episodes 30 | raw pooled rho -0.128 | rho(a, index) [0.77, -0.248, 0.517] | rho(f, index) [-0.811, 0.081, -0.043]
+   C1 partial: {'r': 0.02375274828831815, 'p': 0.4621075784843031, 'positive_seeds': 2, 'seeds': 3}
+   C2 inside episode: {'episodes': 13, 'mean_d': -0.26460411902730707, 'positive_episodes': 3, 'p': 0.9995002498750625}
+B3 | episodes 30 | raw pooled rho 0.446 | rho(a, index) [0.853, 0.607, 0.152] | rho(f, index) [0.401, -0.169, -0.2]
+   C1 partial: {'r': 0.5375796195226265, 'p': 0.0011997600479904018, 'positive_seeds': 3, 'seeds': 3}
+   C2 inside episode: {'episodes': 11, 'mean_d': 0.13643761460227052, 'positive_episodes': 6, 'p': 0.01899050474762619}
+B4 | episodes 30 | raw pooled rho 0.458 | rho(a, index) [-0.194, 0.512, 0.815] | rho(f, index) [0.071, -0.024, 0.59]
+   C1 partial: {'r': 0.4240445931803979, 'p': 0.012997400519896021, 'positive_seeds': 3, 'seeds': 3}
+   C2 inside episode: {'episodes': 11, 'mean_d': 0.3373773133911238, 'positive_episodes': 6, 'p': 0.0004997501249375312}
+B4 moved | episodes 30 | raw pooled rho 0.289 | rho(a, index) [-0.149, 0.46, 0.45] | rho(f, index) [0.1, -0.309, 0.044]
+   C1 partial: {'r': 0.3972573120587446, 'p': 0.01919616076784643, 'positive_seeds': 3, 'seeds': 3}
+   C2 inside episode: {'episodes': 9, 'mean_d': 0.2094953357006203, 'positive_episodes': 5, 'p': 0.0004997501249375312}
+B5 | episodes 30 | raw pooled rho 0.200 | rho(a, index) [-0.067, 0.779, 0.511] | rho(f, index) [-0.544, -0.369, 0.306]
+   C1 partial: {'r': 0.20302680616820878, 'p': 0.14857028594281144, 'positive_seeds': 2, 'seeds': 3}
+   C2 inside episode: {'episodes': 12, 'mean_d': 0.3047090249448396, 'positive_episodes': 6, 'p': 0.0004997501249375312}
+B6 | episodes 100 | raw pooled rho 0.362 | rho(a, index) [0.745, -0.049, 0.219, -0.34, 0.224, 0.493, 0.839, 0.292, 0.316, 0.559] | rho(f, index) [-0.31, -0.043, -0.374, -0.44, 0.171, 0.0, 0.329, -0.28, -0.058, 0.42]
+   C1 partial: {'r': 0.3212621005056617, 'p': 0.001999600079984003, 'positive_seeds': 9, 'seeds': 10}
+   C2 inside episode: {'episodes': 37, 'mean_d': 0.20935357580151565, 'positive_episodes': 21, 'p': 0.0004997501249375312}
+B7 | episodes 100 | raw pooled rho 0.388 | rho(a, index) [0.285, 0.28, 0.2, 0.705, 0.394, 0.523, 0.236, 0.875, 0.697, 0.608] | rho(f, index) [0.582, 0.19, 0.069, -0.031, -0.286, 0.055, -0.413, -0.178, 0.142, 0.821]
+   C1 partial: {'r': 0.36190655943348093, 'p': 0.0001999600079984003, 'positive_seeds': 8, 'seeds': 10}
+   C2 inside episode: {'episodes': 38, 'mean_d': 0.19009934288600305, 'positive_episodes': 24, 'p': 0.0004997501249375312}
+B8: 0 of 10 run folders on disk, skipped
+C3 same index, other layout (B4 against B4 moved): {'pairs': 30, 'rho': 0.48739965529633317, 'p': 0.003199360127974405}

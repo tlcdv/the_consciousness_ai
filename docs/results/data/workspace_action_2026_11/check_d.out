@@ -1,0 +1,26 @@
+
+== Check D: the task link with the gain weighting removed from the step ==
+B3 | episodes with frames 30 | ignited 4288 | recoverable 0.910 (K5) | weighted order names the winner 0.882 (K4) | vision share in view 0.651, out of view 0.461
+   weighted order: {'episodes': 9, 'mean_d': 0.13817800090941285, 'positive_episodes': 5, 'p': 0.04297851074462768}
+   unweighted order: {'episodes': 9, 'mean_d': -0.3606198840740993, 'positive_episodes': 0, 'p': 1.0}
+   reading: VOID
+B4 | episodes with frames 30 | ignited 4573 | recoverable 0.840 (K5) | weighted order names the winner 0.865 (K4) | vision share in view 0.651, out of view 0.463
+   weighted order: {'episodes': 7, 'mean_d': 0.6022683120784187, 'positive_episodes': 6, 'p': 0.0004997501249375312}
+   unweighted order: {'episodes': 7, 'mean_d': 0.13673837891216226, 'positive_episodes': 3, 'p': 0.06746626686656672}
+   reading: VOID
+B4 moved | episodes with frames 30 | ignited 4677 | recoverable 0.826 (K5) | weighted order names the winner 0.911 (K4) | vision share in view 0.652, out of view 0.462
+   weighted order: {'episodes': 6, 'mean_d': 0.30024691362933437, 'positive_episodes': 3, 'p': 0.005497251374312844}
+   unweighted order: {'episodes': 6, 'mean_d': -0.19461881039462858, 'positive_episodes': 1, 'p': 0.9485257371314343}
+   reading: SUPPORTED
+B5 | episodes with frames 30 | ignited 4080 | recoverable 0.849 (K5) | weighted order names the winner 0.927 (K4) | vision share in view 0.636, out of view 0.448
+   weighted order: {'episodes': 5, 'mean_d': 0.5256225247540521, 'positive_episodes': 4, 'p': 0.0004997501249375312}
+   unweighted order: {'episodes': 5, 'mean_d': 0.13804024540935084, 'positive_episodes': 2, 'p': 0.08295852073963018}
+   reading: SUPPORTED
+B6 | episodes with frames 100 | ignited 15080 | recoverable 0.844 (K5) | weighted order names the winner 0.873 (K4) | vision share in view 0.655, out of view 0.455
+   weighted order: {'episodes': 28, 'mean_d': 0.260655576366773, 'positive_episodes': 18, 'p': 0.0004997501249375312}
+   unweighted order: {'episodes': 28, 'mean_d': -0.20039823671040072, 'positive_episodes': 7, 'p': 1.0}
+   reading: VOID
+B7 | episodes with frames 100 | ignited 13649 | recoverable 0.853 (K5) | weighted order names the winner 0.968 (K4) | vision share in view 0.645, out of view 0.457
+   weighted order: {'episodes': 27, 'mean_d': 0.27955291550333977, 'positive_episodes': 17, 'p': 0.0004997501249375312}
+   unweighted order: {'episodes': 27, 'mean_d': -0.20486433902073153, 'positive_episodes': 7, 'p': 1.0}
+   reading: SUPPORTED
