@@ -4,9 +4,12 @@ Expected values are derived by hand from the definitions, never copied from a ru
 """
 import numpy as np
 import pytest
+import torch
 from scipy.stats import spearmanr
 
+from models.self_model.action_selection_core import BasalGanglia, PrefrontalCortex
 from scripts.analysis.probe_workspace_action import (
+    pathway_signals, relay_alone_reading, replay_mean,
     action_path, gain_reading, partial_link, reach_label, reach_ratio, residual_on_index,
     rotation_test, state_difference, unweighted_bid)
 
@@ -118,3 +121,36 @@ def passing(mean_d, p, episodes=10):
     (passing(0.3, 0.01), passing(-0.2, 1.0), 0.79, 0.95, "VOID")])
 def test_gain_reading_applies_the_controls_before_the_rule(weighted, plain, recoverable, agreement, reading):
     assert gain_reading(weighted, plain, recoverable, agreement) == reading
+
+
+def small_policy():
+    torch.manual_seed(0)
+    return PrefrontalCortex(8, 6).eval(), BasalGanglia(6, 2).eval()
+
+
+def test_pathway_signals_give_the_input_of_the_relay_layer():
+    """Closed form: the relay layer applied to the value read must give the action mean of the policy."""
+    pfc, bg = small_policy()
+    inputs = torch.randn(5, 8)
+    signals = pathway_signals(pfc, bg, 6, inputs)
+    with torch.no_grad():
+        through_relay = bg.thalamic_relay(torch.tensor(signals["before_relay"])).clamp(-1.0, 1.0).numpy()
+    assert np.allclose(through_relay, replay_mean(pfc, bg, 6, inputs), atol=1e-6)
+    expected = signals["go"] * (1.0 - signals["no_go"]) * (1.0 - signals["brake"])
+    assert np.allclose(signals["before_relay"], expected, atol=1e-6)
+
+
+def test_pathway_signals_do_not_move_when_the_input_does_not_move():
+    pfc, bg = small_policy()
+    signals = pathway_signals(pfc, bg, 6, torch.zeros(1, 8).repeat(1, 1))
+    again = pathway_signals(pfc, bg, 6, torch.zeros(1, 8))
+    assert np.array_equal(signals["before_relay"], again["before_relay"])
+
+
+@pytest.mark.parametrize("labels, reading", [
+    (["SUPPORTED"] * 9 + ["EXCLUDED"] * 3, "SUPPORTED"),
+    (["EXCLUDED"] * 9 + ["UNDECIDED"] * 3, "EXCLUDED"),
+    (["EXCLUDED"] * 8 + ["UNDECIDED"] * 4, "UNDECIDED"),
+    (["SUPPORTED"] * 6 + ["EXCLUDED"] * 6, "UNDECIDED")])
+def test_relay_alone_reading_needs_three_quarters_of_the_runs(labels, reading):
+    assert relay_alone_reading(labels) == reading

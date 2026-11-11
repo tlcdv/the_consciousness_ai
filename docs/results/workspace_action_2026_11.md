@@ -145,6 +145,44 @@ with the weighting and -0.205 without it. In Gate B4 with moved layouts and in G
 without the weighting is not above its null. Gate B2 ran with no weighting, and its difference inside
 the episode is -0.265 (check C). That agrees in sign, on other seeds, and is not an ablation.
 
+## Check E, added 2026-11-11. The policy output before the relay layer. EXCLUDED
+
+The rules were written after check B was read and before the first run of check E. The question was if the
+relay layer alone is the cut. The value read is go times (1 minus no-go) times (1 minus the brake), which
+is the input of the relay layer. The ratio is its largest spread over the steps, divided by the same
+exploration noise as in check B.
+
+**"The relay layer alone is the cut" is EXCLUDED. 0 of 12 gate runs are SUPPORTED, 9 are EXCLUDED and 3 are
+UNDECIDED.**
+
+| Run | Spread before the relay | Spread of the go signal | No-go mean | Brake mean | Ratio | Label |
+|---|---|---|---|---|---|---|
+| `gate_b2_s48` | (0.0011, 0.0031) | (0.0108, 0.0191) | (0.963, 0.965) | 0.252 | 0.0263 | EXCLUDED |
+| `gate_b2_s49` | (0.0027, 0.0016) | (0.0062, 0.0044) | (0.518, 0.517) | 0.066 | 0.0265 | EXCLUDED |
+| `gate_b2_s50` | (0.0030, 0.0022) | (0.0045, 0.0442) | (0.754, 0.746) | 0.459 | 0.0200 | EXCLUDED |
+| `gate_b3_s54` | (0.0026, 0.0055) | (0.0121, 0.0158) | (0.698, 0.645) | 0.065 | 0.0363 | EXCLUDED |
+| `gate_b3_s55` | (0.0189, 0.0060) | (0.0597, 0.0416) | (0.589, 0.689) | 0.202 | 0.1743 | UNDECIDED |
+| `gate_b3_s56` | (0.0049, 0.0075) | (0.0737, 0.0208) | (0.759, 0.771) | 0.281 | 0.0545 | EXCLUDED |
+| `gate_b4_s57` | (0.0075, 0.0068) | (0.0264, 0.0194) | (0.665, 0.680) | 0.131 | 0.0673 | EXCLUDED |
+| `gate_b4_s58` | (0.0136, 0.0109) | (0.0526, 0.0430) | (0.610, 0.605) | 0.334 | 0.1130 | UNDECIDED |
+| `gate_b4_s59` | (0.0063, 0.0043) | (0.0127, 0.0090) | (0.472, 0.473) | 0.048 | 0.0608 | EXCLUDED |
+| `gate_b7_s73` | (0.0207, 0.0485) | (0.0439, 0.0946) | (0.549, 0.513) | 0.055 | 0.4528 | UNDECIDED |
+| `gate_b7_s74` | (0.0077, 0.0036) | (0.0299, 0.0142) | (0.574, 0.582) | 0.382 | 0.0702 | EXCLUDED |
+| `gate_b7_s75` | (0.0011, 0.0008) | (0.0295, 0.0174) | (0.830, 0.814) | 0.524 | 0.0091 | EXCLUDED |
+
+The exploration noise has a spread of 0.103 to 0.156. The go signal alone moves by 0.004 to 0.095 over the
+steps, so the pathways before the relay layer also follow the broadcast very little after 10 episodes.
+Control K1 holds at 12 of 12 runs.
+
+Reported only. In `vg_learn_s601` to `vg_learn_s603`, 40 episodes with the value path, the ratio is 0.0019
+to 0.0030. In those runs the room never received the action of the policy, and the recorded action is the
+command of the motor map, so the denominator is not the exploration noise of the policy.
+
+Limit. The weights learned with the relay layer in place, under a loss that does not read it. This shows
+what the trained pathways hold today. It does not show what they would learn with the layer removed.
+
+Output: `docs/results/data/workspace_action_2026_11/check_e.out`.
+
 ## What this shows
 
 - In the gate runs the policy output is a constant of the seed plus noise. No content of the workspace
@@ -182,6 +220,6 @@ the episode is -0.265 (check C). That agrees in sign, on other seeds, and is not
 ## Reproduce
 
 ```
-python -m scripts.analysis.probe_workspace_action --runs-root runs --checks a b c d
+python -m scripts.analysis.probe_workspace_action --runs-root runs --checks a b c d e
 python -m pytest tests/test_workspace_action_probe.py -q
 ```

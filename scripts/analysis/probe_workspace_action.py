@@ -70,8 +70,28 @@ Check D, the gain weighting. Hypothesis: with --bid-precision gain the task link
     weighting in place, so this removes the weighting from one step and not from the
     history. Bound bids, the learned valence and the settle cycles are not replayed.
 
+RULES FOR CHECK E, written 2026-11-11 after check B was read and before the first run of
+check E.
+
+Check E, the action before the relay layer. Question: if the relay layer is taken out of
+    the path, does the policy output depend on the broadcast? Same replay as check B. The
+    value read is go * (1 - no-go) * (1 - STN brake), the input of the relay layer, with
+    dopamine at 0 as in the live call.
+    ratio = (largest per-axis spread of that value over the steps)
+            / (smallest per-axis spread of recorded action minus the replayed action mean).
+    The denominator is the exploration noise of check B, because the same noise would be
+    added to this value. SUPPORTED at a run when ratio >= 0.5, EXCLUDED when ratio <= 0.1,
+    UNDECIDED between. Control K1 of check B applies. Over the runs: the reading "the relay
+    layer alone is the cut" is SUPPORTED when 9 or more of the 12 gate runs are SUPPORTED,
+    EXCLUDED when 9 or more are EXCLUDED, UNDECIDED otherwise.
+    Reported only: the spread of the go signal alone, the means of no-go and of the brake,
+    and the same value for an input of zeros.
+    Limits, stated now. The weights learned with the relay layer in place and with a loss
+    that does not read it, so this shows what the trained pathways hold today. It does not
+    show what they would learn with the layer removed.
+
 Run:
-    python -m scripts.analysis.probe_workspace_action --runs-root runs --checks a b c d
+    python -m scripts.analysis.probe_workspace_action --runs-root runs --checks a b c d e
 """
 from __future__ import annotations
 
@@ -100,6 +120,7 @@ GATES = {
     "B8": ["gate_b8_s%d" % s for s in range(83, 93)],
 }
 REPLAY_GATES = ("B2", "B3", "B4", "B7")
+LEARNING_RUNS = ["vg_learn_s%d" % seed for seed in (601, 602, 603)]
 GAIN_GATES = ("B3", "B4", "B4 moved", "B5", "B6", "B7")
 MIN_STATE_STEPS = 10
 MIN_EPISODES_D = 5
@@ -204,6 +225,62 @@ def replay_run(root: str, run: str) -> None:
           % (run, os.path.basename(folder), input_gap, np.round(mean.mean(0), 4), np.round(mean.std(0), 5),
              np.round(shuffled.mean(0), 4), np.round(zeros, 4), np.round(relay_bias, 4),
              np.round(noise.std(0), 4), float(cosine), ratio, reach_label(ratio, input_gap)))
+
+
+def pathway_signals(pfc, bg, context: int, inputs: torch.Tensor) -> dict:
+    """Per step: the go signal, the no-go signal, the brake, and the input of the relay layer."""
+    hidden, rows = torch.zeros(1, context), {"go": [], "no_go": [], "brake": [], "before_relay": []}
+    with torch.no_grad():
+        for row in inputs:
+            state, hidden = pfc(row.reshape(1, -1), hidden)
+            go, no_go, brake = bg.direct_pathway(state), bg.indirect_pathway(state), bg.stn_pathway(state)
+            rows["go"].append(go.squeeze(0).numpy())
+            rows["no_go"].append(no_go.squeeze(0).numpy())
+            rows["brake"].append(brake.reshape(-1).numpy())
+            rows["before_relay"].append((go * (1.0 - no_go) * (1.0 - brake)).squeeze(0).numpy())
+    return {name: np.array(series) for name, series in rows.items()}
+
+
+def before_relay_run(root: str, run: str) -> str:
+    """One line of check E, and its label."""
+    folder = last_recorded_episode(os.path.join(root, run))
+    weights = torch.load(os.path.join(folder, "weights.pt"), map_location="cpu", weights_only=False)
+    maps, vectors = np.load(os.path.join(folder, "maps.npz")), np.load(os.path.join(folder, "vectors.npz"))
+    policy_state = torch.tensor(maps["policy_state"]).float().reshape(len(maps["policy_state"]), -1)
+    input_gap = float(np.abs(maps["policy_state"] - vectors["broadcast"]).max())
+    pfc, bg, context = build_policy(weights)
+    signals = pathway_signals(pfc, bg, context, policy_state)
+    zeros = pathway_signals(pfc, bg, context, torch.zeros_like(policy_state))["before_relay"][-1]
+    noise = recorded_actions(folder, maps["policy_state__steps"]) - replay_mean(pfc, bg, context, policy_state)
+    ratio = reach_ratio(signals["before_relay"], noise)
+    label = reach_label(ratio, input_gap)
+    print("%s %s | K1 gap %.3g | before relay mean %s, spread %s | zero input %s | go spread %s | "
+          "no-go mean %s | brake mean %.4f | noise spread %s | ratio %.4f | %s"
+          % (run, os.path.basename(folder), input_gap, np.round(signals["before_relay"].mean(0), 4),
+             np.round(signals["before_relay"].std(0), 5), np.round(zeros, 4),
+             np.round(signals["go"].std(0), 5), np.round(signals["no_go"].mean(0), 4),
+             float(signals["brake"].mean()), np.round(noise.std(0), 4), ratio, label))
+    return label
+
+
+def relay_alone_reading(labels: list) -> str:
+    """The reading over the gate runs: 9 of 12, or the same share of another count, rounded up."""
+    needed = int(np.ceil(0.75 * len(labels)))
+    if labels.count("SUPPORTED") >= needed:
+        return "SUPPORTED"
+    return "EXCLUDED" if labels.count("EXCLUDED") >= needed else "UNDECIDED"
+
+
+def check_e(root: str) -> None:
+    print("\n== Check E: the policy output before the relay layer ==")
+    labels = [before_relay_run(root, run) for gate in REPLAY_GATES for run in GATES[gate][:3]]
+    print("the relay layer alone is the cut: %s (%d SUPPORTED, %d EXCLUDED, %d UNDECIDED, %d VOID of %d)"
+          % (relay_alone_reading(labels), labels.count("SUPPORTED"), labels.count("EXCLUDED"),
+             labels.count("UNDECIDED"), labels.count("VOID"), len(labels)))
+    print("reported only, runs with the value path, where the room never received the policy action:")
+    for run in LEARNING_RUNS:
+        if os.path.isdir(os.path.join(root, run, "episodes")):
+            before_relay_run(root, run)
 
 
 def check_b(root: str) -> None:
@@ -410,9 +487,9 @@ def check_d(root: str) -> None:
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     parser.add_argument("--runs-root", default="runs")
-    parser.add_argument("--checks", nargs="+", choices=["a", "b", "c", "d"], default=["a", "b", "c", "d"])
+    parser.add_argument("--checks", nargs="+", choices=["a", "b", "c", "d", "e"], default=["a", "b", "c", "d", "e"])
     args = parser.parse_args()
-    for name, check in (("a", check_a), ("b", check_b), ("c", check_c), ("d", check_d)):
+    for name, check in (("a", check_a), ("b", check_b), ("c", check_c), ("d", check_d), ("e", check_e)):
         if name in args.checks:
             check(args.runs_root)
 
