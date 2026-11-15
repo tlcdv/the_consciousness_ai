@@ -2,6 +2,8 @@
 
 > **Note, 2026-11-03.** The project dropped Integrated Information Theory on this date. Phi no longer acts on the agent by default and is not one of the project's measures ([decision](decisions/2026_11_03_phi_out_of_the_agent.md)). Mentions of phi below describe the earlier design.
 
+> **Note, 2026-11-15.** State of the work after 2026-11-03, with the rubric unchanged at 3 IMPLEMENTED and 11 PARTIAL of 14. The competing goals gate HOLDS at 3 of 3 seeds with the existence drive off. The agent weighs the size of a food against a wait and changes its choice when the benefit changes ([rules and result](decisions/2026_11_08_competing_goals_gate.md)). The design sets the trade-off rule and each flag of the gate is off by default, so AE-1 stays PARTIAL. The reversal does not read the existence drive at its three seeds ([result](results/reversal_drive_off_2026_11.md)). The broadcast of the workspace does not reach the action in the dark room gates, which FAILED ([result](results/workspace_action_2026_11.md)), and a check of workspace priority on the tectal map was excluded ([result](results/workspace_priority_check_2026_11.md)). The text below was not rewritten for these results.
+
 This document plans the next several sessions. It is a decision tree, not a fixed
 schedule. The project's own record is that most single-bet chapters end at a kill gate
 (reconstruction x2, value-equivalent world model, latent-identity supervision), so every

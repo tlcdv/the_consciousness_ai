@@ -2,7 +2,7 @@
 
 [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.23415839.svg)](https://doi.org/10.5281/zenodo.23415839)
 [![License](https://img.shields.io/badge/License-Non--Commercial-blue.svg)](LICENSE.md)
-[![Version](https://img.shields.io/badge/Version-v1.6.0-blue)]()
+[![Version](https://img.shields.io/badge/Version-v1.7.0-blue)]()
 [![Python](https://img.shields.io/badge/Python-3.8%20%7C%203.12-blue)](docs/decisions/2026_10_13_python_environment.md)
 [![Tests](https://img.shields.io/badge/Tests-2671%20passing-brightgreen)]()
 
