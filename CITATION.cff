@@ -5,9 +5,10 @@ authors:
     given-names: César
     orcid: "https://orcid.org/0009-0005-9538-9390"
 title: "The Consciousness AI: A Biologically Grounded Architecture for Artificial Consciousness and Effective Information Measurement"
-version: "1.6.0"
-doi: 10.5281/zenodo.23415839
-date-released: 2026-10-16
+version: "1.7.0"
+# The concept DOI. It resolves to the latest archived version.
+doi: 10.5281/zenodo.23415838
+date-released: 2026-11-15
 url: "https://github.com/tlcdv/the_consciousness_ai"
 repository-code: "https://github.com/tlcdv/the_consciousness_ai"
 license: Apache-2.0
