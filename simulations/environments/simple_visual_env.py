@@ -43,6 +43,33 @@ def _checked_colour(colour, name: str = "agent_colour") -> tuple:
     return tuple(int(c) for c in channels)
 
 
+def _checked_sizes(sizes, name: str):
+    """Two food sizes above 0, (light, decoy), as floats; None stays None."""
+    if sizes is None:
+        return None
+    if len(sizes) != 2 or not all(float(size) > 0.0 for size in sizes):
+        raise ValueError("%s must be two numbers above 0, light and decoy, got %r" % (name, sizes))
+    return tuple(float(size) for size in sizes)
+
+
+def _checked_waits(waits):
+    """Two whole numbers of steps, 0 or more, (light, decoy); None stays None."""
+    if waits is None:
+        return None
+    if len(waits) != 2 or not all(float(wait) == int(wait) and int(wait) >= 0 for wait in waits):
+        raise ValueError("food_waits must be two whole numbers of 0 or more, light and decoy, got %r" % (waits,))
+    return tuple(int(wait) for wait in waits)
+
+
+def _checked_episode(episode, name: str):
+    """An episode number of 0 or more; None stays None."""
+    if episode is None:
+        return None
+    if int(episode) < 0:
+        raise ValueError("%s must be 0 or more, got %r" % (name, episode))
+    return int(episode)
+
+
 def draw_agent(canvas, centre, radius: int, colour: tuple, mark: str) -> None:
     """The agent's own body, drawn into the picture the agent receives."""
     if mark == "disc":
@@ -75,7 +102,10 @@ class SimpleVisualEnv(DarkRoomAudioMixin, gym.Env):
                  decoy_sound: bool = False, decoy_level: float = 1.0,
                  decoy_visible: bool = False, start_between: bool = False,
                  pulse: bool = False, sound_direction: bool = True, food_switch: int | None = None,
-                 decoy_colour: tuple | None = None, tone_switch: int | None = None):
+                 decoy_colour: tuple | None = None, tone_switch: int | None = None,
+                 food_sizes: tuple | None = None, food_waits: tuple | None = None,
+                 food_change: int | None = None, food_sizes_after: tuple | None = None,
+                 forced: int | None = None):
         """`audio`: "legacy" (mono events, the behaviour of every run before
         2026-09-15) or "binaural" (the light emits a tone heard across the room,
         with direction; `audio_channels` 2 = left/right, 4 = adds upper/lower).
@@ -124,7 +154,21 @@ class SimpleVisualEnv(DarkRoomAudioMixin, gym.Env):
         `tone_switch`: from this episode on, counted as for `food_switch`, the light sounds at
         DECOY_TONE_HZ and the decoy at BINAURAL_TONE_HZ, so a learned pairing of colour and pitch
         is broken. info["_truth_tones_swapped"] says which pairing holds. Needs `decoy_sound`. None
-        (default) is unchanged."""
+        (default) is unchanged.
+        The next five options are the room of docs/decisions/2026_11_08_competing_goals_gate.md.
+        Each needs `decoy_visible`, none works with `food_switch`, and None (default) is unchanged.
+        `food_sizes`: (light, decoy), the reward of a step inside each object once its food comes.
+        Both objects then give food. Without it the light gives 1.0 and the decoy gives none.
+        `food_waits`: (light, decoy), the steps inside an object's radius, counted over the episode
+        and not in a row, before its food comes. Until then a step there gives -0.01, as outside.
+        `food_change` with `food_sizes_after`: from this episode on, counted as for `food_switch`,
+        the sizes are `food_sizes_after`. The waits stay.
+        `forced`: in the first `forced` episodes, counted as for `food_switch`, one object is
+        present, the light in even episodes and the decoy in odd ones. The other object is not
+        drawn, makes no sound and gives no food. Its place is still drawn from its stream, so every
+        place is the place of a room without forced episodes.
+        With any of the five, info has "_truth_food_sizes", "_truth_food_object" (the object that
+        gave food at this step, or None) and "_truth_present" ("light", "decoy" or "both")."""
         if view not in ("full", "agent_centered"):
             raise ValueError("view must be 'full' or 'agent_centered', got %r" % view)
         if agent_mark not in AGENT_MARKS:
@@ -159,6 +203,8 @@ class SimpleVisualEnv(DarkRoomAudioMixin, gym.Env):
             raise ValueError("tone_switch must be 0 or more, got %r" % (tone_switch,))
         self.tone_switch = None if tone_switch is None else int(tone_switch)
         self.tones_swapped = False
+        self.decoy_visible = bool(decoy_visible)
+        self._set_food_options(food_sizes, food_waits, food_change, food_sizes_after, forced)
         self.food = "light"
         self._episodes_run = 0
         self._new_episode = False
@@ -229,6 +275,8 @@ class SimpleVisualEnv(DarkRoomAudioMixin, gym.Env):
             self.decoy_level = self.decoy_levels[self._decoy_resets % len(self.decoy_levels)]
             self._decoy_resets += 1
         self._new_episode = True
+        if self._food_options:
+            self._start_food_episode()
         if self.start_between:
             self.agent_pos = ((self.light_pos + self.decoy_pos) / 2.0).astype(np.float32)
         if self.pulse_on:
@@ -275,6 +323,9 @@ class SimpleVisualEnv(DarkRoomAudioMixin, gym.Env):
         # We return a basic signal; the Agent's Brain will interpret this emotionally.
         # Here: 1.0 at the food (the light, or the decoy after `food_switch`), -0.01 step penalty
         reward = 1.0 if in_food else -0.01
+        fed = None
+        if self._food_options:
+            reward, fed = self._food_reward()
         
         terminated = self.battery <= 0
         truncated = False
@@ -287,6 +338,11 @@ class SimpleVisualEnv(DarkRoomAudioMixin, gym.Env):
         if self.tone_switch is not None:
             # Ground truth for analysis only; no agent code reads keys starting '_truth_'.
             info["_truth_tones_swapped"] = self.tones_swapped
+        if self._food_options:
+            # Ground truth for analysis only; no agent code reads keys starting '_truth_'.
+            info["_truth_food_sizes"] = list(self._sizes_now)
+            info["_truth_food_object"] = fed
+            info["_truth_present"] = {"decoy": "light", "light": "decoy"}.get(self.absent_object, "both")
 
         if self.view == "agent_centered":
             # Ground truth for analysis only; no agent code reads keys starting '_truth_'.
@@ -323,6 +379,58 @@ class SimpleVisualEnv(DarkRoomAudioMixin, gym.Env):
 
         return observation, reward, terminated, truncated, info
         
+    def _set_food_options(self, food_sizes, food_waits, food_change, food_sizes_after, forced) -> None:
+        """Check and keep the five options of the competing goals room. All None is the room as it was."""
+        given = {"food_sizes": food_sizes, "food_waits": food_waits, "food_change": food_change,
+                 "food_sizes_after": food_sizes_after, "forced": forced}
+        for name in [name for name, option in given.items() if option is not None]:
+            if not self.decoy_visible:
+                raise ValueError("%s needs decoy_visible" % name)
+            if self.food_switch is not None:
+                raise ValueError("%s does not work with food_switch" % name)
+        if (food_change is None) != (food_sizes_after is None):
+            raise ValueError("food_change needs food_sizes_after, and food_sizes_after needs food_change")
+        self.food_sizes = _checked_sizes(food_sizes, "food_sizes")
+        self.food_sizes_after = _checked_sizes(food_sizes_after, "food_sizes_after")
+        self.food_waits = _checked_waits(food_waits)
+        self.food_change = _checked_episode(food_change, "food_change")
+        self.forced = _checked_episode(forced, "forced")
+        self._food_options = any(option is not None for option in given.values())
+        self.absent_object = None
+        self._inside_steps = [0, 0]
+        self._sizes_now = self.food_sizes if self.food_sizes is not None else (1.0, None)
+
+    def _start_food_episode(self) -> None:
+        """The sizes, the absent object and the wait counts of the episode that this reset starts.
+
+        `_episodes_run` counts the episodes in which the room ran a step, so it is the number of
+        the episode that starts now, and a reset with no step after it does not move it."""
+        episode = self._episodes_run
+        self._inside_steps = [0, 0]
+        self.absent_object = None
+        if self.forced is not None and episode < self.forced:
+            self.absent_object = "decoy" if episode % 2 == 0 else "light"
+        self._sizes_now = self.food_sizes if self.food_sizes is not None else (1.0, None)
+        if self.food_change is not None and episode >= self.food_change:
+            self._sizes_now = self.food_sizes_after
+
+    def _food_reward(self) -> tuple:
+        """(reward, object that fed or None) of this step in the competing goals room.
+
+        A step inside the radius of a present object counts toward its wait. The food comes at each
+        step inside after `food_waits` such steps. The gap between the objects is wider than the
+        agent can span, so one step is inside one object at most; the light is read first."""
+        reach = self.light_radius + self.agent_radius
+        waits = self.food_waits if self.food_waits is not None else (0, 0)
+        for index, (name, place) in enumerate((("light", self.light_pos), ("decoy", self.decoy_pos))):
+            if name == self.absent_object or self._sizes_now[index] is None:
+                continue
+            if np.linalg.norm(self.agent_pos - place) < reach:
+                self._inside_steps[index] += 1
+                if self._inside_steps[index] > waits[index]:
+                    return float(self._sizes_now[index]), name
+        return -0.01, None
+
     def seed_decoy(self, seed: int) -> None:
         """Fix the places of the second sound source. They do not use numpy's global stream."""
         self._decoy_rng = np.random.default_rng(seed)
@@ -391,10 +499,11 @@ class SimpleVisualEnv(DarkRoomAudioMixin, gym.Env):
         self._canvas.fill((0, 0, 0))
 
         # Draw Light
-        pygame.draw.circle(
-            self._canvas, self._object_colour("light"), self.light_pos.astype(int), self.light_radius
-        )
-        if self.decoy_visible:
+        if self.absent_object != "light":
+            pygame.draw.circle(
+                self._canvas, self._object_colour("light"), self.light_pos.astype(int), self.light_radius
+            )
+        if self.decoy_visible and self.absent_object != "decoy":
             pygame.draw.circle(self._canvas, self._object_colour("decoy"), self.decoy_pos.astype(int), self.light_radius)
 
         # Draw Agent
@@ -413,8 +522,9 @@ class SimpleVisualEnv(DarkRoomAudioMixin, gym.Env):
         canvas = self._padded_canvas
         canvas.fill(WALL_COLOUR)
         pygame.draw.rect(canvas, (0, 0, 0), (r, r, self.width, self.height))
-        pygame.draw.circle(canvas, self._object_colour("light"), (self.light_pos + r).astype(int), self.light_radius)
-        if self.decoy_visible:
+        if self.absent_object != "light":
+            pygame.draw.circle(canvas, self._object_colour("light"), (self.light_pos + r).astype(int), self.light_radius)
+        if self.decoy_visible and self.absent_object != "decoy":
             pygame.draw.circle(canvas, self._object_colour("decoy"), (self.decoy_pos + r).astype(int), self.light_radius)
         draw_agent(canvas, (self.agent_pos + r).astype(int), self.agent_radius,
                    self.agent_colour, self.agent_mark)

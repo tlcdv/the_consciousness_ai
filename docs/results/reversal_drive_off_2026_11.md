@@ -45,7 +45,7 @@ Stage B compares two revisions and two drive settings. Because the three records
 
 ## Limits
 
-- This shows one short run at seed 999 and one full run at seed 701. The result is deterministic, so I claim no seed replication. Seeds 702 and 703 did not run with the drive off. For them the identity is a reading of the code.
+- This shows one short run at seed 999 and one full run at seed 701. The result is deterministic, so I claim no seed replication. Seeds 702 and 703 did not run with the drive off. For them the identity is a reading of the code. Update 2026-11-15: both seeds ran with the drive off, and the identity holds. See the last section.
 - The R1 to R3 numbers of seed 701 in `docs/results/reversal_2026_10.md` hold with the drive off by identity. R1 to R3 at 3 of 3 seeds with the drive off are not measured.
 - The frozen and scrambled controls of the value gate did not run.
 - The identity covers the movement only. The drive still changes other parts of the agent, as the differing columns show. The drive is present in the agent, and this behaviour does not read it.
@@ -82,3 +82,50 @@ What the drive still changes: with the drive off the affective modulator gives n
 A gate that tests the drive would need a need that changes inside an episode, a resource that restores it, and a choice that the need can move. A primary reward in homeostatic reinforcement learning is an outcome that reduces a physiological need (Keramati and Gutkin, eLife 3, e04811, 2014, doi 10.7554/eLife.04811). In larval zebrafish, hunger shifts the choice from avoidance to approach and recruits more prey-responsive neurons in the tectum (Filosa et al., Neuron 90, 596, 2016, doi 10.1016/j.neuron.2016.03.014). In this agent the need state reaches neither the value of the outcome nor the tectal selection. A room signal that lowers `energy` is a noxious channel under rule E6, and rule E2 allows no self-preservation drive or reward term, so such a gate needs an owner decision under the ethics framework. The competing goals gate uses two foods and the drive off instead (`docs/decisions/2026_11_08_competing_goals_gate.md`).
 
 Limits: the threshold numbers come from one short run of 6 episodes, and the result is deterministic, so no seed replication is claimed. The claim that the binder's input does not depend on the drive is a reading of the code, supported by the identity of the stage A and stage B records. How the self-model computes fatigue with the drive on was not read. That changes only the size of the affect path, and the cut at the gate threshold does not depend on it.
+
+## Seeds 702 and 703 with the drive off, added 2026-11-15. The identity holds at both seeds.
+
+Rule: `docs/decisions/2026_10_31_reversal_drive_off.md`, section "Added 2026-11-15", pushed at revision
+`eb90c0d` before the runs. The owner decided that the identity result counts as the second result that
+the AE-1 row of the rubric names, and that these two seeds run with the drive off first.
+
+The command of each run is the recorded command of `session.json` of `runs/rv_switch_s702` and
+`runs/rv_switch_s703` with three tokens changed: `--existence-drive off`, `--dark-room-food-switch 29`
+in place of 30 (the same room after the fix of that flag, by the owner's word, as in stage B), and the
+log folder. A comparison of the two recorded commands of each seed gives these three differences and
+no other. One run at a time. Drive C had 17 GB free before each run. Each run has 12001 lines in
+`metrics.csv` and 61 in `episodes.csv`, so no seed is VOID.
+
+| Seed | File | Rule, md5 of the gate run with the drive on | Drive off, `runs/drv_b_off_s<seed>` | Holds |
+|---|---|---|---|---|
+| 702 | `value_gate.json` | `37cad8a52e9a53cf05dd010a2a1a006e` | same | yes |
+| 702 | `tectal_orienting.json` | `7f0d2ced927da484d546544c90cb486e` | same | yes |
+| 702 | `map_binding.json` | `5e8a1aff0d5b5a1baa5a626cd4adf919` | same | yes |
+| 703 | `value_gate.json` | `df0519e99e9f28775b6370bf348184f5` | same | yes |
+| 703 | `tectal_orienting.json` | `22a44959e0e6fdb546f312b1d1655c94` | same | yes |
+| 703 | `map_binding.json` | `10b694c08b62b2021a6b1f92275de5ea` | same | yes |
+
+`metrics.csv`, reported only: seed 702 `7f93280bc8d58233325a62aee97a88c0` with the drive on and
+`36dedf9cdb22813d66460ac51afaa1bc` with the drive off. Seed 703 `0841c276df3fde7b35004df8bf429ad6` and
+`ce0b929ccd970f31096b3f84149d489d`. They differ, as in stage B. This comparison does not separate the
+drive from the code, because the reference runs are of an older revision.
+
+| Manifest of the run | Seed 702 | Seed 703 |
+|---|---|---|
+| `utc_time` | 2026-11-15T20:36:25 | 2026-11-15T20:51:02 |
+| `git_commit` | `eb90c0d08640652df9de5df9aeb55d75c9b4e6f0` | same |
+| `git_tracked_changes` | false | false |
+| `git_diff.patch` | 0 bytes | 0 bytes |
+| `existence_drive` | off | off |
+| `noxious_channels_present` | none | none |
+
+Both seeds hold. So no run with the drive on at this revision was needed. With stage B, the three
+records of the movement are byte for byte the same with the drive on and off at each of the three
+seeds of the reversal gate, 701, 702 and 703. The R1 to R3 numbers of `docs/results/reversal_2026_10.md`
+then hold with the drive off by identity at 3 of 3 seeds. R1 to R3 were not computed again.
+
+Limits. This is a test of identity and not a repeat of the reversal on new seeds. The reference runs
+are of revision `ea3eabd` and the drive off runs are of `e117bbe` (seed 701) and `eb90c0d` (seeds 702
+and 703). The equal records show that neither the drive nor the code between those revisions changed
+the movement in these runs. The value gate runs (L1 to L3) were not compared. The other limits of this
+document stand. No score changed. The AE-1 score is the owner's decision.

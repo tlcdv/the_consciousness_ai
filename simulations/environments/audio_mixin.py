@@ -342,7 +342,8 @@ class DarkRoomAudioMixin(AudioMixin):
         With a second source (info["_truth_decoy_offset"], --dark-room-decoy-sound)
         a tone of DECOY_TONE_HZ comes from that place by the same rules. It has no
         visual object. A collision adds a short noise burst to every ear. After
-        --dark-room-tone-switch the two sources swap their tones.
+        --dark-room-tone-switch the two sources swap their tones. In a forced episode
+        (--dark-room-forced) the object that is not present makes no sound.
         """
         sr, n = self._audio_sample_rate, int(self._audio_frame_duration * self._audio_sample_rate)
         rng = self._get_audio_rng()
@@ -353,9 +354,13 @@ class DarkRoomAudioMixin(AudioMixin):
         light_hz, decoy_hz = BINAURAL_TONE_HZ, DECOY_TONE_HZ
         if getattr(self, "tones_swapped", False):
             light_hz, decoy_hz = DECOY_TONE_HZ, BINAURAL_TONE_HZ
-        signal = source_ears(info["_truth_light_offset"], light_hz, channels, sr, n,
-                             level=light_gain, directional=directional)
-        if info.get("_truth_decoy_offset") is not None:
+        absent = getattr(self, "absent_object", None)
+        if absent == "light":
+            signal = np.zeros((channels, n))
+        else:
+            signal = source_ears(info["_truth_light_offset"], light_hz, channels, sr, n,
+                                 level=light_gain, directional=directional)
+        if info.get("_truth_decoy_offset") is not None and absent != "decoy":
             signal = signal + source_ears(info["_truth_decoy_offset"], decoy_hz, channels, sr, n,
                                           level=getattr(self, "decoy_level", 1.0) * decoy_gain,
                                           directional=directional)

@@ -18,6 +18,7 @@ import sys
 import os
 import argparse
 import logging
+import math
 import random
 
 import numpy as np
@@ -1004,6 +1005,7 @@ def evaluate_emotion(vision_bid: float, env_reward: float, prev_reward: float,
 # phi stayed below the memory attention threshold (0.7, MemoryConfig.attention_threshold) and
 # below the relevance floor of consolidation (0.2), so 0.0 leaves memory as phi left it in practice.
 PHI_OFF_ATTENTION = 0.0
+COMPETING_GOALS_DOC = "docs/decisions/2026_11_08_competing_goals_gate.md"
 
 
 def exploration_scale_from_phi(phi: float, phi_off: bool) -> float:
@@ -2392,14 +2394,70 @@ def _wire_tectal_orienting(action_core, tectum, mode: str, seed: int, log_dir, i
     atexit.register(write_record)
 
 
+def _value_gate_record(gate, learning_rate: float) -> dict:
+    """The content of value_gate.json. With the binary outcome it has the keys it always had."""
+    record = {"learning_rate": learning_rate, "episodes": gate.episodes,
+              "values": {str(b): v for b, v in gate.values.items()}}
+    if gate.outcome_rule != "binary":
+        record["outcome_rule"], record["delay_rate"] = gate.outcome_rule, gate.delay_rate
+    if gate.salience_floor is not None:
+        record["salience_floor"] = gate.salience_floor
+    return record
+
+
+def _require_finite(named: dict, where: str) -> None:
+    """Raise FloatingPointError that names the first value of `named` that is not finite."""
+    for name, number in named.items():
+        if not math.isfinite(float(number)):
+            raise FloatingPointError("%s is %r, not finite, at %s" % (name, float(number), where))
+
+
+def _wire_finite_stop(action_core, optimizers) -> None:
+    """Stop the run on a value that is not finite (docs/decisions/2026_11_08_competing_goals_gate.md).
+
+    Wraps action_core.step (the reward that the loop passes), action_core.update_policy (each loss
+    it returns) and adds a hook before each step of the given optimizers (each gradient). With
+    finite values it only reads numbers: no draw, no changed tensor, the same return values."""
+    core_step, core_update = action_core.step, action_core.update_policy
+    count = {"steps": 0}
+
+    def step(*args, **kwargs):
+        count["steps"] += 1
+        reward = kwargs["raw_reward"] if "raw_reward" in kwargs else args[2]
+        _require_finite({"the reward": reward}, "action core step %d of the run" % count["steps"])
+        return core_step(*args, **kwargs)
+
+    def update_policy(*args, **kwargs):
+        losses = core_update(*args, **kwargs)
+        _require_finite({"policy update %s" % name: number for name, number in (losses or {}).items()},
+                        "action core step %d of the run" % count["steps"])
+        return losses
+
+    def check_gradients(optimizer, *args) -> None:
+        for group in optimizer.param_groups:
+            for parameter in group["params"]:
+                if parameter.grad is not None and not bool(torch.isfinite(parameter.grad).all()):
+                    raise FloatingPointError("a gradient is not finite at a step of %s, action core step %d "
+                                             "of the run" % (type(optimizer).__name__, count["steps"]))
+
+    action_core.step, action_core.update_policy = step, update_policy
+    for optimizer in [o for o in optimizers if o is not None]:
+        optimizer.register_step_pre_hook(check_gradients)
+
+
 def _wire_value_gate(action_core, tectum, seed: int, log_dir, idle: str = "still",
-                     learning_rate: float = 0.3) -> None:
+                     learning_rate: float = 0.3, outcome_rule: str = "binary",
+                     delay_rate: float = 0.0, salience_floor=None) -> None:
     """The selection switch (docs/decisions/2026_10_16_value_gate.md).
 
     Wraps action_core.select_action and action_core.step. The policy is always called first, so
     every random stream stays as it is. Once per episode the gate chooses one of the bound tones by
     salience and learned value; the motor map follows that tone's object. The reward that reaches
-    action_core.step updates the value. A step without sound starts the next episode."""
+    action_core.step updates the value. A step without sound starts the next episode.
+    `outcome_rule` "hyperbolic" with `delay_rate` (docs/decisions/2026_11_08_competing_goals_gate.md)
+    makes the outcome the food reward divided by (1 + delay_rate x (steps - 1)). "binary" (default)
+    is the gate as it was. `salience_floor` (the same document): the gate ignores a candidate whose
+    salience is below it. None (default) is the gate as it was."""
     import atexit
     import json
     from models.core.rhythm_binding import RhythmMapBinding
@@ -2409,7 +2467,8 @@ def _wire_value_gate(action_core, tectum, seed: int, log_dir, idle: str = "still
     if not isinstance(binding, RhythmMapBinding) or binding.binder.bands_to_bind < 2:
         raise ValueError("--tectal-orienting value needs --map-binding rhythm or rhythm-scrambled with two bands")
     motor = TectalMotorMap("group", seed)
-    gate = ValueGate(seed + 1000003, learning_rate=learning_rate)
+    gate = ValueGate(seed + 1000003, learning_rate=learning_rate, outcome_rule=outcome_rule,
+                     delay_rate=delay_rate, salience_floor=salience_floor)
     tectum.tectal_motor_map, tectum.value_gate = motor, gate
     policy_select, policy_step = action_core.select_action, action_core.step
 
@@ -2442,8 +2501,7 @@ def _wire_value_gate(action_core, tectum, seed: int, log_dir, idle: str = "still
         if log_dir:
             os.makedirs(log_dir, exist_ok=True)
             with open(os.path.join(log_dir, "value_gate.json"), "w", encoding="utf-8") as handle:
-                json.dump({"learning_rate": learning_rate, "episodes": gate.episodes,
-                           "values": {str(b): v for b, v in gate.values.items()}}, handle)
+                json.dump(_value_gate_record(gate, learning_rate), handle)
             with open(os.path.join(log_dir, "tectal_orienting.json"), "w", encoding="utf-8") as handle:
                 json.dump({"mode": "value", "steps": len(motor.history), "history": motor.history}, handle)
     atexit.register(write_record)
@@ -2498,6 +2556,82 @@ def parse_levels(text: str):
     """One float, or a tuple of floats for a comma list."""
     levels = tuple(float(part) for part in str(text).split(","))
     return levels[0] if len(levels) == 1 else levels
+
+
+def parse_pair(text: str, kind=float) -> tuple:
+    """"L,D" from the command line to two numbers of `kind`, for the light and for the decoy."""
+    parts = [piece.strip() for piece in str(text).split(",")]
+    if len(parts) != 2:
+        raise ValueError("a pair is two numbers, light and decoy, got %r" % (text,))
+    return tuple(kind(piece) for piece in parts)
+
+
+ROOM_FOOD_FLAGS = (("food_sizes", float), ("food_waits", int), ("food_sizes_after", float))
+
+
+def _room_food_options(args) -> dict:
+    """The room options of the competing goals gate, as SimpleVisualEnv takes them. None is off."""
+    options = {name: None if getattr(args, "dark_room_" + name) is None
+               else parse_pair(getattr(args, "dark_room_" + name), kind) for name, kind in ROOM_FOOD_FLAGS}
+    options["food_change"], options["forced"] = args.dark_room_food_change, args.dark_room_forced
+    return options
+
+
+def _competing_goals_facts(args) -> dict:
+    """The run facts of the competing goals flags. Only a flag that is given adds a key, so
+    session.json of a run with none of them is the file it was."""
+    facts = {"dark_room_" + name: option for name, option in _room_food_options(args).items()
+             if option is not None}
+    if args.value_outcome != "binary":
+        facts["value_outcome"], facts["value_delay_rate"] = args.value_outcome, args.value_delay_rate
+    if args.value_salience_floor is not None:
+        facts["value_salience_floor"] = args.value_salience_floor
+    if args.stop_on_non_finite:
+        facts["stop_on_non_finite"] = True
+    return facts
+
+
+def _build_dark_room(args, render_mode):
+    """The dark room of a training run, from the parsed flags."""
+    return SimpleVisualEnv(render_mode=render_mode, width=224, height=224,
+                           audio=args.dark_room_audio,
+                           audio_channels=args.dark_room_audio_channels,
+                           report_collision=args.dark_room_collision,
+                           view=args.dark_room_view, view_radius=args.dark_room_view_radius,
+                           agent_mark=args.dark_room_agent_mark,
+                           agent_colour=parse_colour(args.dark_room_agent_colour),
+                           decoy_sound=args.dark_room_decoy_sound,
+                           decoy_level=parse_levels(args.dark_room_decoy_level),
+                           decoy_visible=args.dark_room_decoy_visible,
+                           start_between=args.dark_room_start_between,
+                           pulse=args.dark_room_pulse,
+                           sound_direction=args.dark_room_sound_direction == "on",
+                           food_switch=args.dark_room_food_switch,
+                           decoy_colour=(None if args.dark_room_decoy_colour is None
+                                         else parse_colour(args.dark_room_decoy_colour)),
+                           tone_switch=args.dark_room_tone_switch,
+                           **_room_food_options(args))
+
+
+def _check_competing_goals_flags(parser: argparse.ArgumentParser, args) -> None:
+    """Stop on a combination that docs/decisions/2026_11_08_competing_goals_gate.md does not allow."""
+    try:
+        given = sorted(name for name, option in _room_food_options(args).items() if option is not None)
+    except ValueError as error:
+        parser.error(str(error))
+    if given and not args.dark_room_decoy_visible:
+        parser.error("--dark-room-%s needs --dark-room-decoy-visible" % given[0].replace("_", "-"))
+    if given and args.dark_room_food_switch is not None:
+        parser.error("--dark-room-%s does not work with --dark-room-food-switch" % given[0].replace("_", "-"))
+    if (args.dark_room_food_change is None) != (args.dark_room_food_sizes_after is None):
+        parser.error("--dark-room-food-change and --dark-room-food-sizes-after need each other")
+    hyperbolic = args.value_outcome == "hyperbolic"
+    if hyperbolic and args.tectal_orienting != "value":
+        parser.error("--value-outcome hyperbolic needs --tectal-orienting value")
+    if hyperbolic != (args.value_delay_rate is not None):
+        parser.error("--value-outcome hyperbolic and --value-delay-rate need each other")
+    if args.value_salience_floor is not None and args.tectal_orienting != "value":
+        parser.error("--value-salience-floor needs --tectal-orienting value")
 
 
 def _require_pyphi(parser: argparse.ArgumentParser, args, pyphi_module) -> None:
@@ -2740,6 +2874,31 @@ def main():
                              "reverse (docs/decisions/2026_10_16_reversal.md). The room, its "
                              "pixels and its sound do not change. Needs --dark-room-decoy-visible. "
                              "Off by default.")
+    parser.add_argument("--dark-room-food-sizes", default=None,
+                        help="dark_room: L,D, the reward of a step inside the light and inside the "
+                             "visible decoy once its food comes, so both objects give food "
+                             "(%(doc)s). The pixels and the sound do not change. Needs "
+                             "--dark-room-decoy-visible. Does not work with --dark-room-food-switch. "
+                             "Off by default: the light gives 1.0 and the decoy gives none." % {"doc": COMPETING_GOALS_DOC})
+    parser.add_argument("--dark-room-food-waits", default=None,
+                        help="dark_room: L,D, the steps inside an object's radius, counted over the "
+                             "episode, before its food comes. Until then a step there gives -0.01, as "
+                             "outside (%(doc)s). Needs --dark-room-decoy-visible. Does not work with "
+                             "--dark-room-food-switch. Off by default: no wait." % {"doc": COMPETING_GOALS_DOC})
+    parser.add_argument("--dark-room-food-change", type=int, default=None,
+                        help="dark_room: from this episode on (counted from 0, as for "
+                             "--dark-room-food-switch), the food sizes are those of "
+                             "--dark-room-food-sizes-after (%(doc)s). Needs "
+                             "--dark-room-food-sizes-after. Off by default." % {"doc": COMPETING_GOALS_DOC})
+    parser.add_argument("--dark-room-food-sizes-after", default=None,
+                        help="dark_room: L,D, the food sizes from the episode of "
+                             "--dark-room-food-change on (%(doc)s). Off by default." % {"doc": COMPETING_GOALS_DOC})
+    parser.add_argument("--dark-room-forced", type=int, default=None,
+                        help="dark_room: in the first F episodes one object is present, the light in "
+                             "even episodes and the visible decoy in odd ones. The other object is not "
+                             "drawn, makes no sound and gives no food (%(doc)s). It changes the pixels "
+                             "and the sound of those episodes. Needs --dark-room-decoy-visible. Does "
+                             "not work with --dark-room-food-switch. Off by default." % {"doc": COMPETING_GOALS_DOC})
     parser.add_argument("--dark-room-decoy-colour", default=None,
                         help="dark_room: the colour R,G,B of the visible decoy, so vision can tell "
                              "the decoy from the light (docs/decisions/"
@@ -2883,6 +3042,27 @@ def main():
                         help="With --tectal-orienting value, the rate at which the value of the chosen "
                              "tone moves toward the outcome (food 1, none 0). 0 keeps the values at 0: "
                              "the frozen arm of its test. Default 0.3.")
+    parser.add_argument("--value-outcome", choices=["binary", "hyperbolic"], default="binary",
+                        help="With --tectal-orienting value, the outcome that moves the value of the "
+                             "chosen tone. 'binary' (default): food 1, none 0, the gate as it was. "
+                             "'hyperbolic': the reward of the food step divided by (1 + k (n - 1)), "
+                             "where n counts the steps from the choice to the food and k is "
+                             "--value-delay-rate (%(doc)s). Food is still a reward above 0.5 within 60 "
+                             "steps." % {"doc": COMPETING_GOALS_DOC})
+    parser.add_argument("--value-delay-rate", type=float, default=None,
+                        help="With --value-outcome hyperbolic, the delay rate k, 0 or more. It has no "
+                             "default: the two flags need each other.")
+    parser.add_argument("--value-salience-floor", type=float, default=None,
+                        help="With --tectal-orienting value, the gate ignores a candidate whose salience "
+                             "at the choice is below this number, and makes no choice while every "
+                             "candidate is below it (%(doc)s). With one tone in the room the binder "
+                             "also gives a small band. Off by default: the gate takes every "
+                             "candidate, as before." % {"doc": COMPETING_GOALS_DOC})
+    parser.add_argument("--stop-on-non-finite", action="store_true",
+                        help="Stop the run with an error when the reward that the loop passes to the "
+                             "action core, a loss that the policy update returns, or a gradient at a "
+                             "step of an optimizer of the training loop is not finite (%(doc)s). With "
+                             "finite values it only reads numbers. Off by default." % {"doc": COMPETING_GOALS_DOC})
     parser.add_argument("--tectal-orienting-idle", choices=["policy", "still"], default="policy",
                         help="With --tectal-orienting, what the agent does at a step without a "
                              "target. 'policy' (default): the policy's action, as before. 'still': no "
@@ -3244,6 +3424,7 @@ def main():
                              "attention and priority of memory.")
     args = parser.parse_args()
     _reject_incompatible_flags(parser, args)
+    _check_competing_goals_flags(parser, args)
     _require_pyphi(parser, args, iit_phi.pyphi)
 
     if args.seed is not None:
@@ -3303,13 +3484,21 @@ def main():
         parser.error("--tectal-orienting-covert needs --tectal-orienting group, active or audio")
     if args.tectal_orienting == "value":
         _wire_value_gate(action_core, tectum, args.seed if args.seed is not None else 0, args.log_dir,
-                         idle=args.tectal_orienting_idle, learning_rate=args.value_learning_rate)
+                         idle=args.tectal_orienting_idle, learning_rate=args.value_learning_rate,
+                         outcome_rule=args.value_outcome, delay_rate=args.value_delay_rate or 0.0,
+                         salience_floor=args.value_salience_floor)
     elif args.tectal_orienting != "off":
         _wire_tectal_orienting(action_core, tectum, args.tectal_orienting,
                                args.seed if args.seed is not None else 0, args.log_dir,
                                idle=args.tectal_orienting_idle, covert=args.tectal_orienting_covert)
     if args.binding_relation in ("place", "overlap"):
         _wire_place_relation(tectum, workspace, args.log_dir, args.binding_relation)
+    if args.stop_on_non_finite:
+        _wire_finite_stop(action_core, (
+            tectum_optimizer, reward_optimizer, workspace_optimizer, rnd_optimizer,
+            self_vector_optimizer, control_repr_optimizer, recon_optimizer,
+            match_optimizer, wm_recon_optimizer, wm_predict_optimizer,
+            latent_id_optimizer, latent_contrastive_optimizer))
 
     if config.get("enable_wm_predict"):
         # Never auto-detach the recurrent state mid-episode; the WM objective detaches at
@@ -3331,23 +3520,7 @@ def main():
         from simulations.environments.wcst_env import WCSTEnv
         env = WCSTEnv(render_mode=render_mode, width=224, height=224)
     else:
-        env = SimpleVisualEnv(render_mode=render_mode, width=224, height=224,
-                              audio=args.dark_room_audio,
-                              audio_channels=args.dark_room_audio_channels,
-                              report_collision=args.dark_room_collision,
-                              view=args.dark_room_view, view_radius=args.dark_room_view_radius,
-                              agent_mark=args.dark_room_agent_mark,
-                              agent_colour=parse_colour(args.dark_room_agent_colour),
-                              decoy_sound=args.dark_room_decoy_sound,
-                              decoy_level=parse_levels(args.dark_room_decoy_level),
-                              decoy_visible=args.dark_room_decoy_visible,
-                              start_between=args.dark_room_start_between,
-                              pulse=args.dark_room_pulse,
-                              sound_direction=args.dark_room_sound_direction == "on",
-                              food_switch=args.dark_room_food_switch,
-                              decoy_colour=(None if args.dark_room_decoy_colour is None
-                                            else parse_colour(args.dark_room_decoy_colour)),
-                              tone_switch=args.dark_room_tone_switch)
+        env = _build_dark_room(args, render_mode)
     env_seeded = seed_environment(env, args.seed)
     # Seed the environment audio noise from the run seed. Before 2026-09-15 it had
     # no seed, so no run with --enable-audio could be repeated exactly.
@@ -3405,6 +3578,7 @@ def main():
                        "phi_control": args.phi_control,
                        "dark_room_decoy_colour": args.dark_room_decoy_colour,
                        "dark_room_tone_switch": args.dark_room_tone_switch,
+                       **_competing_goals_facts(args),
                        "dark_room_view": args.dark_room_view,
                        "dark_room_view_radius": args.dark_room_view_radius,
                        # How the agent's own body was drawn into the frames it

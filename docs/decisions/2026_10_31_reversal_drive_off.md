@@ -68,3 +68,34 @@ A control with all new flags off must give the md5 `7825766f42d3d85b032f8028c94d
 - If the drive does not reach the behaviour, then the behaviour of this gate does not come from a homeostatic struggle. That bears on
   how public text describes the agent, and it is the owner's decision.
 - The AE-1 score stays the owner's decision.
+
+## Added 2026-11-15: identity on seeds 702 and 703, rule written before the runs
+
+Owner decision of 2026-11-15. The identity result of the reversal with the drive off counts as the
+second result that the AE-1 row of the rubric names. Until now the identity was measured on seed 701
+and was a reading of the code for seeds 702 and 703. So these two seeds run with the drive off first.
+
+- Seeds 702 and 703. The command is the recorded command of `session.json` of `runs/rv_switch_s702`
+  and `runs/rv_switch_s703`, with `--existence-drive off` and a new log folder
+  (`runs/drv_b_off_s702`, `runs/drv_b_off_s703`).
+- One more flag changes, by the owner's word of 2026-11-15, and no other. The recorded commands have
+  `--dark-room-food-switch 30`. They ran before the fix of that flag. After the fix the same room is
+  `--dark-room-food-switch 29` (`docs/results/reversal_2026_10.md`), and stage B of seed 701 used 29.
+  So the two runs use 29.
+- 60 episodes of 200 steps. One run at a time. The free space of drive C is read before each run.
+- Each run must have 12001 lines in `metrics.csv`. If not, that seed is VOID.
+- A seed holds if `value_gate.json`, `tectal_orienting.json` and `map_binding.json` have these md5
+  values, in this order. They are the md5 values of the gate runs with the drive on.
+
+| Seed | `value_gate.json` | `tectal_orienting.json` | `map_binding.json` |
+|---|---|---|---|
+| 702 | `37cad8a52e9a53cf05dd010a2a1a006e` | `7f0d2ced927da484d546544c90cb486e` | `5e8a1aff0d5b5a1baa5a626cd4adf919` |
+| 703 | `df0519e99e9f28775b6370bf348184f5` | `22a44959e0e6fdb546f312b1d1655c94` | `10b694c08b62b2021a6b1f92275de5ea` |
+
+- If a record differs, that seed runs once more with `--existence-drive on` at the same revision. If
+  that run is equal to the drive off run, the code changed the record and the drive did not. If it
+  differs, the drive reaches the movement and the result is FAILED. FAILED is reported first.
+- This is a test of identity. R1 to R3 are not computed again.
+
+The result goes into `docs/results/reversal_drive_off_2026_11.md` with the md5 values and the
+manifests of the runs (commit, no tracked change, drive off).
