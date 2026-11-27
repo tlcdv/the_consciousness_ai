@@ -1,0 +1,955 @@
+{
+  "verdict": "no control failed",
+  "K2": {
+    "mismatches": 0,
+    "trainings": 1200,
+    "share_of_exploration_draws": {
+      "A first": 0.25011964285714283,
+      "A second": 0.25011964285714283,
+      "B first": 0.25655555555555554,
+      "B second": 0.25655555555555554,
+      "O2 first": 0.25655555555555554,
+      "O2 second": 0.25655555555555554
+    }
+  },
+  "A": "HOLDS",
+  "B": "HOLDS",
+  "O2": "HOLDS",
+  "next_step": "The build (work 4) can start after the owner's yes",
+  "readings": {
+    "A": {
+      "30": {
+        "score": 1.0,
+        "second_pass": 0.5162962962962963,
+        "d": 0.4837037037037038,
+        "d_values": [
+          0.5111111111111111,
+          0.6370370370370371,
+          0.45185185185185184,
+          0.45925925925925937,
+          0.5925925925925926,
+          0.525925925925926,
+          0.36296296296296304,
+          0.40740740740740755,
+          0.5259259259259259,
+          0.3629629629629628
+        ],
+        "d_standard_error": 0.02911172891207188,
+        "d_limit": 0.05822345782414376,
+        "high": true,
+        "d_at_limit": true
+      },
+      "40": {
+        "score": 1.0,
+        "second_pass": 0.5116666666666666,
+        "d": 0.4883333333333333,
+        "d_values": [
+          0.4458333333333333,
+          0.55,
+          0.5041666666666667,
+          0.41666666666666663,
+          0.575,
+          0.4916666666666667,
+          0.5291666666666667,
+          0.4125,
+          0.4208333333333333,
+          0.5375
+        ],
+        "d_standard_error": 0.01912233197721747,
+        "d_limit": 0.05,
+        "high": true,
+        "d_at_limit": true
+      }
+    },
+    "B": {
+      "40": {
+        "score": 0.8770666666666667,
+        "second_pass": 0.5056333333333334,
+        "d": 0.37143333333333334,
+        "d_values": [
+          0.47699999999999987,
+          0.3976666666666667,
+          0.2811666666666668,
+          0.3998333333333333,
+          0.3508333333333332,
+          0.34183333333333354,
+          0.3743333333333333,
+          0.4051666666666667,
+          0.42749999999999994,
+          0.259
+        ],
+        "d_standard_error": 0.020821658951233467,
+        "d_limit": 0.05,
+        "high": true,
+        "d_at_limit": true
+      },
+      "60": {
+        "score": 0.9050166666666666,
+        "second_pass": 0.5044000000000001,
+        "d": 0.40061666666666673,
+        "d_values": [
+          0.43949999999999995,
+          0.42933333333333346,
+          0.3973333333333334,
+          0.3174999999999999,
+          0.37183333333333324,
+          0.39683333333333337,
+          0.38216666666666665,
+          0.4081666666666666,
+          0.4196666666666666,
+          0.44383333333333314
+        ],
+        "d_standard_error": 0.011891408092389779,
+        "d_limit": 0.05,
+        "high": true,
+        "d_at_limit": true
+      }
+    },
+    "O2": {
+      "40": {
+        "score": 0.9527833333333333,
+        "second_pass": 0.57195,
+        "d": 0.3808333333333333,
+        "d_values": [
+          0.3486666666666668,
+          0.4693333333333334,
+          0.4029999999999999,
+          0.4193333333333332,
+          0.42299999999999993,
+          0.4870000000000001,
+          0.31833333333333325,
+          0.3098333333333333,
+          0.33733333333333326,
+          0.29249999999999987
+        ],
+        "d_standard_error": 0.02173891089529512,
+        "d_limit": 0.05,
+        "high": true,
+        "d_at_limit": true
+      },
+      "60": {
+        "score": 0.9668166666666667,
+        "second_pass": 0.5512833333333333,
+        "d": 0.4155333333333333,
+        "d_values": [
+          0.386,
+          0.48316666666666647,
+          0.4378333333333332,
+          0.4208333333333333,
+          0.43433333333333335,
+          0.4590000000000001,
+          0.39649999999999985,
+          0.374,
+          0.4278333333333334,
+          0.3358333333333332
+        ],
+        "d_standard_error": 0.013664764998679479,
+        "d_limit": 0.05,
+        "high": true,
+        "d_at_limit": true
+      }
+    }
+  },
+  "curves": {
+    "A first 30": {
+      "checkpoints": {
+        "0": {
+          "score": 0.5385185185185185,
+          "count_choices": 0.0,
+          "count_explored": 0.0,
+          "share_explored": null,
+          "share_food": null,
+          "share_slot_0": null,
+          "mean_outcome": null,
+          "informative": 0.0
+        },
+        "1": {
+          "score": 0.6088888888888888,
+          "count_choices": 24.0,
+          "count_explored": 6.046666666666667,
+          "share_explored": 0.2519444444444444,
+          "share_food": 0.52,
+          "share_slot_0": 0.5133333333333334,
+          "mean_outcome": 0.52,
+          "informative": 6.3
+        },
+        "20": {
+          "score": 0.9985185185185186,
+          "count_choices": 456.0,
+          "count_explored": 114.44000000000001,
+          "share_explored": 0.2509649122807017,
+          "share_food": 0.7502192982456141,
+          "share_slot_0": 0.5112134502923976,
+          "mean_outcome": 0.7502192982456141,
+          "informative": 75.36000000000001
+        },
+        "40": {
+          "score": 1.0,
+          "count_choices": 480.0,
+          "count_explored": 121.24666666666667,
+          "share_explored": 0.25259722222222225,
+          "share_food": 0.8646527777777779,
+          "share_slot_0": 0.5002916666666668,
+          "mean_outcome": 0.8646527777777779,
+          "informative": 108.46666666666667
+        },
+        "60": {
+          "score": 1.0,
+          "count_choices": 480.0,
+          "count_explored": 119.35999999999999,
+          "share_explored": 0.24866666666666667,
+          "share_food": 0.8735000000000002,
+          "share_slot_0": 0.49836111111111103,
+          "mean_outcome": 0.8735000000000002,
+          "informative": 139.33333333333331
+        },
+        "80": {
+          "score": 1.0,
+          "count_choices": 480.0,
+          "count_explored": 120.01333333333335,
+          "share_explored": 0.25002777777777774,
+          "share_food": 0.8721388888888889,
+          "share_slot_0": 0.4991944444444444,
+          "mean_outcome": 0.8721388888888889,
+          "informative": 169.84
+        },
+        "100": {
+          "score": 1.0,
+          "count_choices": 480.0,
+          "count_explored": 120.95333333333333,
+          "share_explored": 0.25198611111111113,
+          "share_food": 0.8725972222222221,
+          "share_slot_0": 0.5024027777777779,
+          "mean_outcome": 0.8725972222222221,
+          "informative": 200.64666666666668
+        },
+        "120": {
+          "score": 1.0,
+          "count_choices": 480.0,
+          "count_explored": 120.20666666666668,
+          "share_explored": 0.25043055555555555,
+          "share_food": 0.8743194444444444,
+          "share_slot_0": 0.5000138888888889,
+          "mean_outcome": 0.8743194444444444,
+          "informative": 231.05333333333334
+        },
+        "140": {
+          "score": 1.0,
+          "count_choices": 480.0,
+          "count_explored": 118.24000000000001,
+          "share_explored": 0.24633333333333335,
+          "share_food": 0.8769027777777778,
+          "share_slot_0": 0.498486111111111,
+          "mean_outcome": 0.8769027777777778,
+          "informative": 261.1
+        },
+        "160": {
+          "score": 1.0,
+          "count_choices": 480.0,
+          "count_explored": 120.91333333333334,
+          "share_explored": 0.25190277777777775,
+          "share_food": 0.8722916666666667,
+          "share_slot_0": 0.4976527777777777,
+          "mean_outcome": 0.8722916666666667,
+          "informative": 292.29999999999995
+        },
+        "180": {
+          "score": 1.0,
+          "count_choices": 480.0,
+          "count_explored": 120.01999999999998,
+          "share_explored": 0.2500416666666667,
+          "share_food": 0.8755277777777778,
+          "share_slot_0": 0.5013333333333334,
+          "mean_outcome": 0.8755277777777778,
+          "informative": 322.80000000000007
+        },
+        "200": {
+          "score": 1.0,
+          "count_choices": 480.0,
+          "count_explored": 119.24000000000001,
+          "share_explored": 0.24841666666666667,
+          "share_food": 0.8763055555555554,
+          "share_slot_0": 0.49947222222222215,
+          "mean_outcome": 0.8763055555555554,
+          "informative": 352.3733333333334
+        }
+      },
+      "first_checkpoint_at_0.80": 20
+    },
+    "A first 40": {
+      "checkpoints": {
+        "0": {
+          "score": 0.5195833333333333,
+          "count_choices": 0.0,
+          "count_explored": 0.0,
+          "share_explored": null,
+          "share_food": null,
+          "share_slot_0": null,
+          "mean_outcome": null,
+          "informative": 0.0
+        },
+        "1": {
+          "score": 0.6041666666666666,
+          "count_choices": 32.0,
+          "count_explored": 8.2,
+          "share_explored": 0.25625,
+          "share_food": 0.5195833333333335,
+          "share_slot_0": 0.5079166666666667,
+          "mean_outcome": 0.5195833333333335,
+          "informative": 8.406666666666665
+        },
+        "20": {
+          "score": 0.9991666666666668,
+          "count_choices": 608.0,
+          "count_explored": 152.53333333333333,
+          "share_explored": 0.25087719298245614,
+          "share_food": 0.7642324561403508,
+          "share_slot_0": 0.5074342105263158,
+          "mean_outcome": 0.7642324561403508,
+          "informative": 94.15333333333334
+        },
+        "40": {
+          "score": 0.9995833333333334,
+          "count_choices": 640.0,
+          "count_explored": 160.86666666666667,
+          "share_explored": 0.25135416666666666,
+          "share_food": 0.8684479166666665,
+          "share_slot_0": 0.50090625,
+          "mean_outcome": 0.8684479166666665,
+          "informative": 137.72666666666666
+        },
+        "60": {
+          "score": 1.0,
+          "count_choices": 640.0,
+          "count_explored": 159.50666666666666,
+          "share_explored": 0.24922916666666667,
+          "share_food": 0.8734270833333332,
+          "share_slot_0": 0.49907291666666664,
+          "mean_outcome": 0.8734270833333332,
+          "informative": 178.51999999999998
+        },
+        "80": {
+          "score": 1.0,
+          "count_choices": 640.0,
+          "count_explored": 160.85333333333332,
+          "share_explored": 0.25133333333333335,
+          "share_food": 0.8727812499999998,
+          "share_slot_0": 0.5015104166666666,
+          "mean_outcome": 0.8727812499999998,
+          "informative": 219.95333333333332
+        },
+        "100": {
+          "score": 1.0,
+          "count_choices": 640.0,
+          "count_explored": 159.04,
+          "share_explored": 0.2485,
+          "share_food": 0.8734791666666668,
+          "share_slot_0": 0.4993333333333334,
+          "mean_outcome": 0.8734791666666668,
+          "informative": 260.53333333333336
+        },
+        "120": {
+          "score": 1.0,
+          "count_choices": 640.0,
+          "count_explored": 160.42000000000002,
+          "share_explored": 0.25065625,
+          "share_food": 0.8748125,
+          "share_slot_0": 0.499625,
+          "mean_outcome": 0.8748125,
+          "informative": 300.88
+        },
+        "140": {
+          "score": 1.0,
+          "count_choices": 640.0,
+          "count_explored": 159.81333333333333,
+          "share_explored": 0.24970833333333334,
+          "share_food": 0.8741041666666668,
+          "share_slot_0": 0.5002291666666667,
+          "mean_outcome": 0.8741041666666668,
+          "informative": 341.8666666666667
+        },
+        "160": {
+          "score": 1.0,
+          "count_choices": 640.0,
+          "count_explored": 159.90666666666667,
+          "share_explored": 0.24985416666666665,
+          "share_food": 0.8737916666666667,
+          "share_slot_0": 0.5002083333333334,
+          "mean_outcome": 0.8737916666666667,
+          "informative": 382.16
+        },
+        "180": {
+          "score": 1.0,
+          "count_choices": 640.0,
+          "count_explored": 159.92666666666668,
+          "share_explored": 0.2498854166666667,
+          "share_food": 0.8736041666666665,
+          "share_slot_0": 0.4992916666666667,
+          "mean_outcome": 0.8736041666666665,
+          "informative": 422.6066666666667
+        },
+        "200": {
+          "score": 1.0,
+          "count_choices": 640.0,
+          "count_explored": 159.59333333333333,
+          "share_explored": 0.24936458333333333,
+          "share_food": 0.8748229166666667,
+          "share_slot_0": 0.5010729166666666,
+          "mean_outcome": 0.8748229166666667,
+          "informative": 462.78000000000003
+        }
+      },
+      "first_checkpoint_at_0.80": 20
+    },
+    "A second 30": {
+      "checkpoints": {
+        "0": {
+          "score": 0.5385185185185185,
+          "count_choices": 0.0,
+          "count_explored": 0.0,
+          "share_explored": null,
+          "share_food": null,
+          "share_slot_0": null,
+          "mean_outcome": null,
+          "informative": 0.0
+        },
+        "1": {
+          "score": 0.5414814814814816,
+          "count_choices": 24.0,
+          "count_explored": 6.046666666666667,
+          "share_explored": 0.2519444444444444,
+          "share_food": 0.52,
+          "share_slot_0": 0.5133333333333334,
+          "mean_outcome": 1.0,
+          "informative": 0.0
+        },
+        "20": {
+          "score": 0.5807407407407409,
+          "count_choices": 456.0,
+          "count_explored": 114.44000000000001,
+          "share_explored": 0.2509649122807017,
+          "share_food": 0.5165204678362574,
+          "share_slot_0": 0.5312865497076023,
+          "mean_outcome": 1.0,
+          "informative": 0.0
+        },
+        "40": {
+          "score": 0.5851851851851853,
+          "count_choices": 480.0,
+          "count_explored": 121.24666666666667,
+          "share_explored": 0.25259722222222225,
+          "share_food": 0.5216944444444443,
+          "share_slot_0": 0.5556111111111112,
+          "mean_outcome": 1.0,
+          "informative": 0.0
+        },
+        "60": {
+          "score": 0.605925925925926,
+          "count_choices": 480.0,
+          "count_explored": 119.35999999999999,
+          "share_explored": 0.24866666666666667,
+          "share_food": 0.5334444444444444,
+          "share_slot_0": 0.5219166666666666,
+          "mean_outcome": 1.0,
+          "informative": 0.0
+        },
+        "80": {
+          "score": 0.5718518518518518,
+          "count_choices": 480.0,
+          "count_explored": 120.01333333333335,
+          "share_explored": 0.25002777777777774,
+          "share_food": 0.5344166666666667,
+          "share_slot_0": 0.49755555555555553,
+          "mean_outcome": 1.0,
+          "informative": 0.0
+        },
+        "100": {
+          "score": 0.5525925925925926,
+          "count_choices": 480.0,
+          "count_explored": 120.95333333333333,
+          "share_explored": 0.25198611111111113,
+          "share_food": 0.5248055555555556,
+          "share_slot_0": 0.5091388888888889,
+          "mean_outcome": 1.0,
+          "informative": 0.0
+        },
+        "120": {
+          "score": 0.5503703703703704,
+          "count_choices": 480.0,
+          "count_explored": 120.20666666666668,
+          "share_explored": 0.25043055555555555,
+          "share_food": 0.5173472222222222,
+          "share_slot_0": 0.5058194444444444,
+          "mean_outcome": 1.0,
+          "informative": 0.0
+        },
+        "140": {
+          "score": 0.5429629629629629,
+          "count_choices": 480.0,
+          "count_explored": 118.24000000000001,
+          "share_explored": 0.24633333333333335,
+          "share_food": 0.5073611111111112,
+          "share_slot_0": 0.5043055555555556,
+          "mean_outcome": 1.0,
+          "informative": 0.0
+        },
+        "160": {
+          "score": 0.5222222222222223,
+          "count_choices": 480.0,
+          "count_explored": 120.91333333333334,
+          "share_explored": 0.25190277777777775,
+          "share_food": 0.5044722222222222,
+          "share_slot_0": 0.5056944444444443,
+          "mean_outcome": 1.0,
+          "informative": 0.0
+        },
+        "180": {
+          "score": 0.5125925925925925,
+          "count_choices": 480.0,
+          "count_explored": 120.01999999999998,
+          "share_explored": 0.2500416666666667,
+          "share_food": 0.5063194444444445,
+          "share_slot_0": 0.5012361111111112,
+          "mean_outcome": 1.0,
+          "informative": 0.0
+        },
+        "200": {
+          "score": 0.5162962962962963,
+          "count_choices": 480.0,
+          "count_explored": 119.24000000000001,
+          "share_explored": 0.24841666666666667,
+          "share_food": 0.51025,
+          "share_slot_0": 0.5022222222222223,
+          "mean_outcome": 1.0,
+          "informative": 0.0
+        }
+      },
+      "first_checkpoint_at_0.80": null
+    },
+    "A second 40": {
+      "checkpoints": {
+        "0": {
+          "score": 0.5195833333333333,
+          "count_choices": 0.0,
+          "count_explored": 0.0,
+          "share_explored": null,
+          "share_food": null,
+          "share_slot_0": null,
+          "mean_outcome": null,
+          "informative": 0.0
+        },
+        "1": {
+          "score": 0.5279166666666667,
+          "count_choices": 32.0,
+          "count_explored": 8.2,
+          "share_explored": 0.25625,
+          "share_food": 0.5195833333333335,
+          "share_slot_0": 0.5079166666666667,
+          "mean_outcome": 1.0,
+          "informative": 0.0
+        },
+        "20": {
+          "score": 0.5791666666666666,
+          "count_choices": 608.0,
+          "count_explored": 152.53333333333333,
+          "share_explored": 0.25087719298245614,
+          "share_food": 0.5266776315789474,
+          "share_slot_0": 0.5250767543859649,
+          "mean_outcome": 1.0,
+          "informative": 0.0
+        },
+        "40": {
+          "score": 0.5975,
+          "count_choices": 640.0,
+          "count_explored": 160.86666666666667,
+          "share_explored": 0.25135416666666666,
+          "share_food": 0.5382604166666667,
+          "share_slot_0": 0.5434270833333332,
+          "mean_outcome": 1.0,
+          "informative": 0.0
+        },
+        "60": {
+          "score": 0.5820833333333333,
+          "count_choices": 640.0,
+          "count_explored": 159.50666666666666,
+          "share_explored": 0.24922916666666667,
+          "share_food": 0.5524374999999999,
+          "share_slot_0": 0.5269166666666667,
+          "mean_outcome": 1.0,
+          "informative": 0.0
+        },
+        "80": {
+          "score": 0.58375,
+          "count_choices": 640.0,
+          "count_explored": 160.85333333333332,
+          "share_explored": 0.25133333333333335,
+          "share_food": 0.5521354166666667,
+          "share_slot_0": 0.4999062499999999,
+          "mean_outcome": 1.0,
+          "informative": 0.0
+        },
+        "100": {
+          "score": 0.5575,
+          "count_choices": 640.0,
+          "count_explored": 159.04,
+          "share_explored": 0.2485,
+          "share_food": 0.5409375,
+          "share_slot_0": 0.5080833333333333,
+          "mean_outcome": 1.0,
+          "informative": 0.0
+        },
+        "120": {
+          "score": 0.5479166666666667,
+          "count_choices": 640.0,
+          "count_explored": 160.42000000000002,
+          "share_explored": 0.25065625,
+          "share_food": 0.53465625,
+          "share_slot_0": 0.5077812500000001,
+          "mean_outcome": 1.0,
+          "informative": 0.0
+        },
+        "140": {
+          "score": 0.5404166666666667,
+          "count_choices": 640.0,
+          "count_explored": 159.81333333333333,
+          "share_explored": 0.24970833333333334,
+          "share_food": 0.5251145833333333,
+          "share_slot_0": 0.5018229166666666,
+          "mean_outcome": 1.0,
+          "informative": 0.0
+        },
+        "160": {
+          "score": 0.5354166666666667,
+          "count_choices": 640.0,
+          "count_explored": 159.90666666666667,
+          "share_explored": 0.24985416666666665,
+          "share_food": 0.5212916666666667,
+          "share_slot_0": 0.5058333333333332,
+          "mean_outcome": 1.0,
+          "informative": 0.0
+        },
+        "180": {
+          "score": 0.5225,
+          "count_choices": 640.0,
+          "count_explored": 159.92666666666668,
+          "share_explored": 0.2498854166666667,
+          "share_food": 0.5177604166666667,
+          "share_slot_0": 0.5029479166666666,
+          "mean_outcome": 1.0,
+          "informative": 0.0
+        },
+        "200": {
+          "score": 0.5116666666666666,
+          "count_choices": 640.0,
+          "count_explored": 159.59333333333333,
+          "share_explored": 0.24936458333333333,
+          "share_food": 0.5133541666666666,
+          "share_slot_0": 0.5041041666666667,
+          "mean_outcome": 1.0,
+          "informative": 0.0
+        }
+      },
+      "first_checkpoint_at_0.80": null
+    },
+    "B first 40": {
+      "checkpoints": {
+        "0": {
+          "score": 0.5176666666666667,
+          "count_choices": 0.0,
+          "count_explored": 0.0,
+          "share_explored": null,
+          "share_food": null,
+          "share_slot_0": null,
+          "mean_outcome": null,
+          "informative": 0.0
+        },
+        "10": {
+          "score": 0.9062999999999999,
+          "count_choices": 10.0,
+          "count_explored": 2.5733333333333333,
+          "share_explored": 0.25733333333333336,
+          "share_food": 0.6086666666666666,
+          "share_slot_0": 0.6266666666666667,
+          "mean_outcome": 0.6086666666666666,
+          "informative": 2.5
+        },
+        "20": {
+          "score": 0.9217000000000001,
+          "count_choices": 10.0,
+          "count_explored": 2.5,
+          "share_explored": 0.25,
+          "share_food": 0.6666666666666667,
+          "share_slot_0": 0.688,
+          "mean_outcome": 0.6666666666666667,
+          "informative": 4.893333333333333
+        },
+        "30": {
+          "score": 0.8942333333333334,
+          "count_choices": 10.0,
+          "count_explored": 2.6,
+          "share_explored": 0.25999999999999995,
+          "share_food": 0.6626666666666667,
+          "share_slot_0": 0.6273333333333333,
+          "mean_outcome": 0.6626666666666667,
+          "informative": 7.406666666666668
+        },
+        "40": {
+          "score": 0.8770666666666667,
+          "count_choices": 10.0,
+          "count_explored": 2.6933333333333334,
+          "share_explored": 0.2693333333333333,
+          "share_food": 0.7053333333333333,
+          "share_slot_0": 0.6326666666666666,
+          "mean_outcome": 0.7053333333333333,
+          "informative": 9.686666666666667
+        },
+        "50": {
+          "score": 0.8977499999999999,
+          "count_choices": 10.0,
+          "count_explored": 2.46,
+          "share_explored": 0.246,
+          "share_food": 0.6846666666666668,
+          "share_slot_0": 0.6406666666666666,
+          "mean_outcome": 0.6846666666666668,
+          "informative": 12.0
+        },
+        "60": {
+          "score": 0.9050166666666666,
+          "count_choices": 10.0,
+          "count_explored": 2.566666666666667,
+          "share_explored": 0.2566666666666667,
+          "share_food": 0.6926666666666667,
+          "share_slot_0": 0.6133333333333333,
+          "mean_outcome": 0.6926666666666667,
+          "informative": 14.006666666666666
+        }
+      },
+      "first_checkpoint_at_0.80": 10
+    },
+    "B second 40": {
+      "checkpoints": {
+        "0": {
+          "score": 0.5176666666666667,
+          "count_choices": 0.0,
+          "count_explored": 0.0,
+          "share_explored": null,
+          "share_food": null,
+          "share_slot_0": null,
+          "mean_outcome": null,
+          "informative": 0.0
+        },
+        "10": {
+          "score": 0.5741666666666666,
+          "count_choices": 10.0,
+          "count_explored": 2.5733333333333333,
+          "share_explored": 0.25733333333333336,
+          "share_food": 0.5293333333333333,
+          "share_slot_0": 0.5526666666666666,
+          "mean_outcome": 1.0,
+          "informative": 0.0
+        },
+        "20": {
+          "score": 0.5361666666666667,
+          "count_choices": 10.0,
+          "count_explored": 2.5,
+          "share_explored": 0.25,
+          "share_food": 0.522,
+          "share_slot_0": 0.5313333333333333,
+          "mean_outcome": 1.0,
+          "informative": 0.0
+        },
+        "30": {
+          "score": 0.4759333333333333,
+          "count_choices": 10.0,
+          "count_explored": 2.6,
+          "share_explored": 0.25999999999999995,
+          "share_food": 0.5173333333333333,
+          "share_slot_0": 0.502,
+          "mean_outcome": 1.0,
+          "informative": 0.0
+        },
+        "40": {
+          "score": 0.5056333333333334,
+          "count_choices": 10.0,
+          "count_explored": 2.6933333333333334,
+          "share_explored": 0.2693333333333333,
+          "share_food": 0.53,
+          "share_slot_0": 0.5013333333333334,
+          "mean_outcome": 1.0,
+          "informative": 0.0
+        },
+        "50": {
+          "score": 0.5073333333333333,
+          "count_choices": 10.0,
+          "count_explored": 2.46,
+          "share_explored": 0.246,
+          "share_food": 0.4920000000000001,
+          "share_slot_0": 0.508,
+          "mean_outcome": 1.0,
+          "informative": 0.0
+        },
+        "60": {
+          "score": 0.5044000000000001,
+          "count_choices": 10.0,
+          "count_explored": 2.566666666666667,
+          "share_explored": 0.2566666666666667,
+          "share_food": 0.492,
+          "share_slot_0": 0.5153333333333333,
+          "mean_outcome": 1.0,
+          "informative": 0.0
+        }
+      },
+      "first_checkpoint_at_0.80": null
+    },
+    "O2 first 40": {
+      "checkpoints": {
+        "0": {
+          "score": 0.5176666666666667,
+          "count_choices": 0.0,
+          "count_explored": 0.0,
+          "share_explored": null,
+          "share_food": null,
+          "share_slot_0": null,
+          "mean_outcome": null,
+          "informative": 0.0
+        },
+        "10": {
+          "score": 0.7560166666666667,
+          "count_choices": 10.0,
+          "count_explored": 2.5733333333333333,
+          "share_explored": 0.25733333333333336,
+          "share_food": 0.5686666666666665,
+          "share_slot_0": 0.5826666666666667,
+          "mean_outcome": 0.5686666666666665,
+          "informative": 2.4533333333333336
+        },
+        "20": {
+          "score": 0.8896666666666666,
+          "count_choices": 10.0,
+          "count_explored": 2.5,
+          "share_explored": 0.25,
+          "share_food": 0.6326666666666666,
+          "share_slot_0": 0.658,
+          "mean_outcome": 0.6326666666666666,
+          "informative": 4.86
+        },
+        "30": {
+          "score": 0.9390166666666667,
+          "count_choices": 10.0,
+          "count_explored": 2.6,
+          "share_explored": 0.25999999999999995,
+          "share_food": 0.6399999999999999,
+          "share_slot_0": 0.6593333333333332,
+          "mean_outcome": 0.6399999999999999,
+          "informative": 7.6466666666666665
+        },
+        "40": {
+          "score": 0.9527833333333333,
+          "count_choices": 10.0,
+          "count_explored": 2.6933333333333334,
+          "share_explored": 0.2693333333333333,
+          "share_food": 0.6833333333333333,
+          "share_slot_0": 0.6839999999999999,
+          "mean_outcome": 0.6833333333333333,
+          "informative": 10.239999999999998
+        },
+        "50": {
+          "score": 0.9597166666666667,
+          "count_choices": 10.0,
+          "count_explored": 2.46,
+          "share_explored": 0.246,
+          "share_food": 0.6953333333333334,
+          "share_slot_0": 0.6873333333333334,
+          "mean_outcome": 0.6953333333333334,
+          "informative": 12.813333333333333
+        },
+        "60": {
+          "score": 0.9668166666666667,
+          "count_choices": 10.0,
+          "count_explored": 2.566666666666667,
+          "share_explored": 0.2566666666666667,
+          "share_food": 0.6926666666666665,
+          "share_slot_0": 0.6773333333333331,
+          "mean_outcome": 0.6926666666666665,
+          "informative": 15.180000000000001
+        }
+      },
+      "first_checkpoint_at_0.80": 20
+    },
+    "O2 second 40": {
+      "checkpoints": {
+        "0": {
+          "score": 0.5176666666666667,
+          "count_choices": 0.0,
+          "count_explored": 0.0,
+          "share_explored": null,
+          "share_food": null,
+          "share_slot_0": null,
+          "mean_outcome": null,
+          "informative": 0.0
+        },
+        "10": {
+          "score": 0.5723166666666667,
+          "count_choices": 10.0,
+          "count_explored": 2.5733333333333333,
+          "share_explored": 0.25733333333333336,
+          "share_food": 0.54,
+          "share_slot_0": 0.5553333333333333,
+          "mean_outcome": 1.0,
+          "informative": 0.0
+        },
+        "20": {
+          "score": 0.5902333333333333,
+          "count_choices": 10.0,
+          "count_explored": 2.5,
+          "share_explored": 0.25,
+          "share_food": 0.5426666666666666,
+          "share_slot_0": 0.5493333333333333,
+          "mean_outcome": 1.0,
+          "informative": 0.0
+        },
+        "30": {
+          "score": 0.5908833333333334,
+          "count_choices": 10.0,
+          "count_explored": 2.6,
+          "share_explored": 0.25999999999999995,
+          "share_food": 0.5313333333333333,
+          "share_slot_0": 0.5373333333333333,
+          "mean_outcome": 1.0,
+          "informative": 0.0
+        },
+        "40": {
+          "score": 0.57195,
+          "count_choices": 10.0,
+          "count_explored": 2.6933333333333334,
+          "share_explored": 0.2693333333333333,
+          "share_food": 0.5526666666666668,
+          "share_slot_0": 0.544,
+          "mean_outcome": 1.0,
+          "informative": 0.0
+        },
+        "50": {
+          "score": 0.5561,
+          "count_choices": 10.0,
+          "count_explored": 2.46,
+          "share_explored": 0.246,
+          "share_food": 0.5326666666666667,
+          "share_slot_0": 0.5406666666666666,
+          "mean_outcome": 1.0,
+          "informative": 0.0
+        },
+        "60": {
+          "score": 0.5512833333333333,
+          "count_choices": 10.0,
+          "count_explored": 2.566666666666667,
+          "share_explored": 0.2566666666666667,
+          "share_food": 0.504,
+          "share_slot_0": 0.5273333333333333,
+          "mean_outcome": 1.0,
+          "informative": 0.0
+        }
+      },
+      "first_checkpoint_at_0.80": null
+    }
+  }
+}

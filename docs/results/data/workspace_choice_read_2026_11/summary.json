@@ -1,0 +1,752 @@
+{
+ "verdict": "UNDECIDED",
+ "runs": [
+  {
+   "run": "vg_learn_s601",
+   "label": "HOLDS",
+   "cause": null,
+   "reading": {
+    "broadcast": 0.975,
+    "broadcast_null": 0.6881249999999998,
+    "audio": 1.0,
+    "audio_null": 0.7375,
+    "episode_number": 0.3
+   },
+   "streams": {
+    "broadcast": {
+     "score": 0.975,
+     "fold_aucs": [
+      1.0,
+      0.9375,
+      0.9375,
+      1.0,
+      1.0
+     ],
+     "penalties": [
+      0.1,
+      10.0,
+      1.0,
+      0.1,
+      0.1
+     ],
+     "null_95": 0.6881249999999998,
+     "null_mean": 0.4959375,
+     "rows": 40
+    },
+    "audio_content": {
+     "score": 1.0,
+     "fold_aucs": [
+      1.0,
+      1.0,
+      1.0,
+      1.0,
+      1.0
+     ],
+     "penalties": [
+      0.01,
+      0.01,
+      0.01,
+      0.01,
+      0.01
+     ],
+     "null_95": 0.7375,
+     "null_mean": 0.52025,
+     "rows": 40
+    },
+    "tectum_content": {
+     "score": 0.825,
+     "fold_aucs": [
+      1.0,
+      0.8125,
+      0.9375,
+      0.75,
+      0.625
+     ],
+     "penalties": [
+      10.0,
+      0.1,
+      10.0,
+      10.0,
+      0.1
+     ],
+     "null_95": 0.6875,
+     "null_mean": 0.44181250000000005,
+     "rows": 40
+    }
+   },
+   "reported": {
+    "same_vector": {
+     "audio_content": {
+      "episodes_with_difference_0": 20,
+      "largest_difference": 4.534830570220947,
+      "median_difference": 2.059964245185256
+     },
+     "tectum_content": {
+      "episodes_with_difference_0": 19,
+      "largest_difference": 4.410067208111286,
+      "median_difference": 2.1626411601901054
+     }
+    },
+    "ignited_share": 1.0,
+    "winners": {
+     "vision": 25,
+     "audio": 14,
+     "": 1
+    },
+    "choice_step": {
+     "min": 12,
+     "median": 12.0,
+     "max": 12
+    },
+    "broadcast_rows_to_the_choice_step": {
+     "score": 0.7561020710059172,
+     "fold_aucs": [
+      0.7355769230769231,
+      0.8483727810650887,
+      0.7696005917159763,
+      0.7233727810650887,
+      0.7035872781065089
+     ],
+     "penalties": [
+      10.0,
+      10.0,
+      0.01,
+      10.0,
+      1.0
+     ],
+     "null_95": 0.6043121301775148,
+     "null_mean": 0.46845247781065086,
+     "rows": 520
+    }
+   },
+   "group": "vg_learn",
+   "counted": true
+  },
+  {
+   "run": "vg_learn_s602",
+   "label": "AT NULL",
+   "cause": null,
+   "reading": {
+    "broadcast": 0.6,
+    "broadcast_null": 0.6756249999999998,
+    "audio": 1.0,
+    "audio_null": 0.6756249999999998,
+    "episode_number": 0.3
+   },
+   "streams": {
+    "broadcast": {
+     "score": 0.6,
+     "fold_aucs": [
+      0.75,
+      0.4375,
+      0.5,
+      0.5,
+      0.8125
+     ],
+     "penalties": [
+      10.0,
+      1.0,
+      10.0,
+      10.0,
+      10.0
+     ],
+     "null_95": 0.6756249999999998,
+     "null_mean": 0.5003125,
+     "rows": 40
+    },
+    "audio_content": {
+     "score": 1.0,
+     "fold_aucs": [
+      1.0,
+      1.0,
+      1.0,
+      1.0,
+      1.0
+     ],
+     "penalties": [
+      0.01,
+      0.01,
+      0.01,
+      0.01,
+      0.01
+     ],
+     "null_95": 0.6756249999999998,
+     "null_mean": 0.500375,
+     "rows": 40
+    },
+    "tectum_content": {
+     "score": 0.425,
+     "fold_aucs": [
+      0.5,
+      0.5625,
+      0.4375,
+      0.375,
+      0.25
+     ],
+     "penalties": [
+      10.0,
+      0.1,
+      0.1,
+      0.01,
+      1000.0
+     ],
+     "null_95": 0.6256249999999998,
+     "null_mean": 0.43325,
+     "rows": 40
+    }
+   },
+   "reported": {
+    "same_vector": {
+     "audio_content": {
+      "episodes_with_difference_0": 25,
+      "largest_difference": 4.372414261102676,
+      "median_difference": 0.0
+     },
+     "tectum_content": {
+      "episodes_with_difference_0": 14,
+      "largest_difference": 4.205324649810791,
+      "median_difference": 4.003280613571405
+     }
+    },
+    "ignited_share": 1.0,
+    "winners": {
+     "vision": 30,
+     "audio": 9,
+     "": 1
+    },
+    "choice_step": {
+     "min": 12,
+     "median": 12.0,
+     "max": 12
+    },
+    "broadcast_rows_to_the_choice_step": {
+     "score": 0.5515902366863905,
+     "fold_aucs": [
+      0.5171967455621301,
+      0.6449704142011834,
+      0.6531065088757396,
+      0.5266272189349113,
+      0.41605029585798814
+     ],
+     "penalties": [
+      1.0,
+      0.01,
+      1.0,
+      0.01,
+      100.0
+     ],
+     "null_95": 0.569900147928994,
+     "null_mean": 0.47534116124260356,
+     "rows": 520
+    }
+   },
+   "group": "vg_learn",
+   "counted": true
+  },
+  {
+   "run": "vg_learn_s603",
+   "label": "HOLDS",
+   "cause": null,
+   "reading": {
+    "broadcast": 0.8,
+    "broadcast_null": 0.6815625,
+    "audio": 1.0,
+    "audio_null": 0.7256249999999997,
+    "episode_number": 0.3
+   },
+   "streams": {
+    "broadcast": {
+     "score": 0.8,
+     "fold_aucs": [
+      0.75,
+      0.9375,
+      0.8125,
+      0.5,
+      1.0
+     ],
+     "penalties": [
+      0.01,
+      10.0,
+      10.0,
+      1.0,
+      100.0
+     ],
+     "null_95": 0.6815625,
+     "null_mean": 0.49262500000000004,
+     "rows": 40
+    },
+    "audio_content": {
+     "score": 1.0,
+     "fold_aucs": [
+      1.0,
+      1.0,
+      1.0,
+      1.0,
+      1.0
+     ],
+     "penalties": [
+      0.01,
+      0.01,
+      0.01,
+      0.01,
+      0.01
+     ],
+     "null_95": 0.7256249999999997,
+     "null_mean": 0.53075,
+     "rows": 40
+    },
+    "tectum_content": {
+     "score": 0.7375,
+     "fold_aucs": [
+      0.5,
+      0.8125,
+      0.6875,
+      1.0,
+      0.6875
+     ],
+     "penalties": [
+      100.0,
+      100.0,
+      1000.0,
+      1000.0,
+      1000.0
+     ],
+     "null_95": 0.7125,
+     "null_mean": 0.48168750000000005,
+     "rows": 40
+    }
+   },
+   "reported": {
+    "same_vector": {
+     "audio_content": {
+      "episodes_with_difference_0": 15,
+      "largest_difference": 5.0388031005859375,
+      "median_difference": 4.917094754055142
+     },
+     "tectum_content": {
+      "episodes_with_difference_0": 19,
+      "largest_difference": 4.998365513980389,
+      "median_difference": 0.151410810649395
+     }
+    },
+    "ignited_share": 0.975,
+    "winners": {
+     "vision": 23,
+     "audio": 11,
+     "": 6
+    },
+    "choice_step": {
+     "min": 12,
+     "median": 12.0,
+     "max": 12
+    },
+    "broadcast_rows_to_the_choice_step": {
+     "score": 0.635576923076923,
+     "fold_aucs": [
+      0.5277366863905325,
+      0.5523298816568047,
+      0.6899038461538461,
+      0.7705251479289941,
+      0.6373890532544378
+     ],
+     "penalties": [
+      100.0,
+      1000.0,
+      1000.0,
+      1000.0,
+      100.0
+     ],
+     "null_95": 0.5890791420118343,
+     "null_mean": 0.48995210798816563,
+     "rows": 520
+    }
+   },
+   "group": "vg_learn",
+   "counted": true
+  },
+  {
+   "run": "rv_switch_s701",
+   "label": "HOLDS",
+   "cause": null,
+   "reading": {
+    "broadcast": 0.861111111111111,
+    "broadcast_null": 0.6669444444444445,
+    "audio": 1.0,
+    "audio_null": 0.6447222222222222,
+    "episode_number": 0.4166666666666667
+   },
+   "streams": {
+    "broadcast": {
+     "score": 0.861111111111111,
+     "fold_aucs": [
+      0.9166666666666666,
+      0.8333333333333334,
+      0.9444444444444444,
+      0.7777777777777778,
+      0.8333333333333334
+     ],
+     "penalties": [
+      1.0,
+      1.0,
+      10.0,
+      10.0,
+      10.0
+     ],
+     "null_95": 0.6669444444444445,
+     "null_mean": 0.4953055555555555,
+     "rows": 60
+    },
+    "audio_content": {
+     "score": 1.0,
+     "fold_aucs": [
+      1.0,
+      1.0,
+      1.0,
+      1.0,
+      1.0
+     ],
+     "penalties": [
+      0.01,
+      0.01,
+      0.01,
+      0.01,
+      0.01
+     ],
+     "null_95": 0.6447222222222222,
+     "null_mean": 0.4936666666666667,
+     "rows": 60
+    },
+    "tectum_content": {
+     "score": 0.4111111111111111,
+     "fold_aucs": [
+      0.3611111111111111,
+      0.6666666666666666,
+      0.4166666666666667,
+      0.2222222222222222,
+      0.3888888888888889
+     ],
+     "penalties": [
+      0.01,
+      0.01,
+      0.01,
+      0.01,
+      1.0
+     ],
+     "null_95": 0.65,
+     "null_mean": 0.5051388888888888,
+     "rows": 60
+    }
+   },
+   "reported": {
+    "same_vector": {
+     "audio_content": {
+      "episodes_with_difference_0": 41,
+      "largest_difference": 5.53984372317791,
+      "median_difference": 0.0
+     },
+     "tectum_content": {
+      "episodes_with_difference_0": 18,
+      "largest_difference": 5.5606392323970795,
+      "median_difference": 5.343181676231325
+     }
+    },
+    "ignited_share": 1.0,
+    "winners": {
+     "vision": 48,
+     "audio": 11,
+     "": 1
+    },
+    "choice_step": {
+     "min": 12,
+     "median": 12.0,
+     "max": 12
+    },
+    "broadcast_rows_to_the_choice_step": {
+     "score": 0.6556541748849442,
+     "fold_aucs": [
+      0.6512163050624589,
+      0.544543063773833,
+      0.6330539119000658,
+      0.7477810650887574,
+      0.7016765285996055
+     ],
+     "penalties": [
+      100.0,
+      10.0,
+      0.01,
+      10.0,
+      10.0
+     ],
+     "null_95": 0.5994082840236686,
+     "null_mean": 0.506352564102564,
+     "rows": 780
+    }
+   },
+   "group": "rv_switch",
+   "counted": true
+  },
+  {
+   "run": "rv_switch_s702",
+   "label": "HOLDS",
+   "cause": null,
+   "reading": {
+    "broadcast": 0.836111111111111,
+    "broadcast_null": 0.6558333333333333,
+    "audio": 1.0,
+    "audio_null": 0.6777777777777778,
+    "episode_number": 0.4166666666666667
+   },
+   "streams": {
+    "broadcast": {
+     "score": 0.836111111111111,
+     "fold_aucs": [
+      1.0,
+      0.625,
+      1.0,
+      0.8888888888888888,
+      0.6666666666666666
+     ],
+     "penalties": [
+      0.01,
+      10.0,
+      100.0,
+      100.0,
+      100.0
+     ],
+     "null_95": 0.6558333333333333,
+     "null_mean": 0.5071388888888889,
+     "rows": 60
+    },
+    "audio_content": {
+     "score": 1.0,
+     "fold_aucs": [
+      1.0,
+      1.0,
+      1.0,
+      1.0,
+      1.0
+     ],
+     "penalties": [
+      0.01,
+      0.01,
+      0.01,
+      0.01,
+      0.01
+     ],
+     "null_95": 0.6777777777777778,
+     "null_mean": 0.505,
+     "rows": 60
+    },
+    "tectum_content": {
+     "score": 0.38888888888888884,
+     "fold_aucs": [
+      0.5555555555555556,
+      0.5833333333333334,
+      0.2777777777777778,
+      0.25,
+      0.2777777777777778
+     ],
+     "penalties": [
+      1.0,
+      0.01,
+      0.1,
+      1000.0,
+      0.01
+     ],
+     "null_95": 0.6780555555555555,
+     "null_mean": 0.5061944444444444,
+     "rows": 60
+    }
+   },
+   "reported": {
+    "same_vector": {
+     "audio_content": {
+      "episodes_with_difference_0": 40,
+      "largest_difference": 4.138204604387283,
+      "median_difference": 0.0
+     },
+     "tectum_content": {
+      "episodes_with_difference_0": 13,
+      "largest_difference": 4.1383331418037415,
+      "median_difference": 3.848275437951088
+     }
+    },
+    "ignited_share": 0.9833333333333333,
+    "winners": {
+     "vision": 42,
+     "audio": 11,
+     "": 7
+    },
+    "choice_step": {
+     "min": 12,
+     "median": 12.0,
+     "max": 12
+    },
+    "broadcast_rows_to_the_choice_step": {
+     "score": 0.6699375410913873,
+     "fold_aucs": [
+      0.7657790927021696,
+      0.6479289940828402,
+      0.6894312952005259,
+      0.5590072320841551,
+      0.6875410913872453
+     ],
+     "penalties": [
+      1.0,
+      0.1,
+      10.0,
+      1.0,
+      0.1
+     ],
+     "null_95": 0.569957264957265,
+     "null_mean": 0.5027331525312294,
+     "rows": 780
+    }
+   },
+   "group": "rv_switch",
+   "counted": true
+  },
+  {
+   "run": "rv_switch_s703",
+   "label": "BETWEEN",
+   "cause": null,
+   "reading": {
+    "broadcast": 0.7222222222222222,
+    "broadcast_null": 0.6611111111111111,
+    "audio": 1.0,
+    "audio_null": 0.6730555555555553,
+    "episode_number": 0.4166666666666667
+   },
+   "streams": {
+    "broadcast": {
+     "score": 0.7222222222222222,
+     "fold_aucs": [
+      0.7222222222222222,
+      0.75,
+      0.6666666666666666,
+      0.5555555555555556,
+      0.9166666666666666
+     ],
+     "penalties": [
+      10.0,
+      10.0,
+      1.0,
+      0.01,
+      0.01
+     ],
+     "null_95": 0.6611111111111111,
+     "null_mean": 0.5090555555555555,
+     "rows": 60
+    },
+    "audio_content": {
+     "score": 1.0,
+     "fold_aucs": [
+      1.0,
+      1.0,
+      1.0,
+      1.0,
+      1.0
+     ],
+     "penalties": [
+      0.01,
+      0.01,
+      0.01,
+      0.01,
+      0.01
+     ],
+     "null_95": 0.6730555555555553,
+     "null_mean": 0.5091666666666667,
+     "rows": 60
+    },
+    "tectum_content": {
+     "score": 0.40555555555555556,
+     "fold_aucs": [
+      0.4166666666666667,
+      0.3888888888888889,
+      0.3333333333333333,
+      0.2777777777777778,
+      0.6111111111111112
+     ],
+     "penalties": [
+      0.01,
+      0.1,
+      0.1,
+      0.01,
+      0.01
+     ],
+     "null_95": 0.6555555555555554,
+     "null_mean": 0.5008055555555555,
+     "rows": 60
+    }
+   },
+   "reported": {
+    "same_vector": {
+     "audio_content": {
+      "episodes_with_difference_0": 31,
+      "largest_difference": 4.967873938381672,
+      "median_difference": 0.0
+     },
+     "tectum_content": {
+      "episodes_with_difference_0": 24,
+      "largest_difference": 4.95766993239522,
+      "median_difference": 4.762925922870636
+     }
+    },
+    "ignited_share": 1.0,
+    "winners": {
+     "vision": 38,
+     "audio": 17,
+     "": 5
+    },
+    "choice_step": {
+     "min": 12,
+     "median": 12.0,
+     "max": 12
+    },
+    "broadcast_rows_to_the_choice_step": {
+     "score": 0.5633136094674557,
+     "fold_aucs": [
+      0.4705785667324129,
+      0.5302432610124918,
+      0.7135108481262328,
+      0.5631163708086785,
+      0.5391190006574622
+     ],
+     "penalties": [
+      1.0,
+      0.1,
+      1000.0,
+      0.1,
+      0.1
+     ],
+     "null_95": 0.5820710059171597,
+     "null_mean": 0.4992883793556871,
+     "rows": 780
+    }
+   },
+   "group": "rv_switch",
+   "counted": true
+  },
+  {
+   "run": "cg_gate_benefit_s1301",
+   "label": "VOID",
+   "cause": "K3, cg_gate_benefit_s1301 episode 0: the bands of the gate and of the binding differ",
+   "group": "cg_gate_benefit",
+   "counted": false
+  },
+  {
+   "run": "cg_gate_benefit_s1302",
+   "label": "VOID",
+   "cause": "K3, cg_gate_benefit_s1302 episode 0: the bands of the gate and of the binding differ",
+   "group": "cg_gate_benefit",
+   "counted": false
+  },
+  {
+   "run": "cg_gate_benefit_s1303",
+   "label": "VOID",
+   "cause": "K3, cg_gate_benefit_s1303 episode 0: the bands of the gate and of the binding differ",
+   "group": "cg_gate_benefit",
+   "counted": false
+  }
+ ]
+}

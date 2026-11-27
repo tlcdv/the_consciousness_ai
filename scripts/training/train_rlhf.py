@@ -2507,6 +2507,122 @@ def _wire_value_gate(action_core, tectum, seed: int, log_dir, idle: str = "still
     atexit.register(write_record)
 
 
+def _check_choice_head_flags(parser: argparse.ArgumentParser, args) -> None:
+    """The needs and the refusals of --choice-head plain (docs/decisions/2026_11_22_workspace_choice_mode.md).
+    With --choice-head off nothing is checked."""
+    if args.choice_head == "off":
+        return
+    if args.tectal_orienting != "value":
+        parser.error("--choice-head plain needs --tectal-orienting value")
+    if args.map_binding not in ("rhythm", "rhythm-scrambled"):
+        parser.error("--choice-head plain needs --map-binding rhythm or rhythm-scrambled")
+    if args.policy_input != "broadcast":
+        parser.error("--choice-head plain reads the broadcast, so it needs --policy-input broadcast")
+    if args.value_outcome == "hyperbolic":
+        parser.error("--choice-head plain uses the binary outcome; --value-outcome hyperbolic is refused")
+    if args.value_salience_floor is not None:
+        parser.error("--choice-head plain takes every candidate; --value-salience-floor is refused")
+    if args.value_learning_rate != 0.3:
+        parser.error("--choice-head plain does not use --value-learning-rate; a value other than 0.3 is refused")
+
+
+def _write_choice_head_record(live, motor, log_dir) -> None:
+    """choice_head.json, choice_head_inputs.npy, choice_head.pt and tectal_orienting.json (mode "head")."""
+    import json
+    if not log_dir:
+        return
+    os.makedirs(log_dir, exist_ok=True)
+    with open(os.path.join(log_dir, "choice_head.json"), "w", encoding="utf-8") as handle:
+        json.dump(live.record(), handle)
+    rows = np.stack(live.rows) if live.rows else np.zeros((0, 256), dtype=np.float32)
+    np.save(os.path.join(log_dir, "choice_head_inputs.npy"), rows.astype(np.float32))
+    torch.save(live.state(), os.path.join(log_dir, "choice_head.pt"))
+    with open(os.path.join(log_dir, "tectal_orienting.json"), "w", encoding="utf-8") as handle:
+        json.dump({"mode": "head", "steps": len(motor.history), "history": motor.history}, handle)
+
+
+def _wire_choice_head(action_core, tectum, seed: int, log_dir, idle: str = "still"):
+    """The choice mode with the plain value head (docs/decisions/2026_11_22_workspace_choice_mode.md).
+
+    In place of the value gate. Wraps action_core.select_action and action_core.step. The policy is
+    always called first, then the head, then the motor map, so every random stream of the agent stays as
+    it is. At the first step with candidates of each episode of the value gate the head reads the first
+    argument of select_action (the broadcast) and chooses a slot. The motor map follows the group of the
+    chosen band. The reward that reaches action_core.step closes the choice with the binary outcome of
+    the value gate, and the head then makes 5 updates on the row of the choice. No value_gate.json is
+    written. Returns the live head, for the wrap of env.reset in main."""
+    import atexit
+    from models.core.choice_head import LiveChoiceHead, input_row
+    from models.core.rhythm_binding import RhythmMapBinding
+    from models.core.tectal_motor_map import TectalMotorMap
+    binding = getattr(tectum, "map_binding", None)
+    if not isinstance(binding, RhythmMapBinding) or binding.binder.bands_to_bind < 2:
+        raise ValueError("--choice-head plain needs --map-binding rhythm or rhythm-scrambled with two bands")
+    motor = TectalMotorMap("group", seed)
+    live = LiveChoiceHead(seed)
+    tectum.tectal_motor_map, tectum.choice_head = motor, live
+    policy_select, policy_step = action_core.select_action, action_core.step
+
+    def chosen_group(state) -> list:
+        record = tectum.map_history[-1] if tectum.map_history else {}
+        if record.get("band") is None:
+            live.new_episode()
+            return []
+        groups = record.get("groups", {})
+        candidates = {int(b): record["salience"][b] for b, cells in groups.items() if cells}
+        if live.choice is None and candidates:
+            live.choose(candidates, input_row(state), step=len(tectum.map_history) - 1 - live.boundary,
+                        episode=live.episode)
+        return groups.get(str(live.choice), []) if live.choice is not None else []
+
+    def select_action(*args, **kwargs):
+        action, value = policy_select(*args, **kwargs)
+        oriented = motor.step(tectum.map_binding, chosen_group(args[0]))
+        if oriented is None:
+            return (action if idle == "policy" else np.zeros_like(np.asarray(action))), value
+        return np.asarray(oriented, dtype=np.asarray(action).dtype), value
+
+    def step(*args, **kwargs):
+        reward = kwargs["raw_reward"] if "raw_reward" in kwargs else args[2]
+        live.observe_reward(float(reward))
+        return policy_step(*args, **kwargs)
+
+    action_core.select_action, action_core.step = select_action, step
+    atexit.register(_write_choice_head_record, live, motor, log_dir)
+    return live
+
+
+def _wire_choice_head_episodes(live, env, tectum) -> None:
+    """N4 and R3 of the rules: a wrap of env.reset made in main after seed_environment, so the first reset
+    that it counts is the reset of episode 0. During episode k the count is k + 1, and the episode of a
+    choice is the count minus 1. Each reset also marks where the map history of the episode starts."""
+    env_reset, count = env.reset, {"resets": 0}
+
+    def reset(*args, **kwargs):
+        count["resets"] += 1
+        live.episode, live.boundary = count["resets"] - 1, len(tectum.map_history)
+        return env_reset(*args, **kwargs)
+    env.reset = reset
+
+
+def _wire_orienting(args, action_core, tectum):
+    """The motor map of --tectal-orienting: the value gate, the choice head of --choice-head plain in its
+    place, or the other modes. Returns the live choice head, or None."""
+    if args.tectal_orienting == "value" and args.choice_head == "plain":
+        return _wire_choice_head(action_core, tectum, args.seed if args.seed is not None else 0, args.log_dir,
+                                 idle=args.tectal_orienting_idle)
+    if args.tectal_orienting == "value":
+        _wire_value_gate(action_core, tectum, args.seed if args.seed is not None else 0, args.log_dir,
+                         idle=args.tectal_orienting_idle, learning_rate=args.value_learning_rate,
+                         outcome_rule=args.value_outcome, delay_rate=args.value_delay_rate or 0.0,
+                         salience_floor=args.value_salience_floor)
+    elif args.tectal_orienting != "off":
+        _wire_tectal_orienting(action_core, tectum, args.tectal_orienting,
+                               args.seed if args.seed is not None else 0, args.log_dir,
+                               idle=args.tectal_orienting_idle, covert=args.tectal_orienting_covert)
+    return None
+
+
 def _wire_tectal_attention(tectum, gain: float, log_dir, env=None) -> None:
     """The tectal attention gain (docs/decisions/2026_10_17_tectal_attention.md).
 
@@ -3038,6 +3154,13 @@ def main():
                              "chooses once per episode by salience and learned value "
                              "(docs/decisions/2026_10_16_value_gate.md); needs --map-binding rhythm or "
                              "rhythm-scrambled, which then bind two bands. 'off' (default) is unchanged.")
+    parser.add_argument("--choice-head", choices=["off", "plain"], default="off",
+                        help="With --tectal-orienting value, 'plain': the plain value head reads the broadcast "
+                             "at the choice step and chooses the tone in place of the value gate "
+                             "(docs/decisions/2026_11_22_workspace_choice_mode.md). It learns from the binary "
+                             "outcome with the rule 'chosen' and writes choice_head.json, choice_head_inputs.npy "
+                             "and choice_head.pt, and no value_gate.json. Needs --map-binding rhythm or "
+                             "rhythm-scrambled and --policy-input broadcast. 'off' (default) is unchanged.")
     parser.add_argument("--value-learning-rate", type=float, default=0.3,
                         help="With --tectal-orienting value, the rate at which the value of the chosen "
                              "tone moves toward the outcome (food 1, none 0). 0 keeps the values at 0: "
@@ -3425,6 +3548,7 @@ def main():
     args = parser.parse_args()
     _reject_incompatible_flags(parser, args)
     _check_competing_goals_flags(parser, args)
+    _check_choice_head_flags(parser, args)
     _require_pyphi(parser, args, iit_phi.pyphi)
 
     if args.seed is not None:
@@ -3482,15 +3606,7 @@ def main():
                           bands_to_bind=2 if args.tectal_orienting == "value" else 1)
     if args.tectal_orienting_covert and args.tectal_orienting in ("off", "value"):
         parser.error("--tectal-orienting-covert needs --tectal-orienting group, active or audio")
-    if args.tectal_orienting == "value":
-        _wire_value_gate(action_core, tectum, args.seed if args.seed is not None else 0, args.log_dir,
-                         idle=args.tectal_orienting_idle, learning_rate=args.value_learning_rate,
-                         outcome_rule=args.value_outcome, delay_rate=args.value_delay_rate or 0.0,
-                         salience_floor=args.value_salience_floor)
-    elif args.tectal_orienting != "off":
-        _wire_tectal_orienting(action_core, tectum, args.tectal_orienting,
-                               args.seed if args.seed is not None else 0, args.log_dir,
-                               idle=args.tectal_orienting_idle, covert=args.tectal_orienting_covert)
+    live_choice_head = _wire_orienting(args, action_core, tectum)
     if args.binding_relation in ("place", "overlap"):
         _wire_place_relation(tectum, workspace, args.log_dir, args.binding_relation)
     if args.stop_on_non_finite:
@@ -3530,6 +3646,8 @@ def main():
         env.seed_decoy(args.seed)
     if args.tectal_attention == "gain":
         _wire_tectal_attention(tectum, args.tectal_attention_gain, args.log_dir, env=env)
+    if live_choice_head is not None:
+        _wire_choice_head_episodes(live_choice_head, env, tectum)
 
     metrics_logger = ConsciousnessMetricsLogger(
         log_dir=args.log_dir, use_tensorboard=True

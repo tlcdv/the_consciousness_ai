@@ -1,0 +1,74 @@
+{
+ "vg_learn_s601": {
+  "1": {
+   "audio_content": 15,
+   "tectum_content": 4,
+   "neither": 1
+  },
+  "0": {
+   "audio_content": 5,
+   "tectum_content": 15,
+   "neither": 0
+  }
+ },
+ "vg_learn_s602": {
+  "1": {
+   "audio_content": 14,
+   "tectum_content": 5,
+   "neither": 1
+  },
+  "0": {
+   "audio_content": 11,
+   "tectum_content": 9,
+   "neither": 0
+  }
+ },
+ "vg_learn_s603": {
+  "1": {
+   "audio_content": 7,
+   "tectum_content": 8,
+   "neither": 5
+  },
+  "0": {
+   "audio_content": 8,
+   "tectum_content": 11,
+   "neither": 1
+  }
+ },
+ "rv_switch_s701": {
+  "1": {
+   "audio_content": 22,
+   "tectum_content": 7,
+   "neither": 1
+  },
+  "0": {
+   "audio_content": 19,
+   "tectum_content": 11,
+   "neither": 0
+  }
+ },
+ "rv_switch_s702": {
+  "1": {
+   "audio_content": 19,
+   "tectum_content": 5,
+   "neither": 6
+  },
+  "0": {
+   "audio_content": 21,
+   "tectum_content": 8,
+   "neither": 1
+  }
+ },
+ "rv_switch_s703": {
+  "1": {
+   "audio_content": 16,
+   "tectum_content": 9,
+   "neither": 5
+  },
+  "0": {
+   "audio_content": 15,
+   "tectum_content": 15,
+   "neither": 0
+  }
+ }
+}

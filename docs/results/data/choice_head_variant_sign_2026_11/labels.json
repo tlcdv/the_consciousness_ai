@@ -1,0 +1,2355 @@
+{
+  "labels": {
+    "a": "HOLDS",
+    "b": "FAILS",
+    "reading_2": "HOLDS",
+    "c": "FAILS",
+    "d": "HOLDS"
+  },
+  "predictions": {
+    "a1_part_1": true,
+    "a1_part_2": true,
+    "a2": true,
+    "a3": true,
+    "C3b": true,
+    "C3c": false,
+    "b1": false,
+    "b2": false,
+    "b3": true,
+    "c1": false,
+    "d1": true,
+    "d2": true,
+    "b4": true
+  },
+  "row_counts": {
+    "30": {
+      "a1_part_1_share_at_update_1": 0.0,
+      "a1_part_1_limit": {
+        "standard_error": 0.0,
+        "limit": 0.05
+      },
+      "a1_part_1": true,
+      "a1_part_2_share": 0.5676805576831102,
+      "a1_part_2": true,
+      "a2_highest_score_from_20_to_100": 1.0,
+      "a2_score_at_200": 0.30222222222222217,
+      "a2": true,
+      "a3_score": 1.0,
+      "a3": true,
+      "C3b_score": 1.0,
+      "C3b": true,
+      "C3c_score": 0.7451851851851853,
+      "C3c": false,
+      "measurement_7": 0.5889166680077713,
+      "c3a_says_nothing_about_c": false,
+      "b1_share": 0.5086250014404455,
+      "b2_score": 0.5948148148148149,
+      "b3_score": 1.0,
+      "b1": false,
+      "b2": false,
+      "b3": true,
+      "reading_2_turn_checkpoint": 100,
+      "reading_2_checkpoints_before_the_turn": [
+        20,
+        40,
+        60,
+        80
+      ],
+      "reading_2_scores_before_the_turn": [
+        1.0,
+        1.0,
+        1.0,
+        0.9985185185185184
+      ],
+      "b4": true,
+      "reading_2_at_this_row_count": "HOLDS",
+      "c1_score_go_only": 0.30222222222222217,
+      "c1": false,
+      "c_difference": -2.7755575615628915e-18,
+      "c_limit": {
+        "standard_error": 0.0029215208805430204,
+        "limit": 0.05
+      },
+      "c_scores_within_the_limit": true,
+      "d1_mean_abs_advantage": 0.029543796204185728,
+      "d1": true,
+      "d2_difference": 0.054259259259259264,
+      "d2_limit": {
+        "standard_error": 0.025278587997084663,
+        "limit": 0.050557175994169326
+      },
+      "d2": true
+    },
+    "40": {
+      "a1_part_1_share_at_update_1": 0.0,
+      "a1_part_1_limit": {
+        "standard_error": 0.0,
+        "limit": 0.05
+      },
+      "a1_part_1": true,
+      "a1_part_2_share": 0.552625,
+      "a1_part_2": true,
+      "a2_highest_score_from_20_to_100": 1.0,
+      "a2_score_at_200": 0.36124999999999996,
+      "a2": true,
+      "a3_score": 1.0,
+      "a3": true,
+      "C3b_score": 1.0,
+      "C3b": true,
+      "C3c_score": 0.8116666666666668,
+      "C3c": true,
+      "measurement_7": 0.6075625,
+      "c3a_says_nothing_about_c": false,
+      "b1_share": 0.5088020833333334,
+      "b2_score": 0.3458333333333333,
+      "b3_score": 1.0,
+      "b1": false,
+      "b2": false,
+      "b3": true,
+      "reading_2_turn_checkpoint": 120,
+      "reading_2_checkpoints_before_the_turn": [
+        20,
+        40,
+        60,
+        80,
+        100
+      ],
+      "reading_2_scores_before_the_turn": [
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        0.9883333333333333
+      ],
+      "b4": true,
+      "reading_2_at_this_row_count": "HOLDS",
+      "c1_score_go_only": 0.35416666666666663,
+      "c1": false,
+      "c_difference": -0.00708333333333333,
+      "c_limit": {
+        "standard_error": 0.0015277777777777744,
+        "limit": 0.05
+      },
+      "c_scores_within_the_limit": true,
+      "d1_mean_abs_advantage": 0.02903195669094566,
+      "d1": true,
+      "d2_difference": 0.1110416666666667,
+      "d2_limit": {
+        "standard_error": 0.017434013601202475,
+        "limit": 0.05
+      },
+      "d2": true
+    }
+  },
+  "step_p2": {
+    "rows": [
+      "a HOLDS and b FAILS",
+      "d HOLDS and a HOLDS"
+    ],
+    "place": 2,
+    "advice": "Do not build with the variant"
+  },
+  "a2_trainings": {
+    "30": {
+      "trainings": 150,
+      "turn_before_the_first_low_score": 95,
+      "no_turn": 0,
+      "no_low_score": 0
+    },
+    "40": {
+      "trainings": 150,
+      "turn_before_the_first_low_score": 101,
+      "no_turn": 0,
+      "no_low_score": 0
+    }
+  },
+  "measurement_8": [
+    {
+      "condition": "C1",
+      "rows": 30,
+      "chooser": "random",
+      "data_seed": 0,
+      "difference": 0.1703703703703705
+    },
+    {
+      "condition": "C1",
+      "rows": 30,
+      "chooser": "random",
+      "data_seed": 1,
+      "difference": 0.20740740740740737
+    },
+    {
+      "condition": "C1",
+      "rows": 30,
+      "chooser": "random",
+      "data_seed": 2,
+      "difference": 0.17037037037037028
+    },
+    {
+      "condition": "C1",
+      "rows": 30,
+      "chooser": "random",
+      "data_seed": 3,
+      "difference": 0.14074074074074083
+    },
+    {
+      "condition": "C1",
+      "rows": 30,
+      "chooser": "random",
+      "data_seed": 4,
+      "difference": 0.1629629629629631
+    },
+    {
+      "condition": "C1",
+      "rows": 30,
+      "chooser": "random",
+      "data_seed": 5,
+      "difference": 0.20000000000000007
+    },
+    {
+      "condition": "C1",
+      "rows": 30,
+      "chooser": "random",
+      "data_seed": 6,
+      "difference": 0.10370370370370341
+    },
+    {
+      "condition": "C1",
+      "rows": 30,
+      "chooser": "random",
+      "data_seed": 7,
+      "difference": 0.2074074074074076
+    },
+    {
+      "condition": "C1",
+      "rows": 30,
+      "chooser": "random",
+      "data_seed": 8,
+      "difference": 0.19999999999999996
+    },
+    {
+      "condition": "C1",
+      "rows": 30,
+      "chooser": "random",
+      "data_seed": 9,
+      "difference": 0.1777777777777778
+    },
+    {
+      "condition": "C1",
+      "rows": 30,
+      "chooser": "slot_0",
+      "data_seed": 0,
+      "difference": 0.14074074074074072
+    },
+    {
+      "condition": "C1",
+      "rows": 30,
+      "chooser": "slot_0",
+      "data_seed": 1,
+      "difference": 0.20000000000000007
+    },
+    {
+      "condition": "C1",
+      "rows": 30,
+      "chooser": "slot_0",
+      "data_seed": 2,
+      "difference": 0.10370370370370374
+    },
+    {
+      "condition": "C1",
+      "rows": 30,
+      "chooser": "slot_0",
+      "data_seed": 3,
+      "difference": 0.10370370370370374
+    },
+    {
+      "condition": "C1",
+      "rows": 30,
+      "chooser": "slot_0",
+      "data_seed": 4,
+      "difference": 0.11851851851851858
+    },
+    {
+      "condition": "C1",
+      "rows": 30,
+      "chooser": "slot_0",
+      "data_seed": 5,
+      "difference": 0.13333333333333341
+    },
+    {
+      "condition": "C1",
+      "rows": 30,
+      "chooser": "slot_0",
+      "data_seed": 6,
+      "difference": 0.07407407407407396
+    },
+    {
+      "condition": "C1",
+      "rows": 30,
+      "chooser": "slot_0",
+      "data_seed": 7,
+      "difference": 0.15555555555555567
+    },
+    {
+      "condition": "C1",
+      "rows": 30,
+      "chooser": "slot_0",
+      "data_seed": 8,
+      "difference": 0.15555555555555545
+    },
+    {
+      "condition": "C1",
+      "rows": 30,
+      "chooser": "slot_0",
+      "data_seed": 9,
+      "difference": 0.1777777777777778
+    },
+    {
+      "condition": "C1",
+      "rows": 30,
+      "chooser": "food",
+      "data_seed": 0,
+      "difference": 0.1629629629629631
+    },
+    {
+      "condition": "C1",
+      "rows": 30,
+      "chooser": "food",
+      "data_seed": 1,
+      "difference": 0.28148148148148155
+    },
+    {
+      "condition": "C1",
+      "rows": 30,
+      "chooser": "food",
+      "data_seed": 2,
+      "difference": 0.18518518518518523
+    },
+    {
+      "condition": "C1",
+      "rows": 30,
+      "chooser": "food",
+      "data_seed": 3,
+      "difference": 0.15555555555555556
+    },
+    {
+      "condition": "C1",
+      "rows": 30,
+      "chooser": "food",
+      "data_seed": 4,
+      "difference": 0.20000000000000018
+    },
+    {
+      "condition": "C1",
+      "rows": 30,
+      "chooser": "food",
+      "data_seed": 5,
+      "difference": 0.2148148148148149
+    },
+    {
+      "condition": "C1",
+      "rows": 30,
+      "chooser": "food",
+      "data_seed": 6,
+      "difference": 0.1333333333333333
+    },
+    {
+      "condition": "C1",
+      "rows": 30,
+      "chooser": "food",
+      "data_seed": 7,
+      "difference": 0.22222222222222232
+    },
+    {
+      "condition": "C1",
+      "rows": 30,
+      "chooser": "food",
+      "data_seed": 8,
+      "difference": 0.2148148148148148
+    },
+    {
+      "condition": "C1",
+      "rows": 30,
+      "chooser": "food",
+      "data_seed": 9,
+      "difference": 0.22962962962962952
+    },
+    {
+      "condition": "C1",
+      "rows": 30,
+      "chooser": "food_80",
+      "data_seed": 0,
+      "difference": 0.15555555555555556
+    },
+    {
+      "condition": "C1",
+      "rows": 30,
+      "chooser": "food_80",
+      "data_seed": 1,
+      "difference": 0.2592592592592594
+    },
+    {
+      "condition": "C1",
+      "rows": 30,
+      "chooser": "food_80",
+      "data_seed": 2,
+      "difference": 0.19259259259259254
+    },
+    {
+      "condition": "C1",
+      "rows": 30,
+      "chooser": "food_80",
+      "data_seed": 3,
+      "difference": 0.14814814814814814
+    },
+    {
+      "condition": "C1",
+      "rows": 30,
+      "chooser": "food_80",
+      "data_seed": 4,
+      "difference": 0.1777777777777778
+    },
+    {
+      "condition": "C1",
+      "rows": 30,
+      "chooser": "food_80",
+      "data_seed": 5,
+      "difference": 0.19259259259259276
+    },
+    {
+      "condition": "C1",
+      "rows": 30,
+      "chooser": "food_80",
+      "data_seed": 6,
+      "difference": 0.1333333333333333
+    },
+    {
+      "condition": "C1",
+      "rows": 30,
+      "chooser": "food_80",
+      "data_seed": 7,
+      "difference": 0.22222222222222232
+    },
+    {
+      "condition": "C1",
+      "rows": 30,
+      "chooser": "food_80",
+      "data_seed": 8,
+      "difference": 0.20740740740740737
+    },
+    {
+      "condition": "C1",
+      "rows": 30,
+      "chooser": "food_80",
+      "data_seed": 9,
+      "difference": 0.2222222222222221
+    },
+    {
+      "condition": "C1",
+      "rows": 40,
+      "chooser": "random",
+      "data_seed": 0,
+      "difference": 0.22499999999999998
+    },
+    {
+      "condition": "C1",
+      "rows": 40,
+      "chooser": "random",
+      "data_seed": 1,
+      "difference": 0.22499999999999998
+    },
+    {
+      "condition": "C1",
+      "rows": 40,
+      "chooser": "random",
+      "data_seed": 2,
+      "difference": 0.23749999999999993
+    },
+    {
+      "condition": "C1",
+      "rows": 40,
+      "chooser": "random",
+      "data_seed": 3,
+      "difference": 0.25
+    },
+    {
+      "condition": "C1",
+      "rows": 40,
+      "chooser": "random",
+      "data_seed": 4,
+      "difference": 0.20833333333333337
+    },
+    {
+      "condition": "C1",
+      "rows": 40,
+      "chooser": "random",
+      "data_seed": 5,
+      "difference": 0.1875
+    },
+    {
+      "condition": "C1",
+      "rows": 40,
+      "chooser": "random",
+      "data_seed": 6,
+      "difference": 0.18333333333333324
+    },
+    {
+      "condition": "C1",
+      "rows": 40,
+      "chooser": "random",
+      "data_seed": 7,
+      "difference": 0.21666666666666667
+    },
+    {
+      "condition": "C1",
+      "rows": 40,
+      "chooser": "random",
+      "data_seed": 8,
+      "difference": 0.2416666666666667
+    },
+    {
+      "condition": "C1",
+      "rows": 40,
+      "chooser": "random",
+      "data_seed": 9,
+      "difference": 0.18333333333333335
+    },
+    {
+      "condition": "C1",
+      "rows": 40,
+      "chooser": "slot_0",
+      "data_seed": 0,
+      "difference": 0.20833333333333326
+    },
+    {
+      "condition": "C1",
+      "rows": 40,
+      "chooser": "slot_0",
+      "data_seed": 1,
+      "difference": 0.1958333333333333
+    },
+    {
+      "condition": "C1",
+      "rows": 40,
+      "chooser": "slot_0",
+      "data_seed": 2,
+      "difference": 0.20833333333333326
+    },
+    {
+      "condition": "C1",
+      "rows": 40,
+      "chooser": "slot_0",
+      "data_seed": 3,
+      "difference": 0.1791666666666667
+    },
+    {
+      "condition": "C1",
+      "rows": 40,
+      "chooser": "slot_0",
+      "data_seed": 4,
+      "difference": 0.1708333333333334
+    },
+    {
+      "condition": "C1",
+      "rows": 40,
+      "chooser": "slot_0",
+      "data_seed": 5,
+      "difference": 0.15416666666666667
+    },
+    {
+      "condition": "C1",
+      "rows": 40,
+      "chooser": "slot_0",
+      "data_seed": 6,
+      "difference": 0.125
+    },
+    {
+      "condition": "C1",
+      "rows": 40,
+      "chooser": "slot_0",
+      "data_seed": 7,
+      "difference": 0.16249999999999998
+    },
+    {
+      "condition": "C1",
+      "rows": 40,
+      "chooser": "slot_0",
+      "data_seed": 8,
+      "difference": 0.21666666666666667
+    },
+    {
+      "condition": "C1",
+      "rows": 40,
+      "chooser": "slot_0",
+      "data_seed": 9,
+      "difference": 0.125
+    },
+    {
+      "condition": "C1",
+      "rows": 40,
+      "chooser": "food",
+      "data_seed": 0,
+      "difference": 0.24166666666666659
+    },
+    {
+      "condition": "C1",
+      "rows": 40,
+      "chooser": "food",
+      "data_seed": 1,
+      "difference": 0.25416666666666665
+    },
+    {
+      "condition": "C1",
+      "rows": 40,
+      "chooser": "food",
+      "data_seed": 2,
+      "difference": 0.26249999999999996
+    },
+    {
+      "condition": "C1",
+      "rows": 40,
+      "chooser": "food",
+      "data_seed": 3,
+      "difference": 0.25416666666666665
+    },
+    {
+      "condition": "C1",
+      "rows": 40,
+      "chooser": "food",
+      "data_seed": 4,
+      "difference": 0.2250000000000001
+    },
+    {
+      "condition": "C1",
+      "rows": 40,
+      "chooser": "food",
+      "data_seed": 5,
+      "difference": 0.2416666666666667
+    },
+    {
+      "condition": "C1",
+      "rows": 40,
+      "chooser": "food",
+      "data_seed": 6,
+      "difference": 0.2041666666666666
+    },
+    {
+      "condition": "C1",
+      "rows": 40,
+      "chooser": "food",
+      "data_seed": 7,
+      "difference": 0.24583333333333335
+    },
+    {
+      "condition": "C1",
+      "rows": 40,
+      "chooser": "food",
+      "data_seed": 8,
+      "difference": 0.2416666666666667
+    },
+    {
+      "condition": "C1",
+      "rows": 40,
+      "chooser": "food",
+      "data_seed": 9,
+      "difference": 0.20833333333333326
+    },
+    {
+      "condition": "C1",
+      "rows": 40,
+      "chooser": "food_80",
+      "data_seed": 0,
+      "difference": 0.22916666666666663
+    },
+    {
+      "condition": "C1",
+      "rows": 40,
+      "chooser": "food_80",
+      "data_seed": 1,
+      "difference": 0.23750000000000004
+    },
+    {
+      "condition": "C1",
+      "rows": 40,
+      "chooser": "food_80",
+      "data_seed": 2,
+      "difference": 0.25416666666666665
+    },
+    {
+      "condition": "C1",
+      "rows": 40,
+      "chooser": "food_80",
+      "data_seed": 3,
+      "difference": 0.24583333333333335
+    },
+    {
+      "condition": "C1",
+      "rows": 40,
+      "chooser": "food_80",
+      "data_seed": 4,
+      "difference": 0.22083333333333333
+    },
+    {
+      "condition": "C1",
+      "rows": 40,
+      "chooser": "food_80",
+      "data_seed": 5,
+      "difference": 0.22916666666666674
+    },
+    {
+      "condition": "C1",
+      "rows": 40,
+      "chooser": "food_80",
+      "data_seed": 6,
+      "difference": 0.19999999999999996
+    },
+    {
+      "condition": "C1",
+      "rows": 40,
+      "chooser": "food_80",
+      "data_seed": 7,
+      "difference": 0.23333333333333328
+    },
+    {
+      "condition": "C1",
+      "rows": 40,
+      "chooser": "food_80",
+      "data_seed": 8,
+      "difference": 0.24583333333333335
+    },
+    {
+      "condition": "C1",
+      "rows": 40,
+      "chooser": "food_80",
+      "data_seed": 9,
+      "difference": 0.1958333333333333
+    },
+    {
+      "condition": "C2",
+      "rows": 30,
+      "chooser": "random",
+      "data_seed": 0,
+      "difference": 0.18518518518518523
+    },
+    {
+      "condition": "C2",
+      "rows": 30,
+      "chooser": "random",
+      "data_seed": 1,
+      "difference": 0.23703703703703705
+    },
+    {
+      "condition": "C2",
+      "rows": 30,
+      "chooser": "random",
+      "data_seed": 2,
+      "difference": 0.19259259259259254
+    },
+    {
+      "condition": "C2",
+      "rows": 30,
+      "chooser": "random",
+      "data_seed": 3,
+      "difference": 0.13333333333333341
+    },
+    {
+      "condition": "C2",
+      "rows": 30,
+      "chooser": "random",
+      "data_seed": 4,
+      "difference": 0.20000000000000018
+    },
+    {
+      "condition": "C2",
+      "rows": 30,
+      "chooser": "random",
+      "data_seed": 5,
+      "difference": 0.1777777777777778
+    },
+    {
+      "condition": "C2",
+      "rows": 30,
+      "chooser": "random",
+      "data_seed": 6,
+      "difference": 0.08148148148148149
+    },
+    {
+      "condition": "C2",
+      "rows": 30,
+      "chooser": "random",
+      "data_seed": 7,
+      "difference": 0.20740740740740737
+    },
+    {
+      "condition": "C2",
+      "rows": 30,
+      "chooser": "random",
+      "data_seed": 8,
+      "difference": 0.18518518518518523
+    },
+    {
+      "condition": "C2",
+      "rows": 30,
+      "chooser": "random",
+      "data_seed": 9,
+      "difference": 0.1777777777777777
+    },
+    {
+      "condition": "C2",
+      "rows": 30,
+      "chooser": "slot_0",
+      "data_seed": 0,
+      "difference": 0.15555555555555567
+    },
+    {
+      "condition": "C2",
+      "rows": 30,
+      "chooser": "slot_0",
+      "data_seed": 1,
+      "difference": 0.2148148148148148
+    },
+    {
+      "condition": "C2",
+      "rows": 30,
+      "chooser": "slot_0",
+      "data_seed": 2,
+      "difference": 0.1703703703703704
+    },
+    {
+      "condition": "C2",
+      "rows": 30,
+      "chooser": "slot_0",
+      "data_seed": 3,
+      "difference": 0.11851851851851858
+    },
+    {
+      "condition": "C2",
+      "rows": 30,
+      "chooser": "slot_0",
+      "data_seed": 4,
+      "difference": 0.11111111111111116
+    },
+    {
+      "condition": "C2",
+      "rows": 30,
+      "chooser": "slot_0",
+      "data_seed": 5,
+      "difference": 0.1333333333333333
+    },
+    {
+      "condition": "C2",
+      "rows": 30,
+      "chooser": "slot_0",
+      "data_seed": 6,
+      "difference": 0.07407407407407407
+    },
+    {
+      "condition": "C2",
+      "rows": 30,
+      "chooser": "slot_0",
+      "data_seed": 7,
+      "difference": 0.1703703703703704
+    },
+    {
+      "condition": "C2",
+      "rows": 30,
+      "chooser": "slot_0",
+      "data_seed": 8,
+      "difference": 0.16296296296296298
+    },
+    {
+      "condition": "C2",
+      "rows": 30,
+      "chooser": "slot_0",
+      "data_seed": 9,
+      "difference": 0.12592592592592589
+    },
+    {
+      "condition": "C2",
+      "rows": 30,
+      "chooser": "food",
+      "data_seed": 0,
+      "difference": 0.19259259259259265
+    },
+    {
+      "condition": "C2",
+      "rows": 30,
+      "chooser": "food",
+      "data_seed": 1,
+      "difference": 0.24444444444444458
+    },
+    {
+      "condition": "C2",
+      "rows": 30,
+      "chooser": "food",
+      "data_seed": 2,
+      "difference": 0.1777777777777777
+    },
+    {
+      "condition": "C2",
+      "rows": 30,
+      "chooser": "food",
+      "data_seed": 3,
+      "difference": 0.13333333333333341
+    },
+    {
+      "condition": "C2",
+      "rows": 30,
+      "chooser": "food",
+      "data_seed": 4,
+      "difference": 0.20740740740740748
+    },
+    {
+      "condition": "C2",
+      "rows": 30,
+      "chooser": "food",
+      "data_seed": 5,
+      "difference": 0.2222222222222222
+    },
+    {
+      "condition": "C2",
+      "rows": 30,
+      "chooser": "food",
+      "data_seed": 6,
+      "difference": 0.0888888888888889
+    },
+    {
+      "condition": "C2",
+      "rows": 30,
+      "chooser": "food",
+      "data_seed": 7,
+      "difference": 0.18518518518518523
+    },
+    {
+      "condition": "C2",
+      "rows": 30,
+      "chooser": "food",
+      "data_seed": 8,
+      "difference": 0.19999999999999984
+    },
+    {
+      "condition": "C2",
+      "rows": 30,
+      "chooser": "food",
+      "data_seed": 9,
+      "difference": 0.1703703703703704
+    },
+    {
+      "condition": "C2",
+      "rows": 30,
+      "chooser": "food_80",
+      "data_seed": 0,
+      "difference": 0.19999999999999996
+    },
+    {
+      "condition": "C2",
+      "rows": 30,
+      "chooser": "food_80",
+      "data_seed": 1,
+      "difference": 0.22962962962962952
+    },
+    {
+      "condition": "C2",
+      "rows": 30,
+      "chooser": "food_80",
+      "data_seed": 2,
+      "difference": 0.18518518518518523
+    },
+    {
+      "condition": "C2",
+      "rows": 30,
+      "chooser": "food_80",
+      "data_seed": 3,
+      "difference": 0.13333333333333341
+    },
+    {
+      "condition": "C2",
+      "rows": 30,
+      "chooser": "food_80",
+      "data_seed": 4,
+      "difference": 0.20000000000000018
+    },
+    {
+      "condition": "C2",
+      "rows": 30,
+      "chooser": "food_80",
+      "data_seed": 5,
+      "difference": 0.2222222222222222
+    },
+    {
+      "condition": "C2",
+      "rows": 30,
+      "chooser": "food_80",
+      "data_seed": 6,
+      "difference": 0.07407407407407407
+    },
+    {
+      "condition": "C2",
+      "rows": 30,
+      "chooser": "food_80",
+      "data_seed": 7,
+      "difference": 0.18518518518518523
+    },
+    {
+      "condition": "C2",
+      "rows": 30,
+      "chooser": "food_80",
+      "data_seed": 8,
+      "difference": 0.19999999999999996
+    },
+    {
+      "condition": "C2",
+      "rows": 30,
+      "chooser": "food_80",
+      "data_seed": 9,
+      "difference": 0.16296296296296298
+    },
+    {
+      "condition": "C2",
+      "rows": 40,
+      "chooser": "random",
+      "data_seed": 0,
+      "difference": 0.21666666666666656
+    },
+    {
+      "condition": "C2",
+      "rows": 40,
+      "chooser": "random",
+      "data_seed": 1,
+      "difference": 0.22916666666666663
+    },
+    {
+      "condition": "C2",
+      "rows": 40,
+      "chooser": "random",
+      "data_seed": 2,
+      "difference": 0.23333333333333328
+    },
+    {
+      "condition": "C2",
+      "rows": 40,
+      "chooser": "random",
+      "data_seed": 3,
+      "difference": 0.22083333333333333
+    },
+    {
+      "condition": "C2",
+      "rows": 40,
+      "chooser": "random",
+      "data_seed": 4,
+      "difference": 0.20833333333333337
+    },
+    {
+      "condition": "C2",
+      "rows": 40,
+      "chooser": "random",
+      "data_seed": 5,
+      "difference": 0.19583333333333341
+    },
+    {
+      "condition": "C2",
+      "rows": 40,
+      "chooser": "random",
+      "data_seed": 6,
+      "difference": 0.19999999999999996
+    },
+    {
+      "condition": "C2",
+      "rows": 40,
+      "chooser": "random",
+      "data_seed": 7,
+      "difference": 0.19999999999999996
+    },
+    {
+      "condition": "C2",
+      "rows": 40,
+      "chooser": "random",
+      "data_seed": 8,
+      "difference": 0.2250000000000001
+    },
+    {
+      "condition": "C2",
+      "rows": 40,
+      "chooser": "random",
+      "data_seed": 9,
+      "difference": 0.16666666666666663
+    },
+    {
+      "condition": "C2",
+      "rows": 40,
+      "chooser": "slot_0",
+      "data_seed": 0,
+      "difference": 0.17916666666666659
+    },
+    {
+      "condition": "C2",
+      "rows": 40,
+      "chooser": "slot_0",
+      "data_seed": 1,
+      "difference": 0.18333333333333335
+    },
+    {
+      "condition": "C2",
+      "rows": 40,
+      "chooser": "slot_0",
+      "data_seed": 2,
+      "difference": 0.20833333333333326
+    },
+    {
+      "condition": "C2",
+      "rows": 40,
+      "chooser": "slot_0",
+      "data_seed": 3,
+      "difference": 0.17499999999999993
+    },
+    {
+      "condition": "C2",
+      "rows": 40,
+      "chooser": "slot_0",
+      "data_seed": 4,
+      "difference": 0.15833333333333333
+    },
+    {
+      "condition": "C2",
+      "rows": 40,
+      "chooser": "slot_0",
+      "data_seed": 5,
+      "difference": 0.1708333333333334
+    },
+    {
+      "condition": "C2",
+      "rows": 40,
+      "chooser": "slot_0",
+      "data_seed": 6,
+      "difference": 0.16249999999999998
+    },
+    {
+      "condition": "C2",
+      "rows": 40,
+      "chooser": "slot_0",
+      "data_seed": 7,
+      "difference": 0.16249999999999998
+    },
+    {
+      "condition": "C2",
+      "rows": 40,
+      "chooser": "slot_0",
+      "data_seed": 8,
+      "difference": 0.19166666666666665
+    },
+    {
+      "condition": "C2",
+      "rows": 40,
+      "chooser": "slot_0",
+      "data_seed": 9,
+      "difference": 0.12083333333333335
+    },
+    {
+      "condition": "C2",
+      "rows": 40,
+      "chooser": "food",
+      "data_seed": 0,
+      "difference": 0.2124999999999999
+    },
+    {
+      "condition": "C2",
+      "rows": 40,
+      "chooser": "food",
+      "data_seed": 1,
+      "difference": 0.22499999999999998
+    },
+    {
+      "condition": "C2",
+      "rows": 40,
+      "chooser": "food",
+      "data_seed": 2,
+      "difference": 0.23333333333333328
+    },
+    {
+      "condition": "C2",
+      "rows": 40,
+      "chooser": "food",
+      "data_seed": 3,
+      "difference": 0.20833333333333326
+    },
+    {
+      "condition": "C2",
+      "rows": 40,
+      "chooser": "food",
+      "data_seed": 4,
+      "difference": 0.21250000000000002
+    },
+    {
+      "condition": "C2",
+      "rows": 40,
+      "chooser": "food",
+      "data_seed": 5,
+      "difference": 0.19583333333333341
+    },
+    {
+      "condition": "C2",
+      "rows": 40,
+      "chooser": "food",
+      "data_seed": 6,
+      "difference": 0.1958333333333333
+    },
+    {
+      "condition": "C2",
+      "rows": 40,
+      "chooser": "food",
+      "data_seed": 7,
+      "difference": 0.19999999999999996
+    },
+    {
+      "condition": "C2",
+      "rows": 40,
+      "chooser": "food",
+      "data_seed": 8,
+      "difference": 0.2333333333333334
+    },
+    {
+      "condition": "C2",
+      "rows": 40,
+      "chooser": "food",
+      "data_seed": 9,
+      "difference": 0.18333333333333335
+    },
+    {
+      "condition": "C2",
+      "rows": 40,
+      "chooser": "food_80",
+      "data_seed": 0,
+      "difference": 0.20833333333333326
+    },
+    {
+      "condition": "C2",
+      "rows": 40,
+      "chooser": "food_80",
+      "data_seed": 1,
+      "difference": 0.22499999999999998
+    },
+    {
+      "condition": "C2",
+      "rows": 40,
+      "chooser": "food_80",
+      "data_seed": 2,
+      "difference": 0.23749999999999993
+    },
+    {
+      "condition": "C2",
+      "rows": 40,
+      "chooser": "food_80",
+      "data_seed": 3,
+      "difference": 0.22499999999999998
+    },
+    {
+      "condition": "C2",
+      "rows": 40,
+      "chooser": "food_80",
+      "data_seed": 4,
+      "difference": 0.20833333333333337
+    },
+    {
+      "condition": "C2",
+      "rows": 40,
+      "chooser": "food_80",
+      "data_seed": 5,
+      "difference": 0.20833333333333337
+    },
+    {
+      "condition": "C2",
+      "rows": 40,
+      "chooser": "food_80",
+      "data_seed": 6,
+      "difference": 0.1958333333333333
+    },
+    {
+      "condition": "C2",
+      "rows": 40,
+      "chooser": "food_80",
+      "data_seed": 7,
+      "difference": 0.20833333333333326
+    },
+    {
+      "condition": "C2",
+      "rows": 40,
+      "chooser": "food_80",
+      "data_seed": 8,
+      "difference": 0.22916666666666674
+    },
+    {
+      "condition": "C2",
+      "rows": 40,
+      "chooser": "food_80",
+      "data_seed": 9,
+      "difference": 0.17916666666666659
+    },
+    {
+      "condition": "C3a",
+      "rows": 30,
+      "chooser": "food",
+      "data_seed": 0,
+      "difference": 0.1629629629629631
+    },
+    {
+      "condition": "C3a",
+      "rows": 30,
+      "chooser": "food",
+      "data_seed": 1,
+      "difference": 0.28148148148148155
+    },
+    {
+      "condition": "C3a",
+      "rows": 30,
+      "chooser": "food",
+      "data_seed": 2,
+      "difference": 0.18518518518518523
+    },
+    {
+      "condition": "C3a",
+      "rows": 30,
+      "chooser": "food",
+      "data_seed": 3,
+      "difference": 0.15555555555555556
+    },
+    {
+      "condition": "C3a",
+      "rows": 30,
+      "chooser": "food",
+      "data_seed": 4,
+      "difference": 0.20000000000000018
+    },
+    {
+      "condition": "C3a",
+      "rows": 30,
+      "chooser": "food",
+      "data_seed": 5,
+      "difference": 0.2148148148148149
+    },
+    {
+      "condition": "C3a",
+      "rows": 30,
+      "chooser": "food",
+      "data_seed": 6,
+      "difference": 0.1333333333333333
+    },
+    {
+      "condition": "C3a",
+      "rows": 30,
+      "chooser": "food",
+      "data_seed": 7,
+      "difference": 0.22222222222222232
+    },
+    {
+      "condition": "C3a",
+      "rows": 30,
+      "chooser": "food",
+      "data_seed": 8,
+      "difference": 0.2148148148148148
+    },
+    {
+      "condition": "C3a",
+      "rows": 30,
+      "chooser": "food",
+      "data_seed": 9,
+      "difference": 0.22962962962962952
+    },
+    {
+      "condition": "C3a",
+      "rows": 40,
+      "chooser": "food",
+      "data_seed": 0,
+      "difference": 0.24166666666666659
+    },
+    {
+      "condition": "C3a",
+      "rows": 40,
+      "chooser": "food",
+      "data_seed": 1,
+      "difference": 0.25416666666666665
+    },
+    {
+      "condition": "C3a",
+      "rows": 40,
+      "chooser": "food",
+      "data_seed": 2,
+      "difference": 0.26249999999999996
+    },
+    {
+      "condition": "C3a",
+      "rows": 40,
+      "chooser": "food",
+      "data_seed": 3,
+      "difference": 0.25416666666666665
+    },
+    {
+      "condition": "C3a",
+      "rows": 40,
+      "chooser": "food",
+      "data_seed": 4,
+      "difference": 0.2250000000000001
+    },
+    {
+      "condition": "C3a",
+      "rows": 40,
+      "chooser": "food",
+      "data_seed": 5,
+      "difference": 0.2416666666666667
+    },
+    {
+      "condition": "C3a",
+      "rows": 40,
+      "chooser": "food",
+      "data_seed": 6,
+      "difference": 0.2041666666666666
+    },
+    {
+      "condition": "C3a",
+      "rows": 40,
+      "chooser": "food",
+      "data_seed": 7,
+      "difference": 0.24583333333333335
+    },
+    {
+      "condition": "C3a",
+      "rows": 40,
+      "chooser": "food",
+      "data_seed": 8,
+      "difference": 0.2416666666666667
+    },
+    {
+      "condition": "C3a",
+      "rows": 40,
+      "chooser": "food",
+      "data_seed": 9,
+      "difference": 0.20833333333333326
+    },
+    {
+      "condition": "C3b",
+      "rows": 30,
+      "chooser": "food",
+      "data_seed": 0,
+      "difference": 0.1629629629629631
+    },
+    {
+      "condition": "C3b",
+      "rows": 30,
+      "chooser": "food",
+      "data_seed": 1,
+      "difference": 0.28148148148148155
+    },
+    {
+      "condition": "C3b",
+      "rows": 30,
+      "chooser": "food",
+      "data_seed": 2,
+      "difference": 0.18518518518518523
+    },
+    {
+      "condition": "C3b",
+      "rows": 30,
+      "chooser": "food",
+      "data_seed": 3,
+      "difference": 0.15555555555555556
+    },
+    {
+      "condition": "C3b",
+      "rows": 30,
+      "chooser": "food",
+      "data_seed": 4,
+      "difference": 0.20000000000000018
+    },
+    {
+      "condition": "C3b",
+      "rows": 30,
+      "chooser": "food",
+      "data_seed": 5,
+      "difference": 0.2148148148148149
+    },
+    {
+      "condition": "C3b",
+      "rows": 30,
+      "chooser": "food",
+      "data_seed": 6,
+      "difference": 0.1333333333333333
+    },
+    {
+      "condition": "C3b",
+      "rows": 30,
+      "chooser": "food",
+      "data_seed": 7,
+      "difference": 0.22222222222222232
+    },
+    {
+      "condition": "C3b",
+      "rows": 30,
+      "chooser": "food",
+      "data_seed": 8,
+      "difference": 0.2148148148148148
+    },
+    {
+      "condition": "C3b",
+      "rows": 30,
+      "chooser": "food",
+      "data_seed": 9,
+      "difference": 0.22962962962962952
+    },
+    {
+      "condition": "C3b",
+      "rows": 40,
+      "chooser": "food",
+      "data_seed": 0,
+      "difference": 0.24166666666666659
+    },
+    {
+      "condition": "C3b",
+      "rows": 40,
+      "chooser": "food",
+      "data_seed": 1,
+      "difference": 0.25416666666666665
+    },
+    {
+      "condition": "C3b",
+      "rows": 40,
+      "chooser": "food",
+      "data_seed": 2,
+      "difference": 0.26249999999999996
+    },
+    {
+      "condition": "C3b",
+      "rows": 40,
+      "chooser": "food",
+      "data_seed": 3,
+      "difference": 0.25416666666666665
+    },
+    {
+      "condition": "C3b",
+      "rows": 40,
+      "chooser": "food",
+      "data_seed": 4,
+      "difference": 0.2250000000000001
+    },
+    {
+      "condition": "C3b",
+      "rows": 40,
+      "chooser": "food",
+      "data_seed": 5,
+      "difference": 0.2416666666666667
+    },
+    {
+      "condition": "C3b",
+      "rows": 40,
+      "chooser": "food",
+      "data_seed": 6,
+      "difference": 0.2041666666666666
+    },
+    {
+      "condition": "C3b",
+      "rows": 40,
+      "chooser": "food",
+      "data_seed": 7,
+      "difference": 0.24583333333333335
+    },
+    {
+      "condition": "C3b",
+      "rows": 40,
+      "chooser": "food",
+      "data_seed": 8,
+      "difference": 0.2416666666666667
+    },
+    {
+      "condition": "C3b",
+      "rows": 40,
+      "chooser": "food",
+      "data_seed": 9,
+      "difference": 0.20833333333333326
+    },
+    {
+      "condition": "C3c",
+      "rows": 30,
+      "chooser": "food",
+      "data_seed": 0,
+      "difference": 0.1629629629629631
+    },
+    {
+      "condition": "C3c",
+      "rows": 30,
+      "chooser": "food",
+      "data_seed": 1,
+      "difference": 0.28148148148148155
+    },
+    {
+      "condition": "C3c",
+      "rows": 30,
+      "chooser": "food",
+      "data_seed": 2,
+      "difference": 0.18518518518518523
+    },
+    {
+      "condition": "C3c",
+      "rows": 30,
+      "chooser": "food",
+      "data_seed": 3,
+      "difference": 0.15555555555555556
+    },
+    {
+      "condition": "C3c",
+      "rows": 30,
+      "chooser": "food",
+      "data_seed": 4,
+      "difference": 0.20000000000000018
+    },
+    {
+      "condition": "C3c",
+      "rows": 30,
+      "chooser": "food",
+      "data_seed": 5,
+      "difference": 0.2148148148148149
+    },
+    {
+      "condition": "C3c",
+      "rows": 30,
+      "chooser": "food",
+      "data_seed": 6,
+      "difference": 0.1333333333333333
+    },
+    {
+      "condition": "C3c",
+      "rows": 30,
+      "chooser": "food",
+      "data_seed": 7,
+      "difference": 0.22222222222222232
+    },
+    {
+      "condition": "C3c",
+      "rows": 30,
+      "chooser": "food",
+      "data_seed": 8,
+      "difference": 0.2148148148148148
+    },
+    {
+      "condition": "C3c",
+      "rows": 30,
+      "chooser": "food",
+      "data_seed": 9,
+      "difference": 0.22962962962962952
+    },
+    {
+      "condition": "C3c",
+      "rows": 40,
+      "chooser": "food",
+      "data_seed": 0,
+      "difference": 0.24166666666666659
+    },
+    {
+      "condition": "C3c",
+      "rows": 40,
+      "chooser": "food",
+      "data_seed": 1,
+      "difference": 0.25416666666666665
+    },
+    {
+      "condition": "C3c",
+      "rows": 40,
+      "chooser": "food",
+      "data_seed": 2,
+      "difference": 0.26249999999999996
+    },
+    {
+      "condition": "C3c",
+      "rows": 40,
+      "chooser": "food",
+      "data_seed": 3,
+      "difference": 0.25416666666666665
+    },
+    {
+      "condition": "C3c",
+      "rows": 40,
+      "chooser": "food",
+      "data_seed": 4,
+      "difference": 0.2250000000000001
+    },
+    {
+      "condition": "C3c",
+      "rows": 40,
+      "chooser": "food",
+      "data_seed": 5,
+      "difference": 0.2416666666666667
+    },
+    {
+      "condition": "C3c",
+      "rows": 40,
+      "chooser": "food",
+      "data_seed": 6,
+      "difference": 0.2041666666666666
+    },
+    {
+      "condition": "C3c",
+      "rows": 40,
+      "chooser": "food",
+      "data_seed": 7,
+      "difference": 0.24583333333333335
+    },
+    {
+      "condition": "C3c",
+      "rows": 40,
+      "chooser": "food",
+      "data_seed": 8,
+      "difference": 0.2416666666666667
+    },
+    {
+      "condition": "C3c",
+      "rows": 40,
+      "chooser": "food",
+      "data_seed": 9,
+      "difference": 0.20833333333333326
+    },
+    {
+      "condition": "C4",
+      "rows": 30,
+      "chooser": "random",
+      "data_seed": 0,
+      "difference": 0.12592592592592577
+    },
+    {
+      "condition": "C4",
+      "rows": 30,
+      "chooser": "random",
+      "data_seed": 1,
+      "difference": 0.10370370370370374
+    },
+    {
+      "condition": "C4",
+      "rows": 30,
+      "chooser": "random",
+      "data_seed": 2,
+      "difference": 0.08148148148148149
+    },
+    {
+      "condition": "C4",
+      "rows": 30,
+      "chooser": "random",
+      "data_seed": 3,
+      "difference": 0.1333333333333333
+    },
+    {
+      "condition": "C4",
+      "rows": 30,
+      "chooser": "random",
+      "data_seed": 4,
+      "difference": 0.10370370370370363
+    },
+    {
+      "condition": "C4",
+      "rows": 30,
+      "chooser": "random",
+      "data_seed": 5,
+      "difference": 0.10370370370370374
+    },
+    {
+      "condition": "C4",
+      "rows": 30,
+      "chooser": "random",
+      "data_seed": 6,
+      "difference": 0.10370370370370385
+    },
+    {
+      "condition": "C4",
+      "rows": 30,
+      "chooser": "random",
+      "data_seed": 7,
+      "difference": 0.11851851851851836
+    },
+    {
+      "condition": "C4",
+      "rows": 30,
+      "chooser": "random",
+      "data_seed": 8,
+      "difference": 0.08148148148148149
+    },
+    {
+      "condition": "C4",
+      "rows": 30,
+      "chooser": "random",
+      "data_seed": 9,
+      "difference": 0.10370370370370363
+    },
+    {
+      "condition": "C4",
+      "rows": 30,
+      "chooser": "slot_0",
+      "data_seed": 0,
+      "difference": 0.10370370370370352
+    },
+    {
+      "condition": "C4",
+      "rows": 30,
+      "chooser": "slot_0",
+      "data_seed": 1,
+      "difference": 0.10370370370370374
+    },
+    {
+      "condition": "C4",
+      "rows": 30,
+      "chooser": "slot_0",
+      "data_seed": 2,
+      "difference": 0.0888888888888889
+    },
+    {
+      "condition": "C4",
+      "rows": 30,
+      "chooser": "slot_0",
+      "data_seed": 3,
+      "difference": 0.14074074074074072
+    },
+    {
+      "condition": "C4",
+      "rows": 30,
+      "chooser": "slot_0",
+      "data_seed": 4,
+      "difference": 0.09629629629629621
+    },
+    {
+      "condition": "C4",
+      "rows": 30,
+      "chooser": "slot_0",
+      "data_seed": 5,
+      "difference": 0.09629629629629632
+    },
+    {
+      "condition": "C4",
+      "rows": 30,
+      "chooser": "slot_0",
+      "data_seed": 6,
+      "difference": 0.08888888888888913
+    },
+    {
+      "condition": "C4",
+      "rows": 30,
+      "chooser": "slot_0",
+      "data_seed": 7,
+      "difference": 0.0962962962962961
+    },
+    {
+      "condition": "C4",
+      "rows": 30,
+      "chooser": "slot_0",
+      "data_seed": 8,
+      "difference": 0.07407407407407407
+    },
+    {
+      "condition": "C4",
+      "rows": 30,
+      "chooser": "slot_0",
+      "data_seed": 9,
+      "difference": 0.11851851851851836
+    },
+    {
+      "condition": "C4",
+      "rows": 30,
+      "chooser": "food",
+      "data_seed": 0,
+      "difference": 0.1333333333333332
+    },
+    {
+      "condition": "C4",
+      "rows": 30,
+      "chooser": "food",
+      "data_seed": 1,
+      "difference": 0.11111111111111116
+    },
+    {
+      "condition": "C4",
+      "rows": 30,
+      "chooser": "food",
+      "data_seed": 2,
+      "difference": 0.11111111111111116
+    },
+    {
+      "condition": "C4",
+      "rows": 30,
+      "chooser": "food",
+      "data_seed": 3,
+      "difference": 0.17037037037037028
+    },
+    {
+      "condition": "C4",
+      "rows": 30,
+      "chooser": "food",
+      "data_seed": 4,
+      "difference": 0.10370370370370363
+    },
+    {
+      "condition": "C4",
+      "rows": 30,
+      "chooser": "food",
+      "data_seed": 5,
+      "difference": 0.13333333333333353
+    },
+    {
+      "condition": "C4",
+      "rows": 30,
+      "chooser": "food",
+      "data_seed": 6,
+      "difference": 0.11111111111111127
+    },
+    {
+      "condition": "C4",
+      "rows": 30,
+      "chooser": "food",
+      "data_seed": 7,
+      "difference": 0.12592592592592589
+    },
+    {
+      "condition": "C4",
+      "rows": 30,
+      "chooser": "food",
+      "data_seed": 8,
+      "difference": 0.09629629629629632
+    },
+    {
+      "condition": "C4",
+      "rows": 30,
+      "chooser": "food",
+      "data_seed": 9,
+      "difference": 0.14074074074074072
+    },
+    {
+      "condition": "C4",
+      "rows": 30,
+      "chooser": "food_80",
+      "data_seed": 0,
+      "difference": 0.12592592592592577
+    },
+    {
+      "condition": "C4",
+      "rows": 30,
+      "chooser": "food_80",
+      "data_seed": 1,
+      "difference": 0.09629629629629644
+    },
+    {
+      "condition": "C4",
+      "rows": 30,
+      "chooser": "food_80",
+      "data_seed": 2,
+      "difference": 0.11111111111111116
+    },
+    {
+      "condition": "C4",
+      "rows": 30,
+      "chooser": "food_80",
+      "data_seed": 3,
+      "difference": 0.17037037037037028
+    },
+    {
+      "condition": "C4",
+      "rows": 30,
+      "chooser": "food_80",
+      "data_seed": 4,
+      "difference": 0.10370370370370363
+    },
+    {
+      "condition": "C4",
+      "rows": 30,
+      "chooser": "food_80",
+      "data_seed": 5,
+      "difference": 0.11111111111111116
+    },
+    {
+      "condition": "C4",
+      "rows": 30,
+      "chooser": "food_80",
+      "data_seed": 6,
+      "difference": 0.09629629629629644
+    },
+    {
+      "condition": "C4",
+      "rows": 30,
+      "chooser": "food_80",
+      "data_seed": 7,
+      "difference": 0.12592592592592577
+    },
+    {
+      "condition": "C4",
+      "rows": 30,
+      "chooser": "food_80",
+      "data_seed": 8,
+      "difference": 0.09629629629629632
+    },
+    {
+      "condition": "C4",
+      "rows": 30,
+      "chooser": "food_80",
+      "data_seed": 9,
+      "difference": 0.14074074074074072
+    },
+    {
+      "condition": "C4",
+      "rows": 40,
+      "chooser": "random",
+      "data_seed": 0,
+      "difference": 0.10833333333333339
+    },
+    {
+      "condition": "C4",
+      "rows": 40,
+      "chooser": "random",
+      "data_seed": 1,
+      "difference": 0.10416666666666663
+    },
+    {
+      "condition": "C4",
+      "rows": 40,
+      "chooser": "random",
+      "data_seed": 2,
+      "difference": 0.09166666666666667
+    },
+    {
+      "condition": "C4",
+      "rows": 40,
+      "chooser": "random",
+      "data_seed": 3,
+      "difference": 0.11250000000000004
+    },
+    {
+      "condition": "C4",
+      "rows": 40,
+      "chooser": "random",
+      "data_seed": 4,
+      "difference": 0.08333333333333337
+    },
+    {
+      "condition": "C4",
+      "rows": 40,
+      "chooser": "random",
+      "data_seed": 5,
+      "difference": 0.08750000000000008
+    },
+    {
+      "condition": "C4",
+      "rows": 40,
+      "chooser": "random",
+      "data_seed": 6,
+      "difference": 0.0708333333333333
+    },
+    {
+      "condition": "C4",
+      "rows": 40,
+      "chooser": "random",
+      "data_seed": 7,
+      "difference": 0.12083333333333335
+    },
+    {
+      "condition": "C4",
+      "rows": 40,
+      "chooser": "random",
+      "data_seed": 8,
+      "difference": 0.08750000000000002
+    },
+    {
+      "condition": "C4",
+      "rows": 40,
+      "chooser": "random",
+      "data_seed": 9,
+      "difference": 0.11249999999999993
+    },
+    {
+      "condition": "C4",
+      "rows": 40,
+      "chooser": "slot_0",
+      "data_seed": 0,
+      "difference": 0.09999999999999998
+    },
+    {
+      "condition": "C4",
+      "rows": 40,
+      "chooser": "slot_0",
+      "data_seed": 1,
+      "difference": 0.10833333333333328
+    },
+    {
+      "condition": "C4",
+      "rows": 40,
+      "chooser": "slot_0",
+      "data_seed": 2,
+      "difference": 0.08333333333333337
+    },
+    {
+      "condition": "C4",
+      "rows": 40,
+      "chooser": "slot_0",
+      "data_seed": 3,
+      "difference": 0.12083333333333335
+    },
+    {
+      "condition": "C4",
+      "rows": 40,
+      "chooser": "slot_0",
+      "data_seed": 4,
+      "difference": 0.08750000000000002
+    },
+    {
+      "condition": "C4",
+      "rows": 40,
+      "chooser": "slot_0",
+      "data_seed": 5,
+      "difference": 0.08750000000000008
+    },
+    {
+      "condition": "C4",
+      "rows": 40,
+      "chooser": "slot_0",
+      "data_seed": 6,
+      "difference": 0.0625
+    },
+    {
+      "condition": "C4",
+      "rows": 40,
+      "chooser": "slot_0",
+      "data_seed": 7,
+      "difference": 0.1166666666666667
+    },
+    {
+      "condition": "C4",
+      "rows": 40,
+      "chooser": "slot_0",
+      "data_seed": 8,
+      "difference": 0.07499999999999996
+    },
+    {
+      "condition": "C4",
+      "rows": 40,
+      "chooser": "slot_0",
+      "data_seed": 9,
+      "difference": 0.09999999999999998
+    },
+    {
+      "condition": "C4",
+      "rows": 40,
+      "chooser": "food",
+      "data_seed": 0,
+      "difference": 0.12083333333333335
+    },
+    {
+      "condition": "C4",
+      "rows": 40,
+      "chooser": "food",
+      "data_seed": 1,
+      "difference": 0.13749999999999996
+    },
+    {
+      "condition": "C4",
+      "rows": 40,
+      "chooser": "food",
+      "data_seed": 2,
+      "difference": 0.10833333333333339
+    },
+    {
+      "condition": "C4",
+      "rows": 40,
+      "chooser": "food",
+      "data_seed": 3,
+      "difference": 0.12916666666666665
+    },
+    {
+      "condition": "C4",
+      "rows": 40,
+      "chooser": "food",
+      "data_seed": 4,
+      "difference": 0.1166666666666667
+    },
+    {
+      "condition": "C4",
+      "rows": 40,
+      "chooser": "food",
+      "data_seed": 5,
+      "difference": 0.13333333333333336
+    },
+    {
+      "condition": "C4",
+      "rows": 40,
+      "chooser": "food",
+      "data_seed": 6,
+      "difference": 0.09999999999999998
+    },
+    {
+      "condition": "C4",
+      "rows": 40,
+      "chooser": "food",
+      "data_seed": 7,
+      "difference": 0.15833333333333333
+    },
+    {
+      "condition": "C4",
+      "rows": 40,
+      "chooser": "food",
+      "data_seed": 8,
+      "difference": 0.09999999999999998
+    },
+    {
+      "condition": "C4",
+      "rows": 40,
+      "chooser": "food",
+      "data_seed": 9,
+      "difference": 0.11666666666666659
+    },
+    {
+      "condition": "C4",
+      "rows": 40,
+      "chooser": "food_80",
+      "data_seed": 0,
+      "difference": 0.11250000000000004
+    },
+    {
+      "condition": "C4",
+      "rows": 40,
+      "chooser": "food_80",
+      "data_seed": 1,
+      "difference": 0.12083333333333335
+    },
+    {
+      "condition": "C4",
+      "rows": 40,
+      "chooser": "food_80",
+      "data_seed": 2,
+      "difference": 0.09166666666666667
+    },
+    {
+      "condition": "C4",
+      "rows": 40,
+      "chooser": "food_80",
+      "data_seed": 3,
+      "difference": 0.12916666666666665
+    },
+    {
+      "condition": "C4",
+      "rows": 40,
+      "chooser": "food_80",
+      "data_seed": 4,
+      "difference": 0.10833333333333339
+    },
+    {
+      "condition": "C4",
+      "rows": 40,
+      "chooser": "food_80",
+      "data_seed": 5,
+      "difference": 0.11249999999999999
+    },
+    {
+      "condition": "C4",
+      "rows": 40,
+      "chooser": "food_80",
+      "data_seed": 6,
+      "difference": 0.10416666666666663
+    },
+    {
+      "condition": "C4",
+      "rows": 40,
+      "chooser": "food_80",
+      "data_seed": 7,
+      "difference": 0.15000000000000002
+    },
+    {
+      "condition": "C4",
+      "rows": 40,
+      "chooser": "food_80",
+      "data_seed": 8,
+      "difference": 0.11250000000000004
+    },
+    {
+      "condition": "C4",
+      "rows": 40,
+      "chooser": "food_80",
+      "data_seed": 9,
+      "difference": 0.11666666666666659
+    }
+  ],
+  "no_label": [
+    {
+      "condition": "C1",
+      "chooser": "slot_0",
+      "rows": 30,
+      "label": "none",
+      "score_at_200": 0.625925925925926
+    },
+    {
+      "condition": "C1",
+      "chooser": "slot_0",
+      "rows": 40,
+      "label": "none",
+      "score_at_200": 0.5725000000000001
+    },
+    {
+      "condition": "C1",
+      "chooser": "food_80",
+      "rows": 30,
+      "label": "none",
+      "score_at_200": 0.5266666666666666
+    },
+    {
+      "condition": "C1",
+      "chooser": "food_80",
+      "rows": 40,
+      "label": "none",
+      "score_at_200": 0.5337500000000001
+    },
+    {
+      "condition": "C2",
+      "chooser": "slot_0",
+      "rows": 30,
+      "label": "none",
+      "score_at_200": 0.45777777777777773
+    },
+    {
+      "condition": "C2",
+      "chooser": "slot_0",
+      "rows": 40,
+      "label": "none",
+      "score_at_200": 0.40791666666666665
+    },
+    {
+      "condition": "C2",
+      "chooser": "food_80",
+      "rows": 30,
+      "label": "none",
+      "score_at_200": 1.0
+    },
+    {
+      "condition": "C2",
+      "chooser": "food_80",
+      "rows": 40,
+      "label": "none",
+      "score_at_200": 1.0
+    },
+    {
+      "condition": "C4",
+      "chooser": "slot_0",
+      "rows": 30,
+      "label": "none",
+      "score_at_200": 0.9414814814814815
+    },
+    {
+      "condition": "C4",
+      "chooser": "slot_0",
+      "rows": 40,
+      "label": "none",
+      "score_at_200": 0.9554166666666667
+    },
+    {
+      "condition": "C4",
+      "chooser": "food_80",
+      "rows": 30,
+      "label": "none",
+      "score_at_200": 0.982962962962963
+    },
+    {
+      "condition": "C4",
+      "chooser": "food_80",
+      "rows": 40,
+      "label": "none",
+      "score_at_200": 0.9929166666666667
+    }
+  ],
+  "not_answered": "The question why the variant is below 0.80 is not answered for slot_0 and food_80"
+}

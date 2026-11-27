@@ -1,0 +1,740 @@
+{
+  "verdict": "no control failed",
+  "K2": {
+    "mismatches": 0,
+    "trainings": 900,
+    "share_of_exploration_draws": {
+      "chosen B first": 0.25655555555555554,
+      "chosen B second": 0.25655555555555554,
+      "both B first": 0.25655555555555554,
+      "both B second": 0.25655555555555554,
+      "hopeful B first": 0.25655555555555554,
+      "hopeful B second": 0.25655555555555554
+    }
+  },
+  "K6": {
+    "compared": 2100,
+    "mismatches": 0,
+    "missing": 0,
+    "expected": 2100
+  },
+  "choice": {
+    "result": "no rule passes",
+    "rule": "chosen",
+    "conditions": {
+      "both": {
+        "score_40": {
+          "d": 0.39028333333333337,
+          "d_values": [
+            0.43600000000000005,
+            0.29900000000000004,
+            0.3636666666666665,
+            0.41416666666666696,
+            0.39799999999999996,
+            0.3356666666666668,
+            0.43200000000000005,
+            0.4565000000000001,
+            0.43550000000000005,
+            0.33233333333333326
+          ],
+          "standard_error": 0.017085316958006833,
+          "limit": 0.05,
+          "holds": true,
+          "score": 0.8857166666666666,
+          "d_at_limit": true
+        },
+        "greedy_food_40": {
+          "d": 0.016333333333333366,
+          "d_values": [
+            -0.01499999999999968,
+            0.0050000000000001155,
+            0.018333333333333313,
+            0.019999999999999907,
+            -0.00666666666666671,
+            -0.015000000000000013,
+            0.02833333333333332,
+            0.07166666666666677,
+            0.04833333333333334,
+            0.008333333333333304
+          ],
+          "standard_error": 0.008776371195318973,
+          "limit": 0.05,
+          "holds": false
+        },
+        "score_60": {
+          "d": 0.4359,
+          "d_values": [
+            0.39149999999999996,
+            0.44683333333333325,
+            0.41749999999999987,
+            0.3686666666666668,
+            0.46533333333333327,
+            0.44533333333333336,
+            0.44616666666666677,
+            0.457,
+            0.46766666666666673,
+            0.45300000000000007
+          ],
+          "standard_error": 0.010412190149229106,
+          "limit": 0.05,
+          "holds": true,
+          "score": 0.9194500000000001,
+          "d_at_limit": true
+        },
+        "greedy_food_60": {
+          "d": 0.03533333333333335,
+          "d_values": [
+            0.039999999999999813,
+            0.04833333333333334,
+            0.06166666666666687,
+            0.026666666666666616,
+            0.033333333333333215,
+            0.023333333333333428,
+            0.04999999999999993,
+            0.02666666666666684,
+            0.026666666666666727,
+            0.01666666666666672
+          ],
+          "standard_error": 0.004498284995554925,
+          "limit": 0.05,
+          "holds": false
+        },
+        "greedy_food_d_60": {
+          "d": 0.3161666666666667,
+          "d_values": [
+            0.28500000000000003,
+            0.35166666666666657,
+            0.29500000000000015,
+            0.275,
+            0.29666666666666663,
+            0.32,
+            0.345,
+            0.3316666666666668,
+            0.35333333333333333,
+            0.30833333333333346
+          ],
+          "standard_error": 0.008996055376979336,
+          "limit": 0.05,
+          "holds": true
+        },
+        "passes": false
+      },
+      "hopeful": {
+        "score_40": {
+          "d": 0.4173000000000001,
+          "d_values": [
+            0.45216666666666677,
+            0.5251666666666668,
+            0.3990000000000001,
+            0.273,
+            0.36650000000000005,
+            0.30000000000000004,
+            0.5295,
+            0.481166666666667,
+            0.4303333333333333,
+            0.41616666666666663
+          ],
+          "standard_error": 0.0273225904814548,
+          "limit": 0.0546451809629096,
+          "holds": true,
+          "score": 0.8788166666666669,
+          "d_at_limit": true
+        },
+        "greedy_food_40": {
+          "d": -0.000833333333333286,
+          "d_values": [
+            -0.06499999999999995,
+            0.0016666666666667052,
+            0.0183333333333332,
+            -0.0033333333333332993,
+            -0.0033333333333332993,
+            0.0,
+            -0.029999999999999805,
+            0.04999999999999993,
+            -0.006666666666666599,
+            0.03000000000000025
+          ],
+          "standard_error": 0.009957471293852724,
+          "limit": 0.05,
+          "holds": false
+        },
+        "score_60": {
+          "d": 0.4221333333333333,
+          "d_values": [
+            0.3956666666666666,
+            0.5150000000000001,
+            0.4016666666666667,
+            0.3208333333333333,
+            0.3986666666666665,
+            0.3235,
+            0.45783333333333337,
+            0.4508333333333331,
+            0.4811666666666665,
+            0.4761666666666668
+          ],
+          "standard_error": 0.02075979316721819,
+          "limit": 0.05,
+          "holds": true,
+          "score": 0.8996833333333333,
+          "d_at_limit": true
+        },
+        "greedy_food_60": {
+          "d": -0.0013333333333333975,
+          "d_values": [
+            -0.028333333333333544,
+            -0.0050000000000000044,
+            0.02000000000000013,
+            0.008333333333333193,
+            0.019999999999999907,
+            0.0033333333333332993,
+            -0.0033333333333334103,
+            0.018333333333333313,
+            -0.026666666666666727,
+            -0.02000000000000013
+          ],
+          "standard_error": 0.005915036290758311,
+          "limit": 0.05,
+          "holds": false
+        },
+        "greedy_food_d_60": {
+          "d": 0.29166666666666663,
+          "d_values": [
+            0.23666666666666658,
+            0.36166666666666664,
+            0.2733333333333334,
+            0.23333333333333328,
+            0.2633333333333333,
+            0.24833333333333318,
+            0.3316666666666666,
+            0.29333333333333317,
+            0.345,
+            0.3299999999999999
+          ],
+          "standard_error": 0.015004114661989343,
+          "limit": 0.05,
+          "holds": true
+        },
+        "passes": false
+      }
+    }
+  },
+  "second_pass": {
+    "chosen 40": {
+      "mean": 0.497,
+      "half_minus_mean": 0.003000000000000014,
+      "limit": 0.05
+    },
+    "chosen 60": {
+      "mean": 0.5041666666666667,
+      "half_minus_mean": -0.004166666666666647,
+      "limit": 0.05
+    },
+    "both 40": {
+      "mean": 0.5031666666666667,
+      "half_minus_mean": -0.003166666666666651,
+      "limit": 0.05,
+      "marked": false
+    },
+    "both 60": {
+      "mean": 0.4958333333333333,
+      "half_minus_mean": 0.004166666666666652,
+      "limit": 0.05,
+      "marked": false
+    },
+    "hopeful 40": {
+      "mean": 0.4688333333333333,
+      "half_minus_mean": 0.031166666666666648,
+      "limit": 0.05
+    },
+    "hopeful 60": {
+      "mean": 0.4836666666666667,
+      "half_minus_mean": 0.016333333333333304,
+      "limit": 0.05
+    }
+  },
+  "curves": {
+    "chosen first": {
+      "0": {
+        "score": 0.5176666666666667,
+        "count_choices": 0.0,
+        "count_explored": 0.0,
+        "share_explored": null,
+        "share_food": null,
+        "share_slot_0": null,
+        "mean_outcome": null,
+        "informative": 0.0,
+        "greedy_food": 0.5108333333333334
+      },
+      "10": {
+        "score": 0.9062999999999999,
+        "count_choices": 10.0,
+        "count_explored": 2.5733333333333333,
+        "share_explored": 0.25733333333333336,
+        "share_food": 0.6086666666666666,
+        "share_slot_0": 0.6266666666666667,
+        "mean_outcome": 0.6086666666666666,
+        "informative": 2.5,
+        "greedy_food": 0.7211666666666667
+      },
+      "20": {
+        "score": 0.9217000000000001,
+        "count_choices": 10.0,
+        "count_explored": 2.5,
+        "share_explored": 0.25,
+        "share_food": 0.6666666666666667,
+        "share_slot_0": 0.688,
+        "mean_outcome": 0.6666666666666667,
+        "informative": 4.893333333333333,
+        "greedy_food": 0.7436666666666667
+      },
+      "30": {
+        "score": 0.8942333333333334,
+        "count_choices": 10.0,
+        "count_explored": 2.6,
+        "share_explored": 0.25999999999999995,
+        "share_food": 0.6626666666666667,
+        "share_slot_0": 0.6273333333333333,
+        "mean_outcome": 0.6626666666666667,
+        "informative": 7.406666666666668,
+        "greedy_food": 0.7563333333333333
+      },
+      "40": {
+        "score": 0.8770666666666667,
+        "count_choices": 10.0,
+        "count_explored": 2.6933333333333334,
+        "share_explored": 0.2693333333333333,
+        "share_food": 0.7053333333333333,
+        "share_slot_0": 0.6326666666666666,
+        "mean_outcome": 0.7053333333333333,
+        "informative": 9.686666666666667,
+        "greedy_food": 0.7561666666666665
+      },
+      "50": {
+        "score": 0.8977499999999999,
+        "count_choices": 10.0,
+        "count_explored": 2.46,
+        "share_explored": 0.246,
+        "share_food": 0.6846666666666668,
+        "share_slot_0": 0.6406666666666666,
+        "mean_outcome": 0.6846666666666668,
+        "informative": 12.0,
+        "greedy_food": 0.7671666666666667
+      },
+      "60": {
+        "score": 0.9050166666666666,
+        "count_choices": 10.0,
+        "count_explored": 2.566666666666667,
+        "share_explored": 0.2566666666666667,
+        "share_food": 0.6926666666666667,
+        "share_slot_0": 0.6133333333333333,
+        "mean_outcome": 0.6926666666666667,
+        "informative": 14.006666666666666,
+        "greedy_food": 0.7766666666666667
+      }
+    },
+    "chosen second": {
+      "0": {
+        "score": 0.5176666666666667,
+        "count_choices": 0.0,
+        "count_explored": 0.0,
+        "share_explored": null,
+        "share_food": null,
+        "share_slot_0": null,
+        "mean_outcome": null,
+        "informative": 0.0,
+        "greedy_food": 0.5108333333333334
+      },
+      "10": {
+        "score": 0.5741666666666666,
+        "count_choices": 10.0,
+        "count_explored": 2.5733333333333333,
+        "share_explored": 0.25733333333333336,
+        "share_food": 0.5293333333333333,
+        "share_slot_0": 0.5526666666666666,
+        "mean_outcome": 1.0,
+        "informative": 0.0,
+        "greedy_food": 0.5401666666666667
+      },
+      "20": {
+        "score": 0.5361666666666667,
+        "count_choices": 10.0,
+        "count_explored": 2.5,
+        "share_explored": 0.25,
+        "share_food": 0.522,
+        "share_slot_0": 0.5313333333333333,
+        "mean_outcome": 1.0,
+        "informative": 0.0,
+        "greedy_food": 0.5193333333333333
+      },
+      "30": {
+        "score": 0.4759333333333333,
+        "count_choices": 10.0,
+        "count_explored": 2.6,
+        "share_explored": 0.25999999999999995,
+        "share_food": 0.5173333333333333,
+        "share_slot_0": 0.502,
+        "mean_outcome": 1.0,
+        "informative": 0.0,
+        "greedy_food": 0.4803333333333333
+      },
+      "40": {
+        "score": 0.5056333333333334,
+        "count_choices": 10.0,
+        "count_explored": 2.6933333333333334,
+        "share_explored": 0.2693333333333333,
+        "share_food": 0.53,
+        "share_slot_0": 0.5013333333333334,
+        "mean_outcome": 1.0,
+        "informative": 0.0,
+        "greedy_food": 0.497
+      },
+      "50": {
+        "score": 0.5073333333333333,
+        "count_choices": 10.0,
+        "count_explored": 2.46,
+        "share_explored": 0.246,
+        "share_food": 0.4920000000000001,
+        "share_slot_0": 0.508,
+        "mean_outcome": 1.0,
+        "informative": 0.0,
+        "greedy_food": 0.5086666666666666
+      },
+      "60": {
+        "score": 0.5044000000000001,
+        "count_choices": 10.0,
+        "count_explored": 2.566666666666667,
+        "share_explored": 0.2566666666666667,
+        "share_food": 0.492,
+        "share_slot_0": 0.5153333333333333,
+        "mean_outcome": 1.0,
+        "informative": 0.0,
+        "greedy_food": 0.5041666666666667
+      }
+    },
+    "both first": {
+      "0": {
+        "score": 0.5176666666666667,
+        "count_choices": 0.0,
+        "count_explored": 0.0,
+        "share_explored": null,
+        "share_food": null,
+        "share_slot_0": null,
+        "mean_outcome": null,
+        "informative": 0.0,
+        "greedy_food": 0.5108333333333334
+      },
+      "10": {
+        "score": 0.9235333333333335,
+        "count_choices": 10.0,
+        "count_explored": 2.5733333333333333,
+        "share_explored": 0.25733333333333336,
+        "share_food": 0.612,
+        "share_slot_0": 0.634,
+        "mean_outcome": 0.612,
+        "informative": 2.433333333333334,
+        "greedy_food": 0.7405
+      },
+      "20": {
+        "score": 0.9187666666666667,
+        "count_choices": 10.0,
+        "count_explored": 2.5,
+        "share_explored": 0.25,
+        "share_food": 0.678,
+        "share_slot_0": 0.6766666666666667,
+        "mean_outcome": 0.678,
+        "informative": 4.726666666666667,
+        "greedy_food": 0.7516666666666667
+      },
+      "30": {
+        "score": 0.8979166666666666,
+        "count_choices": 10.0,
+        "count_explored": 2.6,
+        "share_explored": 0.25999999999999995,
+        "share_food": 0.6813333333333335,
+        "share_slot_0": 0.5953333333333334,
+        "mean_outcome": 0.6813333333333335,
+        "informative": 7.1,
+        "greedy_food": 0.7776666666666667
+      },
+      "40": {
+        "score": 0.8857166666666666,
+        "count_choices": 10.0,
+        "count_explored": 2.6933333333333334,
+        "share_explored": 0.2693333333333333,
+        "share_food": 0.7066666666666667,
+        "share_slot_0": 0.614,
+        "mean_outcome": 0.7066666666666667,
+        "informative": 9.26,
+        "greedy_food": 0.7725000000000001
+      },
+      "50": {
+        "score": 0.9141333333333334,
+        "count_choices": 10.0,
+        "count_explored": 2.46,
+        "share_explored": 0.246,
+        "share_food": 0.704,
+        "share_slot_0": 0.6200000000000001,
+        "mean_outcome": 0.704,
+        "informative": 11.413333333333332,
+        "greedy_food": 0.8026666666666668
+      },
+      "60": {
+        "score": 0.9194500000000001,
+        "count_choices": 10.0,
+        "count_explored": 2.566666666666667,
+        "share_explored": 0.2566666666666667,
+        "share_food": 0.712,
+        "share_slot_0": 0.5953333333333334,
+        "mean_outcome": 0.712,
+        "informative": 13.206666666666667,
+        "greedy_food": 0.812
+      }
+    },
+    "both second": {
+      "0": {
+        "score": 0.5176666666666667,
+        "count_choices": 0.0,
+        "count_explored": 0.0,
+        "share_explored": null,
+        "share_food": null,
+        "share_slot_0": null,
+        "mean_outcome": null,
+        "informative": 0.0,
+        "greedy_food": 0.5108333333333334
+      },
+      "10": {
+        "score": 0.5726666666666667,
+        "count_choices": 10.0,
+        "count_explored": 2.5733333333333333,
+        "share_explored": 0.25733333333333336,
+        "share_food": 0.532,
+        "share_slot_0": 0.55,
+        "mean_outcome": 1.0,
+        "informative": 0.0,
+        "greedy_food": 0.5323333333333334
+      },
+      "20": {
+        "score": 0.5178833333333333,
+        "count_choices": 10.0,
+        "count_explored": 2.5,
+        "share_explored": 0.25,
+        "share_food": 0.5166666666666666,
+        "share_slot_0": 0.5153333333333333,
+        "mean_outcome": 1.0,
+        "informative": 0.0,
+        "greedy_food": 0.5136666666666667
+      },
+      "30": {
+        "score": 0.47663333333333335,
+        "count_choices": 10.0,
+        "count_explored": 2.6,
+        "share_explored": 0.25999999999999995,
+        "share_food": 0.5073333333333333,
+        "share_slot_0": 0.4999999999999999,
+        "mean_outcome": 1.0,
+        "informative": 0.0,
+        "greedy_food": 0.48999999999999994
+      },
+      "40": {
+        "score": 0.4954333333333333,
+        "count_choices": 10.0,
+        "count_explored": 2.6933333333333334,
+        "share_explored": 0.2693333333333333,
+        "share_food": 0.526,
+        "share_slot_0": 0.5173333333333333,
+        "mean_outcome": 1.0,
+        "informative": 0.0,
+        "greedy_food": 0.5031666666666667
+      },
+      "50": {
+        "score": 0.4849333333333333,
+        "count_choices": 10.0,
+        "count_explored": 2.46,
+        "share_explored": 0.246,
+        "share_food": 0.4946666666666667,
+        "share_slot_0": 0.49733333333333346,
+        "mean_outcome": 1.0,
+        "informative": 0.0,
+        "greedy_food": 0.4953333333333333
+      },
+      "60": {
+        "score": 0.48355000000000004,
+        "count_choices": 10.0,
+        "count_explored": 2.566666666666667,
+        "share_explored": 0.2566666666666667,
+        "share_food": 0.4706666666666667,
+        "share_slot_0": 0.5126666666666667,
+        "mean_outcome": 1.0,
+        "informative": 0.0,
+        "greedy_food": 0.4958333333333333
+      }
+    },
+    "hopeful first": {
+      "0": {
+        "score": 0.5176666666666667,
+        "count_choices": 0.0,
+        "count_explored": 0.0,
+        "share_explored": null,
+        "share_food": null,
+        "share_slot_0": null,
+        "mean_outcome": null,
+        "informative": 0.0,
+        "greedy_food": 0.5108333333333334
+      },
+      "10": {
+        "score": 0.80525,
+        "count_choices": 10.0,
+        "count_explored": 2.5733333333333333,
+        "share_explored": 0.25733333333333336,
+        "share_food": 0.5686666666666667,
+        "share_slot_0": 0.5853333333333334,
+        "mean_outcome": 0.5686666666666667,
+        "informative": 2.4133333333333336,
+        "greedy_food": 0.6751666666666667
+      },
+      "20": {
+        "score": 0.8800166666666666,
+        "count_choices": 10.0,
+        "count_explored": 2.5,
+        "share_explored": 0.25,
+        "share_food": 0.6459999999999999,
+        "share_slot_0": 0.6500000000000001,
+        "mean_outcome": 0.6459999999999999,
+        "informative": 4.68,
+        "greedy_food": 0.7280000000000001
+      },
+      "30": {
+        "score": 0.8731166666666667,
+        "count_choices": 10.0,
+        "count_explored": 2.6,
+        "share_explored": 0.25999999999999995,
+        "share_food": 0.6593333333333333,
+        "share_slot_0": 0.6039999999999999,
+        "mean_outcome": 0.6593333333333333,
+        "informative": 7.1933333333333325,
+        "greedy_food": 0.747
+      },
+      "40": {
+        "score": 0.8788166666666669,
+        "count_choices": 10.0,
+        "count_explored": 2.6933333333333334,
+        "share_explored": 0.2693333333333333,
+        "share_food": 0.6839999999999999,
+        "share_slot_0": 0.634,
+        "mean_outcome": 0.6839999999999999,
+        "informative": 9.566666666666666,
+        "greedy_food": 0.7553333333333334
+      },
+      "50": {
+        "score": 0.8908000000000001,
+        "count_choices": 10.0,
+        "count_explored": 2.46,
+        "share_explored": 0.246,
+        "share_food": 0.6793333333333333,
+        "share_slot_0": 0.6313333333333333,
+        "mean_outcome": 0.6793333333333333,
+        "informative": 11.913333333333334,
+        "greedy_food": 0.7663333333333334
+      },
+      "60": {
+        "score": 0.8996833333333333,
+        "count_choices": 10.0,
+        "count_explored": 2.566666666666667,
+        "share_explored": 0.2566666666666667,
+        "share_food": 0.6893333333333335,
+        "share_slot_0": 0.6073333333333333,
+        "mean_outcome": 0.6893333333333335,
+        "informative": 13.946666666666667,
+        "greedy_food": 0.7753333333333333
+      }
+    },
+    "hopeful second": {
+      "0": {
+        "score": 0.5176666666666667,
+        "count_choices": 0.0,
+        "count_explored": 0.0,
+        "share_explored": null,
+        "share_food": null,
+        "share_slot_0": null,
+        "mean_outcome": null,
+        "informative": 0.0,
+        "greedy_food": 0.5108333333333334
+      },
+      "10": {
+        "score": 0.4871833333333333,
+        "count_choices": 10.0,
+        "count_explored": 2.5733333333333333,
+        "share_explored": 0.25733333333333336,
+        "share_food": 0.522,
+        "share_slot_0": 0.5226666666666667,
+        "mean_outcome": 1.0,
+        "informative": 0.0,
+        "greedy_food": 0.4961666666666667
+      },
+      "20": {
+        "score": 0.48319999999999996,
+        "count_choices": 10.0,
+        "count_explored": 2.5,
+        "share_explored": 0.25,
+        "share_food": 0.4766666666666667,
+        "share_slot_0": 0.4913333333333333,
+        "mean_outcome": 1.0,
+        "informative": 0.0,
+        "greedy_food": 0.48850000000000005
+      },
+      "30": {
+        "score": 0.47409999999999997,
+        "count_choices": 10.0,
+        "count_explored": 2.6,
+        "share_explored": 0.25999999999999995,
+        "share_food": 0.4879999999999999,
+        "share_slot_0": 0.4846666666666667,
+        "mean_outcome": 1.0,
+        "informative": 0.0,
+        "greedy_food": 0.4796666666666667
+      },
+      "40": {
+        "score": 0.4615166666666667,
+        "count_choices": 10.0,
+        "count_explored": 2.6933333333333334,
+        "share_explored": 0.2693333333333333,
+        "share_food": 0.49799999999999994,
+        "share_slot_0": 0.49466666666666664,
+        "mean_outcome": 1.0,
+        "informative": 0.0,
+        "greedy_food": 0.4688333333333333
+      },
+      "50": {
+        "score": 0.47765,
+        "count_choices": 10.0,
+        "count_explored": 2.46,
+        "share_explored": 0.246,
+        "share_food": 0.47666666666666674,
+        "share_slot_0": 0.5006666666666668,
+        "mean_outcome": 1.0,
+        "informative": 0.0,
+        "greedy_food": 0.4845
+      },
+      "60": {
+        "score": 0.47755000000000003,
+        "count_choices": 10.0,
+        "count_explored": 2.566666666666667,
+        "share_explored": 0.2566666666666667,
+        "share_food": 0.46799999999999997,
+        "share_slot_0": 0.506,
+        "mean_outcome": 1.0,
+        "informative": 0.0,
+        "greedy_food": 0.4836666666666667
+      }
+    }
+  },
+  "value_gate_of_step_p1": {
+    "source": "docs/results/data/workspace_choice_head_2026_11/count_table.json",
+    "lowest_of_the_counted_units": 0.896551724137931,
+    "units_after_the_food_switch": {
+      "rv_switch_s701 after": 0.7419354838709677,
+      "rv_switch_s702 after": 0.8387096774193549,
+      "rv_switch_s703 after": 0.8387096774193549
+    }
+  }
+}

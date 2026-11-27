@@ -1,0 +1,821 @@
+{
+  "vg_learn_s601": {
+    "episodes": 40,
+    "episodes_with_target_1": 20,
+    "count_table": {
+      "chosen_0_outcome_0_target_0": 2,
+      "chosen_0_outcome_0_target_1": 0,
+      "chosen_0_outcome_1_target_0": 0,
+      "chosen_0_outcome_1_target_1": 20,
+      "chosen_1_outcome_0_target_0": 1,
+      "chosen_1_outcome_0_target_1": 0,
+      "chosen_1_outcome_1_target_0": 17,
+      "chosen_1_outcome_1_target_1": 0
+    },
+    "training_sets": [
+      {
+        "slot_0": {
+          "outcome_1": 16,
+          "outcome_0": 1
+        },
+        "slot_1": {
+          "outcome_1": 14,
+          "outcome_0": 1
+        },
+        "episodes": 32,
+        "rule_count": 1,
+        "informative": false
+      },
+      {
+        "slot_0": {
+          "outcome_1": 16,
+          "outcome_0": 2
+        },
+        "slot_1": {
+          "outcome_1": 13,
+          "outcome_0": 1
+        },
+        "episodes": 32,
+        "rule_count": 2,
+        "informative": true
+      },
+      {
+        "slot_0": {
+          "outcome_1": 16,
+          "outcome_0": 2
+        },
+        "slot_1": {
+          "outcome_1": 13,
+          "outcome_0": 1
+        },
+        "episodes": 32,
+        "rule_count": 2,
+        "informative": true
+      },
+      {
+        "slot_0": {
+          "outcome_1": 16,
+          "outcome_0": 1
+        },
+        "slot_1": {
+          "outcome_1": 15,
+          "outcome_0": 0
+        },
+        "episodes": 32,
+        "rule_count": 1,
+        "informative": false
+      },
+      {
+        "slot_0": {
+          "outcome_1": 16,
+          "outcome_0": 2
+        },
+        "slot_1": {
+          "outcome_1": 13,
+          "outcome_0": 1
+        },
+        "episodes": 32,
+        "rule_count": 2,
+        "informative": true
+      }
+    ],
+    "smallest_rule_count": 1,
+    "void_for_the_recorded_feedback": true,
+    "share_food_slot_chosen": 0.95,
+    "share_slot_0_chosen": 0.55,
+    "share_outcome_1": 0.925,
+    "nearest_chooser": "food",
+    "counted": true,
+    "food_band": 18,
+    "first_episode": 0,
+    "last_episode": 39
+  },
+  "vg_learn_s602": {
+    "episodes": 40,
+    "episodes_with_target_1": 20,
+    "count_table": {
+      "chosen_0_outcome_0_target_0": 3,
+      "chosen_0_outcome_0_target_1": 0,
+      "chosen_0_outcome_1_target_0": 0,
+      "chosen_0_outcome_1_target_1": 19,
+      "chosen_1_outcome_0_target_0": 0,
+      "chosen_1_outcome_0_target_1": 1,
+      "chosen_1_outcome_1_target_0": 17,
+      "chosen_1_outcome_1_target_1": 0
+    },
+    "training_sets": [
+      {
+        "slot_0": {
+          "outcome_1": 15,
+          "outcome_0": 2
+        },
+        "slot_1": {
+          "outcome_1": 14,
+          "outcome_0": 1
+        },
+        "episodes": 32,
+        "rule_count": 2,
+        "informative": true
+      },
+      {
+        "slot_0": {
+          "outcome_1": 15,
+          "outcome_0": 3
+        },
+        "slot_1": {
+          "outcome_1": 13,
+          "outcome_0": 1
+        },
+        "episodes": 32,
+        "rule_count": 3,
+        "informative": true
+      },
+      {
+        "slot_0": {
+          "outcome_1": 15,
+          "outcome_0": 3
+        },
+        "slot_1": {
+          "outcome_1": 13,
+          "outcome_0": 1
+        },
+        "episodes": 32,
+        "rule_count": 3,
+        "informative": true
+      },
+      {
+        "slot_0": {
+          "outcome_1": 15,
+          "outcome_0": 1
+        },
+        "slot_1": {
+          "outcome_1": 15,
+          "outcome_0": 1
+        },
+        "episodes": 32,
+        "rule_count": 1,
+        "informative": false
+      },
+      {
+        "slot_0": {
+          "outcome_1": 16,
+          "outcome_0": 3
+        },
+        "slot_1": {
+          "outcome_1": 13,
+          "outcome_0": 0
+        },
+        "episodes": 32,
+        "rule_count": 3,
+        "informative": true
+      }
+    ],
+    "smallest_rule_count": 1,
+    "void_for_the_recorded_feedback": true,
+    "share_food_slot_chosen": 0.9,
+    "share_slot_0_chosen": 0.55,
+    "share_outcome_1": 0.9,
+    "nearest_chooser": "food",
+    "counted": true,
+    "food_band": 18,
+    "first_episode": 0,
+    "last_episode": 39
+  },
+  "vg_learn_s603": {
+    "episodes": 40,
+    "episodes_with_target_1": 20,
+    "count_table": {
+      "chosen_0_outcome_0_target_0": 1,
+      "chosen_0_outcome_0_target_1": 0,
+      "chosen_0_outcome_1_target_0": 0,
+      "chosen_0_outcome_1_target_1": 20,
+      "chosen_1_outcome_0_target_0": 0,
+      "chosen_1_outcome_0_target_1": 0,
+      "chosen_1_outcome_1_target_0": 19,
+      "chosen_1_outcome_1_target_1": 0
+    },
+    "training_sets": [
+      {
+        "slot_0": {
+          "outcome_1": 16,
+          "outcome_0": 0
+        },
+        "slot_1": {
+          "outcome_1": 16,
+          "outcome_0": 0
+        },
+        "episodes": 32,
+        "rule_count": 0,
+        "informative": false
+      },
+      {
+        "slot_0": {
+          "outcome_1": 16,
+          "outcome_0": 1
+        },
+        "slot_1": {
+          "outcome_1": 15,
+          "outcome_0": 0
+        },
+        "episodes": 32,
+        "rule_count": 1,
+        "informative": false
+      },
+      {
+        "slot_0": {
+          "outcome_1": 16,
+          "outcome_0": 1
+        },
+        "slot_1": {
+          "outcome_1": 15,
+          "outcome_0": 0
+        },
+        "episodes": 32,
+        "rule_count": 1,
+        "informative": false
+      },
+      {
+        "slot_0": {
+          "outcome_1": 16,
+          "outcome_0": 1
+        },
+        "slot_1": {
+          "outcome_1": 15,
+          "outcome_0": 0
+        },
+        "episodes": 32,
+        "rule_count": 1,
+        "informative": false
+      },
+      {
+        "slot_0": {
+          "outcome_1": 16,
+          "outcome_0": 1
+        },
+        "slot_1": {
+          "outcome_1": 15,
+          "outcome_0": 0
+        },
+        "episodes": 32,
+        "rule_count": 1,
+        "informative": false
+      }
+    ],
+    "smallest_rule_count": 0,
+    "void_for_the_recorded_feedback": true,
+    "share_food_slot_chosen": 0.975,
+    "share_slot_0_chosen": 0.525,
+    "share_outcome_1": 0.975,
+    "nearest_chooser": "food",
+    "counted": true,
+    "food_band": 18,
+    "first_episode": 0,
+    "last_episode": 39
+  },
+  "rv_switch_s701 before": {
+    "episodes": 29,
+    "episodes_with_target_1": 14,
+    "count_table": {
+      "chosen_0_outcome_0_target_0": 1,
+      "chosen_0_outcome_0_target_1": 0,
+      "chosen_0_outcome_1_target_0": 0,
+      "chosen_0_outcome_1_target_1": 14,
+      "chosen_1_outcome_0_target_0": 0,
+      "chosen_1_outcome_0_target_1": 0,
+      "chosen_1_outcome_1_target_0": 14,
+      "chosen_1_outcome_1_target_1": 0
+    },
+    "training_sets": [
+      {
+        "slot_0": {
+          "outcome_1": 11,
+          "outcome_0": 1
+        },
+        "slot_1": {
+          "outcome_1": 11,
+          "outcome_0": 0
+        },
+        "episodes": 23,
+        "rule_count": 1,
+        "informative": false
+      },
+      {
+        "slot_0": {
+          "outcome_1": 11,
+          "outcome_0": 1
+        },
+        "slot_1": {
+          "outcome_1": 11,
+          "outcome_0": 0
+        },
+        "episodes": 23,
+        "rule_count": 1,
+        "informative": false
+      },
+      {
+        "slot_0": {
+          "outcome_1": 11,
+          "outcome_0": 1
+        },
+        "slot_1": {
+          "outcome_1": 11,
+          "outcome_0": 0
+        },
+        "episodes": 23,
+        "rule_count": 1,
+        "informative": false
+      },
+      {
+        "slot_0": {
+          "outcome_1": 11,
+          "outcome_0": 1
+        },
+        "slot_1": {
+          "outcome_1": 11,
+          "outcome_0": 0
+        },
+        "episodes": 23,
+        "rule_count": 1,
+        "informative": false
+      },
+      {
+        "slot_0": {
+          "outcome_1": 12,
+          "outcome_0": 0
+        },
+        "slot_1": {
+          "outcome_1": 12,
+          "outcome_0": 0
+        },
+        "episodes": 24,
+        "rule_count": 0,
+        "informative": false
+      }
+    ],
+    "smallest_rule_count": 0,
+    "void_for_the_recorded_feedback": true,
+    "share_food_slot_chosen": 0.9655172413793104,
+    "share_slot_0_chosen": 0.5172413793103449,
+    "share_outcome_1": 0.9655172413793104,
+    "nearest_chooser": "food",
+    "counted": true,
+    "food_band": 18,
+    "first_episode": 0,
+    "last_episode": 28
+  },
+  "rv_switch_s702 before": {
+    "episodes": 29,
+    "episodes_with_target_1": 14,
+    "count_table": {
+      "chosen_0_outcome_0_target_0": 1,
+      "chosen_0_outcome_0_target_1": 1,
+      "chosen_0_outcome_1_target_0": 0,
+      "chosen_0_outcome_1_target_1": 13,
+      "chosen_1_outcome_0_target_0": 0,
+      "chosen_1_outcome_0_target_1": 0,
+      "chosen_1_outcome_1_target_0": 14,
+      "chosen_1_outcome_1_target_1": 0
+    },
+    "training_sets": [
+      {
+        "slot_0": {
+          "outcome_1": 10,
+          "outcome_0": 2
+        },
+        "slot_1": {
+          "outcome_1": 11,
+          "outcome_0": 0
+        },
+        "episodes": 23,
+        "rule_count": 2,
+        "informative": true
+      },
+      {
+        "slot_0": {
+          "outcome_1": 10,
+          "outcome_0": 2
+        },
+        "slot_1": {
+          "outcome_1": 11,
+          "outcome_0": 0
+        },
+        "episodes": 23,
+        "rule_count": 2,
+        "informative": true
+      },
+      {
+        "slot_0": {
+          "outcome_1": 10,
+          "outcome_0": 2
+        },
+        "slot_1": {
+          "outcome_1": 11,
+          "outcome_0": 0
+        },
+        "episodes": 23,
+        "rule_count": 2,
+        "informative": true
+      },
+      {
+        "slot_0": {
+          "outcome_1": 10,
+          "outcome_0": 2
+        },
+        "slot_1": {
+          "outcome_1": 11,
+          "outcome_0": 0
+        },
+        "episodes": 23,
+        "rule_count": 2,
+        "informative": true
+      },
+      {
+        "slot_0": {
+          "outcome_1": 12,
+          "outcome_0": 0
+        },
+        "slot_1": {
+          "outcome_1": 12,
+          "outcome_0": 0
+        },
+        "episodes": 24,
+        "rule_count": 0,
+        "informative": false
+      }
+    ],
+    "smallest_rule_count": 0,
+    "void_for_the_recorded_feedback": true,
+    "share_food_slot_chosen": 0.9655172413793104,
+    "share_slot_0_chosen": 0.5172413793103449,
+    "share_outcome_1": 0.9310344827586207,
+    "nearest_chooser": "food",
+    "counted": true,
+    "food_band": 18,
+    "first_episode": 0,
+    "last_episode": 28
+  },
+  "rv_switch_s703 before": {
+    "episodes": 29,
+    "episodes_with_target_1": 14,
+    "count_table": {
+      "chosen_0_outcome_0_target_0": 3,
+      "chosen_0_outcome_0_target_1": 0,
+      "chosen_0_outcome_1_target_0": 0,
+      "chosen_0_outcome_1_target_1": 14,
+      "chosen_1_outcome_0_target_0": 0,
+      "chosen_1_outcome_0_target_1": 0,
+      "chosen_1_outcome_1_target_0": 12,
+      "chosen_1_outcome_1_target_1": 0
+    },
+    "training_sets": [
+      {
+        "slot_0": {
+          "outcome_1": 11,
+          "outcome_0": 2
+        },
+        "slot_1": {
+          "outcome_1": 10,
+          "outcome_0": 0
+        },
+        "episodes": 23,
+        "rule_count": 2,
+        "informative": true
+      },
+      {
+        "slot_0": {
+          "outcome_1": 11,
+          "outcome_0": 3
+        },
+        "slot_1": {
+          "outcome_1": 9,
+          "outcome_0": 0
+        },
+        "episodes": 23,
+        "rule_count": 3,
+        "informative": true
+      },
+      {
+        "slot_0": {
+          "outcome_1": 11,
+          "outcome_0": 3
+        },
+        "slot_1": {
+          "outcome_1": 9,
+          "outcome_0": 0
+        },
+        "episodes": 23,
+        "rule_count": 3,
+        "informative": true
+      },
+      {
+        "slot_0": {
+          "outcome_1": 11,
+          "outcome_0": 3
+        },
+        "slot_1": {
+          "outcome_1": 9,
+          "outcome_0": 0
+        },
+        "episodes": 23,
+        "rule_count": 3,
+        "informative": true
+      },
+      {
+        "slot_0": {
+          "outcome_1": 12,
+          "outcome_0": 1
+        },
+        "slot_1": {
+          "outcome_1": 11,
+          "outcome_0": 0
+        },
+        "episodes": 24,
+        "rule_count": 1,
+        "informative": false
+      }
+    ],
+    "smallest_rule_count": 1,
+    "void_for_the_recorded_feedback": true,
+    "share_food_slot_chosen": 0.896551724137931,
+    "share_slot_0_chosen": 0.5862068965517241,
+    "share_outcome_1": 0.896551724137931,
+    "nearest_chooser": "food_80",
+    "counted": true,
+    "food_band": 18,
+    "first_episode": 0,
+    "last_episode": 28
+  },
+  "rv_switch_s701 after": {
+    "episodes": 31,
+    "episodes_with_target_1": 15,
+    "count_table": {
+      "chosen_0_outcome_0_target_0": 5,
+      "chosen_0_outcome_0_target_1": 1,
+      "chosen_0_outcome_1_target_0": 0,
+      "chosen_0_outcome_1_target_1": 11,
+      "chosen_1_outcome_0_target_0": 0,
+      "chosen_1_outcome_0_target_1": 3,
+      "chosen_1_outcome_1_target_0": 11,
+      "chosen_1_outcome_1_target_1": 0
+    },
+    "training_sets": [
+      {
+        "slot_0": {
+          "outcome_1": 10,
+          "outcome_0": 4
+        },
+        "slot_1": {
+          "outcome_1": 8,
+          "outcome_0": 2
+        },
+        "episodes": 24,
+        "rule_count": 4,
+        "informative": true
+      },
+      {
+        "slot_0": {
+          "outcome_1": 9,
+          "outcome_0": 6
+        },
+        "slot_1": {
+          "outcome_1": 8,
+          "outcome_0": 2
+        },
+        "episodes": 25,
+        "rule_count": 6,
+        "informative": true
+      },
+      {
+        "slot_0": {
+          "outcome_1": 9,
+          "outcome_0": 4
+        },
+        "slot_1": {
+          "outcome_1": 10,
+          "outcome_0": 2
+        },
+        "episodes": 25,
+        "rule_count": 4,
+        "informative": true
+      },
+      {
+        "slot_0": {
+          "outcome_1": 8,
+          "outcome_0": 6
+        },
+        "slot_1": {
+          "outcome_1": 8,
+          "outcome_0": 3
+        },
+        "episodes": 25,
+        "rule_count": 6,
+        "informative": true
+      },
+      {
+        "slot_0": {
+          "outcome_1": 8,
+          "outcome_0": 4
+        },
+        "slot_1": {
+          "outcome_1": 10,
+          "outcome_0": 3
+        },
+        "episodes": 25,
+        "rule_count": 4,
+        "informative": true
+      }
+    ],
+    "smallest_rule_count": 4,
+    "void_for_the_recorded_feedback": false,
+    "share_food_slot_chosen": 0.7419354838709677,
+    "share_slot_0_chosen": 0.5483870967741935,
+    "share_outcome_1": 0.7096774193548387,
+    "nearest_chooser": "food_80",
+    "counted": false,
+    "food_band": 23,
+    "first_episode": 29,
+    "last_episode": 59
+  },
+  "rv_switch_s702 after": {
+    "episodes": 31,
+    "episodes_with_target_1": 15,
+    "count_table": {
+      "chosen_0_outcome_0_target_0": 4,
+      "chosen_0_outcome_0_target_1": 0,
+      "chosen_0_outcome_1_target_0": 0,
+      "chosen_0_outcome_1_target_1": 14,
+      "chosen_1_outcome_0_target_0": 0,
+      "chosen_1_outcome_0_target_1": 1,
+      "chosen_1_outcome_1_target_0": 12,
+      "chosen_1_outcome_1_target_1": 0
+    },
+    "training_sets": [
+      {
+        "slot_0": {
+          "outcome_1": 11,
+          "outcome_0": 3
+        },
+        "slot_1": {
+          "outcome_1": 9,
+          "outcome_0": 1
+        },
+        "episodes": 24,
+        "rule_count": 3,
+        "informative": true
+      },
+      {
+        "slot_0": {
+          "outcome_1": 11,
+          "outcome_0": 4
+        },
+        "slot_1": {
+          "outcome_1": 9,
+          "outcome_0": 1
+        },
+        "episodes": 25,
+        "rule_count": 4,
+        "informative": true
+      },
+      {
+        "slot_0": {
+          "outcome_1": 12,
+          "outcome_0": 3
+        },
+        "slot_1": {
+          "outcome_1": 10,
+          "outcome_0": 0
+        },
+        "episodes": 25,
+        "rule_count": 3,
+        "informative": true
+      },
+      {
+        "slot_0": {
+          "outcome_1": 11,
+          "outcome_0": 4
+        },
+        "slot_1": {
+          "outcome_1": 9,
+          "outcome_0": 1
+        },
+        "episodes": 25,
+        "rule_count": 4,
+        "informative": true
+      },
+      {
+        "slot_0": {
+          "outcome_1": 11,
+          "outcome_0": 2
+        },
+        "slot_1": {
+          "outcome_1": 11,
+          "outcome_0": 1
+        },
+        "episodes": 25,
+        "rule_count": 2,
+        "informative": true
+      }
+    ],
+    "smallest_rule_count": 2,
+    "void_for_the_recorded_feedback": false,
+    "share_food_slot_chosen": 0.8387096774193549,
+    "share_slot_0_chosen": 0.5806451612903226,
+    "share_outcome_1": 0.8387096774193549,
+    "nearest_chooser": "food_80",
+    "counted": false,
+    "food_band": 23,
+    "first_episode": 29,
+    "last_episode": 59
+  },
+  "rv_switch_s703 after": {
+    "episodes": 31,
+    "episodes_with_target_1": 15,
+    "count_table": {
+      "chosen_0_outcome_0_target_0": 4,
+      "chosen_0_outcome_0_target_1": 0,
+      "chosen_0_outcome_1_target_0": 0,
+      "chosen_0_outcome_1_target_1": 14,
+      "chosen_1_outcome_0_target_0": 0,
+      "chosen_1_outcome_0_target_1": 1,
+      "chosen_1_outcome_1_target_0": 12,
+      "chosen_1_outcome_1_target_1": 0
+    },
+    "training_sets": [
+      {
+        "slot_0": {
+          "outcome_1": 11,
+          "outcome_0": 3
+        },
+        "slot_1": {
+          "outcome_1": 9,
+          "outcome_0": 1
+        },
+        "episodes": 24,
+        "rule_count": 3,
+        "informative": true
+      },
+      {
+        "slot_0": {
+          "outcome_1": 11,
+          "outcome_0": 4
+        },
+        "slot_1": {
+          "outcome_1": 9,
+          "outcome_0": 1
+        },
+        "episodes": 25,
+        "rule_count": 4,
+        "informative": true
+      },
+      {
+        "slot_0": {
+          "outcome_1": 12,
+          "outcome_0": 3
+        },
+        "slot_1": {
+          "outcome_1": 10,
+          "outcome_0": 0
+        },
+        "episodes": 25,
+        "rule_count": 3,
+        "informative": true
+      },
+      {
+        "slot_0": {
+          "outcome_1": 11,
+          "outcome_0": 4
+        },
+        "slot_1": {
+          "outcome_1": 9,
+          "outcome_0": 1
+        },
+        "episodes": 25,
+        "rule_count": 4,
+        "informative": true
+      },
+      {
+        "slot_0": {
+          "outcome_1": 11,
+          "outcome_0": 2
+        },
+        "slot_1": {
+          "outcome_1": 11,
+          "outcome_0": 1
+        },
+        "episodes": 25,
+        "rule_count": 2,
+        "informative": true
+      }
+    ],
+    "smallest_rule_count": 2,
+    "void_for_the_recorded_feedback": false,
+    "share_food_slot_chosen": 0.8387096774193549,
+    "share_slot_0_chosen": 0.5806451612903226,
+    "share_outcome_1": 0.8387096774193549,
+    "nearest_chooser": "food_80",
+    "counted": false,
+    "food_band": 23,
+    "first_episode": 29,
+    "last_episode": 59
+  }
+}

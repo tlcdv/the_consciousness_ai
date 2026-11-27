@@ -1,0 +1,10 @@
+vg_learn_s601: HOLDS. broadcast 0.975 (null 0.688), audio 1.000 (null 0.738), tectum 0.825 (null 0.688), episode number 0.300
+vg_learn_s602: AT NULL. broadcast 0.600 (null 0.676), audio 1.000 (null 0.676), tectum 0.425 (null 0.626), episode number 0.300
+vg_learn_s603: HOLDS. broadcast 0.800 (null 0.682), audio 1.000 (null 0.726), tectum 0.738 (null 0.713), episode number 0.300
+rv_switch_s701: HOLDS. broadcast 0.861 (null 0.667), audio 1.000 (null 0.645), tectum 0.411 (null 0.650), episode number 0.417
+rv_switch_s702: HOLDS. broadcast 0.836 (null 0.656), audio 1.000 (null 0.678), tectum 0.389 (null 0.678), episode number 0.417
+rv_switch_s703: BETWEEN. broadcast 0.722 (null 0.661), audio 1.000 (null 0.673), tectum 0.406 (null 0.656), episode number 0.417
+cg_gate_benefit_s1301: VOID. K3, cg_gate_benefit_s1301 episode 0: the bands of the gate and of the binding differ
+cg_gate_benefit_s1302: VOID. K3, cg_gate_benefit_s1302 episode 0: the bands of the gate and of the binding differ
+cg_gate_benefit_s1303: VOID. K3, cg_gate_benefit_s1303 episode 0: the bands of the gate and of the binding differ
+VERDICT over the counted groups: UNDECIDED
