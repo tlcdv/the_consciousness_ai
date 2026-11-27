@@ -134,11 +134,27 @@ class TestFeedback:
 
 class TestBlankControl:
     @pytest.mark.parametrize("kind", ["variant", "plain"])
-    def test_an_input_of_zeros_scores_one_half_exactly(self, kind):
+    def test_an_input_of_zeros_scores_one_half_exactly(self, kind, monkeypatch):
+        # Equal rows can give outputs that differ in the last bits on some processors, and an exact tie
+        # then breaks. So the patched preferences assert that the preferences of the fold differ by 1e-6
+        # or less, and then give the AUC six equal values, each equal to the first preference of the
+        # fold. Owner decisions of 2026-11-27, in the rules of step P1.
+        original_preferences = check.preferences
+        fold_preferences = []
+
+        def tied_preferences(head, rows):
+            preferences = original_preferences(head, rows)
+            fold_preferences.append(preferences)
+            assert preferences.max() - preferences.min() <= 1e-6
+            return np.full_like(preferences, preferences[0])
+
+        monkeypatch.setattr(check, "preferences", tied_preferences)
         target = np.arange(30) % 2
         chosen = np.random.default_rng(0).integers(0, 2, 30)
         outcome = check.built_outcomes(chosen, target)
-        assert check.score_of_one_seed(kind, 0, np.zeros((30, 8)), chosen, outcome, target, updates=5) == 0.5
+        score = check.score_of_one_seed(kind, 0, np.zeros((30, 8)), chosen, outcome, target, updates=5)
+        assert len(fold_preferences) == check.OUTER_FOLDS
+        assert score == 0.5
 
 
 class TestBuiltData:

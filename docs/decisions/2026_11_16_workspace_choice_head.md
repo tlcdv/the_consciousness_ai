@@ -657,3 +657,116 @@ of the rules apply as written.
 only change is the episode of the division, and its value comes from the step records and from the
 commits above, not from a count. The count tables with the old division stay in the result document
 for the record.
+
+## Owner decision of 2026-11-27 on unit test 2, the blank control
+
+Date: 2026-11-27. This is an owner decision. No reviewer judged it. No earlier line of this file was
+edited. It changes the form of unit test 2 of the section "Unit tests, pinned on built data before the
+first run" (line 272). That test checks the blank control of item 10 of the definitions (line 83).
+Item 10 and K8 (line 259) stay as written. The change is in `tests/test_choice_head.py` only. No file
+under `models`, `simulations` or `scripts` changes.
+
+**The failure.** The workflow Core Tests failed on the public repository at commit `5df5e63`, in run
+46018014774. The test
+`tests/test_choice_head.py::TestBlankControl::test_an_input_of_zeros_scores_one_half_exactly[plain]`
+gave 0.4333333333333334, and it expects 0.5. Another run of the same workflow passed the same test, with
+the same test file and the same code, the same runner image (ubuntu-26.04, version 20261111.635), torch
+2.15.0+cpu and numpy 2.5.4. The logs of the two runs do not name the processor.
+
+**What the test needs.** With an input of zeros, each standardized row is exactly zero. Each fold holds
+3 episodes of each target. So its AUC has 9 pairs, and it is a multiple of 1/18. A fold with six equal
+preferences gives 0.5. When each fold has six equal preferences, the score is 45/90, which is 0.5
+exactly. The failed value is 39/90 up to the last bit of floating point. So in that run the preferences
+of at least one fold were not all equal.
+
+**The read on another computer.** I ran the blank control fold by fold, read only, on Windows 11 with an
+Intel Core i9-13900HX, torch 2.14.1+cu126 (on the processor, with MKL) and numpy 2.5.4. In each fold the
+six preferences are equal, bit for bit, for both heads. For the plain value head they are
+-0.2386723756790161, -0.19824907183647156, -0.15230244398117065, -0.15230244398117065 and
+-0.18880918622016907 in folds 0 to 4. Each fold gives 0.5, and the score is 0.5. The result is the same
+with 22, 4 and 1 threads, and with the instruction set of MKL limited to AVX2, AVX or SSE4_2. I did not
+reproduce the failure.
+
+**Equal rows can give unequal outputs.** I gave the trained heads of the five folds batches of 1 to 512
+rows of zeros. A batch of 6 rows, the size of a fold, is tied for each head and each fold. Many other
+sizes are not tied, for example 5, 7, 9 and 11 rows for the plain value head of fold 0. The differences
+are 1 to 3 steps of float32, at most 8.94e-08 for the plain value head and 5.59e-09 for the go and no-go
+variant. So on this computer the output for equal rows depends on the size of the batch, in the last
+bits.
+
+**A cause, not verified.** A processor or a build of the matrix library can compute some rows of a
+product in another way than the other rows, for example 4 rows in one block and the 2 remaining rows
+apart. Equal rows can then differ in the last bits, and a tie breaks. This can give 0.4333333333333334
+exactly. If rows 4 and 5 of each batch of 6 get a slightly higher preference than rows 0 to 3, fold 3
+gives 1/6, the four other folds give 0.5, and the mean is 0.4333333333333334. I tried each fixed set of
+batch positions with a small shift up or down, 124 patterns. Four give this value exactly. They are two
+cases, because a shift of some rows up orders the rows as a shift of the other rows down. In one case
+rows 4 and 5 differ from rows 0 to 3, and fold 3 gives 1/6. In the other case rows 1 and 2 differ from
+rows 0, 3, 4 and 5, and fold 2 gives 1/6. I could not run the test on the processor of the failed run,
+so this cause is a hypothesis.
+
+**The decision, in the owner's words.**
+
+```text
+- Yes to diagnose, read only, and then to fix the test. Do not change scripts/analysis/check_choice_head.py or any file under models, simulations or scripts/training, because the results of steps P1 and P2 used that code.
+- The fix: in the blank control, round the preferences to 6 decimals before the AUC (for example with a monkeypatch of check.preferences), and assert that the preferences of each fold differ by 1e-6 or less. The expected score stays 0.5 exactly. Add no new test, so the test count stays 2918.
+- Record the change in a dated section of the rules file of step P1 that defines this control, with 0 lines removed, before the test change.
+```
+
+**The new form of unit test 2.**
+
+1. Inside the test, a monkeypatch of `check.preferences` keeps the preferences of each fold and gives
+   the AUC the preferences rounded to 6 decimals (`np.round(x, 6)`). The function in
+   `scripts/analysis/check_choice_head.py` does not change.
+2. The test asserts that it kept the preferences of 5 folds, and that in each fold the largest
+   preference minus the smallest is 1e-6 or less.
+3. The expected score stays 0.5 exactly.
+4. No test is added. The test keeps its name and its two cases, `variant` and `plain`.
+
+**What the new form still checks.** A difference above 1e-6 between the preferences of a fold fails the
+test. On this computer the differences between equal rows are 8.94e-08 or less.
+
+**A limit of the new form.** Rounding gives equal numbers only when the preferences of a fold are on one
+side of a boundary of the rounding, which is a multiple of 1e-6 plus 5e-7. On this computer the tied
+preferences are 5.6e-08 to 4.8e-07 from the nearest boundary. The smallest distance, 5.6e-08, is in
+folds 2 and 3 of the plain value head, the two folds of the hypothesis above. The larger output of that
+head has float32 steps of 2.98e-08. So a difference of 2 steps toward that boundary gives two rounded
+values, and then the score is not 0.5. I do not know where the preferences of the failed run were, so I
+cannot say that the new form passes on that processor.
+
+## Owner decisions of 2026-11-27 on the rounding of unit test 2
+
+Date: 2026-11-27. These are owner decisions in the owner's words. No reviewer judged them. No earlier
+line of this file was edited. They replace the rounding to 6 decimals of the section "Owner decision of
+2026-11-27 on unit test 2, the blank control" above. That section stays as the record, and its limit
+applies only to the rounded form. The change is in `tests/test_choice_head.py` only. No file under
+`models`, `simulations` or `scripts` changes.
+
+**The reason.** The section above names a limit of the rounding. A rounding to 6 decimals can split two
+preferences that are near a boundary of the rounding. On a simulated processor, a difference of 2 float32
+steps toward the nearest boundary of folds 2 and 3 of the plain value head failed the rounded form at the
+score. The owner confirmed this check.
+
+**The decisions, in the owner's words.** The first two sentences are the owner's reason.
+
+```text
+Your check of the rounding is correct. A rounding to 6 decimals can split two values that are near a rounding boundary. My decisions are these.
+- The rounding to 6 decimals is replaced. In the blank control, the patched preferences first assert that the six preferences of the fold differ by 1e-6 or less. Then they return six equal values, each equal to the first preference of the fold. So the AUC gets an exact tie, and the expected score stays 0.5 exactly.
+- The limit stays 1e-6. A fold whose preferences differ by more than 1e-6 fails the test, because then the head tells the blank rows apart.
+- No change to scripts/analysis/check_choice_head.py or to any file under models, simulations or scripts/training. No new test, so the count stays 2918.
+```
+
+**The new form of unit test 2.**
+
+1. Inside the test, a monkeypatch of `check.preferences` calls the function of
+   `scripts/analysis/check_choice_head.py` for the test rows of a fold. It asserts that the largest
+   preference minus the smallest is 1e-6 or less.
+2. Then it returns six equal values, each equal to the first preference of the fold. So the AUC of each
+   fold is an exact tie.
+3. The test asserts that the patch ran for 5 folds, and that the score is 0.5 exactly.
+4. No test is added. The test keeps its name and its two cases, `variant` and `plain`.
+
+**What the new form checks.** A difference above 1e-6 between the preferences of a fold fails the test,
+at the assertion of item 1. A difference of 1e-6 or less gives the score 0.5 exactly, wherever the
+preferences lie, because the AUC does not see the differences. On this computer the differences between
+equal rows are 8.94e-08 or less.
