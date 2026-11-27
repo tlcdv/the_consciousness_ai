@@ -143,6 +143,10 @@ The folder `models/thermodynamic/` holds an experimental substrate package. It e
 
 ## Scientific Approach
 
+[![Watch the video: Would alien life be conscious?](docs/assets/video-alien-thumbnail.jpg)](https://youtu.be/l85YmBjwz1M)
+
+**Video:** [Watch "Would alien life be conscious?" on YouTube](https://youtu.be/l85YmBjwz1M). It goes from three separate origins of awareness on Earth to the crow, the octopus, Assembly Theory and the limits of any test for another mind. It ends on how this project measures itself, with the indicator rubric of item 6 and the [instrument inventory](docs/instrument_inventory.md), and on why we publish what fails.
+
 The development validates emergent properties through:
 
 1.  **Emotional Bootstrapping:** Train agents using intrinsic motivation. The agent explores to reduce prediction error (anxiety), not to accumulate external reward.
